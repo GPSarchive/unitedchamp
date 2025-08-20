@@ -1,18 +1,22 @@
+// app/OMADA/[id]/page.tsx
 import Link from "next/link";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import TeamHeader from "@/app/components/OMADAPageComponents/TeamHeader";
 import PlayersSection from "@/app/components/OMADAPageComponents/PlayersSection";
 import MatchesSection from "@/app/components/OMADAPageComponents/MatchesSection";
-import { Team, PlayerAssociation, Match } from "@/app/lib/types";
+import type { Team, PlayerAssociation, Match } from "@/app/lib/types";
 
-interface TeamPageProps {
-  params: { id: string };
-}
+type TeamPageProps = {
+  // Next.js 15: params/searchParams are Promises
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export default async function TeamPage({ params }: TeamPageProps) {
-  const teamId = parseInt(params.id, 10);
+  const { id } = await params;
+  const teamId = Number.parseInt(id, 10);
 
-  if (isNaN(teamId)) {
+  if (Number.isNaN(teamId)) {
     return <div className="text-red-400">Invalid team ID</div>;
   }
 
@@ -35,20 +39,18 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const { data: playerAssociationsData, error: playersError } =
     await supabaseAdmin
       .from("player_teams")
-      .select(
-        `
-      player:player_id (
-        id,
-        first_name,
-        last_name,
-        player_statistics (
-          age,
-          total_goals,
-          total_assists
+      .select(`
+        player:player_id (
+          id,
+          first_name,
+          last_name,
+          player_statistics (
+            age,
+            total_goals,
+            total_assists
+          )
         )
-      )
-    `
-      )
+      `)
       .eq("team_id", teamId);
 
   const playerAssociations =
@@ -57,8 +59,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
   // Matches
   const { data: matchesData, error: matchesError } = await supabaseAdmin
     .from("matches")
-    .select(
-      `
+    .select(`
       id,
       match_date,
       status,
@@ -67,24 +68,16 @@ export default async function TeamPage({ params }: TeamPageProps) {
       winner_team_id,
       team_a:team_a_id (id, name, logo),
       team_b:team_b_id (id, name, logo)
-    `
-    )
+    `)
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .order("match_date", { ascending: false });
 
   const matches = (matchesData as Match[] | null) ?? null;
 
   return (
-    <div
-      className="min-h-screen bg-zinc-950
-                 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)]
-                 [background-size:18px_18px] overflow-x-hidden"
-    >
+    <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
       <div className="container mx-auto px-6 pt-6 pb-10">
-        <Link
-          href="/OMADES"
-          className="text-blue-400 hover:underline mb-4 inline-block"
-        >
+        <Link href="/OMADES" className="text-blue-400 hover:underline mb-4 inline-block">
           &larr; Back to Teams
         </Link>
 

@@ -4,21 +4,29 @@ import Pagination from "@/app/components/OMADESPageComponents/Pagination";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import { Team, TeamWithCount } from "@/app/lib/types";
 
+type SearchMap = { [key: string]: string | string[] | undefined };
 
 export default async function TeamsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  // Next.js 15: searchParams is a Promise
+  searchParams: Promise<SearchMap>;
 }) {
-  const page = parseInt(searchParams.page || "1", 14);
-  const search = searchParams.search || "";
+  const sp = await searchParams;
+
+  // Safely extract values that might be string | string[] | undefined
+  const pageParam = Array.isArray(sp.page) ? sp.page[0] : sp.page ?? "1";
+  const page = Number.parseInt(pageParam, 10) > 0 ? Number.parseInt(pageParam, 10) : 1;
+
+  const search = Array.isArray(sp.search) ? sp.search[0] : sp.search ?? "";
+
   const limit = 14;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
   let teams: Team[] = [];
   let count = 0;
-  let error = null as any;
+  let error: any = null;
 
   if (search) {
     const { data: teamsData, error: rpcError } = await supabaseAdmin.rpc(
@@ -40,10 +48,7 @@ export default async function TeamsPage({
       .select("id, name, logo", { count: "exact" })
       .order("name", { ascending: true });
 
-    const { data, error: queryError, count: queryCount } = await query.range(
-      from,
-      to
-    );
+    const { data, error: queryError, count: queryCount } = await query.range(from, to);
     error = queryError;
     if (!error && data) {
       teams = data as Team[];
@@ -53,20 +58,13 @@ export default async function TeamsPage({
 
   if (error || !teams) {
     return (
-      <div
-        className="min-h-screen bg-zinc-950
-                   [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)]
-                   [background-size:18px_18px] overflow-x-hidden"
-      >
-        {/* header + search (centered) */}
+      <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
         <div className="container mx-auto px-6 pt-6">
           <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
             Football Teams
           </h1>
           <SearchBar initialSearch={search} />
         </div>
-  
-        {/* error message (centered) */}
         <div className="container mx-auto px-6 pb-10">
           <p className="text-center text-red-400">
             Error loading teams: {error?.message}
@@ -75,23 +73,16 @@ export default async function TeamsPage({
       </div>
     );
   }
-  
+
   if (teams.length === 0) {
     return (
-      <div
-        className="min-h-screen bg-zinc-950
-                   [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)]
-                   [background-size:18px_18px] overflow-x-hidden"
-      >
-        {/* header + search (centered) */}
+      <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
         <div className="container mx-auto px-6 pt-6">
           <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
             Football Teams
           </h1>
           <SearchBar initialSearch={search} />
         </div>
-  
-        {/* no results message (centered) */}
         <div className="container mx-auto px-6 pb-10">
           <p className="text-center text-gray-400 mt-6">
             No teams found matching your search.
@@ -103,12 +94,8 @@ export default async function TeamsPage({
 
   const totalPages = Math.ceil(count / limit);
 
-  // Full-bleed grid, with header & pagination centered
   return (
-    <div
-      className="min-h-screen bg-grid-18"
-    >
-      {/* header + search (centered) */}
+    <div className="min-h-screen bg-grid-18">
       <div className="container mx-auto px-6 pt-6">
         <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
           Football Teams
@@ -116,20 +103,14 @@ export default async function TeamsPage({
         <SearchBar initialSearch={search} />
       </div>
 
-      {/* full-bleed grid */}
       <section className="mx-[calc(50%-50vw)] w-screen">
         <div className="px-6">
           <TeamsGrid teams={teams} />
         </div>
       </section>
 
-      {/* pagination (centered) */}
       <div className="container mx-auto px-6 pb-10">
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          search={search}
-        />
+        <Pagination currentPage={page} totalPages={totalPages} search={search} />
       </div>
     </div>
   );
