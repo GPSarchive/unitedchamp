@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Keep your design tokens */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -8,8 +9,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-roboto-condensed);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,8 +19,123 @@
   }
 }
 
+/* IMPORTANT: use background-color (not shorthand 'background') so we don't wipe out the dot-grid image */
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Let Tailwind/next-font control fonts via variables */
+  font-family: var(--font-roboto-condensed), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* ---------- Site-wide DOT GRID utility ---------- */
+@layer utilities {
+  /* Light/Dark aware dot-grid */
+  .bg-dot-grid {
+    --cell: 18px;                         /* spacing */
+    --dot: rgba(0, 0, 0, 0.06);           /* light mode dot color */
+    background-color: #fafafa;            /* zinc-50 */
+    background-image: radial-gradient(var(--dot) 1px, transparent 1px);
+    background-size: var(--cell) var(--cell);
+    background-position: 0 0;
+  }
+  .dark .bg-dot-grid {
+    --dot: rgba(255, 255, 255, 0.06);     /* dark mode dot color */
+    background-color: #09090b;            /* zinc-950 */
+  }
+
+  /* (Optional) responsive spacing tweaks */
+  @media (min-width: 640px) { .bg-dot-grid { --cell: 20px; } }
+  @media (min-width: 1024px){ .bg-dot-grid { --cell: 22px; } }
+}
+
+/* === Crimson Kintsugi: premium dark-red animated navbar === */
+@layer utilities {
+  /* Deep crimson base with subtle radial warmth + slow drift */
+  .crimson-kintsugi {
+    background-image:
+      radial-gradient(80% 100% at 50% -40%, rgba(248,113,113,0.08), transparent 60%),
+      radial-gradient(60% 80% at 0% 120%, rgba(127,29,29,0.12), transparent 70%),
+      radial-gradient(40% 80% at 100% 0%, rgba(190,18,60,0.10), transparent 60%),
+      linear-gradient(to bottom, #0b0606, #160808 55%, #0b0606);
+    background-size: 220% 220%, 220% 220%, 220% 220%, auto;
+    animation: kintsugi-pan 24s ease-in-out infinite;
+  }
+  @keyframes kintsugi-pan {
+    0%   { background-position: 0% 50%, 100% 50%, 0% 100%, 0% 0%; }
+    50%  { background-position: 100% 50%, 0% 50%, 100% 0%, 0% 0%; }
+    100% { background-position: 0% 50%, 100% 50%, 0% 100%, 0% 0%; }
+  }
+
+  /* Fine film grain for richness (very subtle) */
+  .grain-layer {
+    position: absolute; inset: 0; pointer-events: none;
+    mix-blend-mode: soft-light; opacity: .22;
+    background-image:
+      repeating-conic-gradient(rgba(255,255,255,0.015) 0% 0.25%, transparent 0.25% 1%);
+    background-size: 10px 10px;
+  }
+
+  /* Gentle blur + depth edges */
+  .nav-blur { backdrop-filter: blur(8px); }
+  .edge-glow {
+    box-shadow:
+      inset 0 -1px 0 rgba(255,255,255,0.08),
+      inset 0  1px 0 rgba(255,255,255,0.06),
+      0 22px 44px rgba(0,0,0,0.4);
+  }
+
+  /* Animated link underline (keep it premium) */
+  .link-underline { position: relative; }
+  .link-underline::after {
+    content: ""; position: absolute; left: 0; bottom: -4px; height: 2px; width: 0%;
+    background: linear-gradient(90deg, #f5d37a, #d9a94f, #f5d37a);
+    transition: width .35s ease; border-radius: 999px;
+  }
+  .link-underline:hover::after,
+  .link-underline[aria-current="page"]::after { width: 100%; }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .crimson-kintsugi { animation: none; }
+    .kintsugi-svg .stroke { animation: none; }
+  }
+}
+
+/* Fade + slight lift as the page scrolls the first 200px */
+@keyframes navFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+
+@supports (animation-timeline: scroll()) {
+  [data-scroll-fade] {
+    /* Keep it on top even when transparent */
+    will-change: opacity, transform;
+    animation-name: navFadeOut;
+    animation-duration: 1s;            /* required but ignored by timeline */
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+    animation-timeline: scroll(root);  /* tie to page scroll */
+    /* Animate from top of page (0) to 200px scrolled */
+    animation-range: 0 200px;
+  }
+}
+
+@layer utilities {
+  .bg-grid-18 {
+    background-color: #09090b; /* zinc-950 */
+    background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+}
+
+@keyframes fade-up {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-fade-up { animation: fade-up 700ms ease-out both; }
+
+/* (Optional) Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up { animation: none; }
 }

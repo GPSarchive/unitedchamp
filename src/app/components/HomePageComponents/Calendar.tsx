@@ -1,34 +1,220 @@
 'use client';
 
+import elLocale from '@fullcalendar/core/locales/el';
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import { CalendarApi } from '@fullcalendar/core';
+import type { CalendarApi, EventInput, EventContentArg } from '@fullcalendar/core';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { supabase, type DbEvent } from '@/app/lib/supabaseClient';
+import { supabase } from '@/app/lib/supabaseClient';
+import { ChevronLeft, ChevronRight, RotateCw, CalendarDays } from 'lucide-react';
+import EventPill from './EventPill';
+import '@/styles/fullcalendar-overrides.css';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// ===================== Types =====================
 type Props = {
   height?: number | 'auto';
   className?: string;
-  initialEvents?: DbEvent[];
-  fetchFromDb?: boolean; // New prop
+  initialEvents?: Array<{
+    id: string | number;
+    title: string;
+    start: string; // 'YYYY-MM-DDTHH:mm:ss' OR ISO with offset
+    end: string;   // 'YYYY-MM-DDTHH:mm:ss' OR ISO with offset
+    all_day?: boolean;
+    teams?: [string, string];
+    logos?: [string, string];
+  }>;
+  fetchFromDb?: boolean;
 };
 
-type CalEvent = {
+type TeamLite = { name?: string; logo?: string | null };
+
+// ===================== Time helpers (naive, keep DB clock) =====================
+const ISO_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function parseIsoPreserveClock(iso: string) {
+  const m = ISO_RE.exec(iso);
+  if (!m) throw new Error(`Unrecognized datetime: ${iso}`);
+  const [, y, M, d, h, min, s] = m;
+  return { y: +y, M: +M, d: +d, h: +h, min: +min, s: +s };
+}
+
+function toNaiveIso(isoOrNaive: string) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(isoOrNaive)) return isoOrNaive;
+  const { y, M, d, h, min, s } = parseIsoPreserveClock(isoOrNaive);
+  return `${y}-${pad2(M)}-${pad2(d)}T${pad2(h)}:${pad2(min)}:${pad2(s)}`;
+}
+
+function daysInMonth(y: number, M: number) {
+  return new Date(y, M, 0).getDate();
+}
+
+function addMinutesNaive(
+  parts: { y: number; M: number; d: number; h: number; min: number; s: number },
+  deltaMin: number
+) {
+  const start = parts.h * 60 + parts.min;
+  const total = start + deltaMin;
+
+  let dayDelta = Math.floor(total / 1440);
+  let minutesInDay = total % 1440;
+
+  if (minutesInDay < 0) {
+    minutesInDay += 1440;
+    dayDelta -= 1;
+  }
+
+  const h = Math.floor(minutesInDay / 60);
+  const min = minutesInDay % 60;
+
+  let { y, M, d } = parts;
+  d += dayDelta;
+
+  while (true) {
+    const dim = daysInMonth(y, M);
+    if (d <= dim) break;
+    d -= dim;
+    M += 1;
+    if (M > 12) {
+      M = 1;
+      y += 1;
+    }
+  }
+
+  return { y, M, d, h, min, s: parts.s };
+}
+
+function endIsoPlusMinutes(isoOrNaive: string, minutes: number) {
+  const startParts = parseIsoPreserveClock(isoOrNaive);
+  const endParts = addMinutesNaive(startParts, minutes);
+  return `${endParts.y}-${pad2(endParts.M)}-${pad2(endParts.d)}T${pad2(endParts.h)}:${pad2(
+    endParts.min
+  )}:${pad2(endParts.s)}`;
+}
+
+function mapIncomingEvents(list: Props['initialEvents'] = []): EventInput[] {
+  return list.map((e) => ({
+    id: String(e.id),
+    title: e.title,
+    start: toNaiveIso(e.start),
+    end: toNaiveIso(e.end),
+    allDay: Boolean(e.all_day),
+    extendedProps: { teams: e.teams, logos: e.logos },
+  }));
+}
+
+// ===================== Collapse overlaps into single composite events =====================
+type ClusterItem = {
   id: string;
   title: string;
   start: string;
   end: string;
-  allDay: boolean;
   teams?: [string, string];
   logos?: [string, string];
 };
+
+function minutesFromNaive(naiveIso: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):/.exec(naiveIso);
+  if (!m) return 0;
+  const hh = +m[4], mm = +m[5];
+  return hh * 60 + mm;
+}
+function dayKey(naiveIso: string) {
+  return naiveIso.slice(0, 10);
+}
+
+function collapseOverlapsToCompositeEvents(raw: EventInput[]): EventInput[] {
+  const base = raw.map((e) => ({
+    ...e,
+    id: String(e.id),
+    title: e.title ?? '',
+    start: toNaiveIso(String(e.start)),
+    end: toNaiveIso(String(e.end)),
+    allDay: false,
+    extendedProps: { ...(e.extendedProps || {}) },
+  }));
+
+  const byDay = new Map<string, Array<{
+    id: string; title: string; start: string; end: string;
+    startMin: number; endMin: number;
+    teams?: [string, string]; logos?: [string, string];
+  }>>();
+
+  for (const e of base) {
+    const key = dayKey(e.start as string);
+    const teams = (e.extendedProps as any)?.teams as [string, string] | undefined;
+    const logos = (e.extendedProps as any)?.logos as [string, string] | undefined;
+    const arr = byDay.get(key) ?? [];
+    arr.push({
+      id: e.id!, title: e.title!,
+      start: e.start as string, end: e.end as string,
+      startMin: minutesFromNaive(e.start as string),
+      endMin: minutesFromNaive(e.end as string),
+      teams, logos,
+    });
+    byDay.set(key, arr);
+  }
+
+  const out: EventInput[] = [];
+  for (const [key, arr] of byDay) {
+    arr.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+
+    let cluster: typeof arr = [];
+    let clusterEnd = -1;
+    let clusterIdx = 0;
+
+    const flush = () => {
+      if (!cluster.length) return;
+
+      let clusterStartIso = cluster[0].start;
+      let clusterEndIso = cluster[0].end;
+      let maxEnd = cluster[0].endMin;
+      for (const c of cluster) {
+        if (c.endMin > maxEnd) { maxEnd = c.endMin; clusterEndIso = c.end; }
+      }
+
+      const items: ClusterItem[] = cluster.map((c) => ({
+        id: c.id, title: c.title, start: c.start, end: c.end, teams: c.teams, logos: c.logos,
+      }));
+
+      out.push({
+        id: `cluster:${key}:${clusterIdx++}`,
+        title: items.length > 1 ? `${items.length} events` : items[0].title,
+        start: clusterStartIso,
+        end: clusterEndIso,
+        allDay: false,
+        extendedProps: { items },
+      });
+
+      cluster = [];
+      clusterEnd = -1;
+    };
+
+    for (const e of arr) {
+      if (!cluster.length || e.startMin < clusterEnd) {
+        cluster.push(e);
+        clusterEnd = Math.max(clusterEnd, e.endMin);
+      } else {
+        flush();
+        cluster.push(e);
+        clusterEnd = e.endMin;
+      }
+    }
+    flush();
+  }
+
+  return out;
+}
 
 export default function EventCalendar({
   height = 'auto',
   className,
   initialEvents = [],
-  fetchFromDb = false, // Default to false
+  fetchFromDb = false,
 }: Props) {
   const startOfCurrentWeek = useMemo(() => {
     const now = new Date();
@@ -40,214 +226,238 @@ export default function EventCalendar({
     return monday;
   }, []);
 
-  const [events, setEvents] = useState<CalEvent[]>(
-    initialEvents.map((e) => ({
-      id: e.id,
-      title: e.title,
-      start: e.start,
-      end: e.end,
-      allDay: e.all_day,
-    }))
+  const [events, setEvents] = useState<EventInput[]>(() =>
+    collapseOverlapsToCompositeEvents(mapIncomingEvents(initialEvents))
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(fetchFromDb);
   const [error, setError] = useState<string | null>(null);
-
+  const [title, setTitle] = useState<string>('');
+  const [canGoPrev, setCanGoPrev] = useState<boolean>(false);
   const calendarRef = useRef<FullCalendar>(null);
 
-  const fetchEvents = useCallback(async () => {
+  useEffect(() => {
+    setEvents(collapseOverlapsToCompositeEvents(mapIncomingEvents(initialEvents)));
+  }, [initialEvents]);
+
+  const fetchFromMatches = useCallback(async () => {
+    if (!fetchFromDb) return;
     setLoading(true);
     setError(null);
 
     const { data, error } = await supabase
-      .from('events')
-      .select('id, title, start, end, all_day')
-      .order('start', { ascending: true });
+      .from('matches')
+      .select(
+        `id, match_date,
+         teamA:teams!matches_team_a_id_fkey (name, logo),
+         teamB:teams!matches_team_b_id_fkey (name, logo)`
+      )
+      .order('match_date', { ascending: true });
 
     if (error) {
       setError(error.message);
       setEvents([]);
-    } else {
-      setEvents(
-        (data as DbEvent[]).map((e) => ({
-          id: e.id,
-          title: e.title,
-          start: e.start,
-          end: e.end,
-          allDay: e.all_day,
-        }))
-      );
+      setLoading(false);
+      return;
     }
 
+    const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
+
+    const built: EventInput[] = (data ?? []).map((m: any) => {
+      const a = one(m.teamA) as TeamLite | null;
+      const b = one(m.teamB) as TeamLite | null;
+
+      const start = toNaiveIso(m.match_date);
+      const end = endIsoPlusMinutes(m.match_date, 50);
+
+      return {
+        id: String(m.id),
+        title: `${a?.name ?? 'Unknown'} vs ${b?.name ?? 'Unknown'}`,
+        start,
+        end,
+        allDay: false,
+        extendedProps: {
+          teams: [a?.name ?? 'Unknown', b?.name ?? 'Unknown'] as [string, string],
+          logos: [a?.logo ?? '/placeholder.png', b?.logo ?? '/placeholder.png'] as [string, string],
+        },
+      };
+    });
+
+    setEvents(collapseOverlapsToCompositeEvents(built));
     setLoading(false);
-  }, []);
+  }, [fetchFromDb]);
 
   useEffect(() => {
-    if (fetchFromDb) {
-      fetchEvents();
-    } else {
-      setLoading(false); // Skip loading state for placeholders
-    }
-  }, [fetchEvents, fetchFromDb]);
+    if (fetchFromDb) fetchFromMatches();
+  }, [fetchFromDb, fetchFromMatches]);
 
-  const calendarPlugins = useMemo(
-    () => [timeGridPlugin, interactionPlugin],
-    []
-  );
+  const getApi = () => calendarRef.current?.getApi() as CalendarApi | undefined;
+  const goPrev = () => getApi()?.prev();
+  const goToday = () => getApi()?.today();
+  const goNext = () => getApi()?.next();
 
-  const renderEventContent = (eventInfo: any) => {
-    const { event } = eventInfo;
-    const ext = event.extendedProps as CalEvent;
+  const renderEventContent = (eventInfo: EventContentArg) => {
+    const items = (eventInfo.event.extendedProps as any)?.items as Array<{
+      id: string; title: string; start: string; end: string; teams?: [string, string]; logos?: [string, string];
+    }> | undefined;
 
-    if (!ext.teams || !ext.logos) {
-      return (
-        <div className="bg-[#1f2937] text-white p-2 rounded-md shadow h-full flex items-center justify-center">
-          <span className="font-medium text-sm">{event.title}</span>
-        </div>
-      );
+    if (items && items.length) {
+      const EventPillAny = EventPill as any;
+      return <EventPillAny items={items} />;
     }
 
-    return (
-      <div className="flex items-center justify-between bg-[#1f2937] text-white p-2 rounded-md shadow-lg h-full">
-        <div className="flex items-center gap-2">
-          <img
-            src={ext.logos[0]}
-            alt={ext.teams[0]}
-            className="h-6 w-6 object-contain rounded-full"
-          />
-          <span className="font-bold text-sm">{ext.teams[0]}</span>
-        </div>
-        <span className="text-yellow-400 font-semibold text-sm">vs</span>
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sm">{ext.teams[1]}</span>
-          <img
-            src={ext.logos[1]}
-            alt={ext.teams[1]}
-            className="h-6 w-6 object-contain rounded-full"
-          />
-        </div>
-      </div>
-    );
+    const ext = eventInfo.event.extendedProps as {
+      teams?: [string, string];
+      logos?: [string, string];
+    };
+    // @ts-ignore old signature support
+    return <EventPill timeText={eventInfo.timeText} teams={ext?.teams} logos={ext?.logos} />;
   };
-
-  const handleDateClick = useCallback(
-    async (info: { date: Date }) => {
-      const title = window.prompt('Enter match title:');
-      if (!title) return;
-
-      const start = info.date;
-      const end = new Date(start.getTime() + 50 * 60 * 1000);
-
-      const { error } = await supabase.from('events').insert({
-        title,
-        start: start.toISOString(),
-        end: end.toISOString(),
-      });
-
-      if (error) {
-        alert(`Error creating event: ${error.message}`);
-      } else {
-        fetchEvents();
-      }
-    },
-    [fetchEvents]
-  );
 
   return (
     <div
-      className={`${className} p-6 rounded-2xl shadow-xl bg-gradient-to-br from-green-900 to-green-700 text-white`}
+      className={`${className ?? ''} overflow-hidden border border-black shadow-black shadow-xl
+                  bg-zinc-950 bg-gradient-to-br bg-black text-white`}
     >
-      <div className="mb-6 flex items-center justify-between gap-4 backdrop-blur-md bg-white/10 p-4 rounded-xl shadow-inner border border-white/20">
-        <h2 className="text-3xl font-extrabold uppercase tracking-wide drop-shadow">
-          ΠΡΟΓΡΑΜΜΑ ΑΓΩΝΩΝ
-        </h2>
-        <button
-          onClick={fetchEvents}
-          className="px-5 py-2 rounded-full bg-white text-green-800 font-bold hover:bg-yellow-400 hover:text-black transition shadow-lg"
-          disabled={!fetchFromDb} // Disable refresh if not fetching from DB
-        >
-          🔄 Refresh
-        </button>
+      {/* ======= Custom Glass Header ======= */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 backdrop-blur-md bg-gradient-to-b from-black/10 to-zinc-900/60 p-4 shadow-inner border-zinc">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-transparent border border-black-400/10">
+            <CalendarDays className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-md bg-white text-transparent bg-clip-text select-none">
+            ΠΡΟΓΡΑΜΜΑ ΑΓΩΝΩΝ
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-2 justify-self-center">
+          <button
+            onClick={goPrev}
+            disabled={!canGoPrev}
+            aria-label="Previous"
+            className="h-10 w-10 flex items-center justify-center rounded-full border border-white/20 bg-black text-white hover:bg-white/10 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black"
+          >
+            <ChevronLeft className="h-5 w-5 text-white" />
+          </button>
+
+          <button
+            onClick={goToday}
+            aria-label="Today"
+            className="px-4 h-10 rounded-full border border-white/20 bg-black text-white hover:bg-white/10 transition-colors active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black"
+          >
+            <span className="font-extrabold tracking-wide">Σήμερα</span>
+          </button>
+
+          <button
+            onClick={goNext}
+            aria-label="Next"
+            className="h-10 w-10 flex items-center justify-center rounded-full border border-white/20 bg-black text-white hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black"
+          >
+            <ChevronRight className="h-5 w-5 text-white" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 justify-self-end">
+          <div className="text-sm text-white/80 font-medium select-none hidden sm:block">
+            {title}
+          </div>
+        </div>
       </div>
 
-      {loading && <div className="text-white text-sm mt-4">Loading events...</div>}
-      {error && <div className="text-red-400 text-sm mt-4">Error: {error}</div>}
+      {/* Error banner */}
+      {error && (
+        <div className="bg-red-900/30 border border-red-500/50 p-3 rounded-lg text-red-300 mx-4 my-4">
+          Error: {error}
+        </div>
+      )}
 
-      <div className="rounded-xl overflow-hidden shadow-lg bg-white text-black p-2">
-        <FullCalendar
-          ref={calendarRef}
-          plugins={calendarPlugins}
-          initialView="timeGridWeek"
-          initialDate={startOfCurrentWeek}
-          validRange={{ start: startOfCurrentWeek }}
-          events={events}
-          eventContent={renderEventContent}
-          editable={false}
-          selectable={false}
-          height={height}
-          firstDay={1}
-          slotMinTime="20:00:00"
-          slotMaxTime="23:00:00"
-          slotDuration="00:10:00"
-          allDaySlot={false}
-          dateClick={handleDateClick}
-          customButtons={{
-            prev: {
-              text: '←',
-              click: () => {
-                const api = calendarRef.current?.getApi() as CalendarApi;
-                const prevWeekStart = new Date(api.view.currentStart);
-                prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-                if (prevWeekStart >= startOfCurrentWeek) api.prev();
-              },
-            },
-          }}
-          datesSet={(arg) => {
-            const btn = document.querySelector(
-              '.fc-prev-button'
-            ) as HTMLButtonElement | null;
-            if (!btn) return;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const viewStart = new Date(arg.start);
-            viewStart.setHours(0, 0, 0, 0);
-            const disable = viewStart <= today;
-            btn.disabled = disable;
-            btn.classList.toggle('opacity-50', disable);
-            btn.style.filter = disable ? 'grayscale(100%)' : '';
-          }}
-        />
+      {/* ======= Calendar container (responsive height) ======= */}
+      <div className="relative overflow-hidden shadow-2xl bg-gradient-to-b from-emerald-950 via-black to-emerald-950 fc-scope">
+        {/* Loading overlay (can cover grid; header will sit above via CSS below) */}
+        {loading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-md">
+            <RotateCw className="h-12 w-12 animate-spin text-white-400" />
+          </div>
+        )}
+
+        {/* Empty state overlay */}
+        <AnimatePresence>
+          {!loading && events.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3"
+            >
+              <div className="h-14 w-14 rounded-full border border-white-400/10 bg-black backdrop-blur-sm flex items-center justify-center">
+                <CalendarDays className="h-7 w-7 text-white-400/80" />
+              </div>
+              <p className="text-white/80 font-semibold">No matches scheduled for this view</p>
+              <p className="text-white/50 text-sm">Try a different week or click Refresh.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* >>> Responsive height wrapper around FullCalendar <<< */}
+        <div className="h-[60vh] sm:h-[68vh] md:h-[74vh] lg:h-[80vh] xl:h-[86vh]">
+          <FullCalendar
+            ref={calendarRef}
+            plugins={[timeGridPlugin, interactionPlugin]}
+            headerToolbar={false}
+            nowIndicator={false}
+            initialView="timeGridWeek"
+            initialDate={startOfCurrentWeek}
+            validRange={{ start: startOfCurrentWeek }}
+            events={events}
+            eventContent={renderEventContent}
+            editable={false}
+            selectable={false}
+            height="100%"
+            expandRows={true}
+            firstDay={1}
+            weekends={true}
+            dayHeaders={true}
+            locales={[elLocale]}
+            locale="el"
+            slotLabelInterval="00:50:00"
+            slotMinTime="20:00:00"
+            slotMaxTime="22:30:00"
+            slotDuration="00:10:00"
+            allDaySlot={false}
+            dayHeaderFormat={{ weekday: 'long', day: '2-digit', month: 'short' }}
+            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            datesSet={(arg) => {
+              setTitle(arg.view.title);
+
+              const todayStartOfWeek = new Date(startOfCurrentWeek);
+              todayStartOfWeek.setHours(0, 0, 0, 0);
+
+              const viewStart = new Date(arg.start);
+              viewStart.setHours(0, 0, 0, 0);
+
+              setCanGoPrev(viewStart > todayStartOfWeek);
+            }}
+          />
+        </div>
       </div>
 
+      {/* SCOPED FIX: keep day headers above overlays & make them opaque */}
       <style jsx global>{`
-        .fc {
-          font-family: 'Poppins', sans-serif;
+        /* Only affects calendars inside .fc-scope wrapper */
+        .fc-scope .fc .fc-col-header,
+        .fc-scope .fc .fc-col-header-cell,
+        .fc-scope .fc .fc-scrollgrid-section-header {
+          position: sticky;
+          top: 0;
+          z-index: 50 !important; /* above z-20 overlays */
+          background-color: rgba(255, 255, 255, 0.9) !important; /* opaque-ish so no dimming */
+          backdrop-filter: none !important;
         }
-        .fc-toolbar-title {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #064e3b;
-        }
-        .fc-button {
-          background-color: #16a34a !important;
-          border: none !important;
-          border-radius: 9999px !important;
-          color: white !important;
-          font-weight: 600;
-        }
-        .fc-button:hover {
-          background-color: #166534 !important;
-        }
-        .fc-daygrid-event,
-        .fc-timegrid-event {
-          border: none !important;
-        }
-        .fc-col-header-cell-cushion {
-          color: #111827;
-          font-weight: 600;
-        }
-        .fc-timegrid-slot-label-cushion {
-          font-size: 0.85rem;
-          font-weight: 500;
+        /* Ensure header cell content remains readable */
+        .fc-scope .fc .fc-col-header-cell-cushion {
+          color: #e5e7eb; /* Tailwind zinc-200-ish */
+          font-weight: 800;
+          letter-spacing: 0.02em;
         }
       `}</style>
     </div>

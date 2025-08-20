@@ -1,0 +1,361 @@
+/* styles/fullcalendar-overrides.css */
+
+/* =========================
+   FULLCALENDAR GLOBAL OVERRIDES (everything)
+   Safe for FC v6.x — timeGrid, dayGrid, list, popovers, DnD, print
+   ========================= */
+
+/* ---- Theme tokens (tweak me) ---- */
+.fc {
+  --fc-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter,
+    "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  --fc-text: #ffffff;
+  --fc-muted: rgba(255,255,255,.70);
+  --fc-extra-muted: rgba(255,255,255,.50);
+
+  --fc-bg: #0c0d10;           /* app background */
+  --fc-surface: #111317;      /* calendar surface */
+  --fc-surface-2: #0f1115;    /* inner cards/rows */
+  --fc-elev: rgba(0,0,0,.35); /* shadow color */
+
+  --fc-border: rgba(255,255,255,.09);
+  --fc-border-subtle: rgba(255,255,255,.06);
+
+  --fc-accent: #22c55e;       /* green */
+  --fc-accent-2: #60a5fa;     /* blue */
+  --fc-danger: #ef4444;       /* red */
+  --fc-warning: #eab308;      /* yellow */
+
+  --fc-grid-stripe-odd: rgba(255,255,255,.02);
+  --fc-grid-stripe-even: rgba(0,0,0,.12);
+
+
+  --fc-radius-sm: 10px;
+  --fc-radius-lg: 22px;
+
+  --fc-shadow-sm: 0 6px 14px var(--fc-elev);
+  --fc-shadow: 0 14px 40px -18px var(--fc-elev);
+  --fc-shadow-inset: inset 0 0 0 1px var(--fc-border-subtle);
+
+  --fc-slot-height: 2.25rem;  /* vertical density for time slots */
+  --fc-slot-label-w: 64px;    /* width of time axis */
+}
+
+/* ---- Base reset/typography ---- */
+.fc {
+  font-family: var(--fc-font);
+  color: var(--fc-text);
+  background: var(--fc-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.fc a { color: inherit; text-decoration: none; }
+.fc * { box-sizing: border-box; }
+
+/* ---- Scrollgrid / global borders ---- */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section > * {
+  border-color: var(--fc-border) !important;
+}
+.fc .fc-scrollgrid {
+  background: linear-gradient(180deg, var(--fc-surface), var(--fc-surface-2));
+  border-radius: var(--fc-radius);
+  box-shadow: var(--fc-shadow);
+  overflow: hidden;
+}
+
+/* ---- Column headers (days) ---- */
+.fc .fc-col-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0.02)) !important;
+  backdrop-filter: blur(3px);
+}
+.fc .fc-col-header-cell {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0)) !important;
+}
+.fc .fc-col-header-cell-cushion {
+/* base */
+font-size: 0.9rem;
+font-weight: 800;
+text-transform: uppercase;
+letter-spacing: .06em;
+padding: .9rem .75rem;
+
+/* fallback color if gradient text isn't supported */
+color: #d1d5db !important; /* gray-300 */
+
+/* gradient text */
+display: inline-block;
+background-image: linear-gradient(90deg,rgb(0, 2, 4),rgb(14, 14, 29) 6%,rgb(2, 1, 1));
+ -webkit-background-clip: text;
+background-clip: text;
+-webkit-text-fill-color: transparent; /* Safari */
+}
+
+/* ---- Time axis / slot labels ---- */
+.fc .fc-timegrid-axis,
+.fc .fc-timegrid-axis-cushion {
+  background: transparent !important;
+  color: var(--fc-extra-muted) !important;
+  font-weight: 600;
+  width: var(--fc-slot-label-w);
+}
+.fc .fc-timegrid-slot-label {
+  padding: 0 .5rem;
+}
+
+/* ---- Grid lines + stripes ---- */
+.fc .fc-timegrid-slot {
+  border-top: 1px solid var(--fc-border-subtle) !important;
+  height: var(--fc-slot-height);
+}
+.fc .fc-timegrid-slots tr:nth-child(odd) .fc-timegrid-slot {
+  background: var(--fc-grid-stripe-odd);
+}
+.fc .fc-timegrid-slots tr:nth-child(even) .fc-timegrid-slot {
+  background: var(--fc-grid-stripe-even);
+}
+.fc .fc-timegrid-divider {
+  border-left: 1px solid var(--fc-border) !important;
+}
+
+/* ---- Day columns ---- */
+.fc .fc-timegrid-col-frame {
+  background: transparent;
+}
+/* Alternate day column shading for clarity */
+.fc .fc-timegrid-col:nth-child(odd) .fc-timegrid-col-frame { background: rgba(255,255,255,.02); }
+.fc .fc-timegrid-col:nth-child(even) .fc-timegrid-col-frame { background: rgba(0,0,0,.09); }
+
+/* Today emphasis */
+.fc .fc-day-today {
+  background: linear-gradient(180deg, rgba(255,255,255,.045), transparent) !important;
+}
+.fc .fc-day-today .fc-timegrid-col-frame {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)) !important;
+  box-shadow: inset 0 0 0 1px var(--fc-border-subtle);
+}
+
+/* ---- All-day row (even if disabled, keep consistent) ---- */
+.fc .fc-timegrid-allday,
+.fc .fc-daygrid-body,
+.fc .fc-daygrid-day {
+  background: transparent;
+  border-color: var(--fc-border-subtle) !important;
+}
+.fc .fc-daygrid-day-number {
+  color: var(--fc-muted);
+  font-weight: 700;
+}
+
+/* ---- Now indicator ---- */
+.fc .fc-timegrid-now-indicator-line {
+  border-top: 2px solid var(--fc-danger) !important;
+  box-shadow: 0 0 12px rgba(239,68,68,.6);
+}
+.fc .fc-timegrid-now-indicator-arrow {
+  border-width: 6px 0 6px 6px;
+  border-left-color: var(--fc-danger) !important;
+}
+
+/* ---- Selection highlight ---- */
+.fc .fc-highlight {
+  background: rgba(96,165,250,.15);
+  box-shadow: inset 0 0 0 1px rgba(96,165,250,.3);
+  border-radius: var(--fc-radius-sm);
+}
+
+/* ---- Events: wipe defaults; let eventContent own visuals ---- */
+.fc .fc-event {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--fc-text);
+}
+.fc .fc-event .fc-event-main { color: var(--fc-text); }
+/* Ensure harness takes full column width (no inset overlap) */
+
+/* Mirror during drag/resize */
+.fc .fc-event-mirror {
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,.5));
+}
+/* Resizers/drag handles if ever enabled */
+.fc .fc-event-resizer {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--fc-accent-2);
+  box-shadow: 0 0 0 2px rgba(0,0,0,.6);
+}
+
+/* ---- Event overlap/stack visuals (even if you set overlap=false) ---- */
+.fc .fc-timegrid-event {
+  border: 0 !important;
+  box-shadow: none !important;   /* guard against theme shadows */
+  background: transparent !important; /* keep it invisible */
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  inset-inline-start: 0 !important;
+  inset-inline-end: 0 !important;
+}
+.fc .fc-timegrid-event.fc-event-start { margin-left: 0 !important; }
+.fc .fc-timegrid-event.fc-event-end { margin-right: 0 !important; }
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 0 !important;
+}
+.fc .fc-timegrid-event > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---- Drag & drop placeholder ---- */
+.fc .fc-timegrid-event.fc-event-dragging,
+.fc .fc-daygrid-event.fc-event-dragging {
+  opacity: .85;
+  outline: 2px dashed var(--fc-accent-2);
+  outline-offset: 2px;
+}
+
+/* ---- Popovers (more events / overflow) ---- */
+.fc .fc-popover {
+  background: rgba(17,19,23,.98);
+  border: 1px solid var(--fc-border);
+  border-radius: var(--fc-radius);
+  box-shadow: 0 24px 60px -24px var(--fc-elev);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.fc .fc-popover-header {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+  color: var(--fc-muted);
+  font-weight: 700;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc .fc-popover-body {
+  padding: .5rem;
+}
+.fc .fc-more-popover .fc-event {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+/* ---- List views (if ever used) ---- */
+.fc .fc-list {
+  border-radius: var(--fc-radius);
+  overflow: hidden;
+  box-shadow: var(--fc-shadow);
+  background: var(--fc-surface);
+}
+.fc .fc-list .fc-list-table {
+  border-color: var(--fc-border) !important;
+}
+.fc .fc-list-day-cushion {
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0));
+  color: var(--fc-muted);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.fc .fc-list-event:hover td {
+  background: rgba(255, 1, 1, 0.04);
+}
+.fc .fc-list-event-dot {
+  border-color: var(--fc-accent-2) !important;
+}
+
+/* ---- Buttons (if toolbar is ever shown) ---- */
+.fc .fc-button {
+  background: rgba(255,255,255,.08);
+  border: 1px solid var(--fc-border);
+  color: var(--fc-text);
+  border-radius: 12px;
+  padding: .5rem .8rem;
+  font-weight: 700;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  box-shadow: var(--fc-shadow-inset);
+}
+.fc .fc-button:hover { background: rgba(255,255,255,.12); transform: translateY(-1px); }
+.fc .fc-button:active { transform: translateY(0); }
+.fc .fc-button-primary { background: var(--fc-accent); color: #0b0d0f; border-color: transparent; }
+.fc .fc-button-primary:hover { filter: brightness(1.08); }
+.fc .fc-button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ---- Title styling (if toolbar is used to show view title) ---- */
+.fc .fc-toolbar-title {
+  color: var(--fc-text);
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+/* ---- Scrollbars (WebKit + Firefox) ---- */
+.fc .fc-scroller::-webkit-scrollbar { width: 10px; height: 10px; }
+.fc .fc-scroller::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.14);
+  border-radius: 9999px;
+  border: 2px solid rgba(0,0,0,.4);
+}
+.fc .fc-scroller:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.20); }
+.fc .fc-scroller::-webkit-scrollbar-track { background: rgba(255,255,255,.06); }
+.fc .fc-scroller { scrollbar-color: rgba(255,255,255,.18) rgba(255,255,255,.06); scrollbar-width: thin; }
+
+/* ---- Focus visibility (keyboard nav) ---- */
+.fc :focus-visible {
+  outline: 2px solid var(--fc-accent-2);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* ---- Disabled / non-business hours (if used) ---- */
+.fc .fc-non-business,
+.fc .fc-day-disabled {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,.03) 0 10px,
+    rgba(255,255,255,.06) 10px 20px
+  ) !important;
+}
+
+/* ---- RTL support ---- */
+.fc-rtl .fc-timegrid-axis { border-right: 1px solid var(--fc-border) !important; border-left: none !important; }
+.fc-rtl .fc-timegrid-divider { border-right: none !important; border-left: 1px solid var(--fc-border) !important; }
+
+/* ---- Print styles ---- */
+@media print {
+  .fc {
+    --fc-text: #111;
+    --fc-muted: #333;
+    --fc-bg: #fff;
+    --fc-surface: #fff;
+    --fc-border: rgba(0,0,0,.2);
+    --fc-border-subtle: rgba(0,0,0,.12);
+  }
+  .fc .fc-scrollgrid {
+    box-shadow: none !important;
+    border: 1px solid var(--fc-border) !important;
+  }
+  .fc .fc-timegrid-slot { height: 1.6rem; }
+  .fc .fc-popover { box-shadow: none !important; }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  .fc * { transition: none !important; animation: none !important; }
+}
+
+/* ---- Density helpers (optional; keep for future tuning) ---- */
+.fc.is-compact .fc-timegrid-slot { height: calc(var(--fc-slot-height) * .8); }
+.fc.is-comfy .fc-timegrid-slot { height: calc(var(--fc-slot-height) * 1.2); }
+
+/* lift hovered event’s harness above siblings */
+.fc .fc-timegrid-event-harness:hover {
+z-index: 100 !important;
+}
+
+/* Ensure events span the full column width without insets/margins */
+.fc .fc-timegrid-col {
+padding: 0 !important;
+}
