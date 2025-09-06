@@ -7,11 +7,9 @@ import { Trophy, Users, CalendarDays, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, TeamLite, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import HomeHero from './components/HomePageComponents/HomeHero';
 
-
-
 /**
  * ------------------------------
- * Date/Time helpers — preserve wall‑clock time from DB and drop timezone
+ * Date/Time helpers — preserve wall-clock time from DB and drop timezone
  * ------------------------------
  */
 const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
@@ -86,8 +84,6 @@ function partsToIso(
 const pretty = (v: unknown) =>
   JSON.stringify(v, (k, val) => (typeof val === 'bigint' ? val.toString() : val), 2);
 
-
-
 async function withConsoleTiming<T>(label: string, fn: () => Promise<T>): Promise<T> {
   console.time(label);
   try {
@@ -140,7 +136,8 @@ async function fetchMatchesWithTeams() {
       console.log(`Matches fetched: ${data?.length ?? 0}`);
       const matchesTimestampView = (data ?? []).map((m) => ({
         ...m,
-        match_date_timestamp: toTimestampNoTz(m.match_date), // e.g. "2025-08-04 21:40:00"
+        // Only format when a date exists
+        match_date_timestamp: m.match_date ? toTimestampNoTz(m.match_date) : null,
       }));
       console.log('Matches (match_date as timestamp, up to 5):\n', pretty(matchesTimestampView.slice(0, 5)));
     }
@@ -153,7 +150,11 @@ async function fetchMatchesWithTeams() {
  * Mapping functions
  * ------------------------------
  */
-function matchRowToEvent(m: MatchRowRaw): CalendarEvent {
+function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
+  if (!m.match_date) {
+    // Skip matches that don't have a scheduled date yet
+    return null;
+  }
   const a = normalizeTeam(m.teamA);
   const b = normalizeTeam(m.teamB);
   // start: keep same clock time as DB, drop offset
@@ -174,7 +175,9 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent {
 }
 
 function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
-  const events = rows.map(matchRowToEvent);
+  const events = rows
+    .map(matchRowToEvent)
+    .filter((e): e is CalendarEvent => e !== null);
   console.log(`Events mapped for calendar: ${events.length}`);
   console.log('Events (after formation, up to 5):\n', pretty(events.slice(0, 5)));
   return events;
@@ -204,12 +207,6 @@ export default async function Home() {
           "/pexels-omar3.jpg",
           "/pexels-omar4.jpg",
         ]}
-        // Optional overrides:
-        // logoSrc="/UltraChampLogo.png"
-        // leftWords={["Καλώς", "Ήρθατε"]}
-        // rightWords={["Καλή", "Διασκέδαση"]}
-        // dim={0.5}
-        // blurPx={2}
       />
 
       {/* Welcome Section - Vibrant and Inviting */}
@@ -222,7 +219,6 @@ export default async function Home() {
           <a href="/sign-up" className="bg-white text-black px-8 py-3 rounded-full font-semibold 
              transition border border-transparent 
              hover:bg-black hover:text-white hover:border-white">
-
             Εγγραφείτε τώρα
           </a>
         </div>
@@ -242,37 +238,37 @@ export default async function Home() {
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-ubuntu  mb-12 fonts-ans text-center">Η ομάδα σε περιμένει</h2>
           <div className="grid md:grid-cols-3 gap-8">
-          <div className="p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-          <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-            <Users className="w-8 h-8 text-orange-400" aria-hidden="true" />
-          </div>
-          <h3 className="text-2xl font-sans font-semibold mb-4">Φιλόξενη Κοινότητα</h3>
-          <p className="text-gray-200">
-            Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
-          </p>
-        </div>
-
-        <div className="p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-          <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-            <Trophy className="w-8 h-8 text-orange-400" aria-hidden="true" />
-          </div>
-          <h3 className="text-2xl font-semibold mb-4">Διασκεδαστικοί Αγώνες</h3>
-          <p className="text-gray-200">
-            Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
-          </p>
-        </div>
             <div className="p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-            <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-            <BarChart3 className="w-8 h-8 text-orange-400" aria-hidden="true" />
+              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
+                <Users className="w-8 h-8 text-orange-400" aria-hidden="true" />
+              </div>
+              <h3 className="text-2xl font-sans font-semibold mb-4">Φιλόξενη Κοινότητα</h3>
+              <p className="text-gray-200">
+                Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
+              </p>
             </div>
-            <h3 className="text-2xl font-semibold mb-2">Προφίλ & Στατιστικά</h3>
-            <p className="text-gray-200">
-              Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
-            </p>
-          </div>
+
+            <div className="p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
+              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
+                <Trophy className="w-8 h-8 text-orange-400" aria-hidden="true" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-4">Διασκεδαστικοί Αγώνες</h3>
+              <p className="text-gray-200">
+                Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
+              </p>
+            </div>
+
+            <div className="p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
+              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
+                <BarChart3 className="w-8 h-8 text-orange-400" aria-hidden="true" />
+              </div>
+              <h3 className="text-2xl font-semibold mb-2">Προφίλ & Στατιστικά</h3>
+              <p className="text-gray-200">
+                Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
+              </p>
+            </div>
           </div>
         </div>
-        
       </section>
 
       {/* About Us Section - Clean and Informative */}
@@ -289,7 +285,7 @@ export default async function Home() {
           </div>
           <div className="relative h-64 md:h-96">
             <Image
-              src="/pexels-omar2.jpg" // Replace with your image
+              src="/pexels-omar2.jpg"
               alt="Ποδοσφαιριστές σε δράση"
               fill
               className="object-cover rounded-lg shadow-lg"

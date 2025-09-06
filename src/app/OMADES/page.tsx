@@ -2,9 +2,20 @@ import TeamsGrid from "@/app/components/OMADESPageComponents/TeamsGrid";
 import SearchBar from "@/app/components/OMADESPageComponents/SearchBar";
 import Pagination from "@/app/components/OMADESPageComponents/Pagination";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import { Team, TeamWithCount } from "@/app/lib/types";
+import { Team } from "@/app/lib/types";
 
 type SearchMap = { [key: string]: string | string[] | undefined };
+
+// RPC row shape returned by search_teams_fuzzy
+type TeamWithCountRPC = {
+  id: number;
+  name: string;
+  logo: string | null;
+  total_count: number;
+};
+
+// TeamsGrid expects logo: string (non-null) and no created_at
+type GridTeam = { id: number; name: string; logo: string };
 
 export default async function TeamsPage({
   searchParams,
@@ -35,23 +46,25 @@ export default async function TeamsPage({
     );
     error = rpcError;
     if (!error && teamsData) {
-      teams = (teamsData as TeamWithCount[]).map((row) => ({
+      const rows = teamsData as TeamWithCountRPC[];
+      teams = rows.map((row) => ({
         id: row.id,
         name: row.name,
-        logo: row.logo,
+        logo: row.logo,          // string | null (allowed in shared Team)
+        created_at: null,        // RPC doesn't return it; keep null
       }));
-      count = teamsData.length > 0 ? (teamsData[0] as TeamWithCount).total_count : 0;
+      count = rows.length > 0 ? rows[0].total_count : 0;
     }
   } else {
     const query = supabaseAdmin
       .from("teams")
-      .select("id, name, logo", { count: "exact" })
+      .select("id, name, logo, created_at", { count: "exact" }) // ✅ include created_at
       .order("name", { ascending: true });
 
     const { data, error: queryError, count: queryCount } = await query.range(from, to);
     error = queryError;
     if (!error && data) {
-      teams = data as Team[];
+      teams = data as Team[]; // matches shared Team
       count = queryCount || 0;
     }
   }
@@ -94,6 +107,13 @@ export default async function TeamsPage({
 
   const totalPages = Math.ceil(count / limit);
 
+  // ✅ Adapt to TeamsGrid's stricter shape (logo must be a string)
+  const teamsForGrid: GridTeam[] = teams.map((t) => ({
+    id: t.id,
+    name: t.name,
+    logo: t.logo ?? "", // fallback to empty string if null
+  }));
+
   return (
     <div className="min-h-screen bg-grid-18">
       <div className="container mx-auto px-6 pt-6">
@@ -105,7 +125,7 @@ export default async function TeamsPage({
 
       <section className="mx-[calc(50%-50vw)] w-screen">
         <div className="px-6">
-          <TeamsGrid teams={teams} />
+          <TeamsGrid teams={teamsForGrid} />
         </div>
       </section>
 

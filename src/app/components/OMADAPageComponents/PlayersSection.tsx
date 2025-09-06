@@ -10,7 +10,7 @@ export default function PlayersSection({
   errorMessage,
 }: PlayersSectionProps) {
   return (
-    <section className="mb-12  border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-6">
+    <section className="mb-12 border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-6">
       <h2 className="text-2xl font-bold text-white mb-4">Current Players</h2>
 
       {errorMessage ? (
@@ -26,12 +26,15 @@ export default function PlayersSection({
                 age: null,
                 total_goals: 0,
                 total_assists: 0,
+                yellow_cards: 0,
+                red_cards: 0,
+                blue_cards: 0,
               };
 
             return (
               <div
                 key={player.id}
-                className=" p-4 border border-orange-400/20 bg-orange-500/5 shadow-md hover:shadow-lg hover:border-orange-400/40 transition"
+                className="p-4 border border-orange-400/20 bg-orange-500/5 shadow-md hover:shadow-lg hover:border-orange-400/40 transition"
               >
                 <p className="text-lg font-semibold text-white/95">
                   {player.first_name} {player.last_name}
@@ -40,10 +43,19 @@ export default function PlayersSection({
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-sm text-orange-300">
-                    Goals: {stats.total_goals}
+                    Goals: {stats.total_goals ?? 0}
                   </span>
                   <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-sm text-orange-300">
-                    Assists: {stats.total_assists}
+                    Assists: {stats.total_assists ?? 0}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-2 py-0.5 text-sm text-yellow-300">
+                    YC: {stats.yellow_cards ?? 0}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-sm text-red-300">
+                    RC: {stats.red_cards ?? 0}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-sm text-blue-300">
+                    BC: {stats.blue_cards ?? 0}
                   </span>
                 </div>
               </div>

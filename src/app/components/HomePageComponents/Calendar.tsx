@@ -448,8 +448,6 @@ export default function EventCalendar({
         .fc-scope .fc .fc-col-header-cell,
         .fc-scope .fc .fc-scrollgrid-section-header {
           position: sticky;
-          top: 0;
-          z-index: 50 !important; /* above z-20 overlays */
           background-color: rgba(255, 255, 255, 0.9) !important; /* opaque-ish so no dimming */
           backdrop-filter: none !important;
         }

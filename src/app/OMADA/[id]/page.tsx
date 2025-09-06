@@ -4,7 +4,13 @@ import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import TeamHeader from "@/app/components/OMADAPageComponents/TeamHeader";
 import PlayersSection from "@/app/components/OMADAPageComponents/PlayersSection";
 import MatchesSection from "@/app/components/OMADAPageComponents/MatchesSection";
-import type { Team, PlayerAssociation, Match } from "@/app/lib/types";
+import {
+  type Team,
+  type PlayerAssociation,
+  type Match,
+  normalizeTeamPlayers,
+  type TeamPlayersRowRaw,
+} from "@/app/lib/types";
 
 type TeamPageProps = {
   // Next.js 15: params/searchParams are Promises
@@ -20,7 +26,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     return <div className="text-red-400">Invalid team ID</div>;
   }
 
-  // Team details
+  // ── Team details ────────────────────────────────────────────────────────────────
   const { data: team, error: teamError } = await supabaseAdmin
     .from("teams")
     .select("*")
@@ -35,28 +41,39 @@ export default async function TeamPage({ params }: TeamPageProps) {
     );
   }
 
-  // Players
-  const { data: playerAssociationsData, error: playersError } =
-    await supabaseAdmin
-      .from("player_teams")
-      .select(`
-        player:player_id (
+  // ── Players (normalize stats → array with at most 1 row) ───────────────────────
+  const { data: playerAssociationsData, error: playersError } = await supabaseAdmin
+    .from("player_teams")
+    .select(`
+      id,
+      player:player_id (
+        id,
+        first_name,
+        last_name,
+        player_statistics (
           id,
-          first_name,
-          last_name,
-          player_statistics (
-            age,
-            total_goals,
-            total_assists
-          )
+          age,
+          total_goals,
+          total_assists,
+          yellow_cards,
+          red_cards,
+          blue_cards,
+          created_at,
+          updated_at
         )
-      `)
-      .eq("team_id", teamId);
+      )
+    `)
+    .eq("team_id", teamId)
+    .order("player_id", { ascending: true })
+    .order("id", { foreignTable: "player.player_statistics", ascending: false })
+    .limit(1, { foreignTable: "player.player_statistics" });
 
-  const playerAssociations =
-    (playerAssociationsData as PlayerAssociation[] | null) ?? null;
+  const playerAssociations: PlayerAssociation[] =
+    playersError || !playerAssociationsData
+      ? []
+      : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]);
 
-  // Matches
+  // ── Matches ────────────────────────────────────────────────────────────────────
   const { data: matchesData, error: matchesError } = await supabaseAdmin
     .from("matches")
     .select(`
@@ -66,8 +83,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
       team_a_score,
       team_b_score,
       winner_team_id,
-      team_a:team_a_id (id, name, logo),
-      team_b:team_b_id (id, name, logo)
+      team_a:teams!matches_team_a_id_fkey (id, name, logo),
+      team_b:teams!matches_team_b_id_fkey (id, name, logo)
     `)
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .order("match_date", { ascending: false });
