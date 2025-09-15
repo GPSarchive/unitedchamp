@@ -11,29 +11,55 @@ export default function TeamPlayers({
   alignRight?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border p-5 shadow-sm bg-white">
-      <h3 className="mb-3 text-base font-semibold">{title}</h3>
+    <div
+      className="
+        rounded-2xl border border-orange-400/20
+        bg-gradient-to-b from-orange-500/10 to-transparent
+        p-5 shadow-md
+      "
+    >
+      <h3 className="mb-3 text-lg font-bold text-white">{title}</h3>
+
       {players.length === 0 ? (
-        <div className="text-sm text-gray-500">No players found for this team.</div>
+        <div className="text-sm text-gray-300">No players found for this team.</div>
       ) : (
-        <ul className="divide-y">
+        <ul className="divide-y divide-orange-400/10">
           {players.map((assoc) => {
             const p = assoc.player;
             const stats = (p.player_statistics[0] as PlayerStat | undefined);
+
+            const goals = stats?.total_goals ?? 0;
+            const assists = stats?.total_assists ?? 0;
+            const age = stats?.age ?? null;
+
             return (
-              <li key={p.id} className="flex items-center justify-between py-2">
-                <div className={`truncate ${alignRight ? "text-right" : "text-left"}`}>
-                  <div className="font-medium">
+              <li key={p.id} className="py-3">
+                <div className={`${alignRight ? "text-right" : "text-left"}`}>
+                  <div className="font-semibold text-white/95 truncate">
                     {p.first_name} {p.last_name}
                   </div>
-                  {stats ? (
-                    <div className="text-xs text-gray-500">
-                      Goals: {stats.total_goals} • Assists: {stats.total_assists}
-                      {stats.age ? ` • Age: ${stats.age}` : null}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-400">No stats</div>
-                  )}
+
+                  <div
+                    className={`mt-2 flex flex-wrap gap-2 text-xs ${
+                      alignRight ? "justify-end" : ""
+                    }`}
+                  >
+                    <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
+                      Goals: {goals}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
+                      Assists: {assists}
+                    </span>
+                    {age !== null ? (
+                      <span className="inline-flex items-center rounded-full bg-zinc-800/60 px-2 py-0.5 text-gray-200">
+                        Age: {age}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-zinc-800/60 px-2 py-0.5 text-gray-400">
+                        Age: N/A
+                      </span>
+                    )}
+                  </div>
                 </div>
               </li>
             );

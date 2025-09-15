@@ -58,10 +58,10 @@ export interface PlayerTeamsRow {
   team_id: Id;
 }
 
-/** Match status used in the UI + DB */
-export type MatchStatus = "scheduled" | "live" | "finished" | "canceled";
+/** Match status used in the UI + DB (two states only) */
+export type MatchStatus = "scheduled" | "finished";
 
-/** Base match row (nullable date for drafts, union status for safety) */
+/** Base match row (nullable date for drafts, two-state status) */
 export interface MatchRow {
   id: Id;
   match_date: string | null; // timestamptz ISO (UTC) or null
@@ -247,4 +247,124 @@ export type NewTournamentPayload = {
     groups?: Array<{ name: string }>; // only when kind='groups'
   }>;
   tournament_team_ids?: number[]; // optional
+};
+export type TournamentStatus = "scheduled" | "running" | "completed" | "archived";
+export type TournamentFormat = "league" | "groups" | "knockout" | "mixed";
+
+export interface TournamentRow {
+  id: Id;
+  created_at: string | null;
+  name: string;
+  slug: string;
+  logo: string | null;
+  season: string | null;
+  status: TournamentStatus;
+  format: TournamentFormat;
+  start_date: string | null; // 'YYYY-MM-DD'
+  end_date: string | null;   // 'YYYY-MM-DD'
+  winner_team_id: Id | null;
+}
+
+/**
+ * ---------------------------------
+ * Bracket tree (knockout) shapes + helpers
+ * ---------------------------------
+ */
+export type TeamsMap = Record<
+  Id,
+  { name: string; logo?: string | null; seed?: number | null }
+>;
+
+export interface BracketMatch {
+  id: Id;
+  round: number | null;
+  bracket_pos: number | null;
+  team_a_id: Id | null;
+  team_b_id: Id | null;
+  team_a_score: number | null;
+  team_b_score: number | null;
+  status: MatchStatus; // two-state
+  home_source_match_id?: Id | null;
+  away_source_match_id?: Id | null;
+}
+
+export type BracketEdge = { fromId: Id; toId: Id };
+
+export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | null; seed?: number | null }>(
+  teams: T[] | null | undefined
+): TeamsMap {
+  const map: TeamsMap = {};
+  (teams ?? []).forEach(t => {
+    map[t.id] = { name: t.name, logo: t.logo ?? null, seed: t.seed ?? null };
+  });
+  return map;
+}
+
+export function toBracketMatch(
+  row: MatchRow,
+  extras?: Partial<Pick<BracketMatch,
+    "round" | "bracket_pos" | "home_source_match_id" | "away_source_match_id"
+  >>
+): BracketMatch {
+  return {
+    id: row.id,
+    round: extras?.round ?? null,
+    bracket_pos: extras?.bracket_pos ?? null,
+    team_a_id: row.team_a_id ?? null,
+    team_b_id: row.team_b_id ?? null,
+    team_a_score: row.status === "finished" ? row.team_a_score : null,
+    team_b_score: row.status === "finished" ? row.team_b_score : null,
+    status: row.status,
+    home_source_match_id: extras?.home_source_match_id ?? null,
+    away_source_match_id: extras?.away_source_match_id ?? null,
+  };
+}
+
+// UI i18n labels for bracket components
+export type Labels = {
+  final: string;
+  semifinals: string;
+  quarterfinals: string;
+  roundOf: (n: number) => string;
+  roundN: (r: number) => string;
+  bye: string;
+  tbd: string;
+  pair: (a?: number | null, b?: number | null) => string;
+  seedTaken: string;
+  pickTeam: string;
+  autoSeed: string;
+  clearRound: string;
+  swap: string;
+};
+
+export type IntakeMapping = {
+  group_idx: number;
+  slot_idx: number;
+  round: number;
+  bracket_pos: number;
+  outcome: "W" | "L";
+};
+
+export type StageConfig = {
+  // League/Groups controls (Greek + mirrors)
+  διπλός_γύρος?: boolean;
+  τυχαία_σειρά?: boolean;
+  αγώνες_ανά_αντίπαλο?: number;
+  μέγιστες_αγωνιστικές?: number;
+  double_round?: boolean;
+  shuffle?: boolean;
+  rounds_per_opponent?: number;
+  limit_matchdays?: number;
+
+  // Groups → KO (KO stage sources this groups stage)
+  from_stage_idx?: number;
+  advancers_per_group?: number;
+  semis_cross?: "A1-B2" | "A1-B1";
+
+  // Standalone KO control
+  standalone_bracket_size?: number;
+
+  // KO → Groups intake (this groups stage sources a KO stage)
+  from_knockout_stage_idx?: number;
+  groups_intake?: IntakeMapping[];
 };

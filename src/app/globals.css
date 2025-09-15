@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Keep your design tokens */
+/* ================== Design tokens ================== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -19,6 +19,13 @@
   }
 }
 
+/* ================== Mobile scaling sanity ================== */
+/* Prevent iOS “helpful” font zoom that makes pages feel zoomed-in */
+html { /* [CTRL-1] */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 /* IMPORTANT: use background-color (not shorthand 'background') so we don't wipe out the dot-grid image */
 body {
   background-color: var(--background);
@@ -27,11 +34,22 @@ body {
   font-family: var(--font-roboto-condensed), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-/* ---------- Site-wide DOT GRID utility ---------- */
+/* Keep media from creating horizontal scrollbars on small screens */
+@layer base {
+  img, svg, video, canvas, audio, iframe, embed, object { /* [CTRL-2] */
+    display: block;
+    max-width: 100%;
+  }
+  img, video { height: auto; }
+  /* Avoid iOS input focus-zoom (ensure 16px base unless you explicitly override) */
+  input, select, textarea { font-size: 16px; } /* [CTRL-3] */
+}
+
+/* ================== Site-wide DOT GRID utility ================== */
 @layer utilities {
   /* Light/Dark aware dot-grid */
   .bg-dot-grid {
-    --cell: 18px;                         /* spacing */
+    --cell: 18px;                         /* spacing */                    /* [CTRL-4] */
     --dot: rgba(0, 0, 0, 0.06);           /* light mode dot color */
     background-color: #fafafa;            /* zinc-50 */
     background-image: radial-gradient(var(--dot) 1px, transparent 1px);
@@ -46,6 +64,37 @@ body {
   /* (Optional) responsive spacing tweaks */
   @media (min-width: 640px) { .bg-dot-grid { --cell: 20px; } }
   @media (min-width: 1024px){ .bg-dot-grid { --cell: 22px; } }
+}
+
+/* ================== Screen/viewport helpers ================== */
+@layer utilities {
+  /* dvh fixes mobile browser UI chrome changes */
+  @supports (height: 100dvh) {
+    .h-screen-dvh { height: 100dvh; } /* [CTRL-5] */
+  }
+
+  /* Full-bleed section helper without weird scaling */
+  .full-bleed {                         /* [CTRL-6] */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
+  /* iOS safe areas */
+  .safe-px {
+    padding-left: max(env(safe-area-inset-left), 0px);   /* [CTRL-7] */
+    padding-right: max(env(safe-area-inset-right), 0px);
+  }
+  .safe-pb { padding-bottom: max(env(safe-area-inset-bottom), 0px); }    /* [CTRL-8] */
+
+  /* FullCalendar smooth touch scroll on iOS */
+  .fc-touch-scroll .fc-scroller {                         /* [CTRL-9] */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }
 
 /* === Crimson Kintsugi: premium dark-red animated navbar === */
@@ -139,3 +188,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up { animation: none; }
 }
+/* ================== Debug helpers ================== 
+
+[CTRL-1]: Keep text-size-adjust: 100% to stop iOS from auto-zooming text.
+
+[CTRL-2]: Media max-width guard for images/videos to prevent horizontal overflow.
+
+[CTRL-3]: Set base form control font-size to 16px to prevent iOS focus zoom. If you use Tailwind classes on inputs (e.g., text-sm), that will override this anyway.
+
+[CTRL-4]: Dot-grid cell size. Increase if you want a looser grid.
+
+[CTRL-5]: h-screen-dvh utility for true viewport height on mobile.
+
+[CTRL-6]: .full-bleed section helper (use on sections you want edge-to-edge).
+
+[CTRL-7]/[CTRL-8]: Safe-area paddings for notches/home indicator.
+
+[CTRL-9]: FullCalendar smooth touch scroll on iOS (use .fc-touch-scroll on the calendar wrapper).*/

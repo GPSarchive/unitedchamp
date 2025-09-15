@@ -47,7 +47,6 @@ function LoginContent() {
 
       {/* OAuth starts on the server too */}
       <div style={{ display: 'grid', gap: 8 }}>
-        <a href={`/api/auth/oauth?provider=github${nextQS}`}>Continue with GitHub</a>
         <a href={`/api/auth/oauth?provider=google${nextQS}`}>Continue with Google</a>
       </div>
     </main>

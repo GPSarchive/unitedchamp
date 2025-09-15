@@ -24,8 +24,6 @@ export function extractYouTubeId(input: string | null | undefined): string | nul
 export function formatStatus(status: MatchStatus) {
   switch (status) {
     case "scheduled": return "Scheduled";
-    case "live": return "Live";
     case "finished": return "Final";
-    case "canceled": return "Canceled";
   }
 }

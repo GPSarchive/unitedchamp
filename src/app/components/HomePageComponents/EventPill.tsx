@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ===================== Accent palette (curated) =====================
@@ -51,6 +52,7 @@ export default function EventPill({ items }: EventPillProps) {
 
   if (items.length === 0) return null;
 
+  // ===================== Single-match pill: entire pill is a link =====================
   if (items.length === 1) {
     const item = items[0];
     const a = item.teams?.[0] ?? 'Team A';
@@ -60,19 +62,28 @@ export default function EventPill({ items }: EventPillProps) {
     const timeText = `${hhmm(item.start)} – ${hhmm(item.end)}`;
     const accent = accentFor(`${a}-${b}`);
     return (
-      <div className="group relative h-[100%] pt-1  w-full overflow-shown  " style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))' }}>
-        <div className="relative w-full ml-[2.5px] border px-3 py-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 group-hover:-translate-y-0.5 bg-gradient-to-br from-red-950/80 via-black-900/85 to-black-800/80"
+      <Link
+        href={`/matches/${item.id}`}
+        className="group relative h-[100%] pt-1 w-full overflow-shown"
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') (e.currentTarget as HTMLAnchorElement).click();
+        }}
+        aria-label={`${a} vs ${b} — ${timeText}`}
+      >
+        <div
+          className="relative w-full ml-[2.5px] border px-3 py-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 group-hover:-translate-y-0.5 bg-gradient-to-br from-red-950/80 via-black-900/85 to-black-800/80"
           style={{
             height: '100%',
             borderColor: accent.solid,
             boxShadow: `0 0 0 1px ${accent.ring} inset, 0 12px 24px -16px ${accent.glow}`,
             zIndex: 1,
             overflow: 'hidden',
+            filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))',
           }}
         >
           <span className="text-[13px] pb-3 md:text-[15px] font-extrabold tracking-wide text-white/90">
-                        {timeText}
-                      </span>
+            {timeText}
+          </span>
           <div className="flex items-center justify-between w-full">
             {/* Team A */}
             <div className="flex flex-col items-center min-w-0">
@@ -91,12 +102,16 @@ export default function EventPill({ items }: EventPillProps) {
             </div>
           </div>
         </div>
-      </div>
+      </Link>
     );
   }
 
+  // ===================== Multi-match cluster =====================
   return (
-    <div className="group relative h-[100%] pb-1 ml-0.5  w-full  overflow-hidden" style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))' }}>
+    <div
+      className="group relative h-[100%] pb-1 ml-0.5 w-full overflow-hidden"
+      style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))' }}
+    >
       <AnimatePresence>
         {items.map((item, i) => {
           if (expandedIndex !== null && expandedIndex !== i) return null;
@@ -112,7 +127,7 @@ export default function EventPill({ items }: EventPillProps) {
             <motion.div
               key={item.id}
               layoutId={`event-${item.id}`}
-              className={`border  overflow-hidden mt-1 ${isExpanded ? 'h-full' : 'flex-shrink-0'}`}
+              className={`border overflow-hidden mt-1 ${isExpanded ? 'h-full' : 'flex-shrink-0'}`}
               style={{ borderColor: accent.solid }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -130,13 +145,24 @@ export default function EventPill({ items }: EventPillProps) {
                     className="relative h-full"
                   >
                     <button
-                      className="absolute top-1 right-1 z-10 bg-black/50 rounded-full p-1 text-white hover:bg-black/70"
+                      className="absolute top-1 left-1 z-10 bg-black/50 rounded-full p-1 text-white hover:bg-black/70"
                       onClick={() => setExpandedIndex(null)}
+                      aria-label="Back to list"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
+
+                    {/* View Match CTA */}
+                    <Link
+                      href={`/matches/${item.id}`}
+                      className="absolute top-1 right-1 z-10 bg-white/90 text-black text-xs font-bold rounded-full px-3 py-1 hover:bg-white"
+                      aria-label="Προβολή αγώνα"
+                    >
+                      Προβολή αγώνα
+                    </Link>
+
                     <div
-                      className="p-3 flex flex-col items-center justify-center  gap-2 bg-gradient-to-br from-red-950/60 via-black-900/85 to-black-800/80 h-full"
+                      className="p-3 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-red-950/60 via-black-900/85 to-black-800/80 h-full"
                       style={{
                         boxShadow: `0 0 0 1px ${accent.ring} inset, 0 12px 24px -16px ${accent.glow}`,
                       }}
@@ -180,6 +206,10 @@ export default function EventPill({ items }: EventPillProps) {
                     transition={{ duration: 0.1 }}
                     onClick={() => setExpandedIndex(i)}
                     className="cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setExpandedIndex(i)}
+                    aria-label={`Expand ${a} vs ${b}`}
                   >
                     <div className="flex justify-between items-center p-5 bg-gradient-to-r from-black/80 to-black/60 text-white text-sm font-semibold">
                       <span>{timeText}</span>

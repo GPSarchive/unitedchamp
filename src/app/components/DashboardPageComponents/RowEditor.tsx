@@ -4,53 +4,73 @@ import React, { useMemo, useState } from "react";
 import { Check, X } from "lucide-react";
 import type { Id, TeamLite, MatchRow } from "@/app/lib/types";
 
-const STATUSES: MatchRow["status"][] = ["scheduled", "live", "finished", "canceled"];
+// Only two statuses
+const STATUSES: MatchRow["status"][] = ["scheduled", "finished"];
 
-// ===== Small datetime + label helpers (duplicated here for isolation) =====
+// ---- Datetime helpers ----
 function isoToDTString(iso: string | null): string {
+  // For <input type="datetime-local"> — MUST be YYYY-MM-DDTHH:mm
   if (!iso) return "";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const y = d.getUTCFullYear();
-  const m = pad(d.getUTCMonth() + 1);
-  const day = pad(d.getUTCDate());
-  const hh = pad(d.getUTCHours());
-  const mm = pad(d.getUTCMinutes());
-  return `${y}-${m}-${day}T${hh}:${mm}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(
+    d.getUTCMinutes()
+  )}`;
 }
-
 function dtStringToIso(value: string | null): string | null {
   if (!value) return null;
-  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
-  if (!parts) return null;
-  const [, yStr, mStr, dStr, hhStr, mmStr] = parts;
-  const y = Number(yStr);
-  const m = Number(mStr);
-  const d = Number(dStr);
-  const hh = Number(hhStr);
-  const mm = Number(mmStr);
-  const utcDate = new Date(Date.UTC(y, m - 1, d, hh, mm, 0));
-  return utcDate.toISOString();
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const [, y, mo, d, hh, mm] = m;
+  return new Date(Date.UTC(+y, +mo - 1, +d, +hh, +mm, 0)).toISOString();
+}
+
+// Read-only labels
+function isoToLabelUTC(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(
+    d.getUTCMinutes()
+  )} UTC`;
+}
+function isoToLabelLocal(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString();
 }
 
 function teamLabel(t: TeamLite | null, fallbackId?: Id) {
   return t ? `${t.name} (#${t.id})` : `#${fallbackId ?? ""}`;
 }
 
+// Optional extra metadata your rows might carry (not required)
+type MatchRowWithStage = MatchRow & {
+  matchday?: number | null;
+  round?: number | null;
+  bracket_pos?: number | null;
+  stage_name?: string | null;
+  group_idx?: number | null;
+};
+
+// ✅ This is the ONLY export from this file
 export default function RowEditor({
   initial,
   teams,
   onCancel,
   onSaved,
+  tournamentName,
+  stageText,
 }: {
-  initial: Partial<MatchRow> & { id?: Id };
+  initial: Partial<MatchRowWithStage> & { id?: Id };
   teams: TeamLite[];
   onCancel: () => void;
   onSaved: () => void;
+  tournamentName?: string | null;
+  stageText?: string | null;
 }) {
   const [form, setForm] = useState<Partial<MatchRow>>(() => ({
     id: initial.id,
-    match_date: isoToDTString(initial.match_date ?? null),
+    match_date: isoToDTString(initial.match_date ?? null), // populate input from saved ISO
     status: (initial.status as MatchRow["status"]) ?? "scheduled",
     team_a_id: initial.team_a_id ?? (teams[0]?.id ?? 0),
     team_b_id: initial.team_b_id ?? (teams[1]?.id ?? 0),
@@ -58,13 +78,23 @@ export default function RowEditor({
     team_b_score: initial.team_b_score ?? 0,
     winner_team_id: initial.winner_team_id ?? null,
   }));
-
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(initial.id);
 
   function set<K extends keyof MatchRow>(k: K, v: MatchRow[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
+
+  const derivedStageText = useMemo(() => {
+    if (stageText) return stageText;
+    const parts: string[] = [];
+    if (initial.stage_name) parts.push(initial.stage_name);
+    if (typeof initial.group_idx === "number") parts.push(`Group ${String.fromCharCode(65 + initial.group_idx)}`);
+    if (typeof initial.matchday === "number") parts.push(`MD ${initial.matchday}`);
+    if (typeof initial.round === "number") parts.push(`R${initial.round}`);
+    if (typeof initial.bracket_pos === "number") parts.push(`Pos ${initial.bracket_pos}`);
+    return parts.length ? parts.join(" • ") : null;
+  }, [stageText, initial.stage_name, initial.group_idx, initial.matchday, initial.round, initial.bracket_pos]);
 
   const validationError = useMemo(() => {
     if (!form.team_a_id || !form.team_b_id) return "Select both teams";
@@ -77,6 +107,14 @@ export default function RowEditor({
     }
     return null;
   }, [form]);
+
+  // Show what will be saved if date/time was changed
+  const pendingSaveUtc = useMemo(() => {
+    const nextIso = dtStringToIso((form.match_date as string | null) ?? null);
+    if (!nextIso) return null;
+    const currentIso = initial.match_date ?? null;
+    return nextIso !== currentIso ? isoToLabelUTC(nextIso) : null;
+  }, [form.match_date, initial.match_date]);
 
   async function save() {
     if (validationError) return;
@@ -91,19 +129,26 @@ export default function RowEditor({
         team_b_score: form.team_b_score,
         winner_team_id: form.status === "finished" ? form.winner_team_id : null,
       };
-
+      console.log("PATCH payload", {
+        match_date: dtStringToIso((form.match_date as string | null) ?? null),
+        status: form.status,
+        team_a_id: form.team_a_id,
+        team_b_id: form.team_b_id,
+        team_a_score: form.team_a_score,
+        team_b_score: form.team_b_score,
+        winner_team_id: form.status === "finished" ? form.winner_team_id : null,
+      });
+      
       const res = await fetch(isEdit ? `/api/matches/${form.id}` : `/api/matches`, {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        credentials: "include", // send session cookies/JWT
+        credentials: "include",
       });
-
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error ?? `HTTP ${res.status}`);
       }
-
       onSaved();
     } catch (e: any) {
       alert(e.message ?? String(e));
@@ -113,7 +158,34 @@ export default function RowEditor({
   }
 
   return (
-    <div className="p-4 rounded-xl border border-white/15 bg-black/50 space-y-4">
+    <div className="w-full p-4 rounded-xl border border-white/15 bg-black/50 space-y-4">
+      {/* Read-only badges */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 ring-1 ring-white/10 bg-white/5 text-white/80">
+          <span className="opacity-80">Tournament:</span>
+          <span className="text-white/95 font-medium">{tournamentName ?? "—"}</span>
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 ring-1 ring-white/10 bg-white/5 text-white/80">
+          <span className="opacity-80">Stage:</span>
+          <span className="text-white/95 font-medium">{derivedStageText ?? "—"}</span>
+        </span>
+      </div>
+
+      {/* NEW: show current saved time + local preview + pending save preview */}
+      <div className="flex flex-wrap gap-2 text-xs text-white/80">
+        <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-white/5 ring-1 ring-white/10">
+          Saved (UTC): <span className="text-white/95 font-medium">{isoToLabelUTC(initial.match_date ?? null)}</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-white/5 ring-1 ring-white/10">
+          Your local: <span className="text-white/95 font-medium">{isoToLabelLocal(initial.match_date ?? null)}</span>
+        </span>
+        {pendingSaveUtc && (
+          <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-emerald-500/10 ring-1 ring-emerald-400/30 text-emerald-200">
+            Will save as: <span className="text-emerald-100 font-medium">{pendingSaveUtc}</span>
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-sm text-white/80">Match date & time (UTC)</span>
