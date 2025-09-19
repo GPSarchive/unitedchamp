@@ -6,7 +6,7 @@
 import {
   createSupabaseRSCClient,
   createSupabaseRouteClient,
-} from "@/app/lib/supabaseServer";
+} from "@/app/lib/supabase/supabaseServer";
 import type { NewTournamentPayload } from "@/app/lib/types";
 
 // ---------- READS ----------

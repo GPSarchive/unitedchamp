@@ -1,6 +1,6 @@
 // app/api/tournaments/[slug]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 type Ctx = { params: Promise<{ slug: string }> };
 

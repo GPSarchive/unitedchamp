@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { randomUUID } from "crypto";
 
 const BUCKET = "GPSarchive's Project";

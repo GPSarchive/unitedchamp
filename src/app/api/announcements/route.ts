@@ -1,6 +1,6 @@
 // app/api/announcements/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 // ---- same-origin guard (copy of matches) ----
 function ensureSameOrigin(req: Request) {

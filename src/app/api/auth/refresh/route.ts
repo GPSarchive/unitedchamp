@@ -1,4 +1,4 @@
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 
 export async function POST() {
   const supabase = await createSupabaseRouteClient();

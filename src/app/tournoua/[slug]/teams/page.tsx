@@ -1,9 +1,9 @@
 // app/tournoua/[slug]/teams/page.tsx
 import { getTournamentBySlug, getStagesAndGroups } from "@/app/lib/repos/tournaments";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 
-import TeamsLeague from "../components/teams/TeamsLeague";
-import TeamsGroups from "../components/teams/TeamsGroups";
+import TeamsLeague from "../components/teams/leauge/TeamsLeague";
+import TeamsGroups from "../components/teams/groups/TeamsGroups";
 import TeamsKnockout from "../components/teams/TeamsKnockout";
 
 export const revalidate = 60;

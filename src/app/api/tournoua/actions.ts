@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { redirect } from 'next/navigation';
 

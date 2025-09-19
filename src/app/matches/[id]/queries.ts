@@ -1,5 +1,5 @@
 // matches/[id]/queries.ts
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   normalizeTeamPlayers,
   type Id,

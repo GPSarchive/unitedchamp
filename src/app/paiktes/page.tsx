@@ -1,5 +1,5 @@
 // app/players/page.tsx
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 export const revalidate = 60;
 

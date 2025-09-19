@@ -1,7 +1,9 @@
+// src/app/matches/[id]/actions.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
+import { progressAfterMatch } from '@/app/dashboard/components/TournamentCURD/progression';
 
 /** =========================
  *  Admin guard (server-side)
@@ -26,7 +28,7 @@ async function assertAdmin() {
 }
 
 /** -------------------------------
- *  Existing: Save per-player stats
+ *  Save per-player stats + auto-finalize + progression
  *  ------------------------------- */
 export async function saveAllStatsAction(formData: FormData) {
   const supabase = await assertAdmin();
@@ -80,14 +82,14 @@ export async function saveAllStatsAction(formData: FormData) {
     if (field === '_delete') {
       row._delete = val === 'true' || val === 'on' || val === '1';
     } else if (field === 'team_id' || field === 'player_id') {
-      // already captured by key
+      // captured by key
     } else {
       const n = Number(val);
       (row as any)[field] = Number.isFinite(n) ? Math.max(0, n) : 0;
     }
   }
 
-  // MVP / Best GK are chosen via single-select radio; set the boolean on the chosen row
+  // radios (1 per match)
   const mvpPlayerId = Number(formData.get('mvp_player_id') ?? 0) || 0;
   const bestGkPlayerId = Number(formData.get('best_gk_player_id') ?? 0) || 0;
 
@@ -104,6 +106,7 @@ export async function saveAllStatsAction(formData: FormData) {
   const gkRow = ensureRow(bestGkPlayerId);
   if (gkRow) gkRow.best_goalkeeper = true;
 
+  // Write player stats
   const toDelete: number[] = [];
   const toUpsert: Row[] = [];
   for (const r of rows.values()) {
@@ -127,11 +130,57 @@ export async function saveAllStatsAction(formData: FormData) {
     if (error) throw error;
   }
 
+  // --- Auto-finalize from the just-saved stats ---
+  const { data: mt, error: mErr } = await supabase
+    .from('matches')
+    .select('team_a_id, team_b_id')
+    .eq('id', match_id)
+    .single();
+  if (mErr || !mt) throw new Error('Match not found');
+
+  // recompute from DB to reflect the upserts/deletes
+  const { data: agg, error: aggErr } = await supabase
+    .from('match_player_stats')
+    .select('team_id, goals')
+    .eq('match_id', match_id);
+  if (aggErr) throw aggErr;
+
+  const sum = new Map<number, number>();
+  for (const r of agg ?? []) {
+    const tid = Number(r.team_id);
+    const g = Number(r.goals) || 0;
+    sum.set(tid, (sum.get(tid) ?? 0) + g);
+  }
+  const aGoals = sum.get(Number(mt.team_a_id)) ?? 0;
+  const bGoals = sum.get(Number(mt.team_b_id)) ?? 0;
+
+  const isTie = aGoals === bGoals;
+  const winner_team_id = isTie
+    ? null
+    : (aGoals > bGoals ? Number(mt.team_a_id) : Number(mt.team_b_id));
+
+  // Save scores; finish only if not a tie
+  const { error: upErr } = await supabase
+    .from('matches')
+    .update({
+      team_a_score: aGoals,
+      team_b_score: bGoals,
+      winner_team_id,
+      status: isTie ? 'scheduled' : 'finished',
+    })
+    .eq('id', match_id);
+  if (upErr) throw upErr;
+
+  // Run progression only when finished (non-tie)
+  if (!isTie) {
+    await progressAfterMatch(match_id).catch(console.error);
+  }
+
   revalidatePath(`/matches/${match_id}`);
 }
 
 /** -------------------------------
- *  Helpers for result actions
+ *  Helpers for result actions (kept for compatibility)
  *  ------------------------------- */
 async function fetchMatchTeams(
   supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
@@ -167,7 +216,7 @@ async function computeGoalsByTeam(
 }
 
 /** -------------------------------
- *  Action: Recalc scores from stats
+ *  Action: Recalc scores from stats (optional)
  *  ------------------------------- */
 export async function recalcScoresFromStatsAction(formData: FormData) {
   const supabase = await assertAdmin();
@@ -194,7 +243,7 @@ export async function recalcScoresFromStatsAction(formData: FormData) {
 }
 
 /** -------------------------------------------
- *  Action: Finalize match (compute + set winner)
+ *  Action: Finalize match (compute + set winner) (optional)
  *  ------------------------------------------- */
 export async function finalizeFromStatsAction(formData: FormData) {
   const supabase = await assertAdmin();
@@ -225,7 +274,7 @@ export async function finalizeFromStatsAction(formData: FormData) {
 
   if (error) throw error;
 
-  // If you trigger tournament progression, do it here (still via cookie client if it writes rows).
+  // If you trigger tournament progression here instead of Save All:
   // await progressAfterMatch(matchId).catch(console.error);
 
   revalidatePath(`/matches/${matchId}`);

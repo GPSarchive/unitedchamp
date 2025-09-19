@@ -1,11 +1,11 @@
 // page.tsx
 import Image from 'next/image';
-import { Carousel } from '@/app/components/HomePageComponents/Carousel';
-import EventCalendar from './components/HomePageComponents/Calendar';
-import { supabaseAdmin } from '@/app/lib/supabaseAdmin';
+import { Carousel } from '@/app/home/Carousel';
+import EventCalendar from './home/Calendar';
+import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { Trophy, Users, CalendarDays, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, TeamLite, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
-import HomeHero from './components/HomePageComponents/HomeHero';
+import HomeHero from './home/HomeHero';
 
 /**
  * ------------------------------

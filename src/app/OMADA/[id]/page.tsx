@@ -1,9 +1,9 @@
 // app/OMADA/[id]/page.tsx
 import Link from "next/link";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import TeamHeader from "@/app/components/OMADAPageComponents/TeamHeader";
-import PlayersSection from "@/app/components/OMADAPageComponents/PlayersSection";
-import MatchesSection from "@/app/components/OMADAPageComponents/MatchesSection";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import TeamHeader from "@/app/OMADA/[id]/TeamHeader";
+import PlayersSection from "@/app/OMADA/[id]/PlayersSection";
+import MatchesSection from "@/app/OMADA/[id]/MatchesSection";
 import {
   type Team,
   type PlayerAssociation,

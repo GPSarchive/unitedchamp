@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 
 export async function POST(req: Request) {
   const form = await req.formData();

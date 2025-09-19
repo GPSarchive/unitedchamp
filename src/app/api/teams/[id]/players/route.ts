@@ -1,7 +1,7 @@
 // src/app/api/teams/[id]/players/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { normalizeTeamPlayers, type TeamPlayersRowRaw } from "@/app/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -92,8 +92,7 @@ export async function GET(req: Request, ctx: Ctx) {
           .eq("id", id)
           .limit(1);
         if (error) {
-          // Unknown table (42P01) → try next candidate; otherwise surface error
-          if ((error as any).code === "42P01") continue;
+          if ((error as any).code === "42P01") continue; // unknown table
           return { table, exists: false, error: error.message };
         }
         return { table, exists: (data?.length ?? 0) > 0, error: null };
@@ -159,7 +158,6 @@ export async function GET(req: Request, ctx: Ctx) {
 
   const playerAssociations = normalizeTeamPlayers((data ?? []) as TeamPlayersRowRaw[]);
 
-  // Small debug headers
   const hasStats = playerAssociations.some(a => (a.player.player_statistics?.length ?? 0) > 0);
   headers.set("X-Debug-TeamId", String(teamId));
   headers.set("X-Debug-AssocCount", String(playerAssociations.length));
@@ -170,10 +168,8 @@ export async function GET(req: Request, ctx: Ctx) {
   headers.set("X-Debug-T_DB_ms", String(t2 - t1));
   headers.set("X-Debug-T_Total_ms", String(Date.now() - t0));
 
-  // ── Extra diagnostics when we got zero associations ──────────────────────────────
   let diag: any = undefined;
   if (dbg && playerAssociations.length === 0) {
-    // sample associations (raw)
     const { data: assocSample, error: assocErr } = await supabaseAdmin
       .from("player_teams")
       .select("id, team_id, player_id")
@@ -181,14 +177,12 @@ export async function GET(req: Request, ctx: Ctx) {
       .order("id", { ascending: true })
       .limit(5);
 
-    // small sample from player_statistics so you can confirm stats exist
     const { data: statsSample, error: statsErr } = await supabaseAdmin
       .from("player_statistics")
       .select("id, player_id, age, total_goals, total_assists, updated_at")
       .order("updated_at", { ascending: false })
       .limit(3);
 
-    // if there are assoc rows, validate one full join shape
     let joinProbe: any = null; let joinProbeErr: string | null = null;
     if (assocSample && assocSample.length > 0) {
       const { data: jp, error: jpe } = await supabaseAdmin
@@ -308,10 +302,11 @@ export async function POST(req: Request, ctx: Ctx) {
         return NextResponse.json({ error: "Invalid stats" }, { status: 400, headers });
       }
 
+      // ---- CHANGED: use service role to avoid RLS; set safe photo placeholder if NOT NULL without default
       const tCreatePlayer0 = now();
-      const { data: pRow, error: pErr, status: pStatus } = await supa
+      const { data: pRow, error: pErr, status: pStatus } = await supabaseAdmin
         .from("player")
-        .insert({ first_name: first, last_name: last })
+        .insert({ first_name: first, last_name: last, photo: "/player-placeholder.jpg" })
         .select("id")
         .single();
       const tCreatePlayer1 = now();
@@ -323,12 +318,12 @@ export async function POST(req: Request, ctx: Ctx) {
       playerId = pRow.id as number;
 
       const tCreateStats0 = now();
-      const { error: sErr, status: sStatus } = await supa
+      const { error: sErr, status: sStatus } = await supabaseAdmin
         .from("player_statistics")
         .insert({ player_id: playerId, age, total_goals, total_assists, yellow_cards, red_cards, blue_cards });
       const tCreateStats1 = now();
       if (sErr) {
-        await supa.from("player").delete().eq("id", playerId).limit(1);
+        await supabaseAdmin.from("player").delete().eq("id", playerId).limit(1);
         if (dbg) console.error(`[POST] requestId=${requestId} create stats failed`, { sStatus, error: sErr.message });
         return NextResponse.json({ error: sErr.message || "Create stats failed", requestId }, { status: 400, headers });
       }
@@ -344,8 +339,9 @@ export async function POST(req: Request, ctx: Ctx) {
       }
     }
 
+    // ---- CHANGED: link with service role (preserves 23505 → 409 behavior)
     const tLink0 = now();
-    const { data: assocRow, error: aErr, status: aStatus } = await supa
+    const { data: assocRow, error: aErr, status: aStatus } = await supabaseAdmin
       .from("player_teams")
       .insert({ team_id: teamId, player_id: playerId! })
       .select("id")
@@ -355,7 +351,7 @@ export async function POST(req: Request, ctx: Ctx) {
     if (aErr) {
       if ((aErr as any)?.code === "23505") {
         if (dbg) console.warn(`[POST] requestId=${requestId} duplicate link`, { teamId, playerId });
-        return NextResponse.json({ error: "Player already linked to this team", requestId }, { status: 409, headers });
+        return NextResponse.json({ error: "Player already linked to this team", requestId, player_id: playerId }, { status: 409, headers });
       }
       if (dbg) console.error(`[POST] requestId=${requestId} link failed`, { aStatus, error: aErr.message });
       return NextResponse.json({ error: aErr.message, requestId }, { status: 400, headers });
@@ -417,7 +413,8 @@ export async function POST(req: Request, ctx: Ctx) {
       });
     }
 
-    const respBody: Record<string, any> = { association: normalized, requestId };
+    // ---- NOTE: preserve original shape, but ALSO include player_id for your modal
+    const respBody: Record<string, any> = { association: normalized, requestId, player_id: playerId };
     if (dbg) {
       respBody.debug = {
         assocId: assocRow.id,

@@ -33,7 +33,18 @@ export interface PlayerRow {
   id: Id;
   first_name: string;
   last_name: string;
+
+  // NEW fields from public.player
+  photo: string;                 // NOT NULL in DB (default '/player-placeholder.jpg')
+  height_cm: number | null;
+  position: string | null;
+  birth_date: string | null;     // 'YYYY-MM-DD'
+
+  // optional timestamps (exist in table but not always selected)
+  created_at?: string | null;
+  updated_at?: string | null;
 }
+
 
 export interface PlayerStatisticsRow {
   /** PK on player_statistics */
@@ -115,9 +126,11 @@ export interface PlayerWithStatsRaw extends PlayerRow {
   player_statistics: MaybeArray<PlayerStatisticsRow>;
 }
 
+
 export interface PlayerWithStats extends PlayerRow {
   player_statistics: PlayerStatisticsRow[]; // normalized to length 0 or 1
 }
+
 
 /**
  * Player association via player_teams
@@ -209,6 +222,14 @@ export function normalizeTeamPlayers(
       id: 0,
       first_name: "",
       last_name: "",
+      // NEW defaults mirroring DB
+      photo: "/player-placeholder.jpg",
+      height_cm: null,
+      position: null,
+      birth_date: null,
+      created_at: null,
+      updated_at: null,
+
       player_statistics: null,
     };
 
@@ -218,12 +239,22 @@ export function normalizeTeamPlayers(
       id: base.id,
       first_name: base.first_name,
       last_name: base.last_name,
+
+      // NEW pass-throughs
+      photo: base.photo,
+      height_cm: base.height_cm,
+      position: base.position,
+      birth_date: base.birth_date,
+      created_at: base.created_at ?? null,
+      updated_at: base.updated_at ?? null,
+
       player_statistics: stats,
     };
 
     return { id: row.id, player };
   });
 }
+
 
 export type StageKind = 'league' | 'groups' | 'knockout';
 
@@ -301,24 +332,34 @@ export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | 
 }
 
 export function toBracketMatch(
-  row: MatchRow,
+  row: MatchRow & Partial<SourcePointers> & Partial<{ round: number | null; bracket_pos: number | null }>,
   extras?: Partial<Pick<BracketMatch,
-    "round" | "bracket_pos" | "home_source_match_id" | "away_source_match_id"
+    "round" | "bracket_pos" |
+    "home_source_match_id" | "away_source_match_id" |
+    "home_source_round" | "home_source_bracket_pos" |
+    "away_source_round" | "away_source_bracket_pos"
   >>
 ): BracketMatch {
+  const src = { ...(extras ?? {}), ...(row as any) }; // row wins after schema migration
   return {
     id: row.id,
-    round: extras?.round ?? null,
-    bracket_pos: extras?.bracket_pos ?? null,
+    round: src.round ?? null,
+    bracket_pos: src.bracket_pos ?? null,
     team_a_id: row.team_a_id ?? null,
     team_b_id: row.team_b_id ?? null,
     team_a_score: row.status === "finished" ? row.team_a_score : null,
     team_b_score: row.status === "finished" ? row.team_b_score : null,
     status: row.status,
-    home_source_match_id: extras?.home_source_match_id ?? null,
-    away_source_match_id: extras?.away_source_match_id ?? null,
+    // all pointer shapes
+    home_source_match_id: src.home_source_match_id ?? null,
+    away_source_match_id: src.away_source_match_id ?? null,
+    home_source_round: src.home_source_round ?? null,
+    home_source_bracket_pos: src.home_source_bracket_pos ?? null,
+    away_source_round: src.away_source_round ?? null,
+    away_source_bracket_pos: src.away_source_bracket_pos ?? null,
   };
 }
+
 
 // UI i18n labels for bracket components
 export type Labels = {
@@ -368,3 +409,30 @@ export type StageConfig = {
   from_knockout_stage_idx?: number;
   groups_intake?: IntakeMapping[];
 };
+
+
+
+// NEW: stable pointer set
+export interface SourcePointers {
+  home_source_round?: number | null;
+  home_source_bracket_pos?: number | null;
+  away_source_round?: number | null;
+  away_source_bracket_pos?: number | null;
+  home_source_match_id?: Id | null;
+  away_source_match_id?: Id | null;
+}
+
+// …existing code…
+
+export interface BracketMatch extends SourcePointers {
+  id: Id;
+  round: number | null;
+  bracket_pos: number | null;
+  team_a_id: Id | null;
+  team_b_id: Id | null;
+  team_a_score: number | null;
+  team_b_score: number | null;
+  status: MatchStatus;
+}
+
+// Prefer row values; fall back to extras (works before & after schema change)

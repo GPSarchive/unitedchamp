@@ -1,7 +1,7 @@
-import TeamsGrid from "@/app/components/OMADESPageComponents/TeamsGrid";
-import SearchBar from "@/app/components/OMADESPageComponents/SearchBar";
-import Pagination from "@/app/components/OMADESPageComponents/Pagination";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import TeamsGrid from "@/app/OMADES/TeamsGrid";
+import SearchBar from "@/app/OMADES/SearchBar";
+import Pagination from "@/app/OMADES/Pagination";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { Team } from "@/app/lib/types";
 
 type SearchMap = { [key: string]: string | string[] | undefined };

@@ -1,7 +1,7 @@
 // app/tournoua/[slug]/page.tsx
 import Image from "next/image";
 import Link from "next/link";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import { getTournamentBySlug, getStagesAndGroups, getStandingsForSlug } from "@/app/lib/repos/tournaments";
 
 // Reused UI blocks
@@ -11,9 +11,9 @@ import BracketTree from "./components/BracketTree";
 import PlayerRow from "./components/PlayerRow";
 
 // Team views (prettier grouped layouts)
-import TeamsLeagueList from "./components/teams/TeamsLeagueList";
-import TeamsGroupsWithMatches from "./components/teams/TeamsGroupsWithMatches";
-import ModernKnockoutTree from "./components/teams/KnockoutTree";
+import TeamsLeagueList from "./components/teams/leauge/TeamsLeagueList";
+import TeamsGroupsWithMatches from "./components/teams/groups/TeamsGroupsWithMatches";
+import ModernKnockoutTree from "@/app/dashboard/components/TournamentCURD/stages/KnockoutTree/ModernKnockoutTree.tsx";
 
 export const revalidate = 60;
 

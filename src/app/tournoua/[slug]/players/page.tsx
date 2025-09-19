@@ -1,6 +1,6 @@
 // app/tournoua/[slug]/players/page.tsx
 import { getTournamentBySlug } from "@/app/lib/repos/tournaments";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import PlayerRow from "../components/PlayerRow";
 
 export const revalidate = 60;

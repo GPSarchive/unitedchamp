@@ -1,5 +1,5 @@
 // src/app/components/Navbar.tsx  (Server Component — no "use client")
-import { createSupabaseRSCClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 import NavbarClient from '@/app/lib/Navbar/NavbarClient'; // <-- updated path to match your file location
 
 export default async function Navbar() {

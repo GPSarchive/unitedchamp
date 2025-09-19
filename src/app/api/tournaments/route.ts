@@ -1,6 +1,6 @@
 // app/api/tournaments/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 export async function GET(req: NextRequest) {
   const s = await createSupabaseRouteClient();

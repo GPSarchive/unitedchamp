@@ -1,5 +1,5 @@
 // app/announcements/page.tsx
-import AnnouncementsFeed from "@/app/components/announcements/AnnouncementsFeed";
+import AnnouncementsFeed from "@/app/anakoinoseis/AnnouncementsFeed";
 
 export const metadata = { title: "Announcements" };
 

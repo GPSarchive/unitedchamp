@@ -1,6 +1,6 @@
 // app/tournoua/[slug]/standings/page.tsx
 import { getStandingsForSlug, getStagesAndGroups } from "@/app/lib/repos/tournaments";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import StandingsTable from "../components/StandingsTable";
 
 export const revalidate = 60;

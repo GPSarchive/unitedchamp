@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import type { Provider } from '@supabase/supabase-js';
 
 const ENABLED_PROVIDERS = new Set<Provider>(['github', 'google']);

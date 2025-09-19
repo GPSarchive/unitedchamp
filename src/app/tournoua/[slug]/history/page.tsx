@@ -1,6 +1,6 @@
 // app/tournoua/[slug]/history/page.tsx
 import { getTournamentBySlug } from "@/app/lib/repos/tournaments";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 
 export const revalidate = 300;
 

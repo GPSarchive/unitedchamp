@@ -7,8 +7,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { useStagedHeaderMotion } from "@/app/lib/useStagedHeaderMotion"; // ensure this file is also "use client"
-import { createSupabaseBrowserClient } from "@/app/lib/supabaseBrowser";
+import { useStagedHeaderMotion } from "@/app/lib/framermotion/useStagedHeaderMotion"; // ensure this file is also "use client"
+import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
 /* ===================== Data ===================== */
 const NAV_LINKS = [

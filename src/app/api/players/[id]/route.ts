@@ -1,13 +1,10 @@
-// app/api/players/[id]/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/* ================
-   Same-origin guard
-   ================ */
+/* ================  Same-origin guard  ================ */
 function ensureSameOrigin(req: Request) {
   const m = req.method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
@@ -35,9 +32,7 @@ export async function HEAD() {
   return new NextResponse(null, { status: 200, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
 }
 
-/* -------------------------
-   GET /api/players/:id (admin)
-   ------------------------- */
+/* -------------------------  GET /api/players/:id (admin)  ------------------------- */
 export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;                 // ← await params
   const pid = Number(id);
@@ -60,11 +55,19 @@ export async function GET(_req: Request, ctx: Ctx) {
       id,
       first_name,
       last_name,
+      photo,
+      height_cm,
+      position,
+      birth_date,
       player_statistics (
         id,
         age,
         total_goals,
-        total_assists
+        total_assists,
+        yellow_cards,
+        red_cards,
+        blue_cards,
+        updated_at
       )
     `)
     .eq("id", pid)
@@ -77,9 +80,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ player: data });
 }
 
-/* --------------------------------
-   PATCH /api/players/:id (admin)
-   -------------------------------- */
+/* --------------------------------  PATCH /api/players/:id (admin)  -------------------------------- */
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);
@@ -103,6 +104,25 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const patchPlayer: Record<string, any> = {};
     if (body.first_name !== undefined) patchPlayer.first_name = String(body.first_name ?? "").trim();
     if (body.last_name  !== undefined) patchPlayer.last_name  = String(body.last_name ?? "").trim();
+
+    // NEW player fields
+    if (body.photo !== undefined) {
+      const p = String(body.photo ?? "").trim();
+      patchPlayer.photo = p || "/player-placeholder.jpg"; // keep NOT NULL
+    }
+    if (body.height_cm !== undefined) {
+      const v = body.height_cm === "" || body.height_cm == null ? null : Number(body.height_cm);
+      if (v !== null && (Number.isNaN(v) || v < 0)) {
+        return NextResponse.json({ error: "Invalid height_cm" }, { status: 400 });
+      }
+      patchPlayer.height_cm = v;
+    }
+    if (body.position !== undefined) {
+      patchPlayer.position = body.position == null || body.position === "" ? null : String(body.position).trim();
+    }
+    if (body.birth_date !== undefined) {
+      patchPlayer.birth_date = body.birth_date == null || body.birth_date === "" ? null : String(body.birth_date);
+    }
 
     if (patchPlayer.first_name !== undefined && patchPlayer.first_name.length < 1) {
       return NextResponse.json({ error: "First name is required" }, { status: 400 });
@@ -137,6 +157,26 @@ export async function PATCH(req: Request, ctx: Ctx) {
       }
     }
 
+    // NEW stat counters
+    if (body.yellow_cards !== undefined) {
+      statsPatch.yellow_cards = body.yellow_cards === "" || body.yellow_cards == null ? 0 : Number(body.yellow_cards);
+      if (Number.isNaN(statsPatch.yellow_cards) || statsPatch.yellow_cards < 0) {
+        return NextResponse.json({ error: "Invalid yellow_cards" }, { status: 400 });
+      }
+    }
+    if (body.red_cards !== undefined) {
+      statsPatch.red_cards = body.red_cards === "" || body.red_cards == null ? 0 : Number(body.red_cards);
+      if (Number.isNaN(statsPatch.red_cards) || statsPatch.red_cards < 0) {
+        return NextResponse.json({ error: "Invalid red_cards" }, { status: 400 });
+      }
+    }
+    if (body.blue_cards !== undefined) {
+      statsPatch.blue_cards = body.blue_cards === "" || body.blue_cards == null ? 0 : Number(body.blue_cards);
+      if (Number.isNaN(statsPatch.blue_cards) || statsPatch.blue_cards < 0) {
+        return NextResponse.json({ error: "Invalid blue_cards" }, { status: 400 });
+      }
+    }
+
     if (Object.keys(statsPatch).length > 0) {
       // Requires UNIQUE (player_id) on public.player_statistics
       statsPatch.player_id = pid;
@@ -153,11 +193,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
         id,
         first_name,
         last_name,
+        photo,
+        height_cm,
+        position,
+        birth_date,
         player_statistics (
           id,
           age,
           total_goals,
-          total_assists
+          total_assists,
+          yellow_cards,
+          red_cards,
+          blue_cards,
+          updated_at
         )
       `)
       .eq("id", pid)
@@ -175,9 +223,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
-/* ------------------------------
-   DELETE /api/players/:id (admin)
-   ------------------------------ */
+/* ------------------------------  DELETE /api/players/:id (admin)  ------------------------------ */
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);

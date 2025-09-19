@@ -1,6 +1,6 @@
 // app/api/teams/[id]/restore/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 const BUCKET = "GPSarchive's Project";
 type Ctx = { params: Promise<{ id: string }> };

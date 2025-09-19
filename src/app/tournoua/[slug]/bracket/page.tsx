@@ -1,6 +1,6 @@
 // app/tournoua/[slug]/bracket/page.tsx
 import { getStagesAndGroups, getTournamentBySlug } from "@/app/lib/repos/tournaments";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import BracketTree from "../components/BracketTree";
 
 export const revalidate = 60;

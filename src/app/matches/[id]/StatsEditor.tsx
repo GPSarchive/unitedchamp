@@ -1,5 +1,7 @@
-//matches/[id]/StatsEditor.tsx
+// matches/[id]/StatsEditor.tsx
+
 // no "use client" needed; server components can render inputs
+import AddPlayerToTeamLauncher from "./AddPlayerToTeamLauncher";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 
 type MatchPlayerStatRow = {
@@ -29,10 +31,20 @@ export default function StatsEditor({
 }) {
   return (
     <div className="rounded-xl border p-4">
-      <h3 className="mb-3 font-semibold">
-        {teamName} – Edit stats{" "}
-        <span className="text-xs text-gray-500">(players: {associations.length})</span>
-      </h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-semibold">
+          {teamName} – Edit stats{" "}
+          <span className="text-xs text-gray-500">
+            (players: {associations.length})
+          </span>
+        </h3>
+
+        <AddPlayerToTeamLauncher
+  teamId={Number(teamId)}
+  label="Add player"
+  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-white bg-emerald-600/20 hover:bg-emerald-600/30"
+/>
+      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -56,42 +68,122 @@ export default function StatsEditor({
               const row = existing.get(p.id);
               const base = `players[${teamId}][${p.id}]`;
 
+              // Coerce all numeric defaults to strings so they are defined and stable
+              const goalsDefault = String(row?.goals ?? 0);
+              const assistsDefault = String(row?.assists ?? 0);
+              const ycDefault = String(row?.yellow_cards ?? 0);
+              const rcDefault = String(row?.red_cards ?? 0);
+              const bcDefault = String(row?.blue_cards ?? 0);
+
               return (
                 <tr key={p.id}>
                   <td className="py-1 pr-2 max-w-[200px] truncate">
                     {p.first_name} {p.last_name}
+                    {/* ensure a row exists even if only awards picked */}
+                    <input
+                      type="hidden"
+                      name={`${base}[team_id]`}
+                      // String(...) guarantees a defined string
+                      defaultValue={String(teamId)}
+                    />
+                    <input
+                      type="hidden"
+                      name={`${base}[player_id]`}
+                      defaultValue={String(p.id)}
+                    />
                   </td>
 
                   <td className="py-1 pr-2">
-                    <input name={`${base}[goals]`} defaultValue={row?.goals ?? 0} className="w-14 rounded border px-2 py-1" type="number" min={0}/>
+                    <input
+                      name={`${base}[goals]`}
+                      defaultValue={goalsDefault}
+                      className="w-14 rounded border px-2 py-1"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                    />
                   </td>
                   <td className="py-1 pr-2">
-                    <input name={`${base}[assists]`} defaultValue={row?.assists ?? 0} className="w-14 rounded border px-2 py-1" type="number" min={0}/>
+                    <input
+                      name={`${base}[assists]`}
+                      defaultValue={assistsDefault}
+                      className="w-14 rounded border px-2 py-1"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                    />
                   </td>
                   <td className="py-1 pr-2">
-                    <input name={`${base}[yellow_cards]`} defaultValue={row?.yellow_cards ?? 0} className="w-14 rounded border px-2 py-1" type="number" min={0}/>
+                    <input
+                      name={`${base}[yellow_cards]`}
+                      defaultValue={ycDefault}
+                      className="w-14 rounded border px-2 py-1"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                    />
                   </td>
                   <td className="py-1 pr-2">
-                    <input name={`${base}[red_cards]`} defaultValue={row?.red_cards ?? 0} className="w-14 rounded border px-2 py-1" type="number" min={0}/>
+                    <input
+                      name={`${base}[red_cards]`}
+                      defaultValue={rcDefault}
+                      className="w-14 rounded border px-2 py-1"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                    />
                   </td>
                   <td className="py-1 pr-2">
-                    <input name={`${base}[blue_cards]`} defaultValue={row?.blue_cards ?? 0} className="w-14 rounded border px-2 py-1" type="number" min={0}/>
+                    <input
+                      name={`${base}[blue_cards]`}
+                      defaultValue={bcDefault}
+                      className="w-14 rounded border px-2 py-1"
+                      type="number"
+                      min={0}
+                      step={1}
+                      inputMode="numeric"
+                    />
                   </td>
 
-                  {/* ensure a row exists even if only awards picked */}
-                  <input type="hidden" name={`${base}[team_id]`} value={String(teamId)} />
-                  <input type="hidden" name={`${base}[player_id]`} value={String(p.id)} />
-
                   <td className="py-1 pr-2">
-                    <input type="radio" name="mvp_player_id" value={String(p.id)} defaultChecked={row?.mvp ?? false} aria-label="MVP"/>
+                    <input
+                      type="radio"
+                      name="mvp_player_id"
+                      value={String(p.id)}
+                      // ensure strictly boolean
+                      defaultChecked={Boolean(row?.mvp)}
+                      aria-label="MVP"
+                    />
                   </td>
                   <td className="py-1 pr-2">
-                    <input type="radio" name="best_gk_player_id" value={String(p.id)} defaultChecked={row?.best_goalkeeper ?? false} aria-label="Best Goalkeeper"/>
+                    <input
+                      type="radio"
+                      name="best_gk_player_id"
+                      value={String(p.id)}
+                      defaultChecked={Boolean(row?.best_goalkeeper)}
+                      aria-label="Best Goalkeeper"
+                    />
                   </td>
 
                   <td className="py-1 pr-2">
-                    <input type="hidden" name={`${base}[_delete]`} value="false" />
-                    <input type="checkbox" name={`${base}[_delete]`} value="true" />
+                    {/* hidden fallback unchecked value */}
+                    <input
+                      type="hidden"
+                      name={`${base}[_delete]`}
+                      defaultValue="false"
+                    />
+                    <input
+                      type="checkbox"
+                      name={`${base}[_delete]`}
+                      value="true"
+                      // always uncontrolled; start unchecked
+                      defaultChecked={false}
+                      aria-label="Clear row"
+                    />
                   </td>
                 </tr>
               );

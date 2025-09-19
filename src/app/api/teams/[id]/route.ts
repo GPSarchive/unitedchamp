@@ -1,6 +1,6 @@
 // app/api/teams/[id]/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 // ⚠️ Prefer a bucket id without spaces/apostrophes. If you cannot rename,
 // helpers below handle decoding so comparisons still work.

@@ -1,10 +1,10 @@
 // app/api/matches/[id]/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
-// ⬇️ NEW: call the tournament progression after finishing a match
-import { progressAfterMatch } from "@/app/components/DashboardPageComponents/TournamentCURD/progression";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+// ⬇️ Run tournament progression after finishing a match
+import { progressAfterMatch } from "@/app/dashboard/components/TournamentCURD/progression";
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: { id: string } };
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 const UPDATABLE_FIELDS = new Set<keyof any>([
@@ -140,7 +140,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);
 
-    const { id: idParam } = await ctx.params;
+    const { id: idParam } = ctx.params;
     const id = parsePositiveInt(idParam);
     if (!id) return jsonError(400, "Invalid id");
 
@@ -267,7 +267,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
     if (!data) return jsonError(404, "Not found");
 
-    // ⬇️ NEW: run tournament progression after finishing a match (idempotent)
+    // ⬇️ Run tournament progression after finishing a match (idempotent)
     if (finalStatus === "finished") {
       try {
         await progressAfterMatch(id);
@@ -295,7 +295,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);
 
-    const { id: idParam } = await ctx.params;
+    const { id: idParam } = ctx.params;
     const id = parsePositiveInt(idParam);
     if (!id) return jsonError(400, "Invalid id");
 

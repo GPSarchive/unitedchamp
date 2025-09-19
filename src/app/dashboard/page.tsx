@@ -1,16 +1,16 @@
 // src/app/dashboard/page.tsx
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
-import UsersTable from "@/app/components/DashboardPageComponents/UsersTable";
-import AdminPlayersCRUD from "@/app/components/DashboardPageComponents/players/AdminPlayersCRUD";
-import MatchesDashboard from "@/app/components/DashboardPageComponents/MatchesDashboard";
-import AdminTeamsSection from "@/app/components/DashboardPageComponents/AdminTeamsSection";
-import AnnouncementsAdmin from "@/app/components/DashboardPageComponents/announcements/AnnouncementsAdmin";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
+import UsersTable from "@/app/dashboard/users/UsersTable";
+import AdminPlayersCRUD from "./AdminPlayersCRUD";
+import MatchesDashboard from "@/app/dashboard/matches/MatchesDashboard";
+import AdminTeamsSection from "@/app/dashboard/AdminTeamsSection";
+import AnnouncementsAdmin from "./announcements/AnnouncementsAdmin";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { redirect } from "next/navigation";
 
 // Wizard + server helper
-import TournamentWizard from "@/app/components/DashboardPageComponents/TournamentCURD/TournamentWizard";
-import { getTournamentForEditAction } from "@/app/components/DashboardPageComponents/TournamentCURD/actions";
+import TournamentWizard from "./components/TournamentCURD/TournamentWizard";
+import { getTournamentForEditAction } from "./components/TournamentCURD/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -224,19 +224,28 @@ export default async function DashboardPage({
         </form>
 
         {/* Render the wizard in edit or create mode */}
-        <div className="mt-4">
-          {editorData ? (
-            <TournamentWizard
-              mode="edit"
-              meta={editorData.meta}
-              initialPayload={editorData.payload}
-              initialTeams={wizardInitialTeams}
-              initialDraftMatches={editorData.draftMatches}
-            />
-          ) : (
-            <TournamentWizard mode="create" />
-          )}
-        </div>
+        <div
+  className="
+    mt-4
+    rounded-2xl border border-white/10
+    bg-black/70 backdrop-blur-sm
+    p-4 sm:p-6
+    shadow-xl shadow-black/40
+    overflow-hidden
+  "
+>
+  {editorData ? (
+    <TournamentWizard
+      mode="edit"
+      meta={editorData.meta}
+      initialPayload={editorData.payload}
+      initialTeams={wizardInitialTeams}
+      initialDraftMatches={editorData.draftMatches}
+    />
+  ) : (
+    <TournamentWizard mode="create" />
+  )}
+</div>
       </section>
     </main>
   );

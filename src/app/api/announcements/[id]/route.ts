@@ -1,6 +1,6 @@
 // app/api/announcements/[id]/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 type Ctx = { params: Promise<{ id: string }> };
 

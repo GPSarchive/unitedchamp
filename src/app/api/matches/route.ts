@@ -1,6 +1,6 @@
 // app/api/matches/route.ts
 import { NextResponse } from "next/server";
-import { createSupabaseRouteClient } from "@/app/lib/supabaseServer";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 

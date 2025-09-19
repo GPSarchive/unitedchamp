@@ -1,6 +1,6 @@
 // app/api/public/team-logo/[...path]/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 // Force Node runtime (safer for storage downloads)
 export const runtime = "nodejs";

@@ -1,8 +1,8 @@
 // app/standings/page.tsx
 // or app/tournoua/[slug]/standings/page.tsx (works the same)
 import Image from "next/image";
-import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
-import { createSupabaseRSCClient } from "@/app/lib/supabaseServer";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 
 export const revalidate = 60;
 

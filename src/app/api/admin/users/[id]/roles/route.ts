@@ -1,7 +1,7 @@
 // app/api/admin/users/[id]/roles/route.ts
 import { NextResponse } from 'next/server';
-import { createSupabaseRouteClient } from '@/app/lib/supabaseServer';
-import { supabaseAdmin } from '@/app/lib/supabaseAdmin';
+import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
+import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 
 type Ctx = { params: Promise<{ id: string }> }; // ← params is a Promise
 
