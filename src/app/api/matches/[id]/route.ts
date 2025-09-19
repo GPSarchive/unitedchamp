@@ -4,17 +4,15 @@ import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/components/TournamentCURD/progression";
 
-type Ctx = { params: { id: string } };
-
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 const UPDATABLE_FIELDS = new Set<keyof any>([
   "status",
   "winner_team_id",
   "team_a_id",
   "team_b_id",
-  "match_date",    // allow updating date
-  "team_a_score",  // allow updating score
-  "team_b_score",  // allow updating score
+  "match_date", // allow updating date
+  "team_a_score", // allow updating score
+  "team_b_score", // allow updating score
   // add more if needed:
   // "tournament_id","stage_id","group_id","matchday","round","bracket_pos","venue"
 ]);
@@ -136,11 +134,14 @@ export async function HEAD() {
 /* ======================================
    PATCH /api/matches/:id  (admin)
    ====================================== */
-export async function PATCH(req: Request, ctx: Ctx) {
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> } // 👈 Next 15: params is a Promise
+) {
   try {
     ensureSameOrigin(req);
 
-    const { id: idParam } = ctx.params;
+    const { id: idParam } = await ctx.params; // 👈 await params
     const id = parsePositiveInt(idParam);
     if (!id) return jsonError(400, "Invalid id");
 
@@ -291,11 +292,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
    Block if match belongs to a tournament OR
    if it is referenced by other matches (as a source).
    ====================================== */
-export async function DELETE(req: Request, ctx: Ctx) {
+export async function DELETE(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> } // 👈 Next 15: params is a Promise
+) {
   try {
     ensureSameOrigin(req);
 
-    const { id: idParam } = ctx.params;
+    const { id: idParam } = await ctx.params; // 👈 await params
     const id = parsePositiveInt(idParam);
     if (!id) return jsonError(400, "Invalid id");
 

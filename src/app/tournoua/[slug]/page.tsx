@@ -13,7 +13,7 @@ import PlayerRow from "./components/PlayerRow";
 // Team views (prettier grouped layouts)
 import TeamsLeagueList from "./components/teams/leauge/TeamsLeagueList";
 import TeamsGroupsWithMatches from "./components/teams/groups/TeamsGroupsWithMatches";
-import ModernKnockoutTree from "@/app/dashboard/components/TournamentCURD/stages/KnockoutTree/ModernKnockoutTree.tsx";
+import ModernKnockoutTree from "@/app/dashboard/components/TournamentCURD/stages/KnockoutTree/ModernKnockoutTree";
 
 export const revalidate = 60;
 

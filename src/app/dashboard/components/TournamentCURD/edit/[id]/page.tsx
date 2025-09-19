@@ -1,7 +1,7 @@
 // app/components/DashboardPageComponents/TournamentCURD/edit/[id]/page.tsx
-import { getTournamentForEditAction } from '@/app/components/DashboardPageComponents/TournamentCURD/actions';
-import TournamentWizard from "@/app/components/DashboardPageComponents/TournamentCURD/TournamentWizard";
-import type { TeamDraft, DraftMatch } from "@/app/components/DashboardPageComponents/TournamentCURD/TournamentWizard";
+import { getTournamentForEditAction } from '@/app/dashboard/components/TournamentCURD/actions';
+import TournamentWizard from "@/app/dashboard/components/TournamentCURD/TournamentWizard";
+import type { TeamDraft, DraftMatch } from "@/app/dashboard/components/TournamentCURD/TournamentWizard";
 
 export default async function EditTournamentPage({
   params,

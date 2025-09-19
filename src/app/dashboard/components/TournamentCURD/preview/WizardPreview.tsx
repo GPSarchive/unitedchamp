@@ -4,7 +4,7 @@
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import MatchPlanner from "./MatchPlanner";
-import StagePreview from "../stages/StagePreview.tsx";
+import StagePreview from "../stages/StagePreview";
 
 export default function WizardPreview({
   payload,

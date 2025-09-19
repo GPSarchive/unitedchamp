@@ -1,6 +1,6 @@
 "use client";
 
-import type { TeamDraft } from "@/app/components/DashboardPageComponents/TournamentCURD/TournamentWizard";
+import type { TeamDraft } from "@/app/dashboard/components/TournamentCURD/TournamentWizard.tsx";
 
 export default function GroupsBoard({
   groupsArr,
