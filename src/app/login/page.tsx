@@ -66,7 +66,7 @@ function LoginContent() {
         <header className="header">
           <div className="logo">🏃‍♂️</div>
           <h1>Sign in</h1>
-          <p className="sub">Welcome back—let's get moving.</p>
+          <p className="sub">Welcome back</p>
         </header>
 
         {error && (
