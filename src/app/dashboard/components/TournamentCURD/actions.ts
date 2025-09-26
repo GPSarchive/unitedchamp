@@ -27,6 +27,15 @@ type DraftMatchServer = {
   team_a_id?: number | null;
   team_b_id?: number | null;
 
+  // DB identity if it already exists (filled in GET for edit)
+  db_id?: number | null;
+
+  // Live fields
+  status?: 'scheduled' | 'finished' | null;
+  team_a_score?: number | null;
+  team_b_score?: number | null;
+  winner_team_id?: number | null;
+
   // Transient links (by draft index)
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
@@ -35,7 +44,7 @@ type DraftMatchServer = {
   home_source_outcome?: 'W' | 'L' | null;
   away_source_outcome?: 'W' | 'L' | null;
 
-  // NEW: stable pointers the generator normalizes to
+  // Stable pointers the generator normalizes to
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
@@ -101,12 +110,20 @@ const DraftMatchSchema = z.object({
   team_a_id: z.number().int().nullable().optional(),
   team_b_id: z.number().int().nullable().optional(),
 
+  // db identity
+  db_id: z.number().int().nullable().optional(),
+
+  // live fields
+  status: z.enum(['scheduled','finished']).nullable().optional(),
+  team_a_score: z.number().int().nullable().optional(),
+  team_b_score: z.number().int().nullable().optional(),
+  winner_team_id: z.number().int().nullable().optional(),
+
+  // transient & stable KO
   home_source_match_idx: z.number().int().nullable().optional(),
   away_source_match_idx: z.number().int().nullable().optional(),
   home_source_outcome: z.enum(['W','L']).nullable().optional(),
   away_source_outcome: z.enum(['W','L']).nullable().optional(),
-
-  // NEW: allow the normalized stable pointers
   home_source_round: z.number().int().nullable().optional(),
   home_source_bracket_pos: z.number().int().nullable().optional(),
   away_source_round: z.number().int().nullable().optional(),
@@ -169,7 +186,7 @@ export async function createTournamentAction(formData: FormData) {
       winner_team_id: (payload as any).tournament?.winner_team_id ?? null,
     })
     .select('id, slug')
-  .single();
+    .single();
 
   if (tErr || !tRow) return { ok: false, error: tErr?.message || 'Failed to create tournament' };
 
@@ -195,6 +212,40 @@ export async function createTournamentAction(formData: FormData) {
     const found = stageRows.find(r => (r.ordering ?? i + 1) === (s.ordering ?? i + 1) && r.name === s.name && r.kind === s.kind);
     stageIdByIndex[i] = found!.id;
   });
+
+  // NEW: normalize KO configs -> persist from_stage_id AND advancers_total (for League→KO)
+  for (let i = 0; i < payload.stages.length; i++) {
+    const st = payload.stages[i];
+    if (st.kind !== 'knockout') continue;
+
+    const cfg = { ...(st.config ?? {}) } as any;
+    const fromIdx = Number(cfg.from_stage_idx ?? cfg.fromStageIdx);
+    const hasFromIdx = Number.isFinite(fromIdx);
+
+    if (hasFromIdx) {
+      const fromId = stageIdByIndex[fromIdx];
+      if (fromId) {
+        cfg.from_stage_id = fromId;
+        cfg.from_stage_idx = fromIdx; // keep idx for client too
+      }
+
+      // If the KO sources a LEAGUE, ensure advancers_total is present.
+      const srcKind = payload.stages[fromIdx]?.kind;
+      if (srcKind === 'league') {
+        // Migrate old UI knob if needed
+        if (cfg.advancers_total == null && cfg.advancers_per_group != null) {
+          cfg.advancers_total = Number(cfg.advancers_per_group);
+        }
+        // Safety fallback (prevents “all teams pass”)
+        if (cfg.advancers_total == null) cfg.advancers_total = 4;
+      }
+    }
+
+    await supabaseAdmin
+      .from('tournament_stages')
+      .update({ config: cfg })
+      .eq('id', stageIdByIndex[i]);
+  }
 
   // 3) Groups per groups-stage
   type GroupRecord = { id: number; stage_id: number; name: string };
@@ -246,7 +297,7 @@ export async function createTournamentAction(formData: FormData) {
     let inserted = false;
     for (let sIdx = 0; sIdx < payload.stages.length; sIdx++) {
       const s = payload.stages[sIdx];
-      const gIdx = t.groupsByStage?.[String(sIdx)]; // 🔐 string key
+      const gIdx = t.groupsByStage?.[String(sIdx)];
       if (s.kind === 'groups' && gIdx != null && gIdx >= 0) {
         participation.push({
           tournament_id: tRow.id,
@@ -279,7 +330,7 @@ export async function createTournamentAction(formData: FormData) {
     if (pErr) return { ok: false, error: pErr.message };
   }
 
-  // 5) Matches (from draft) — insert, then link sources by id
+  // 5) Matches (from draft) — insert, then link sources by id (with live fields)
   if (draftMatches.length) {
     const matchRows = draftMatches.map((m) => ({
       tournament_id: tRow.id,
@@ -290,7 +341,13 @@ export async function createTournamentAction(formData: FormData) {
       matchday: m.matchday ?? null,
       round: m.round ?? null,
       bracket_pos: m.bracket_pos ?? null,
-      status: 'scheduled',
+
+      // live fields
+      status: m.status ?? 'scheduled',
+      team_a_score: m.team_a_score ?? null,
+      team_b_score: m.team_b_score ?? null,
+      winner_team_id: m.winner_team_id ?? null,
+
       match_date: m.match_date ? new Date(m.match_date).toISOString() : null,
 
       // IDs are linked in the second pass
@@ -299,7 +356,7 @@ export async function createTournamentAction(formData: FormData) {
       away_source_match_id: null,
       away_source_outcome: m.away_source_outcome ?? null,
 
-      // NEW: persist stable pointers (round+pos)
+      // stable pointers
       home_source_round: m.home_source_round ?? null,
       home_source_bracket_pos: m.home_source_bracket_pos ?? null,
       away_source_round: m.away_source_round ?? null,
@@ -367,7 +424,7 @@ export async function createTournamentAction(formData: FormData) {
         home_source_match_id?: number | null;
         home_source_outcome?: 'W' | 'L' | null;
         away_source_match_id?: number | null;
-        away_source_outcome?: 'W' | 'L' | null;
+        away_source_outcome?: 'W' | 'L' | 'L' | null;
         home_source_round?: number | null;
         home_source_bracket_pos?: number | null;
         away_source_round?: number | null;
@@ -486,18 +543,20 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
 
   if (pErr) return { ok: false, error: pErr.message };
 
-  // Matches (order to keep KO stable too) — include ids, source ids AND stable pointers
+  // Matches (include live fields; order stable for source indices)
   const { data: matches, error: mErr } = await supabaseAdmin
     .from('matches')
     .select(`
-      id,stage_id,group_id,team_a_id,team_b_id,matchday,round,bracket_pos,match_date,status,
-      home_source_match_id,home_source_outcome,away_source_match_id,away_source_outcome,
-      home_source_round,home_source_bracket_pos,away_source_round,away_source_bracket_pos
+      id, stage_id, group_id, team_a_id, team_b_id, matchday, round, bracket_pos, match_date,
+      status, team_a_score, team_b_score, winner_team_id,
+      home_source_match_id, home_source_outcome, away_source_match_id, away_source_outcome,
+      home_source_round, home_source_bracket_pos, away_source_round, away_source_bracket_pos
     `)
     .eq('tournament_id', tournamentId)
-    .order('round', { ascending: true })
-    .order('bracket_pos', { ascending: true })
-    .order('matchday', { ascending: true });
+    .order('round', { ascending: true, nullsFirst: true })
+    .order('bracket_pos', { ascending: true, nullsFirst: true })
+    .order('matchday', { ascending: true, nullsFirst: true })
+    .order('id', { ascending: true });
 
   if (mErr) return { ok: false, error: mErr.message };
 
@@ -510,6 +569,28 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
     const arr = groupsByStageId.get(g.stage_id) ?? [];
     arr.push({ id: g.id, name: g.name });
     groupsByStageId.set(g.stage_id, arr);
+  });
+
+  // Build stages payload with DB id and backfill from_stage_idx from any stored from_stage_id
+  const stagesForPayload = (stages ?? []).map((s, i) => {
+    const cfg = { ...(s.config ?? {}) } as any;
+    if (s.kind === 'knockout') {
+      const fsId = Number(cfg.from_stage_id ?? cfg.fromStageId);
+      if (Number.isFinite(fsId) && cfg.from_stage_idx == null) {
+        const idx = stageIndexById.get(fsId);
+        if (idx != null) cfg.from_stage_idx = idx;
+      }
+    }
+    return {
+      id: s.id, // include DB id for client (Planner reseed button)
+      name: s.name,
+      kind: s.kind,
+      ordering: s.ordering ?? i + 1,
+      config: cfg,
+      groups: s.kind === 'groups'
+        ? (groupsByStageId.get(s.id) ?? []).map(g => ({ name: g.name }))
+        : undefined,
+    };
   });
 
   // Build payload
@@ -525,15 +606,7 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
       end_date: t.end_date,
       winner_team_id: t.winner_team_id,
     },
-    stages: (stages ?? []).map((s, i) => ({
-      name: s.name,
-      kind: s.kind,
-      ordering: s.ordering ?? i + 1,
-      config: s.config ?? null,
-      groups: s.kind === 'groups'
-        ? (groupsByStageId.get(s.id) ?? []).map(g => ({ name: g.name }))
-        : undefined,
-    })),
+    stages: stagesForPayload as any,
     tournament_team_ids: undefined,
   } as any;
 
@@ -552,7 +625,7 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
           const stageGroups = groupsByStageId.get(row.stage_id) ?? [];
           const gIdx = stageGroups.findIndex(g => g.id === row.group_id);
           if (gIdx >= 0) {
-            (td.groupsByStage as any)[String(sIdx)] = gIdx; // 🔐 string key
+            (td.groupsByStage as any)[String(sIdx)] = gIdx; // string key
           }
         }
       }
@@ -566,8 +639,8 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
     if ((m as any).id != null) indexById.set((m as any).id, i);
   });
 
-  // Rebuild draftMatches[] from matches (including source *_idx AND stable pointers)
-  const draftMatches: DraftMatchServer[] = (matches ?? []).map(m => {
+  // Rebuild draftMatches[] from matches (including db_id, live fields, source *_idx, stable pointers)
+  const draftMatches: DraftMatchServer[] = (matches ?? []).map((m: any) => {
     const sIdx = m.stage_id ? stageIndexById.get(m.stage_id) ?? 0 : 0;
     let groupIdx: number | null = null;
     if (m.group_id && m.stage_id) {
@@ -576,6 +649,7 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
       groupIdx = idx >= 0 ? idx : null;
     }
     return {
+      db_id: m.id,
       stageIdx: sIdx,
       groupIdx,
       round: m.round ?? null,
@@ -583,15 +657,22 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
       matchday: m.matchday ?? null,
       team_a_id: m.team_a_id ?? null,
       team_b_id: m.team_b_id ?? null,
+
+      status: m.status ?? 'scheduled',
+      team_a_score: m.team_a_score ?? null,
+      team_b_score: m.team_b_score ?? null,
+      winner_team_id: m.winner_team_id ?? null,
+
       home_source_match_idx: m.home_source_match_id != null ? (indexById.get(m.home_source_match_id) ?? null) : null,
       away_source_match_idx: m.away_source_match_id != null ? (indexById.get(m.away_source_match_id) ?? null) : null,
-      home_source_outcome: (m as any).home_source_outcome ?? null,
-      away_source_outcome: (m as any).away_source_outcome ?? null,
-      // keep the stable pointers too
-      home_source_round: (m as any).home_source_round ?? null,
-      home_source_bracket_pos: (m as any).home_source_bracket_pos ?? null,
-      away_source_round: (m as any).away_source_round ?? null,
-      away_source_bracket_pos: (m as any).away_source_bracket_pos ?? null,
+      home_source_outcome: m.home_source_outcome ?? null,
+      away_source_outcome: m.away_source_outcome ?? null,
+
+      home_source_round: m.home_source_round ?? null,
+      home_source_bracket_pos: m.home_source_bracket_pos ?? null,
+      away_source_round: m.away_source_round ?? null,
+      away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+
       match_date: m.match_date ?? null,
     };
   });
@@ -613,7 +694,7 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
 }
 
 /* =========================
-   UPDATE (replace children)
+   UPDATE (replace children; persist live fields)
    ========================= */
 
 export async function updateTournamentAction(formData: FormData) {
@@ -710,6 +791,37 @@ export async function updateTournamentAction(formData: FormData) {
     stageIdByIndex[i] = found!.id;
   });
 
+  // NEW: normalize KO configs -> persist from_stage_id AND advancers_total (for League→KO)
+  for (let i = 0; i < payload.stages.length; i++) {
+    const st = payload.stages[i];
+    if (st.kind !== 'knockout') continue;
+
+    const cfg = { ...(st.config ?? {}) } as any;
+    const fromIdx = Number(cfg.from_stage_idx ?? cfg.fromStageIdx);
+    const hasFromIdx = Number.isFinite(fromIdx);
+
+    if (hasFromIdx) {
+      const fromId = stageIdByIndex[fromIdx];
+      if (fromId) {
+        cfg.from_stage_id = fromId;
+        cfg.from_stage_idx = fromIdx; // keep idx for client too
+      }
+
+      const srcKind = payload.stages[fromIdx]?.kind;
+      if (srcKind === 'league') {
+        if (cfg.advancers_total == null && cfg.advancers_per_group != null) {
+          cfg.advancers_total = Number(cfg.advancers_per_group);
+        }
+        if (cfg.advancers_total == null) cfg.advancers_total = 4;
+      }
+    }
+
+    await supabaseAdmin
+      .from('tournament_stages')
+      .update({ config: cfg })
+      .eq('id', stageIdByIndex[i]);
+  }
+
   type GroupRecord = { id: number; stage_id: number; name: string };
   const allGroups: GroupRecord[] = [];
 
@@ -760,7 +872,7 @@ export async function updateTournamentAction(formData: FormData) {
     let inserted = false;
     for (let sIdx = 0; sIdx < payload.stages.length; sIdx++) {
       const s = payload.stages[sIdx];
-      const gIdx = t.groupsByStage?.[String(sIdx)]; // 🔐 string key
+      const gIdx = t.groupsByStage?.[String(sIdx)];
       if (s.kind === 'groups' && gIdx != null && gIdx >= 0) {
         participation.push({
           tournament_id: tournamentId,
@@ -793,7 +905,7 @@ export async function updateTournamentAction(formData: FormData) {
     if (pErr) return { ok: false, error: pErr.message };
   }
 
-  // Matches — insert, then link sources (IDs + stable pointers)
+  // Matches — insert, then link sources (IDs + stable pointers) with live fields
   if (draftMatches.length) {
     const matchRows = draftMatches.map((m) => ({
       tournament_id: tournamentId,
@@ -804,7 +916,13 @@ export async function updateTournamentAction(formData: FormData) {
       matchday: m.matchday ?? null,
       round: m.round ?? null,
       bracket_pos: m.bracket_pos ?? null,
-      status: 'scheduled',
+
+      // live fields
+      status: m.status ?? 'scheduled',
+      team_a_score: m.team_a_score ?? null,
+      team_b_score: m.team_b_score ?? null,
+      winner_team_id: m.winner_team_id ?? null,
+
       match_date: m.match_date ? new Date(m.match_date).toISOString() : null,
 
       home_source_match_id: null,
@@ -812,7 +930,7 @@ export async function updateTournamentAction(formData: FormData) {
       away_source_match_id: null,
       away_source_outcome: m.away_source_outcome ?? null,
 
-      // NEW: persist stable pointers
+      // stable pointers
       home_source_round: m.home_source_round ?? null,
       home_source_bracket_pos: m.home_source_bracket_pos ?? null,
       away_source_round: m.away_source_round ?? null,
@@ -856,7 +974,7 @@ export async function updateTournamentAction(formData: FormData) {
           }
         }
 
-        // If no transient idx, keep any stable pointers provided
+        // keep any explicit stable pointers provided
         upd.home_source_round ??= m.home_source_round ?? null;
         upd.home_source_bracket_pos ??= m.home_source_bracket_pos ?? null;
         upd.away_source_round ??= m.away_source_round ?? null;

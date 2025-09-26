@@ -1,9 +1,10 @@
+// app/components/DashboardPageComponents/TournamentCURD/preview/TournamentFlowPreview.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/lib/supabase/supabaseClient";
 
-// ⬇️ NEW: view-only bracket component
+// ⬇️ view-only bracket component
 import ModernKnockoutViewer from "./ModernKnockoutViewer";
 
 /* =========================
@@ -45,8 +46,10 @@ type BracketMatch = {
 };
 
 type GroupView = {
-  key: string; // stable key
-  title: string; // e.g., "Group A" or custom name
+  key: string;               // `${stageId}-${groupIndex}`
+  title: string;             // "Group A" or custom
+  groupIndex: number;        // 0-based index (UI/index world)
+  groupIdFk: number | null;  // FK id from tournament_groups (0 for league, null if not present)
   slots: Array<{ slot: number; team: TeamLite | null }>;
 };
 
@@ -89,6 +92,24 @@ type DraftProps = {
 type Props = DBProps | DraftProps;
 
 /* =========================
+   Standings type
+   ========================= */
+type StandingRow = {
+  stage_id: number;
+  group_id: number | null;
+  team_id: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gf: number;
+  ga: number;
+  gd: number;
+  points: number;
+  rank: number;
+};
+
+/* =========================
    UI helpers
    ========================= */
 function KindBadge({ kind }: { kind: StageKind }) {
@@ -110,6 +131,54 @@ function StatChip({ children }: { children: React.ReactNode }) {
 
 function letterFromIndex(i: number) {
   return String.fromCharCode(65 + (i ?? 0)); // 0 -> A
+}
+
+function StandingsTable({
+  rows,
+  teamsMap,
+}: {
+  rows: StandingRow[];
+  teamsMap: Record<number, TeamLite>;
+}) {
+  if (!rows || rows.length === 0) return null;
+  return (
+    <div className="mt-3 rounded-lg bg-black/20 ring-1 ring-white/10 overflow-hidden">
+      <table className="min-w-full text-sm">
+        <thead className="bg-white/5 text-white/80">
+          <tr>
+            <th className="px-2 py-1 text-left">Rank</th>
+            <th className="px-2 py-1 text-left">Team</th>
+            <th className="px-2 py-1 text-right">Played</th>
+            <th className="px-2 py-1 text-right">Wins</th>
+            <th className="px-2 py-1 text-right">Draws</th>
+            <th className="px-2 py-1 text-right">Losses</th>
+            <th className="px-2 py-1 text-right">Goals For</th>
+            <th className="px-2 py-1 text-right">Goals Against</th>
+            <th className="px-2 py-1 text-right">Goal Difference</th>
+            <th className="px-2 py-1 text-right">Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.team_id} className="odd:bg-white/0 even:bg-white/[0.03]">
+              <td className="px-2 py-1">{r.rank}</td>
+              <td className="px-2 py-1">
+                {teamsMap[r.team_id]?.name ?? `#${r.team_id}`}
+              </td>
+              <td className="px-2 py-1 text-right">{r.played}</td>
+              <td className="px-2 py-1 text-right">{r.won}</td>
+              <td className="px-2 py-1 text-right">{r.drawn}</td>
+              <td className="px-2 py-1 text-right">{r.lost}</td>
+              <td className="px-2 py-1 text-right">{r.gf}</td>
+              <td className="px-2 py-1 text-right">{r.ga}</td>
+              <td className="px-2 py-1 text-right">{r.gd}</td>
+              <td className="px-2 py-1 text-right font-semibold">{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /* =========================
@@ -151,9 +220,7 @@ async function fetchDbFlow(tournamentId: number) {
       .in("stage_id", stageIds);
 
     (stageIds ?? []).forEach((sid) => {
-      // Work with any[] then map to our exact shape
       const rawForStage = ((ms ?? []) as any[]).filter((m) => m.stage_id === sid);
-
       const finished = rawForStage.filter((m) => m.status === "finished").length;
 
       statsByStage.set(sid, {
@@ -172,7 +239,6 @@ async function fetchDbFlow(tournamentId: number) {
             a.id - b.id
         );
 
-      // ✅ Shape to BracketMatch[]
       const shaped: BracketMatch[] = sortedRaw.map((m) => ({
         id: Number(m.id),
         stage_id: Number(m.stage_id),
@@ -198,11 +264,23 @@ async function fetchDbFlow(tournamentId: number) {
     .in("stage_id", stageIds)
     .order("ordering", { ascending: true });
 
+  // Names by stage (ordered)
   const namesByStageId: Record<number, string[]> = {};
+  // FK ids by stage (ordered)
+  const groupIdsByStageId: Record<number, number[]> = {};
+  // Raw rows grouped by stage
+  const groupedByStage = new Map<number, any[]>();
+
   (groupRows ?? []).forEach((g: any) => {
-    const arr = namesByStageId[g.stage_id] ?? [];
-    arr.push(String(g.name || ""));
-    namesByStageId[g.stage_id] = arr;
+    const list = groupedByStage.get(g.stage_id) ?? [];
+    list.push(g);
+    groupedByStage.set(g.stage_id, list);
+  });
+
+  groupedByStage.forEach((list, sid) => {
+    const sorted = list.slice().sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
+    namesByStageId[sid] = sorted.map((x) => String(x.name || ""));
+    groupIdsByStageId[sid] = sorted.map((x) => Number(x.id));
   });
 
   // 4) Stage slots (group_id/slot_id in your schema)
@@ -224,7 +302,29 @@ async function fetchDbFlow(tournamentId: number) {
     statsByStage.set(r.stage_id, s);
   });
 
-  // 5) Resolve team names — collect from both slots and matches
+  // 4b) Standings per stage/group (order by group then rank)
+  const { data: standingsRows } = await supabase
+    .from("stage_standings")
+    .select(
+      "stage_id, group_id, team_id, played, won, drawn, lost, gf, ga, gd, points, rank"
+    )
+    .in("stage_id", stageIds)
+    .order("group_id", { ascending: true, nullsFirst: true })
+    .order("rank", { ascending: true });
+
+  // stageId -> (groupKey -> rows[]), where groupKey is whatever was stored (FK id or 0)
+  const standingsByStage = new Map<number, Map<number, StandingRow[]>>();
+  (standingsRows ?? []).forEach((r: any) => {
+    const sid = Number(r.stage_id);
+    const groupKey = Number(r.group_id ?? 0); // 0 for league; could be FK or index depending on writer
+    if (!standingsByStage.has(sid)) standingsByStage.set(sid, new Map());
+    const byGroup = standingsByStage.get(sid)!;
+    const arr = byGroup.get(groupKey) ?? [];
+    arr.push(r as StandingRow);
+    byGroup.set(groupKey, arr);
+  });
+
+  // 5) Resolve team names — collect from both slots and matches and standings
   const teamIds = new Set<number>();
   (slotRows ?? []).forEach((r: any) => {
     if (r.team_id != null) teamIds.add(r.team_id);
@@ -234,6 +334,9 @@ async function fetchDbFlow(tournamentId: number) {
       if (m.team_a_id != null) teamIds.add(m.team_a_id);
       if (m.team_b_id != null) teamIds.add(m.team_b_id);
     });
+  });
+  (standingsRows ?? []).forEach((r: any) => {
+    if (r.team_id != null) teamIds.add(Number(r.team_id));
   });
 
   const teamsMap: Record<number, TeamLite> = {};
@@ -247,47 +350,96 @@ async function fetchDbFlow(tournamentId: number) {
     });
   }
 
-  // 6) Build per-stage group views
+  // 6) Build per-stage group views (resilient: FK id OR index)
   const groupsByStage = new Map<number, GroupView[]>();
 
   (stages ?? []).forEach((stg: any) => {
     if (stg.kind === "groups" || stg.kind === "league") {
       const allSlots = (slotRows ?? []).filter((r: any) => r.stage_id === stg.id);
-      const maxByGroup = new Map<number, number>();
+
+      // Compute max slot per groupKey in slots
+      const maxByGroupKey = new Map<number, number>();
       allSlots.forEach((r: any) => {
-        const cur = maxByGroup.get(r.group_id) ?? 0;
-        maxByGroup.set(r.group_id, Math.max(cur, Number(r.slot_id || 0)));
+        const key = Number(r.group_id ?? 0);
+        const cur = maxByGroupKey.get(key) ?? 0;
+        maxByGroupKey.set(key, Math.max(cur, Number(r.slot_id || 0)));
       });
 
+      // Prefer real group rows; if none exist, infer groups from slot group keys
       const stageGroupNames = namesByStageId[stg.id] ?? [];
+      const stageGroupFkIds = groupIdsByStageId[stg.id] ?? [];
 
-      const groupIndices =
-        stg.kind === "league"
-          ? [0]
-          : Array.from(new Set(allSlots.map((r: any) => Number(r.group_id || 0)))).sort((a, b) => a - b);
+      // Infer group count if needed (only for groups kind)
+      let groupCount: number;
+      if (stg.kind === "league") {
+        groupCount = 1;
+      } else if (stageGroupFkIds.length > 0) {
+        groupCount = stageGroupFkIds.length;
+      } else {
+        // infer from slots: if slots use indexes, keys will be [0..N-1] (or sparse)
+        const keys = Array.from(
+          new Set(allSlots.map((r: any) => Number(r.group_id ?? 0)))
+        );
+        groupCount = keys.length ? Math.max(...keys) + 1 : 1;
+      }
 
-      const views: GroupView[] = groupIndices.map((gIdx) => {
+      const views: GroupView[] = Array.from({ length: groupCount }, (_, gIdx) => {
         const title =
           stg.kind === "league"
             ? "League"
-            : stageGroupNames[gIdx] || `Group ${letterFromIndex(gIdx)}`;
+            : (stageGroupNames[gIdx] || `Group ${letterFromIndex(gIdx)}`);
 
-        const maxSlots = maxByGroup.get(gIdx) ?? 0;
+        const fkId =
+          stg.kind === "league"
+            ? 0
+            : (stageGroupFkIds[gIdx] ?? null);
+
+        const maxSlots = (() => {
+          // accept either FK or index for the slot group key
+          if (stg.kind === "league") return maxByGroupKey.get(0) ?? 0;
+          const a = fkId != null ? (maxByGroupKey.get(fkId) ?? 0) : 0;
+          const b = maxByGroupKey.get(gIdx) ?? 0;
+          return Math.max(a, b);
+        })();
+
         const slots: Array<{ slot: number; team: TeamLite | null }> = [];
-
         for (let s = 1; s <= Math.max(maxSlots, 1); s++) {
-          const row = allSlots.find(
-            (r: any) => Number(r.group_id || 0) === gIdx && Number(r.slot_id || 0) === s
-          );
-          const team =
-            row?.team_id != null ? teamsMap[row.team_id] ?? null : null;
+          const row =
+            stg.kind === "league"
+              ? allSlots.find((r: any) => Number(r.group_id ?? 0) === 0 && Number(r.slot_id || 0) === s)
+              : allSlots.find((r: any) => {
+                  const key = Number(r.group_id ?? 0);
+                  // “belongs if” key equals FK id OR equals index
+                  return (fkId != null ? key === fkId : false) || key === gIdx
+                    ? Number(r.slot_id || 0) === s
+                    : false;
+                });
+
+          const team = row?.team_id != null ? (teamsMap[row.team_id] ?? null) : null;
           slots.push({ slot: s, team });
         }
 
-        return { key: `${stg.id}-${gIdx}`, title, slots };
+        return { key: `${stg.id}-${gIdx}`, title, groupIndex: gIdx, groupIdFk: fkId, slots };
       });
 
       groupsByStage.set(stg.id, views);
+
+      // Update slot counters based on realized slots
+      const s = statsByStage.get(stg.id) ?? {
+        matchesTotal: 0,
+        matchesFinished: 0,
+        slotsTotal: 0,
+        slotsFilled: 0,
+      };
+      let total = 0;
+      let filled = 0;
+      views.forEach((v) => {
+        total += v.slots.length;
+        filled += v.slots.filter((x) => x.team != null).length;
+      });
+      s.slotsTotal = total;
+      s.slotsFilled = filled;
+      statsByStage.set(stg.id, s);
     }
   });
 
@@ -297,6 +449,7 @@ async function fetchDbFlow(tournamentId: number) {
     groupsByStage,
     matchesByStage,
     teamsMap,
+    standingsByStage,
   };
 }
 
@@ -321,6 +474,7 @@ function computeDraft(
   const groupsByStage = new Map<number, GroupView[]>();
   const matchesByStage = new Map<number, BracketMatch[]>();
   const teamsMap: Record<number, TeamLite> = {};
+  const standingsByStage = new Map<number, Map<number, StandingRow[]>>(); // empty in draft
 
   teams.forEach((t) => {
     teamsMap[t.id] = { id: t.id, name: t.name ?? `#${t.id}`, logo: t.logo ?? null, seed: t.seed ?? null };
@@ -373,14 +527,20 @@ function computeDraft(
         const s = statsByStage.get(stg.id)!;
         s.slotsTotal += slots.length;
         s.slotsFilled += slots.length;
-        return { key: `${stg.id}-${gIdx}`, title, slots };
+        return {
+          key: `${stg.id}-${gIdx}`,
+          title,
+          groupIndex: gIdx,
+          groupIdFk: stg.kind === "league" ? 0 : null, // draft has no FK; league uses 0
+          slots,
+        };
       });
 
       groupsByStage.set(stg.id, views);
     }
   });
 
-  return { stages, statsByStage, groupsByStage, matchesByStage, teamsMap };
+  return { stages, statsByStage, groupsByStage, matchesByStage, teamsMap, standingsByStage };
 }
 
 /* =========================
@@ -394,6 +554,8 @@ export default function TournamentFlowPreview(props: Props) {
   const [groupsByStage, setGroupsByStage] = useState<Map<number, GroupView[]>>(new Map());
   const [matchesByStage, setMatchesByStage] = useState<Map<number, BracketMatch[]>>(new Map());
   const [teamsMap, setTeamsMap] = useState<Record<number, TeamLite>>({});
+  const [standingsByStage, setStandingsByStage] =
+    useState<Map<number, Map<number, StandingRow[]>>>(new Map());
   const [loading, setLoading] = useState(isDbMode);
   const [error, setError] = useState<string | null>(null);
 
@@ -405,15 +567,21 @@ export default function TournamentFlowPreview(props: Props) {
       setLoading(true);
       setError(null);
       try {
-        const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap } = await fetchDbFlow(
-          props.tournamentId
-        );
+        const {
+          stages,
+          statsByStage,
+          groupsByStage,
+          matchesByStage,
+          teamsMap,
+          standingsByStage,
+        } = await fetchDbFlow((props as DBProps).tournamentId);
         if (!stop) {
           setDbStages(stages);
           setStatsByStage(statsByStage);
           setGroupsByStage(groupsByStage);
           setMatchesByStage(matchesByStage);
           setTeamsMap(teamsMap);
+          setStandingsByStage(standingsByStage);
         }
       } catch (e: any) {
         if (!stop) setError(e?.message ?? String(e));
@@ -426,53 +594,68 @@ export default function TournamentFlowPreview(props: Props) {
       stop = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDbMode, isDbMode ? props.tournamentId : null]);
+  }, [isDbMode, isDbMode ? (props as DBProps).tournamentId : null]);
 
   // realtime in DB mode
   useEffect(() => {
     if (!isDbMode) return;
+    const tid = (props as DBProps).tournamentId;
     const channel = supabase
-      .channel(`tflow_${props.tournamentId}`)
+      .channel(`tflow_${tid}`)
       .on(
         "postgres_changes",
-        { schema: "public", event: "*", table: "matches", filter: `tournament_id=eq.${props.tournamentId}` },
+        { schema: "public", event: "*", table: "matches", filter: `tournament_id=eq.${tid}` },
         async () => {
-          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap } = await fetchDbFlow(
-            props.tournamentId
-          );
+          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap, standingsByStage } =
+            await fetchDbFlow(tid);
           setDbStages(stages);
           setStatsByStage(statsByStage);
           setGroupsByStage(groupsByStage);
           setMatchesByStage(matchesByStage);
           setTeamsMap(teamsMap);
+          setStandingsByStage(standingsByStage);
         }
       )
       .on(
         "postgres_changes",
         { schema: "public", event: "*", table: "stage_slots" },
         async () => {
-          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap } = await fetchDbFlow(
-            props.tournamentId
-          );
+          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap, standingsByStage } =
+            await fetchDbFlow(tid);
           setDbStages(stages);
           setStatsByStage(statsByStage);
           setGroupsByStage(groupsByStage);
           setMatchesByStage(matchesByStage);
           setTeamsMap(teamsMap);
+          setStandingsByStage(standingsByStage);
         }
       )
       .on(
         "postgres_changes",
         { schema: "public", event: "*", table: "tournament_groups" },
         async () => {
-          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap } = await fetchDbFlow(
-            props.tournamentId
-          );
+          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap, standingsByStage } =
+            await fetchDbFlow(tid);
           setDbStages(stages);
           setStatsByStage(statsByStage);
           setGroupsByStage(groupsByStage);
           setMatchesByStage(matchesByStage);
           setTeamsMap(teamsMap);
+          setStandingsByStage(standingsByStage);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { schema: "public", event: "*", table: "stage_standings" },
+        async () => {
+          const { stages, statsByStage, groupsByStage, matchesByStage, teamsMap, standingsByStage } =
+            await fetchDbFlow(tid);
+          setDbStages(stages);
+          setStatsByStage(statsByStage);
+          setGroupsByStage(groupsByStage);
+          setMatchesByStage(matchesByStage);
+          setTeamsMap(teamsMap);
+          setStandingsByStage(standingsByStage);
         }
       )
       .subscribe();
@@ -480,26 +663,40 @@ export default function TournamentFlowPreview(props: Props) {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDbMode, isDbMode ? props.tournamentId : null]);
+  }, [isDbMode, isDbMode ? (props as DBProps).tournamentId : null]);
 
   const view = useMemo(() => {
     if (isDbMode) {
       return {
-        title: `Tournament #${props.tournamentId}`,
+        title: `Tournament #${(props as DBProps).tournamentId}`,
         stages: dbStages,
         statsByStage,
         groupsByStage,
         matchesByStage,
         teamsMap,
+        standingsByStage,
       };
     }
-    const draft = computeDraft((props as DraftProps).payload, (props as DraftProps).teams, (props as DraftProps).draftMatches);
+    const draft = computeDraft(
+      (props as DraftProps).payload,
+      (props as DraftProps).teams,
+      (props as DraftProps).draftMatches
+    );
     return {
       title: (props as DraftProps).payload.tournament?.name || "New tournament",
       ...draft,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDbMode, dbStages, statsByStage, groupsByStage, matchesByStage, teamsMap, isDbMode ? props : (props as DraftProps).payload]);
+  }, [
+    isDbMode,
+    dbStages,
+    statsByStage,
+    groupsByStage,
+    matchesByStage,
+    teamsMap,
+    standingsByStage,
+    isDbMode ? (props as DBProps).tournamentId : (props as DraftProps).payload,
+  ]);
 
   if (loading) return <div className={(props as any).className}>Loading tournament flow…</div>;
   if (error)
@@ -554,36 +751,52 @@ export default function TournamentFlowPreview(props: Props) {
                         title="Bracket"
                         matches={bracketMatches}
                         teamsMap={stageTeamsMap}
-                        // optional: click to open a modal / route
-                        onMatchClick={(m) => {
-                          // console.log("match", m.id);
-                        }}
+                        onMatchClick={() => {}}
                       />
                     </div>
                   )}
 
-                  {/* 🟢 Groups/League contents */}
+                  {/* 🟢 Groups/League contents + standings */}
                   {(stg.kind === "groups" || stg.kind === "league") && groupViews.length > 0 && (
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {groupViews.map((g) => (
-                        <div key={g.key} className="rounded-xl bg-black/20 ring-1 ring-white/10 p-3">
-                          <div className="text-sm font-medium mb-2">{g.title}</div>
-                          <ul className="space-y-1">
-                            {g.slots.length === 0 ? (
-                              <li className="text-white/60 text-xs">No teams assigned yet.</li>
-                            ) : (
-                              g.slots.map((s) => (
-                                <li key={s.slot} className="flex items-center justify-between text-sm">
-                                  <span className="text-white/60">#{s.slot}</span>
-                                  <span className="font-medium">
-                                    {s.team ? s.team.name : <span className="text-white/50">TBD</span>}
-                                  </span>
-                                </li>
-                              ))
-                            )}
-                          </ul>
-                        </div>
-                      ))}
+                      {groupViews.map((g) => {
+                        // Prefer FK → length-aware fallback to index; league uses key 0
+                        const sMap = view.standingsByStage.get(stg.id);
+                        const rows =
+                          stg.kind === "league"
+                            ? (sMap?.get(0) ?? [])
+                            : (() => {
+                                const byFk = g.groupIdFk != null ? (sMap?.get(g.groupIdFk) ?? []) : [];
+                                if (byFk.length) return byFk;
+                                const byIdx = sMap?.get(g.groupIndex) ?? [];
+                                return byIdx;
+                              })();
+
+                        return (
+                          <div key={g.key} className="rounded-xl bg-black/20 ring-1 ring-white/10 p-3">
+                            <div className="text-sm font-medium mb-2">{g.title}</div>
+
+                            {/* Optional: existing slots list */}
+                            <ul className="space-y-1">
+                              {g.slots.length === 0 ? (
+                                <li className="text-white/60 text-xs">No teams assigned yet.</li>
+                              ) : (
+                                g.slots.map((s) => (
+                                  <li key={s.slot} className="flex items-center justify-between text-sm">
+                                    <span className="text-white/60">#{s.slot}</span>
+                                    <span className="font-medium">
+                                      {s.team ? s.team.name : <span className="text-white/50">TBD</span>}
+                                    </span>
+                                  </li>
+                                ))
+                              )}
+                            </ul>
+
+                            {/* Standings for this group (FK-first, index fallback; league=0) */}
+                            <StandingsTable rows={rows} teamsMap={stageTeamsMap} />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

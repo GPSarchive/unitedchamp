@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 
 type TeamLite = { id: number; name: string; logo: string | null } | null;
 
@@ -10,7 +9,7 @@ type PlayerLite = {
   id: number;
   first_name: string;
   last_name: string;
-  photo: string;
+  photo: string;          // can be storage path (e.g., "players/uuid.jpg") or full URL
   position: string;
   height_cm: number | null;
   age: number | null;
@@ -25,18 +24,105 @@ type PlayerLite = {
   best_gk: number;
 };
 
-export default function PlayersClient({
-  initialPlayers = [],
+// --- helpers ---
+
+const BUCKET = "GPSarchive's Project"; // your current bucket id
+
+function isStoragePath(v: string | null | undefined) {
+  if (!v) return false;
+  // treat as storage path if it isn't absolute ("http(s)://") and isn't root-relative ("/...")
+  return !/^https?:\/\//i.test(v) && !v.startsWith("/");
+}
+
+function useSignedUrl(pathOrUrl: string | null | undefined, bucket = BUCKET) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+    async function run() {
+      if (!pathOrUrl) {
+        setUrl(null);
+        return;
+      }
+      // Already a usable URL (absolute or root-relative)
+      if (!isStoragePath(pathOrUrl)) {
+        setUrl(pathOrUrl);
+        return;
+      }
+      // Need a signed URL for a storage object path
+      const u = new URL("/api/storage/sign", window.location.origin);
+      u.searchParams.set("bucket", bucket);
+      u.searchParams.set("path", pathOrUrl);
+      const res = await fetch(u.toString(), { credentials: "include" });
+      const data = await res.json();
+      if (!ignore) setUrl(data?.signedUrl ?? null);
+    }
+    run();
+    return () => {
+      ignore = true;
+    };
+  }, [pathOrUrl, bucket]);
+
+  return url;
+}
+
+// Plain <img> that auto-signs when given a storage path.
+// Avoids next/image’s loader (which requires an absolute URL).
+function SignedImg({
+  src,
+  alt,
+  className,
+  bucket = BUCKET,
+  width,
+  height,
+  sizes,
+  style,
 }: {
-  initialPlayers?: PlayerLite[];
+  src: string | null | undefined;
+  alt: string;
+  className?: string;
+  bucket?: string;
+  width?: number;
+  height?: number;
+  sizes?: string;
+  style?: React.CSSProperties;
 }) {
+  const url = useSignedUrl(src ?? null, bucket);
+  if (!url) {
+    // lightweight placeholder box to preserve layout
+    return (
+      <div
+        className={className}
+        style={{
+          backgroundColor: "rgba(255,255,255,0.06)",
+          borderRadius: 8,
+          ...(style || {}),
+        }}
+        aria-label="image placeholder"
+      />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className={className}
+      width={width}
+      height={height}
+      // sizes is ignored by <img>, but we keep the prop for parity if you later switch back to next/image
+      style={style}
+      loading="lazy"
+      decoding="async"
+    />
+  );
+}
+
+export default function PlayersClient({ initialPlayers = [] }: { initialPlayers?: PlayerLite[] }) {
   // Always have a safe array
   const base = Array.isArray(initialPlayers) ? initialPlayers : [];
 
   const [q, setQ] = useState("");
-  const [activeId, setActiveId] = useState<number | null>(
-    base.length ? base[0].id : null
-  );
+  const [activeId, setActiveId] = useState<number | null>(base.length ? base[0].id : null);
 
   // Alphabetical + search filter
   const players = useMemo(() => {
@@ -113,12 +199,8 @@ export default function PlayersClient({
             <div className="divide-y divide-white/10">
               {players.map((p, idx) => {
                 const prev = players[idx - 1];
-                const letter = (p.last_name || p.first_name || "?")
-                  .charAt(0)
-                  .toUpperCase();
-                const prevLetter = (prev?.last_name || prev?.first_name || "")
-                  .charAt(0)
-                  .toUpperCase();
+                const letter = (p.last_name || p.first_name || "?").charAt(0).toUpperCase();
+                const prevLetter = (prev?.last_name || prev?.first_name || "").charAt(0).toUpperCase();
                 const showLetter = !prev || prevLetter !== letter;
 
                 return (
@@ -139,12 +221,10 @@ export default function PlayersClient({
                       }`}
                     >
                       <div className="relative w-12 h-12 overflow-hidden rounded-md bg-white/10 shrink-0">
-                        <Image
+                        <SignedImg
                           src={p.photo}
                           alt={`${p.first_name} ${p.last_name}`}
-                          fill
-                          sizes="48px"
-                          className="object-cover"
+                          className="w-12 h-12 object-cover rounded-md"
                         />
                       </div>
 
@@ -195,12 +275,10 @@ function SpotlightCard({ player }: { player: PlayerLite }) {
       <div className="relative overflow-hidden rounded-xl mb-4">
         <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-transparent to-fuchsia-500/20 blur-2xl" />
         <div className="relative w-full aspect-[16/9] md:aspect-[4/3] rounded-xl overflow-hidden">
-          <Image
+          <SignedImg
             src={player.photo}
             alt={full}
-            fill
-            sizes="(min-width: 1536px) 640px, (min-width: 1280px) 560px, 100vw"
-            className="object-cover scale-[1.02] hover:scale-[1.06] transition-transform duration-500"
+            className="w-full h-full object-cover"
           />
         </div>
       </div>
@@ -208,12 +286,10 @@ function SpotlightCard({ player }: { player: PlayerLite }) {
       {/* identity */}
       <div className="flex items-start gap-3">
         {player.team?.logo ? (
-          <Image
+          <SignedImg
             src={player.team.logo}
             alt={player.team.name}
-            width={48}
-            height={48}
-            className="rounded-md object-cover bg-white/10"
+            className="w-12 h-12 rounded-md object-cover bg-white/10"
           />
         ) : (
           <div className="w-12 h-12 rounded-md bg-white/10" />

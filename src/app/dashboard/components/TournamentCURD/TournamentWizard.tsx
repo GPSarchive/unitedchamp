@@ -2,17 +2,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import TournamentBasicsForm from "./basics/TournamentBasicsForm";
-import StageList from "./stages/StageList";
-import TeamPicker from "./teams/TeamPicker";
-
-import ValidationSummary from "./shared/ValidationSummary";
-import ReviewAndSubmit from "./submit/ReviewAndSubmit";
-import WizardPreview from "./preview/WizardPreview";
 import { generateDraftMatches } from "./util/Generators";
 import type { NewTournamentPayload } from "@/app/lib/types";
-
+import TournamentBasicsForm from "./basics/TournamentBasicsForm";
+import ValidationSummary from "./shared/ValidationSummary";
+import StageList from "./stages/StageList";
+import TeamPicker from "./teams/TeamPicker";
+import WizardPreview from "./preview/WizardPreview";
 import TournamentFlowPreview from "./preview/TournamentFlowPreview";
+import ReviewAndSubmit from "./submit/ReviewAndSubmit";
 
 /* =========================================================
    Local types used across the builder
@@ -26,7 +24,14 @@ export type TeamDraft = {
   groupsByStage?: Record<number, number | null>;
 };
 
+/**
+ * DraftMatch now supports BOTH draft-only fields and real DB-backed fields.
+ * - We keep DB identity (db_id, stage_db_id, group_db_id) so rows are stable.
+ * - We store real match fields (status/scores/winner) so “Κατάσταση” reflects DB.
+ * - KO pointers are already supported as stable links between rounds/positions.
+ */
 export type DraftMatch = {
+  db_id?: number | null;     // <-- DB id (matches.id). Keep this!
   stageIdx: number;
   groupIdx?: number | null;
   bracket_pos?: number | null;
@@ -36,18 +41,23 @@ export type DraftMatch = {
   team_b_id?: number | null;
   round?: number | null;
 
-  // transient (only for in-memory wiring by build index)
+  // live fields (REAL match data)
+  status?: 'scheduled' | 'finished' | null;
+  team_a_score?: number | null;
+  team_b_score?: number | null;
+  winner_team_id?: number | null;
+
+  // KO links (transient by index) + stable pointers
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
-  home_source_outcome?: "W" | "L";
-  away_source_outcome?: "W" | "L";
-
-  // ✅ stable pointers (round + bracket_pos) that survive sorting/grouping and are persisted
+  home_source_outcome?: "W" | "L" | null;
+  away_source_outcome?: "W" | "L" | null;
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
 };
+
 
 export type WizardMode = "create" | "edit";
 export type WizardMeta = { id: number; slug: string | null; updated_at: string; created_at: string };
@@ -149,6 +159,7 @@ export default function TournamentWizard({
   // --- core state -----------------------------------------------------------
   const [payload, setPayload] = useState<NewTournamentPayload>(initialPayload ?? empty);
   const [teams, setTeams] = useState<TeamDraft[]>(initialTeams ?? []);
+  /** Holds BOTH draft and real (DB-backed) matches; includes status/scores/etc. */
   const [draftMatches, setDraftMatches] = useState<DraftMatch[]>(initialDraftMatches ?? []);
 
   // --- derived: groups context ---------------------------------------------
@@ -215,6 +226,42 @@ export default function TournamentWizard({
   // The following are no-ops here because the *mapping from visible matchId to DraftMatch index*
   // is owned by TournamentFlowPreview. It can call back up with a transformed DraftMatch[] later
   // if you want the wizard to persist edits. For now we forward the hooks down.
+  const regenerateKeepingDB = () => {
+  const fresh = generateDraftMatches({ payload, teams });
+  const key = (m: DraftMatch) =>
+    [
+      m.stageIdx,
+      m.groupIdx ?? "",
+      m.round ?? "",
+      m.bracket_pos ?? "",
+      m.matchday ?? "",
+      // include stable source pointers when present
+      m.home_source_round ?? "",
+      m.home_source_bracket_pos ?? "",
+      m.away_source_round ?? "",
+      m.away_source_bracket_pos ?? "",
+    ].join("|");
+  
+
+  const oldByKey = new Map(draftMatches.map((m) => [key(m), m]));
+  const merged = fresh.map((f) => {
+    const old = oldByKey.get(key(f));
+    return old
+      ? {
+          ...f,
+          // carry DB identity & live fields forward
+          db_id: old.db_id ?? null,
+          status: old.status ?? null,
+          team_a_score: old.team_a_score ?? null,
+          team_b_score: old.team_b_score ?? null,
+          winner_team_id: old.winner_team_id ?? null,
+        }
+      : f;
+  });
+
+  setDraftMatches(merged);
+};
+
   const noopAssign = (_matchId: number, _slot: "A" | "B", _id: number | null) => {};
   const noopSwap = (_matchId: number) => {};
   const noopBulk = (_rows: Array<{ matchId: number; team_a_id: number | null; team_b_id: number | null }>) => {};
@@ -312,7 +359,7 @@ export default function TournamentWizard({
           <h3 className="text-cyan-200 font-semibold">Preview</h3>
           <button
             type="button"
-            onClick={() => setDraftMatches(generateDraftMatches({ payload, teams }))}
+            onClick={regenerateKeepingDB} 
             className="ml-auto px-3 py-2 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
           >
             Regenerate fixtures
@@ -325,7 +372,7 @@ export default function TournamentWizard({
           draftMatches={draftMatches}
           onBack={() => {}}
           onProceed={() => {}}
-          onRegenerate={() => setDraftMatches(generateDraftMatches({ payload, teams }))}
+          onRegenerate={regenerateKeepingDB} 
           onDraftChange={setDraftMatches}
           onTeamsChange={setTeams}
           hideActions

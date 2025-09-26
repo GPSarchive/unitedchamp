@@ -10,11 +10,20 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "team_a_id",
   "team_b_id",
   "winner_team_id",
-  "match_date",     // ✅ now allowed
-  "team_a_score",   // ✅ now allowed
-  "team_b_score",   // ✅ now allowed
-  // add more if needed:
-  // "tournament_id","stage_id","group_id","matchday","round","bracket_pos","venue"
+  "match_date",
+  "team_a_score",
+  "team_b_score",
+  // Optional tournament wiring on CREATE is OK (but immutable via PATCH)
+  "stage_id",
+  "matchday",
+  "round",
+  "bracket_pos",
+  "home_source_round",
+  "home_source_bracket_pos",
+  "away_source_round",
+  "away_source_bracket_pos",
+  "home_source_match_id",
+  "away_source_match_id",
 ]);
 
 /* =======================
@@ -144,10 +153,10 @@ export async function HEAD() {
 /* ======================================
    POST /api/matches  (admin, strict)
    Body: match fields
-   - Requires team_a_id, team_b_id (positive ints)
+   - Requires team_a_id, team_b_id (positive ints; must differ)
    - status ∈ {"scheduled","finished"} (defaults to "scheduled")
-   - If "finished": winner_team_id required and must be one of the two teams
-   - If "scheduled": reject non-null winner; avoid writing the column
+   - If "finished": scores required; KO cannot draw; groups/league can draw (winner NULL)
+   - If "scheduled": reject non-null winner; clear scores so UI doesn't look finished
    - Accepts optional match_date (ISO) and non-negative scores
    ====================================== */
 export async function POST(req: Request) {
@@ -199,6 +208,18 @@ export async function POST(req: Request) {
     if (!payload.team_a_id || !payload.team_b_id) {
       return jsonError(400, "team_a_id and team_b_id are required");
     }
+    if (payload.team_a_id === payload.team_b_id) {
+      return jsonError(400, "team_a_id and team_b_id must differ");
+    }
+
+    // Optional stage for KO/Groups semantics
+    if ("stage_id" in payload) {
+      const s = parsePositiveInt(payload.stage_id);
+      if (s == null && payload.stage_id != null && payload.stage_id !== "") {
+        return jsonError(400, "Invalid stage_id");
+      }
+      if (s == null) delete payload.stage_id; else payload.stage_id = s;
+    }
 
     // Normalize scores (optional, must be ≥ 0 if provided)
     if ("team_a_score" in payload) {
@@ -223,26 +244,133 @@ export async function POST(req: Request) {
       payload.match_date = iso; // can be null
     }
 
+    // Normalize structural fields (optional)
+    if ("matchday" in payload) {
+      const n = parseNonNegativeInt(payload.matchday);
+      if (n == null && payload.matchday != null && payload.matchday !== "") {
+        return jsonError(400, "Invalid matchday");
+      }
+      if (n == null) delete payload.matchday; else payload.matchday = n;
+    }
+    if ("round" in payload) {
+      const n = parsePositiveInt(payload.round);
+      if (n == null && payload.round != null && payload.round !== "") {
+        return jsonError(400, "Invalid round");
+      }
+      if (n == null) delete payload.round; else payload.round = n;
+    }
+    if ("bracket_pos" in payload) {
+      const n = parsePositiveInt(payload.bracket_pos);
+      if (n == null && payload.bracket_pos != null && payload.bracket_pos !== "") {
+        return jsonError(400, "Invalid bracket_pos");
+      }
+      if (n == null) delete payload.bracket_pos; else payload.bracket_pos = n;
+    }
+
+    // Normalize KO pointers (stable)
+    if ("home_source_round" in payload) {
+      const n = parsePositiveInt(payload.home_source_round);
+      if (n == null && payload.home_source_round != null && payload.home_source_round !== "") {
+        return jsonError(400, "Invalid home_source_round");
+      }
+      if (n == null) delete payload.home_source_round; else payload.home_source_round = n;
+    }
+    if ("home_source_bracket_pos" in payload) {
+      const n = parsePositiveInt(payload.home_source_bracket_pos);
+      if (n == null && payload.home_source_bracket_pos != null && payload.home_source_bracket_pos !== "") {
+        return jsonError(400, "Invalid home_source_bracket_pos");
+      }
+      if (n == null) delete payload.home_source_bracket_pos; else payload.home_source_bracket_pos = n;
+    }
+    if ("away_source_round" in payload) {
+      const n = parsePositiveInt(payload.away_source_round);
+      if (n == null && payload.away_source_round != null && payload.away_source_round !== "") {
+        return jsonError(400, "Invalid away_source_round");
+      }
+      if (n == null) delete payload.away_source_round; else payload.away_source_round = n;
+    }
+    if ("away_source_bracket_pos" in payload) {
+      const n = parsePositiveInt(payload.away_source_bracket_pos);
+      if (n == null && payload.away_source_bracket_pos != null && payload.away_source_bracket_pos !== "") {
+        return jsonError(400, "Invalid away_source_bracket_pos");
+      }
+      if (n == null) delete payload.away_source_bracket_pos; else payload.away_source_bracket_pos = n;
+    }
+
+    // Legacy pointer ids (optional)
+    if ("home_source_match_id" in payload) {
+      const n = parsePositiveInt(payload.home_source_match_id);
+      if (n == null && payload.home_source_match_id != null && payload.home_source_match_id !== "") {
+        return jsonError(400, "Invalid home_source_match_id");
+      }
+      if (n == null) delete payload.home_source_match_id; else payload.home_source_match_id = n;
+    }
+    if ("away_source_match_id" in payload) {
+      const n = parsePositiveInt(payload.away_source_match_id);
+      if (n == null && payload.away_source_match_id != null && payload.away_source_match_id !== "") {
+        return jsonError(400, "Invalid away_source_match_id");
+      }
+      if (n == null) delete payload.away_source_match_id; else payload.away_source_match_id = n;
+    }
+
     // Normalize winner
     if (Object.prototype.hasOwnProperty.call(payload, "winner_team_id")) {
       payload.winner_team_id = parseNullablePositiveInt(payload.winner_team_id);
     }
 
+    // Determine stage kind (if stage_id provided)
+    let stageKind: "knockout" | "groups" | "league" | null = null;
+    if (payload.stage_id) {
+      const { data: stg, error: stgErr } = await supa
+        .from("tournament_stages")
+        .select("kind")
+        .eq("id", payload.stage_id)
+        .maybeSingle();
+      if (stgErr) {
+        return jsonError(400, "Failed to read stage kind", stgErr);
+      }
+      stageKind = (stg?.kind as any) ?? null;
+    }
+
     // Business rules
     if (payload.status === "finished") {
-      if (!payload.winner_team_id) {
-        return jsonError(400, "Winner required when status is 'finished'.");
+      const a = payload.team_a_score;
+      const b = payload.team_b_score;
+      if (a == null || b == null) {
+        return jsonError(400, "team_a_score and team_b_score are required when status is 'finished'");
       }
-      if (![payload.team_a_id, payload.team_b_id].includes(payload.winner_team_id)) {
-        return jsonError(400, "winner_team_id must equal team_a_id or team_b_id");
+
+      if (stageKind === "knockout") {
+        // KO: cannot draw; enforce winner matches scores (auto-pick if omitted)
+        if (a === b) {
+          return jsonError(400, "Knockout matches cannot finish level; set a winner (pens).");
+        }
+        const expected = a > b ? payload.team_a_id : payload.team_b_id;
+        if (!payload.winner_team_id) payload.winner_team_id = expected;
+        else if (![payload.team_a_id, payload.team_b_id].includes(payload.winner_team_id) || payload.winner_team_id !== expected) {
+          return jsonError(400, "winner_team_id must match the scores for KO.");
+        }
+      } else {
+        // groups/league or no stage: draws allowed; otherwise enforce consistency
+        if (a === b) {
+          payload.winner_team_id = null;
+        } else {
+          const expected = a > b ? payload.team_a_id : payload.team_b_id;
+          if (!payload.winner_team_id) payload.winner_team_id = expected;
+          else if (![payload.team_a_id, payload.team_b_id].includes(payload.winner_team_id) || payload.winner_team_id !== expected) {
+            return jsonError(400, "winner_team_id must match the scores.");
+          }
+        }
       }
     } else {
       // scheduled
       if (payload.winner_team_id != null) {
         return jsonError(400, "winner_team_id must be empty while status is 'scheduled'");
       }
-      // Avoid writing NULL explicitly (safer if column is NOT NULL with a default)
+      // Avoid writing winner at all; also clear scores so it doesn't look finished
       delete payload.winner_team_id;
+      delete payload.team_a_score;
+      delete payload.team_b_score;
     }
 
     // Final prune: remove undefined/NaN

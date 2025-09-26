@@ -6,7 +6,7 @@ import type { DraftMatch } from "../../TournamentWizard";
  * - Place seeds in the standard bracket order for P
  * - Seeds > N are ghosts → byes for the opposing real seed
  * - Create R1 only for real-vs-real; byes advance real seed to R2
- * - For R>=2, wire matches with stable (round, bracket_pos) pointers.
+ * - For R>=2, wire matches with stable (round, bracket_pos) pointers + outcome="W"
  */
 export function genKnockoutAnyN(
   ids: number[],
@@ -16,17 +16,17 @@ export function genKnockoutAnyN(
   const N = ids.length;
   if (N <= 0) return [];
 
-  const P = nextPow2(N); // <- critical fix: seed against P, not N
-  const order = seedOrder(P); // e.g. 16 => [1,16,8,9,4,13,5,12,2,15,7,10,3,14,6,11]
+  const P = nextPow2(N); // seed against the next power-of-two
+  const order = seedOrder(P); // e.g. 16 -> [1,16,8,9,4,13,5,12,2,15,7,10,3,14,6,11]
 
   const bySeed = new Map<number, number>(); // seed -> teamId
   seeded.forEach((s) => bySeed.set(s.seed, s.id));
 
   type Entry = { teamId?: number; from?: { round: number; pos: number } };
   const entries: Entry[][] = [];
-  entries[1] = []; // index rounds from 1 to log2(P)
+  entries[1] = [];
 
-  // Fill Round 1 slots in bracket order (ghosts are undefined)
+  // Fill Round 1 slots by seed order (ghosts are undefined)
   for (let i = 0; i < P; i++) {
     const seed = order[i];
     const teamId = seed <= N ? bySeed.get(seed) : undefined;
@@ -35,7 +35,7 @@ export function genKnockoutAnyN(
 
   const matches: DraftMatch[] = [];
 
-  // Round 1: create only for real-vs-real; otherwise advance the real seed
+  // Round 1: create only for real-vs-real; otherwise advance the real seed to R2
   const r1Count = P / 2;
   entries[2] = [];
   for (let pos = 1; pos <= r1Count; pos++) {
@@ -57,7 +57,7 @@ export function genKnockoutAnyN(
     }
   }
 
-  // Rounds 2..log2(P): always create matches; wire to children or set fixed team if bye
+  // Rounds 2..log2(P): create matches; wire stable pointers, set outcome="W"
   let round = 2;
   while ((1 << (round - 1)) <= P) {
     const prev = entries[round];
@@ -74,6 +74,7 @@ export function genKnockoutAnyN(
       if (left?.from) {
         m.home_source_round = left.from.round;
         m.home_source_bracket_pos = left.from.pos;
+        m.home_source_outcome = "W"; // explicit single-elim winner feed
       } else {
         m.team_a_id = left?.teamId ?? null;
       }
@@ -81,6 +82,7 @@ export function genKnockoutAnyN(
       if (right?.from) {
         m.away_source_round = right.from.round;
         m.away_source_bracket_pos = right.from.pos;
+        m.away_source_outcome = "W"; // explicit single-elim winner feed
       } else {
         m.team_b_id = right?.teamId ?? null;
       }

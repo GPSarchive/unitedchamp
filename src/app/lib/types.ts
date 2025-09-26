@@ -1,3 +1,5 @@
+// app/lib/types.ts
+
 /**
  * ---------------------------------
  * Utilities
@@ -44,7 +46,6 @@ export interface PlayerRow {
   created_at?: string | null;
   updated_at?: string | null;
 }
-
 
 export interface PlayerStatisticsRow {
   /** PK on player_statistics */
@@ -126,11 +127,9 @@ export interface PlayerWithStatsRaw extends PlayerRow {
   player_statistics: MaybeArray<PlayerStatisticsRow>;
 }
 
-
 export interface PlayerWithStats extends PlayerRow {
   player_statistics: PlayerStatisticsRow[]; // normalized to length 0 or 1
 }
-
 
 /**
  * Player association via player_teams
@@ -255,8 +254,13 @@ export function normalizeTeamPlayers(
   });
 }
 
+/**
+ * ---------------------------------
+ * Tournament payload + stage config
+ * ---------------------------------
+ */
 
-export type StageKind = 'league' | 'groups' | 'knockout';
+export type StageKind = "league" | "groups" | "knockout";
 
 export type NewTournamentPayload = {
   tournament: {
@@ -264,21 +268,23 @@ export type NewTournamentPayload = {
     slug?: string | null;
     logo?: string | null;
     season?: string | null;
-    status?: 'scheduled' | 'running' | 'completed' | 'archived';
-    format?: 'league' | 'groups' | 'knockout' | 'mixed';
+    status?: "scheduled" | "running" | "completed" | "archived";
+    format?: "league" | "groups" | "knockout" | "mixed";
     start_date?: string | null; // 'YYYY-MM-DD'
     end_date?: string | null;
     winner_team_id?: number | null;
   };
   stages: Array<{
+    id?: number;                // <- include if you hydrate from DB
     name: string;
     kind: StageKind;
     ordering?: number;
-    config?: any;
+    config?: StageConfig | any;
     groups?: Array<{ name: string }>; // only when kind='groups'
   }>;
   tournament_team_ids?: number[]; // optional
 };
+
 export type TournamentStatus = "scheduled" | "running" | "completed" | "archived";
 export type TournamentFormat = "league" | "groups" | "knockout" | "mixed";
 
@@ -296,6 +302,49 @@ export interface TournamentRow {
   winner_team_id: Id | null;
 }
 
+/** Intake mapping (KO → Groups) used by UI config and server progression */
+export type IntakeMapping = {
+  group_idx: number;
+  slot_idx: number;
+  round: number;
+  bracket_pos: number;
+  outcome: "W" | "L";
+};
+
+/** Stage configuration shared across UI + server */
+export type StageConfig = {
+  // League/Groups controls (Greek + mirrors)
+  διπλός_γύρος?: boolean;
+  τυχαία_σειρά?: boolean;
+  αγώνες_ανά_αντίπαλο?: number;
+  μέγιστες_αγωνιστικές?: number;
+  double_round?: boolean;
+  shuffle?: boolean;
+  rounds_per_opponent?: number;
+  limit_matchdays?: number;
+
+  /** Allow draws for non-knockout stages (UI defaults: true for league/groups, false for KO) */
+  allow_draws?: boolean;
+
+  // ----- KO stage sourcing from a previous stage -----
+  from_stage_idx?: number;
+  from_stage_id?: number | null;
+
+  // ----- League → KO -----
+  advancers_total?: number;
+
+  // ----- Groups → KO -----
+  advancers_per_group?: number;
+  semis_cross?: "A1-B2" | "A1-B1";
+
+  // ----- Standalone KO control -----
+  standalone_bracket_size?: number;
+
+  // ----- KO → Groups intake -----
+  from_knockout_stage_idx?: number;
+  groups_intake?: IntakeMapping[];
+};
+
 /**
  * ---------------------------------
  * Bracket tree (knockout) shapes + helpers
@@ -306,7 +355,18 @@ export type TeamsMap = Record<
   { name: string; logo?: string | null; seed?: number | null }
 >;
 
-export interface BracketMatch {
+/** Stable pointer set (works before/after schema migration) */
+export interface SourcePointers {
+  home_source_round?: number | null;
+  home_source_bracket_pos?: number | null;
+  away_source_round?: number | null;
+  away_source_bracket_pos?: number | null;
+  home_source_match_id?: Id | null;
+  away_source_match_id?: Id | null;
+}
+
+/** Single, canonical BracketMatch (no duplicates) */
+export interface BracketMatch extends SourcePointers {
   id: Id;
   round: number | null;
   bracket_pos: number | null;
@@ -314,13 +374,12 @@ export interface BracketMatch {
   team_b_id: Id | null;
   team_a_score: number | null;
   team_b_score: number | null;
-  status: MatchStatus; // two-state
-  home_source_match_id?: Id | null;
-  away_source_match_id?: Id | null;
+  status: MatchStatus;
 }
 
 export type BracketEdge = { fromId: Id; toId: Id };
 
+/** Build a TeamsMap from simple list */
 export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | null; seed?: number | null }>(
   teams: T[] | null | undefined
 ): TeamsMap {
@@ -331,14 +390,10 @@ export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | 
   return map;
 }
 
+/** Prefer row values; fall back to extras (works before & after schema change) */
 export function toBracketMatch(
   row: MatchRow & Partial<SourcePointers> & Partial<{ round: number | null; bracket_pos: number | null }>,
-  extras?: Partial<Pick<BracketMatch,
-    "round" | "bracket_pos" |
-    "home_source_match_id" | "away_source_match_id" |
-    "home_source_round" | "home_source_bracket_pos" |
-    "away_source_round" | "away_source_bracket_pos"
-  >>
+  extras?: Partial<SourcePointers> & Partial<{ round: number | null; bracket_pos: number | null }>
 ): BracketMatch {
   const src = { ...(extras ?? {}), ...(row as any) }; // row wins after schema migration
   return {
@@ -360,8 +415,11 @@ export function toBracketMatch(
   };
 }
 
-
-// UI i18n labels for bracket components
+/**
+ * ---------------------------------
+ * UI i18n labels for bracket components
+ * ---------------------------------
+ */
 export type Labels = {
   final: string;
   semifinals: string;
@@ -377,62 +435,3 @@ export type Labels = {
   clearRound: string;
   swap: string;
 };
-
-export type IntakeMapping = {
-  group_idx: number;
-  slot_idx: number;
-  round: number;
-  bracket_pos: number;
-  outcome: "W" | "L";
-};
-
-export type StageConfig = {
-  // League/Groups controls (Greek + mirrors)
-  διπλός_γύρος?: boolean;
-  τυχαία_σειρά?: boolean;
-  αγώνες_ανά_αντίπαλο?: number;
-  μέγιστες_αγωνιστικές?: number;
-  double_round?: boolean;
-  shuffle?: boolean;
-  rounds_per_opponent?: number;
-  limit_matchdays?: number;
-
-  // Groups → KO (KO stage sources this groups stage)
-  from_stage_idx?: number;
-  advancers_per_group?: number;
-  semis_cross?: "A1-B2" | "A1-B1";
-
-  // Standalone KO control
-  standalone_bracket_size?: number;
-
-  // KO → Groups intake (this groups stage sources a KO stage)
-  from_knockout_stage_idx?: number;
-  groups_intake?: IntakeMapping[];
-};
-
-
-
-// NEW: stable pointer set
-export interface SourcePointers {
-  home_source_round?: number | null;
-  home_source_bracket_pos?: number | null;
-  away_source_round?: number | null;
-  away_source_bracket_pos?: number | null;
-  home_source_match_id?: Id | null;
-  away_source_match_id?: Id | null;
-}
-
-// …existing code…
-
-export interface BracketMatch extends SourcePointers {
-  id: Id;
-  round: number | null;
-  bracket_pos: number | null;
-  team_a_id: Id | null;
-  team_b_id: Id | null;
-  team_a_score: number | null;
-  team_b_score: number | null;
-  status: MatchStatus;
-}
-
-// Prefer row values; fall back to extras (works before & after schema change)

@@ -26,22 +26,24 @@ export default function ReviewAndSubmit({
   const submit = () => {
     setError(null);
     const fd = new FormData();
-    fd.set("payload", JSON.stringify(payload));
-    fd.set("teams", JSON.stringify(teams));
-    fd.set("draftMatches", JSON.stringify(draftMatches));
+    // Safely stringify large objects
+    fd.set("payload", JSON.stringify(payload ?? {}));
+    fd.set("teams", JSON.stringify(teams ?? []));
+    fd.set("draftMatches", JSON.stringify(draftMatches ?? []));
 
     start(async () => {
-      if (mode === "edit" && meta?.id) {
-        fd.set("tournament_id", String(meta.id));
-        const res = await updateTournamentAction(fd);
-        if (res && !("ok" in res)) return;
-        if (res && !res.ok) setError(res.error || "Unknown error");
-        return;
+      try {
+        let res: any;
+        if (mode === "edit" && meta?.id) {
+          fd.set("tournament_id", String(meta.id));
+          res = await updateTournamentAction(fd);
+        } else {
+          res = await createTournamentAction(fd);
+        }
+        if (res && res.ok === false) setError(res.error || "Unknown error");
+      } catch (e: any) {
+        setError(e?.message || "Unexpected error");
       }
-
-      const res = await createTournamentAction(fd);
-      if (res && !("ok" in res)) return;
-      if (res && !res.ok) setError(res.error || "Unknown error");
     });
   };
 
@@ -53,7 +55,7 @@ export default function ReviewAndSubmit({
         <li>Format: {payload.tournament.format}</li>
         <li>Stages: {payload.stages.length}</li>
         <li>Teams: {teams.length}</li>
-        <li>Preview matches: {draftMatches.length}</li>
+        <li>Preview/Live matches in state: {draftMatches.length}</li>
       </ul>
 
       {error && <p className="text-rose-300">⚠ {error}</p>}

@@ -1,4 +1,3 @@
-//dashboard/components/TournamentCRUD/stages/StageCard.tsx
 "use client";
 
 import type { NewTournamentPayload, BracketMatch } from "@/app/lib/types";
@@ -14,6 +13,7 @@ import type { StageConfig } from "@/app/lib/types";
 
 // ----------------- Helpers -----------------
 const asCfg = (x: unknown): StageConfig => (x ?? {}) as StageConfig;
+type UiGroup = { id?: number; name: string };
 
 function setCfgMirror(cfg: StageConfig, patch: Partial<StageConfig>): StageConfig {
   const next: StageConfig = { ...cfg, ...patch };
@@ -58,6 +58,7 @@ export default function StageCard({
 
   const isKnockout = stage.kind === "knockout";
   const isGroups = stage.kind === "groups";
+  const isLeague = stage.kind === "league";
 
   // ----- Intake mode toggle (KO → Groups) -----
   const intakeEnabled =
@@ -79,7 +80,7 @@ export default function StageCard({
     ])
   );
 
-  const groupsArr: Array<{ name: string }> = (isGroups ? stage.groups ?? [] : []) as any;
+  const groupsArr: UiGroup[] = (isGroups ? stage.groups ?? [] : []) as UiGroup[];
 
   const groupsOccupancy: Record<number, TeamDraft[]> = {};
   if (isGroups) {
@@ -98,20 +99,35 @@ export default function StageCard({
     .map((m, idx) => ({ m, idx }))
     .filter((e) => e.m.stageIdx === index);
 
-  const koMatches: BracketMatch[] = stageEntries.map((e, i) => ({
-    id: i + 1,
-    round: e.m.round ?? null,
-    bracket_pos: e.m.bracket_pos ?? null,
-    team_a_id: e.m.team_a_id ?? null,
-    team_b_id: e.m.team_b_id ?? null,
-    team_a_score: null,
-    team_b_score: null,
-    status: "scheduled",
-    home_source_match_id:
-      e.m.home_source_match_idx != null ? e.m.home_source_match_idx + 1 : null,
-    away_source_match_id:
-      e.m.away_source_match_idx != null ? e.m.away_source_match_idx + 1 : null,
-  }));
+  // 🔧 Include status/scores if present (coming from MatchPlanner overlay).
+  const koMatches: BracketMatch[] = stageEntries.map((e, i) => {
+    const m = e.m as any;
+    return {
+      id: i + 1,
+      round: m.round ?? null,
+      bracket_pos: m.bracket_pos ?? null,
+      team_a_id: m.team_a_id ?? null,
+      team_b_id: m.team_b_id ?? null,
+
+      // 👇 pass through if present
+      team_a_score: m.team_a_score ?? null,
+      team_b_score: m.team_b_score ?? null,
+      status: (m.status as "scheduled" | "finished") ?? "scheduled",
+      winner_team_id: m.winner_team_id ?? null,
+
+      // legacy (index-based) fallback:
+      home_source_match_id:
+        m.home_source_match_idx != null ? m.home_source_match_idx + 1 : null,
+      away_source_match_id:
+        m.away_source_match_idx != null ? m.away_source_match_idx + 1 : null,
+
+      // ✅ stable pointers (preferred):
+      home_source_round: m.home_source_round ?? null,
+      home_source_bracket_pos: m.home_source_bracket_pos ?? null,
+      away_source_round: m.away_source_round ?? null,
+      away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+    } as any;
+  });
 
   // ------- Index mapping helpers -------
   const viewIdToOrigIdx = (viewId: number): number | null => {
@@ -173,19 +189,26 @@ export default function StageCard({
   // ------- Group CRUD helpers -------
   const addGroup = () => {
     const gs = stage.groups ?? [];
-    onChange({ groups: [...gs, { name: `Όμιλος ${gs.length + 1}` }] } as any);
+    onChange({ groups: [...gs, { id: undefined, name: `Όμιλος ${gs.length + 1}` }] } as any);
   };
   const setGroupName = (gi: number, name: string) =>
-    onChange({ groups: groupsArr.map((g, i) => (i === gi ? { ...g, name } : g)) } as any);
+    onChange({
+      groups: (groupsArr as any).map((g: any, i: number) =>
+        i === gi ? { id: g?.id, name } : g
+      ),
+    } as any);
   const removeGroup = (gi: number) =>
-    onChange({ groups: groupsArr.filter((_, i) => i !== gi) } as any);
+    onChange({
+      groups: (groupsArr as any).filter((_: any, i: number) => i !== gi),
+    } as any);
   const setGroupCount = (n: number) =>
     onChange({
-      groups: Array.from({ length: Math.max(1, n) }, (_, i) => groupsArr[i] ?? { name: `Όμιλος ${i + 1}` }),
+      groups: Array.from({ length: Math.max(1, n) }, (_, i) =>
+        groupsArr[i]
+          ? { id: (groupsArr as any)[i]?.id, name: (groupsArr as any)[i]?.name }
+          : { id: undefined, name: `Όμιλος ${i + 1}` }
+      ),
     } as any);
-
-  // ------- Derived UI values -------
-  const eligibleIds = teams.map((t) => t.id);
 
   // ------- Mini payload for inline planner -------
   const miniPayload: NewTournamentPayload = {
@@ -203,6 +226,12 @@ export default function StageCard({
     stages: allStages as any,
     tournament_team_ids: teams.map((t) => t.id),
   };
+
+  // Helper: what kind is the KO source (if any)?
+  const srcIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
+    ? Number((cfg as any).from_stage_idx)
+    : null;
+  const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
 
   return (
     <div className="rounded-lg border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-3 space-y-4">
@@ -255,12 +284,18 @@ export default function StageCard({
           <select
             className="w-full bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
             value={stage.kind}
-            onChange={(e) =>
+            onChange={(e) => {
+              const nextKind = e.target.value as "league" | "groups" | "knockout";
+              const cfgPatch =
+                nextKind === "knockout"
+                  ? setCfgMirror(cfg, { allow_draws: false }) // KO: no draws
+                  : setCfgMirror(cfg, { allow_draws: (cfg as any).allow_draws ?? true }); // League/Groups default draws on
               onChange({
-                kind: e.target.value as any,
-                ...(e.target.value !== "groups" ? { groups: [] } : {}),
-              } as any)
-            }
+                kind: nextKind as any,
+                ...(nextKind !== "groups" ? { groups: [] } : {}),
+                config: cfgPatch,
+              } as any);
+            }}
           >
             <option value="league">Πρωτάθλημα (League)</option>
             <option value="groups">Όμιλοι (Groups)</option>
@@ -296,8 +331,20 @@ export default function StageCard({
             onRemoveGroup={removeGroup}
             onRenameGroup={setGroupName}
             onSetGroupCount={setGroupCount}
-            intakeMode={intakeEnabled} // NEW
+            intakeMode={intakeEnabled}
           />
+
+          {/* Groups setting: Allow draws */}
+          <div className="mt-2 rounded-md border border-cyan-400/15 p-2">
+            <label className="inline-flex items-center gap-2 text-white/90 text-sm">
+              <input
+                type="checkbox"
+                checked={(cfg as any).allow_draws ?? true}
+                onChange={(e) => setCfg({ allow_draws: e.target.checked })}
+              />
+              Επιτρέπονται ισοπαλίες (Όμιλοι)
+            </label>
+          </div>
         </>
       )}
 
@@ -306,7 +353,7 @@ export default function StageCard({
           title="Knockout"
           matches={koMatches}
           teamsMap={teamsMap}
-          eligibleTeamIds={eligibleIds}
+          eligibleTeamIds={teams.map((t) => t.id)}
           onAssignSlot={assignSlot}
           onSwapPair={swapPair}
           onBulkAssignFirstRound={bulkAssignFirstRound}
@@ -327,7 +374,7 @@ export default function StageCard({
       {isGroups && (
         <GroupsConfigKOIntake
           cfg={cfg}
-          setCfg={(p) => setCfg(p)}
+          setCfg={(p: Partial<StageConfig>) => setCfg(p)}
           groupsArr={groupsArr}
           koMatchesLite={koMatchesLite}
           allStages={allStages}
@@ -335,15 +382,254 @@ export default function StageCard({
         />
       )}
 
-      {/* Config: Knockout (Groups → KO) */}
+      {/* Config: League (multi-round RR controls) */}
+      {isLeague && <LeagueConfig cfg={cfg} setCfg={(p) => setCfg(p)} />}
+
+      {/* Config: Knockout (Groups → KO OR League → KO OR Standalone) */}
       {isKnockout && (
-        <KnockoutConfigFromGroups
-          cfg={cfg}
-          setCfg={(p) => setCfg(p)}
-          allStages={allStages}
-          stageIndex={index}
-        />
+        <>
+          {srcStage?.kind === "groups" ? (
+            <KnockoutConfigFromGroups
+              cfg={cfg}
+              setCfg={(p: Partial<StageConfig>) => setCfg(p)}
+              allStages={allStages}
+              stageIndex={index}
+            />
+          ) : (
+            <KnockoutConfigFromLeague
+              cfg={cfg}
+              setCfg={(p: Partial<StageConfig>) => setCfg(p)}
+              allStages={allStages}
+              stageIndex={index}
+            />
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------
+   League config (rounds per opponent, double round, shuffle)
+   ------------------------------------------------------- */
+function LeagueConfig({
+  cfg,
+  setCfg,
+}: {
+  cfg: StageConfig;
+  setCfg: (patch: Partial<StageConfig>) => void;
+}) {
+  const repeats =
+    (cfg as any).rounds_per_opponent ??
+    (cfg as any)["αγώνες_ανά_αντίπαλο"] ??
+    ((cfg as any).double_round || (cfg as any)["διπλός_γύρος"] ? 2 : 1);
+
+  const doubleRound = !!((cfg as any).double_round ?? (cfg as any)["διπλός_γύρος"]);
+  const shuffle = !!((cfg as any).shuffle ?? (cfg as any)["τυχαία_σειρά"]);
+  const limitMds = (cfg as any).limit_matchdays ?? (cfg as any)["μέγιστες_αγωνιστικές"] ?? "";
+  const allowDraws = (cfg as any).allow_draws ?? true;
+
+  return (
+    <fieldset className="rounded-md border border-cyan-400/15 p-3 space-y-3">
+      <legend className="px-1 text-cyan-200 text-sm">Ρυθμίσεις Πρωταθλήματος</legend>
+
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-white/90 text-sm mb-1">Αγώνες ανά αντίπαλο</label>
+          <input
+            type="number"
+            min={1}
+            className="w-28 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
+            value={repeats}
+            onChange={(e) =>
+              setCfg({ rounds_per_opponent: Math.max(1, Number(e.target.value) || 1) })
+            }
+          />
+          <p className="mt-1 text-xs text-white/60">1 = μονός γύρος, 2 = διπλός, κ.ο.κ.</p>
+        </div>
+
+        <div className="flex items-end">
+          <label className="inline-flex items-center gap-2 text-white/90 text-sm">
+            <input
+              type="checkbox"
+              checked={doubleRound}
+              onChange={(e) => setCfg({ double_round: e.target.checked })}
+            />
+            Διπλός γύρος (συντόμευση)
+          </label>
+        </div>
+
+        <div className="flex items-end">
+          <label className="inline-flex items-center gap-2 text-white/90 text-sm">
+            <input
+              type="checkbox"
+              checked={shuffle}
+              onChange={(e) => setCfg({ shuffle: e.target.checked })}
+            />
+            Τυχαία σειρά
+          </label>
+        </div>
+
+        <div className="sm:col-span-3">
+          <label className="block text-white/90 text-sm mb-1">Μέγιστες αγωνιστικές (προαιρετικό)</label>
+          <input
+            type="number"
+            min={1}
+            className="w-36 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
+            value={limitMds}
+            onChange={(e) =>
+              setCfg({
+                limit_matchdays:
+                  e.target.value === "" ? undefined : Math.max(1, Number(e.target.value) || 1),
+              })
+            }
+          />
+          <p className="mt-1 text-xs text-white/60">
+            Αν οριστεί, κόβει το πρόγραμμα στις πρώτες Ν αγωνιστικές.
+          </p>
+        </div>
+
+        {/* Allow draws */}
+        <div className="sm:col-span-3">
+          <label className="inline-flex items-center gap-2 text-white/90 text-sm">
+            <input
+              type="checkbox"
+              checked={allowDraws}
+              onChange={(e) => setCfg({ allow_draws: e.target.checked })}
+            />
+            Επιτρέπονται ισοπαλίες
+          </label>
+        </div>
+      </div>
+    </fieldset>
+  );
+}
+
+/* -------------------------------------------------------
+   Inline KO-from-League (and Standalone) config
+   ------------------------------------------------------- */
+function KnockoutConfigFromLeague({
+  cfg,
+  setCfg,
+  allStages,
+  stageIndex,
+}: {
+  cfg: StageConfig;
+  setCfg: (patch: Partial<StageConfig>) => void;
+  allStages: NewTournamentPayload["stages"];
+  stageIndex: number;
+}) {
+  const koSourceSelectValue = Number.isFinite((cfg as any).from_stage_idx as any)
+    ? String((cfg as any).from_stage_idx)
+    : "";
+
+  const srcKind =
+    Number.isFinite((cfg as any).from_stage_idx as any)
+      ? (allStages[Number((cfg as any).from_stage_idx)] as any)?.kind
+      : null;
+
+  const isFromLeague = srcKind === "league";
+
+  // ✅ League→KO uses advancers_total; standalone uses standalone_bracket_size
+  const advancersCount = (cfg as any).advancers_total ?? 4;
+  const standaloneSize = (cfg as any).standalone_bracket_size ?? "";
+
+  return (
+    <fieldset className="rounded-md border border-cyan-400/15 p-3 space-y-4">
+      <legend className="px-1 text-cyan-200 text-sm">Knockout — Προέλευση (Πρωτάθλημα ή Αυτόνομο)</legend>
+
+      <div>
+        <label className="block text-white/90 text-sm mb-1">Προέλευση</label>
+        <select
+          className="w-full bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
+          value={koSourceSelectValue}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (!v) {
+              setCfg({ from_stage_idx: undefined });
+            } else {
+              setCfg({ from_stage_idx: Math.max(0, Number(v) || 0) });
+            }
+          }}
+        >
+          <option value="">Αυτόνομο (μόνο seeds)</option>
+          {allStages.map((s, i) =>
+            (s as any)?.kind === "league" && i < stageIndex ? (
+              <option key={i} value={i}>
+                #{i} — {(s as any)?.name || "Πρωτάθλημα"}
+              </option>
+            ) : null
+          )}
+          {allStages.map((s, i) =>
+            (s as any)?.kind === "groups" && i < stageIndex ? (
+              <option key={`g-${i}`} value={i}>
+                #{i} — {(s as any)?.name || "Όμιλοι"}
+              </option>
+            ) : null
+          )}
+        </select>
+        <p className="mt-1 text-xs text-white/60">
+          Επιλέξτε προηγούμενο στάδιο Πρωταθλήματος (League) ή αφήστε «Αυτόνομο» για bracket μόνο από seeds.
+        </p>
+      </div>
+
+      {isFromLeague ? (
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-white/90 text-sm mb-1">Σύνολο Προκρινόμενων</label>
+            <input
+              type="number"
+              min={2}
+              className="w-36 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
+              value={advancersCount}
+              onChange={(e) =>
+                setCfg({
+                  advancers_total: Math.max(2, Number(e.target.value) || 2),
+                })
+              }
+            />
+            <p className="mt-1 text-xs text-white/60">
+              Π.χ. 4, 8, 16… Οι ομάδες προκύπτουν από την <strong>τελική βαθμολογία</strong>.
+            </p>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/5 p-2 sm:col-span-2">
+            <p className="text-xs text-white/70">
+              Η επιλογή γίνεται με βάση την <strong>κατάταξη</strong> του πρωταθλήματος (όχι seed).
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-white/90 text-sm mb-1">Μέγεθος Πλέι-οφ</label>
+            <select
+              className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white"
+              value={standaloneSize}
+              onChange={(e) =>
+                setCfg({
+                  standalone_bracket_size: e.target.value
+                    ? Math.max(2, Number(e.target.value) || 0)
+                    : undefined,
+                })
+              }
+            >
+              <option value="">Αυτόματο (όλες οι ομάδες)</option>
+              <option value={4}>4</option>
+              <option value={8}>8</option>
+              <option value={16}>16</option>
+              <option value={32}>32</option>
+            </select>
+            <p className="mt-1 text-xs text-white/60">
+              Αν δεν είναι δύναμη του 2, δημιουργούνται byes με βάση τα seeds.
+            </p>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/5 p-2 sm:col-span-2">
+            <p className="text-xs text-white/70">
+              Το αυτόνομο νοκ-άουτ γεμίζει με τις κορυφαίες ομάδες κατά <strong>seed</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+    </fieldset>
   );
 }

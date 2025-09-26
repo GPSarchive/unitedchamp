@@ -1,8 +1,7 @@
-// app/components/DashboardPageComponents/TournamentCURD/util/generators/knockoutPowerOfTwo.ts
 import type { DraftMatch } from "../../TournamentWizard";
 import { buildSeedPositions, pairArray, wireKnockoutSources } from "./common";
 
-/** Proper seed placement for power-of-two brackets. */
+/** Proper seed placement for power-of-two brackets, with stable pointers + outcome="W". */
 export function genKnockoutPowerOfTwo(teamIds: number[], stageIdx: number): DraftMatch[] {
   const N = teamIds.length;
   if (N === 0) return [];
@@ -38,6 +37,18 @@ export function genKnockoutPowerOfTwo(teamIds: number[], stageIdx: number): Draf
     round++;
   }
 
+  // Write stable pointers
   wireKnockoutSources(draft);
+
+  // Ensure explicit outcomes on all pointer-fed slots
+  for (const m of draft) {
+    if (m.home_source_round && m.home_source_bracket_pos && !m.home_source_outcome) {
+      m.home_source_outcome = "W";
+    }
+    if (m.away_source_round && m.away_source_bracket_pos && !m.away_source_outcome) {
+      m.away_source_outcome = "W";
+    }
+  }
+
   return draft;
 }

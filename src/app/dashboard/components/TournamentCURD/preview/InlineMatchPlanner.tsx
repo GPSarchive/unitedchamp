@@ -1,5 +1,5 @@
 "use client";
-import MatchPlanner from "./MatchPlanner";
+import MatchPlanner from "./MatchPlannerBackup";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type {
   TeamDraft,

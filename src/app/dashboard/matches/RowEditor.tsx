@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Check, X } from "lucide-react";
 import type { Id, TeamLite, MatchRow } from "@/app/lib/types";
 
@@ -13,9 +13,9 @@ function isoToDTString(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(
-    d.getUTCMinutes()
-  )}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(
+    d.getUTCHours()
+  )}:${pad(d.getUTCMinutes())}`;
 }
 function dtStringToIso(value: string | null): string | null {
   if (!value) return null;
@@ -30,9 +30,9 @@ function isoToLabelUTC(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(
-    d.getUTCMinutes()
-  )} UTC`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(
+    d.getUTCHours()
+  )}:${pad(d.getUTCMinutes())} UTC`;
 }
 function isoToLabelLocal(iso: string | null): string {
   if (!iso) return "—";
@@ -60,6 +60,8 @@ export default function RowEditor({
   onSaved,
   tournamentName,
   stageText,
+  /** If false (e.g., Knockout), a finished match MUST have a winner even if scores are equal. */
+  allowDraws = true,
 }: {
   initial: Partial<MatchRowWithStage> & { id?: Id };
   teams: TeamLite[];
@@ -67,6 +69,7 @@ export default function RowEditor({
   onSaved: () => void;
   tournamentName?: string | null;
   stageText?: string | null;
+  allowDraws?: boolean;
 }) {
   const [form, setForm] = useState<Partial<MatchRow>>(() => ({
     id: initial.id,
@@ -96,17 +99,37 @@ export default function RowEditor({
     return parts.length ? parts.join(" • ") : null;
   }, [stageText, initial.stage_name, initial.group_idx, initial.matchday, initial.round, initial.bracket_pos]);
 
+  const isFinished = form.status === "finished";
+  const aScore = form.team_a_score ?? 0;
+  const bScore = form.team_b_score ?? 0;
+  const scoresEqual = aScore === bScore;
+  const isDraw = isFinished && allowDraws && scoresEqual;
+
+  // Auto-clear winner for draws (finished + equal + draws allowed)
+  useEffect(() => {
+    if (isDraw && form.winner_team_id != null) {
+      setForm((f) => ({ ...f, winner_team_id: null }));
+    }
+  }, [isDraw, form.winner_team_id]);
+
   const validationError = useMemo(() => {
     if (!form.team_a_id || !form.team_b_id) return "Select both teams";
     if (form.team_a_id === form.team_b_id) return "Team A and Team B must differ";
-    if ((form.team_a_score ?? 0) < 0 || (form.team_b_score ?? 0) < 0) return "Scores cannot be negative";
-    if (form.status === "finished") {
-      if (!form.winner_team_id) return "Winner is required when status is 'finished'";
-      if (![form.team_a_id, form.team_b_id].includes(form.winner_team_id))
-        return "Winner must be Team A or Team B";
+    if (aScore < 0 || bScore < 0) return "Scores cannot be negative";
+
+    if (isFinished) {
+      if (allowDraws && scoresEqual) {
+        // Draw is valid → winner must be empty
+        if (form.winner_team_id != null) return "Winner must be empty for a draw.";
+      } else {
+        // Not a draw case → require winner
+        if (!form.winner_team_id) return "Winner is required when status is 'finished'.";
+        if (![form.team_a_id, form.team_b_id].includes(form.winner_team_id))
+          return "Winner must be Team A or Team B";
+      }
     }
     return null;
-  }, [form]);
+  }, [form.team_a_id, form.team_b_id, aScore, bScore, isFinished, scoresEqual, allowDraws, form.winner_team_id]);
 
   // Show what will be saved if date/time was changed
   const pendingSaveUtc = useMemo(() => {
@@ -127,18 +150,10 @@ export default function RowEditor({
         team_b_id: form.team_b_id,
         team_a_score: form.team_a_score,
         team_b_score: form.team_b_score,
-        winner_team_id: form.status === "finished" ? form.winner_team_id : null,
+        // For draws, persist winner as null even when finished
+        winner_team_id: isFinished ? (isDraw ? null : form.winner_team_id) : null,
       };
-      console.log("PATCH payload", {
-        match_date: dtStringToIso((form.match_date as string | null) ?? null),
-        status: form.status,
-        team_a_id: form.team_a_id,
-        team_b_id: form.team_b_id,
-        team_a_score: form.team_a_score,
-        team_b_score: form.team_b_score,
-        winner_team_id: form.status === "finished" ? form.winner_team_id : null,
-      });
-      
+
       const res = await fetch(isEdit ? `/api/matches/${form.id}` : `/api/matches`, {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -168,6 +183,12 @@ export default function RowEditor({
         <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 ring-1 ring-white/10 bg-white/5 text-white/80">
           <span className="opacity-80">Stage:</span>
           <span className="text-white/95 font-medium">{derivedStageText ?? "—"}</span>
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 ring-1 ring-white/10 bg-white/5 text-white/80">
+          <span className="opacity-80">Draws:</span>
+          <span className={`font-medium ${allowDraws ? "text-emerald-200" : "text-rose-200"}`}>
+            {allowDraws ? "Allowed" : "Not allowed"}
+          </span>
         </span>
       </div>
 
@@ -265,11 +286,17 @@ export default function RowEditor({
         </label>
 
         <label className="flex flex-col gap-1 md:col-span-2">
-          <span className="text-sm text-white/80">Winner (required when finished)</span>
+          <span className="text-sm text-white/80">
+            Winner{" "}
+            {allowDraws
+              ? "(required when finished and not a draw)"
+              : "(required when finished)"}
+          </span>
           <select
             value={form.winner_team_id ?? ""}
             onChange={(e) => set("winner_team_id", e.target.value === "" ? null : (Number(e.target.value) as Id))}
-            className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+            className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 disabled:opacity-60"
+            disabled={isDraw}
           >
             <option value="">— none —</option>
             {[form.team_a_id, form.team_b_id]
@@ -283,6 +310,16 @@ export default function RowEditor({
                 );
               })}
           </select>
+          {isFinished && allowDraws && scoresEqual && (
+            <span className="mt-1 text-xs text-emerald-300">
+              Scores are equal and draws are allowed — winner will be saved as empty.
+            </span>
+          )}
+          {isFinished && !allowDraws && scoresEqual && !form.winner_team_id && (
+            <span className="mt-1 text-xs text-rose-300">
+              Draws are not allowed for this stage — pick a winner.
+            </span>
+          )}
         </label>
       </div>
 

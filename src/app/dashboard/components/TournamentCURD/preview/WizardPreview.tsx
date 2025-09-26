@@ -3,7 +3,7 @@
 
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
-import MatchPlanner from "./MatchPlanner";
+import MatchPlanner from "./MatchPlannerBackup";
 import StagePreview from "../stages/StagePreview";
 
 export default function WizardPreview({

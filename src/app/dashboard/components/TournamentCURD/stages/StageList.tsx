@@ -1,4 +1,3 @@
-// app/components/DashboardPageComponents/TournamentCURD/stages/StageList.tsx
 "use client";
 
 import StageCard from "./StageCard";
@@ -25,15 +24,27 @@ export default function StageList({
         name: `Stage ${stages.length + 1}`,
         kind: "league",
         ordering: stages.length + 1,
-        config: { interval_days: 7 },
+        // 👇 sensible league defaults so multi-round RR works out of the box
+        config: {
+          interval_days: 7,
+          rounds_per_opponent: 1,
+          double_round: false,
+          shuffle: false,
+        },
       } as any,
     ]);
   };
 
   const update = (idx: number, patch: Partial<(typeof stages)[number]>) => {
     const next = stages.slice();
-    next[idx] = { ...next[idx], ...patch } as any;
-    if ((patch as any).kind && (patch as any).kind !== "groups") (next[idx] as any).groups = [];
+    // preserve existing id
+    next[idx] = { id: (stages as any)[idx]?.id, ...next[idx], ...patch } as any;
+
+    // when switching away from groups, clear groups (OK);
+    // when switching TO groups, keep existing group ids if any
+    if ((patch as any).kind && (patch as any).kind !== "groups") {
+      (next[idx] as any).groups = [];
+    }
     onChange(next);
   };
 
@@ -63,7 +74,7 @@ export default function StageList({
       <div className="space-y-3">
         {stages.map((s, i) => (
           <StageCard
-            key={i}
+            key={s?.id ?? `tmp-${i}`} // 👈 stable if id exists
             value={s as any}
             index={i}
             onChange={(patch) => update(i, patch as any)}
