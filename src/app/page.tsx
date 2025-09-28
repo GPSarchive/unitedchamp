@@ -1,12 +1,11 @@
-// page.tsx
+// app/page.tsx
 import Image from 'next/image';
 import { Carousel } from '@/app/home/Carousel';
-import EventCalendar from './home/Calendar';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { Trophy, Users, CalendarDays, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, TeamLite, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import HomeHero from './home/HomeHero';
-
+import EventCalendar from './home/Calendar';
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -185,7 +184,7 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
 
 /**
  * ------------------------------
- * Page component
+ * Page component (Server)
  * ------------------------------
  */
 export default async function Home() {
@@ -293,7 +292,7 @@ export default async function Home() {
       <section className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center bg-grid-18 text-white text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Έτοιμοι για σέντρα;</h2>
-          <p className="text-base sm:text-xl mb-6 sm:mb-8">
+        <p className="text-base sm:text-xl mb-6 sm:mb-8">
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
           </p>
           <a
@@ -329,7 +328,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">
         <div className="container mx-auto px-4">
-          <p>© 2025 Ultra Chamnp.</p>
+          <p>© 2025 Ultra Champ.</p>
           <div className="mt-4">
             <a href="/privacy" className="mx-2 hover:underline">Πολιτική Απορρήτου</a>
             <a href="/terms" className="mx-2 hover:underline">Όροι Χρήσης</a>
