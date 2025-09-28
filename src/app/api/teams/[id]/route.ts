@@ -155,7 +155,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const { data, error } = await supa
       .from("teams")
-      .select("id, name, logo, created_at, deleted_at")
+      .select("id, name, logo, created_at, deleted_at, season_score")
       .eq("id", id)
       .maybeSingle();
 
@@ -200,6 +200,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const nameRaw = typeof (body as any).name === "string" ? (body as any).name.trim() : undefined;
     const logoCandidate = toStoragePathOrUrlSafe((body as any).logo, id);
 
+    // NEW: optional season_score
+    let seasonScoreVal: number | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
+      const n = Number((body as any).season_score);
+      if (!Number.isInteger(n) || n < 0) {
+        return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
+      }
+      seasonScoreVal = n;
+    }
+
     const update: Record<string, any> = {};
     if (nameRaw !== undefined) {
       if (nameRaw.length < 2 || nameRaw.length > 128) {
@@ -215,6 +225,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
       update.logo = logoCandidate ?? null;
     }
 
+    if (seasonScoreVal !== undefined) {
+      update.season_score = seasonScoreVal;
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
@@ -224,7 +238,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .update(update)
       .eq("id", id)
       .is("deleted_at", null) // don't update soft-deleted rows
-      .select("id, name, logo, created_at, deleted_at")
+      .select("id, name, logo, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {
@@ -267,7 +281,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .is("deleted_at", null) // only delete if not already deleted
-      .select("id, name, logo, created_at, deleted_at")
+      .select("id, name, logo, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {

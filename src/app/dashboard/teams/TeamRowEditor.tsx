@@ -1,3 +1,4 @@
+// components/DashboardPageComponents/teams/TeamRowEditor.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -15,9 +16,16 @@ export default function TeamRowEditor({
   onSaved: (saved: TeamRow) => void;
 }) {
   const isEdit = Boolean(initial?.id);
+
   const [name, setName] = useState(initial?.name ?? "");
   const [logo, setLogo] = useState<string>(initial?.logo ?? ""); // https URL or storage path
   const [preview, setPreview] = useState<string | null>(null);
+
+  // NEW: season_score (non-negative integer). Allow empty '' while typing.
+  const initialSeasonScore =
+    typeof (initial as any)?.season_score === "number" ? (initial as any).season_score : "";
+  const [seasonScore, setSeasonScore] = useState<number | "">(initialSeasonScore);
+
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -28,13 +36,19 @@ export default function TeamRowEditor({
   const validationError = useMemo(() => {
     if (!name.trim()) return "Name is required";
     if (name.trim().length < 2) return "Name must be at least 2 characters";
+
+    // season_score: must be non-negative integer when provided
+    if (seasonScore !== "" && (!Number.isInteger(seasonScore) || seasonScore < 0)) {
+      return "Season score must be a non-negative integer";
+    }
+
     const v = logo.trim();
     if (!v) return null;
     if (!isUrl(v) && !isStoragePath(v)) {
       return "Logo must be a full https URL or a storage path like folder/file.png";
     }
     return null;
-  }, [name, logo]);
+  }, [name, logo, seasonScore]);
 
   useEffect(() => {
     (async () => {
@@ -62,8 +76,8 @@ export default function TeamRowEditor({
     const f = e.target.files?.[0];
     if (!f) return;
     setPendingFile(f);
-    setShowConfirm(true);   // open modal first
-    e.target.value = "";    // allow re-choosing same file later
+    setShowConfirm(true); // open modal first
+    e.target.value = ""; // allow re-choosing same file later
   }
 
   async function actuallyUpload(file: File) {
@@ -101,7 +115,13 @@ export default function TeamRowEditor({
         }
       }
 
-      const payload = { name: name.trim(), logo: logoForSave };
+      // Build payload
+      const payload: Record<string, any> = {
+        name: name.trim(),
+        logo: logoForSave,
+      };
+      if (seasonScore !== "") payload.season_score = seasonScore;
+
       const res = await fetch(isEdit ? `/api/teams/${initial!.id}` : "/api/teams", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,6 +130,7 @@ export default function TeamRowEditor({
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error((body && (body as any).error) || `HTTP ${res.status}`);
+
       let saved = (body as any).team as TeamRow;
 
       if (saved?.logo && !isUrl(saved.logo) && isStoragePath(saved.logo)) {
@@ -127,6 +148,7 @@ export default function TeamRowEditor({
   return (
     <div className="p-3 rounded-xl border border-white/15 bg-black/50 space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Team name */}
         <label className="flex flex-col gap-1">
           <span className="text-sm text-white/80">Team name</span>
           <input
@@ -137,7 +159,24 @@ export default function TeamRowEditor({
           />
         </label>
 
+        {/* Season score */}
         <label className="flex flex-col gap-1">
+          <span className="text-sm text-white/80">Season score</span>
+          <input
+            type="number"
+            min={0}
+            value={seasonScore === "" ? "" : seasonScore}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSeasonScore(val === "" ? "" : Number(val));
+            }}
+            className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+            placeholder="e.g. 0"
+          />
+        </label>
+
+        {/* Logo */}
+        <label className="flex flex-col gap-1 md:col-span-2">
           <span className="text-sm text-white/80">Logo (URL or upload)</span>
           <div className="flex items-center gap-2">
             <input
@@ -164,7 +203,11 @@ export default function TeamRowEditor({
           </div>
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Logo preview" className="mt-2 h-12 w-12 object-contain rounded ring-1 ring-white/10" />
+            <img
+              src={preview}
+              alt="Logo preview"
+              className="mt-2 h-12 w-12 object-contain rounded ring-1 ring-white/10"
+            />
           )}
         </label>
       </div>

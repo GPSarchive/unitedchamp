@@ -16,18 +16,16 @@ type AnnouncementFull = {
   end_at: string | null;
 };
 
-const pageSize = 50; // load in chunks if you have lots
+const pageSize = 50;
 
 function toIsoOrNull(v: string | null | undefined) {
   if (!v) return null;
-  // v is "YYYY-MM-DDTHH:mm" from <input type="datetime-local">
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 function fromIsoToLocal(iso: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
-  // Convert to "YYYY-MM-DDTHH:mm" for <input datetime-local>
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -38,7 +36,6 @@ export default function AnnouncementsAdmin() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Create form state
   const [newItem, setNewItem] = React.useState<Partial<AnnouncementFull>>({
     title: "",
     body: "",
@@ -55,14 +52,13 @@ export default function AnnouncementsAdmin() {
     setLoading(true);
     setError(null);
     try {
-      // active=0 (omit it) to load ALL (requires admin SELECT policy)
       const res = await fetch(`/api/announcements?offset=${nextOffset}&limit=${pageSize}`, { cache: "no-store" });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
       setRows((prev) => prev.concat(json.data ?? []));
       setNextOffset(json.nextOffset);
     } catch (e: any) {
-      setError(e.message ?? "Failed to load");
+      setError(e.message ?? "Αποτυχία φόρτωσης");
     } finally {
       setLoading(false);
     }
@@ -97,7 +93,7 @@ export default function AnnouncementsAdmin() {
         ),
       };
 
-      if (!payload.title) throw new Error("Title is required");
+      if (!payload.title) throw new Error("Απαιτείται τίτλος");
 
       const res = await fetch("/api/announcements", {
         method: "POST",
@@ -105,11 +101,9 @@ export default function AnnouncementsAdmin() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Create failed");
+      if (!res.ok) throw new Error(json.error || "Αποτυχία δημιουργίας");
 
-      // Put new item on top
       setRows((prev) => [json.data, ...prev]);
-      // Reset form
       setNewItem({
         title: "",
         body: "",
@@ -121,7 +115,7 @@ export default function AnnouncementsAdmin() {
         end_at: null,
       });
     } catch (e: any) {
-      setError(e.message ?? "Create failed");
+      setError(e.message ?? "Αποτυχία δημιουργίας");
     } finally {
       setLoading(false);
     }
@@ -142,27 +136,26 @@ export default function AnnouncementsAdmin() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Update failed");
-
+      if (!res.ok) throw new Error(json.error || "Αποτυχία ενημέρωσης");
       setRows((prev) => prev.map((r) => (r.id === id ? json.data : r)));
     } catch (e: any) {
-      setError(e.message ?? "Update failed");
+      setError(e.message ?? "Αποτυχία ενημέρωσης");
     } finally {
       setLoading(false);
     }
   }
 
   async function deleteRow(id: number) {
-    if (!confirm("Delete this announcement?")) return;
+    if (!confirm("Διαγραφή αυτής της ανακοίνωσης;")) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/announcements/${id}`, { method: "DELETE" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Delete failed");
+      if (!res.ok) throw new Error(json.error || "Αποτυχία διαγραφής");
       setRows((prev) => prev.filter((r) => r.id !== id));
     } catch (e: any) {
-      setError(e.message ?? "Delete failed");
+      setError(e.message ?? "Αποτυχία διαγραφής");
     } finally {
       setLoading(false);
     }
@@ -170,122 +163,119 @@ export default function AnnouncementsAdmin() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Announcements (Admin)</h2>
+      <h2 className="text-xl font-semibold text-zinc-50">Διαχείριση ανακοινώσεων</h2>
 
       {/* Create form */}
-      <form onSubmit={createAnnouncement} className="rounded-xl border bg-white p-4 space-y-3">
+      <form
+        onSubmit={createAnnouncement}
+        className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-4 text-zinc-100"
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Title</span>
+          <Field label="Τίτλος">
             <input
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.title ?? ""}
               onChange={(e) => setNewItem((s) => ({ ...s, title: e.target.value }))}
               required
             />
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Status</span>
+          <Field label="Κατάσταση">
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.status ?? "draft"}
               onChange={(e) => setNewItem((s) => ({ ...s, status: e.target.value as any }))}
             >
-              <option value="draft">draft</option>
-              <option value="scheduled">scheduled</option>
-              <option value="published">published</option>
-              <option value="archived">archived</option>
+              <option value="draft">Πρόχειρο</option>
+              <option value="scheduled">Προγραμματισμένο</option>
+              <option value="published">Δημοσιευμένο</option>
+              <option value="archived">Αρχειοθετημένο</option>
             </select>
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Format</span>
+          <Field label="Μορφή">
             <select
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.format ?? "md"}
               onChange={(e) => setNewItem((s) => ({ ...s, format: e.target.value as any }))}
             >
-              <option value="md">md</option>
-              <option value="html">html</option>
-              <option value="plain">plain</option>
+              <option value="md">Markdown</option>
+              <option value="html">HTML</option>
+              <option value="plain">Απλό κείμενο</option>
             </select>
-          </label>
+          </Field>
 
-          <label className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-zinc-200">
             <input
               type="checkbox"
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 focus:ring-2 focus:ring-indigo-500"
               checked={!!newItem.pinned}
               onChange={(e) => setNewItem((s) => ({ ...s, pinned: e.target.checked }))}
             />
-            <span className="text-sm font-medium">Pinned</span>
+            Καρφιτσωμένο
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Priority</span>
+          <Field label="Προτεραιότητα">
             <input
               type="number"
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.priority ?? 0}
               onChange={(e) => setNewItem((s) => ({ ...s, priority: Number(e.target.value) }))}
             />
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Start at</span>
+          <Field label="Έναρξη">
             <input
               type="datetime-local"
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.start_at ? (newItem.start_at as any) : ""}
               onChange={(e) => setNewItem((s) => ({ ...s, start_at: e.target.value }))}
             />
-          </label>
+          </Field>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium">End at</span>
+          <Field label="Λήξη">
             <input
               type="datetime-local"
-              className="border rounded-lg px-3 py-2"
+              className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={newItem.end_at ? (newItem.end_at as any) : ""}
               onChange={(e) => setNewItem((s) => ({ ...s, end_at: e.target.value }))}
             />
-          </label>
+          </Field>
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-medium">Body</span>
+        <Field label="Κείμενο">
           <textarea
-            className="border rounded-lg px-3 py-2 min-h-[120px]"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded-lg px-3 py-2 min-h-[140px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={newItem.body ?? ""}
             onChange={(e) => setNewItem((s) => ({ ...s, body: e.target.value }))}
           />
-        </label>
+        </Field>
 
         <div className="flex gap-2">
           <button
             type="submit"
             disabled={loading}
-            className="px-3 py-2 rounded-lg border bg-white hover:bg-gray-50"
+            className="px-3 py-2 rounded-lg border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60"
           >
-            {loading ? "Saving…" : "Create announcement"}
+            {loading ? "Αποθήκευση…" : "Δημιουργία ανακοίνωσης"}
           </button>
-          {error && <span className="text-sm text-red-600 self-center">{error}</span>}
+          {error && <span className="text-sm text-rose-400 self-center">{error}</span>}
         </div>
       </form>
 
       {/* Table */}
-      <div className="rounded-xl border bg-white overflow-hidden">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50">
+          <table className="min-w-full text-sm text-zinc-200">
+            <thead className="bg-zinc-800/80 text-zinc-200">
               <tr className="text-left">
-                <th className="px-3 py-2">Title</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Pinned</th>
-                <th className="px-3 py-2">Priority</th>
-                <th className="px-3 py-2">Start</th>
-                <th className="px-3 py-2">End</th>
-                <th className="px-3 py-2">Actions</th>
+                <Th>Τίτλος</Th>
+                <Th>Κατάσταση</Th>
+                <Th>Καρφιτσ.</Th>
+                <Th>Προτερ.</Th>
+                <Th>Έναρξη</Th>
+                <Th>Λήξη</Th>
+                <Th>Ενέργειες</Th>
               </tr>
             </thead>
             <tbody>
@@ -296,29 +286,90 @@ export default function AnnouncementsAdmin() {
           </table>
         </div>
 
-        <div className="p-3 border-t flex items-center gap-3">
+        <div className="p-3 border-t border-zinc-800 flex items-center gap-3">
           {nextOffset !== null ? (
-            <button onClick={loadMore} disabled={loading} className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50">
-              {loading ? "Loading…" : "Load more"}
+            <button
+              onClick={loadMore}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60"
+            >
+              {loading ? "Φόρτωση…" : "Φόρτωσε περισσότερα"}
             </button>
           ) : (
-            <span className="text-xs text-gray-500">All loaded</span>
+            <span className="text-xs text-zinc-400">Όλα φορτώθηκαν</span>
           )}
-          {error && <span className="text-sm text-red-600">{error}</span>}
+          {error && <span className="text-sm text-rose-400">{error}</span>}
         </div>
       </div>
     </div>
   );
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-sm font-medium text-zinc-200">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+      {children}
+    </th>
+  );
+}
+
 function StatusPill({ s }: { s: AnnouncementFull["status"] }) {
   const map: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-700",
-    scheduled: "bg-blue-100 text-blue-700",
-    published: "bg-emerald-100 text-emerald-700",
-    archived: "bg-amber-100 text-amber-800",
+    draft: "bg-zinc-800 text-zinc-200 ring-1 ring-inset ring-zinc-700",
+    scheduled: "bg-sky-600/15 text-sky-300 ring-1 ring-inset ring-sky-600/30",
+    published: "bg-emerald-600/15 text-emerald-300 ring-1 ring-inset ring-emerald-600/30",
+    archived: "bg-amber-600/15 text-amber-300 ring-1 ring-inset ring-amber-600/30",
   };
-  return <span className={`px-2 py-0.5 rounded text-xs ${map[s] || "bg-gray-100 text-gray-700"}`}>{s}</span>;
+  const labels: Record<AnnouncementFull["status"], string> = {
+    draft: "Πρόχειρο",
+    scheduled: "Προγραμματισμένο",
+    published: "Δημοσιευμένο",
+    archived: "Αρχειοθετημένο",
+  };
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs ${map[s] || map.draft}`}>
+      {labels[s]}
+    </span>
+  );
+}
+
+function IconPill({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ring-1 ring-inset ${
+        on
+          ? "bg-indigo-600/15 text-indigo-300 ring-indigo-600/30"
+          : "bg-zinc-800 text-zinc-300 ring-zinc-700"
+      }`}
+    >
+      <span
+        className={`h-2 w-2 rounded-full ${on ? "bg-indigo-400" : "bg-zinc-500"}`}
+        aria-hidden
+      />
+      {on ? "Ναι" : "Όχι"}
+    </span>
+  );
+}
+
+function ActionButton(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "ghost" | "danger" }) {
+  const { variant = "ghost", className = "", ...rest } = props;
+  const base = "px-2 py-1 rounded-md text-sm focus:outline-none focus:ring-2";
+  const styles =
+    variant === "primary"
+      ? "bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-400"
+      : variant === "danger"
+      ? "border border-rose-600 text-rose-200 hover:bg-rose-600/10 focus:ring-rose-400"
+      : "border border-zinc-700 text-zinc-100 hover:bg-zinc-800 focus:ring-indigo-400";
+  return <button className={`${base} ${styles} ${className}`} {...rest} />;
 }
 
 function EditableRow({
@@ -335,7 +386,7 @@ function EditableRow({
 
   React.useEffect(() => {
     setDraft({ ...row });
-  }, [row.id]); // reset when list refreshes or when switching rows
+  }, [row.id]);
 
   const save = async () => {
     const patch: Partial<AnnouncementFull> = {
@@ -345,45 +396,47 @@ function EditableRow({
       status: draft.status,
       pinned: !!draft.pinned,
       priority: Number(draft.priority ?? 0),
-      start_at: typeof draft.start_at === "string" && draft.start_at.includes("T")
-        ? draft.start_at
-        : fromIsoToLocal(draft.start_at as any),
-      end_at: typeof draft.end_at === "string" && draft.end_at.includes("T")
-        ? draft.end_at
-        : fromIsoToLocal(draft.end_at as any),
+      start_at:
+        typeof draft.start_at === "string" && draft.start_at.includes("T")
+          ? draft.start_at
+          : fromIsoToLocal(draft.start_at as any),
+      end_at:
+        typeof draft.end_at === "string" && draft.end_at.includes("T")
+          ? draft.end_at
+          : fromIsoToLocal(draft.end_at as any),
     };
     await onSave(row.id, patch);
     setEditing(false);
   };
 
   return (
-    <tr className="border-t align-top">
+    <tr className="border-t border-zinc-800 align-top">
       <td className="px-3 py-2">
         {editing ? (
           <input
-            className="border rounded px-2 py-1 w-full"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={draft.title ?? ""}
             onChange={(e) => setDraft((s) => ({ ...s, title: e.target.value }))}
           />
         ) : (
-          <div className="font-medium">{row.title}</div>
+          <div className="font-medium text-zinc-100">{row.title}</div>
         )}
-        <div className="text-xs text-gray-500">
-          Created: {new Date(row.created_at).toLocaleString()}
+        <div className="text-xs text-zinc-400">
+          Δημιουργήθηκε: {new Date(row.created_at).toLocaleString()}
         </div>
       </td>
 
       <td className="px-3 py-2">
         {editing ? (
           <select
-            className="border rounded px-2 py-1"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={draft.status as any}
             onChange={(e) => setDraft((s) => ({ ...s, status: e.target.value as any }))}
           >
-            <option value="draft">draft</option>
-            <option value="scheduled">scheduled</option>
-            <option value="published">published</option>
-            <option value="archived">archived</option>
+            <option value="draft">Πρόχειρο</option>
+            <option value="scheduled">Προγραμματισμένο</option>
+            <option value="published">Δημοσιευμένο</option>
+            <option value="archived">Αρχειοθετημένο</option>
           </select>
         ) : (
           <StatusPill s={row.status} />
@@ -392,13 +445,17 @@ function EditableRow({
 
       <td className="px-3 py-2">
         {editing ? (
-          <input
-            type="checkbox"
-            checked={!!draft.pinned}
-            onChange={(e) => setDraft((s) => ({ ...s, pinned: e.target.checked }))}
-          />
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 focus:ring-2 focus:ring-indigo-500"
+              checked={!!draft.pinned}
+              onChange={(e) => setDraft((s) => ({ ...s, pinned: e.target.checked }))}
+            />
+            <span className="text-sm text-zinc-200">Καρφιτσωμένο</span>
+          </label>
         ) : (
-          <span className="text-xs">{row.pinned ? "Yes" : "No"}</span>
+          <IconPill on={row.pinned} />
         )}
       </td>
 
@@ -406,12 +463,12 @@ function EditableRow({
         {editing ? (
           <input
             type="number"
-            className="border rounded px-2 py-1 w-20"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded px-2 py-1 w-24 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={Number(draft.priority ?? 0)}
             onChange={(e) => setDraft((s) => ({ ...s, priority: Number(e.target.value) }))}
           />
         ) : (
-          <span>{row.priority}</span>
+          <span className="text-zinc-100">{row.priority}</span>
         )}
       </td>
 
@@ -419,7 +476,7 @@ function EditableRow({
         {editing ? (
           <input
             type="datetime-local"
-            className="border rounded px-2 py-1"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={
               typeof draft.start_at === "string" && draft.start_at.includes("T")
                 ? (draft.start_at as string)
@@ -428,7 +485,7 @@ function EditableRow({
             onChange={(e) => setDraft((s) => ({ ...s, start_at: e.target.value }))}
           />
         ) : (
-          <span className="text-xs">
+          <span className="text-xs text-zinc-300">
             {row.start_at ? new Date(row.start_at).toLocaleString() : "—"}
           </span>
         )}
@@ -438,7 +495,7 @@ function EditableRow({
         {editing ? (
           <input
             type="datetime-local"
-            className="border rounded px-2 py-1"
+            className="border border-zinc-700 bg-zinc-900 text-zinc-100 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={
               typeof draft.end_at === "string" && draft.end_at.includes("T")
                 ? (draft.end_at as string)
@@ -447,7 +504,7 @@ function EditableRow({
             onChange={(e) => setDraft((s) => ({ ...s, end_at: e.target.value }))}
           />
         ) : (
-          <span className="text-xs">
+          <span className="text-xs text-zinc-300">
             {row.end_at ? new Date(row.end_at).toLocaleString() : "—"}
           </span>
         )}
@@ -457,21 +514,13 @@ function EditableRow({
         <div className="flex gap-2">
           {!editing ? (
             <>
-              <button className="px-2 py-1 rounded border hover:bg-gray-50" onClick={() => setEditing(true)}>
-                Edit
-              </button>
-              <button className="px-2 py-1 rounded border hover:bg-gray-50" onClick={() => onDelete(row.id)}>
-                Delete
-              </button>
+              <ActionButton onClick={() => setEditing(true)} variant="ghost">Επεξεργασία</ActionButton>
+              <ActionButton onClick={() => onDelete(row.id)} variant="danger">Διαγραφή</ActionButton>
             </>
           ) : (
             <>
-              <button className="px-2 py-1 rounded border hover:bg-gray-50" onClick={save}>
-                Save
-              </button>
-              <button className="px-2 py-1 rounded border hover:bg-gray-50" onClick={() => setEditing(false)}>
-                Cancel
-              </button>
+              <ActionButton onClick={save} variant="primary">Αποθήκευση</ActionButton>
+              <ActionButton onClick={() => setEditing(false)} variant="ghost">Άκυρο</ActionButton>
             </>
           )}
         </div>

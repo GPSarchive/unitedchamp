@@ -1,4 +1,4 @@
-//components/DashboardPageComponents/teams/PlayersPanel.tsx
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,7 +6,7 @@ import { X, Loader2, Search, UserPlus } from "lucide-react";
 import type {
   PlayerRow as Player,
   PlayerStatisticsRow as PlayerStat,
-  PlayerAssociation, // ✅ normalized UI shape (player_statistics is always an array 0..1)
+  PlayerAssociation,
 } from "@/app/lib/types";
 
 type Props = {
@@ -37,21 +37,17 @@ export default function PlayersPanel({
   error,
   onOpenPlayer,
 }: Props) {
-  // local copy so add/remove feel instant
   const [list, setList] = useState<PlayerAssociation[]>(associations ?? []);
   useEffect(() => setList(associations ?? []), [associations]);
 
-  // Drawer state
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"existing" | "create">("existing");
 
-  // Search existing
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<PlayerAssociation[]>([]);
   const canSearch = q.trim().length >= 1;
 
-  // Create new
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [age, setAge] = useState<number | "" | null>(null);
@@ -68,7 +64,6 @@ export default function PlayersPanel({
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       const players = (data.players as Player[]) ?? [];
-      // Map bare players into normalized association shape (stats empty array)
       setResults(players.map(p => ({ player: { ...p, player_statistics: [] } })));
     } catch (e: any) {
       alert(e?.message ?? String(e));
@@ -87,7 +82,7 @@ export default function PlayersPanel({
       });
       const data = (await safeJson(res)) ?? {};
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-      setList((xs) => [...xs, data.association as PlayerAssociation]); // server returns normalized association
+      setList((xs) => [...xs, data.association as PlayerAssociation]);
       setOpen(false);
       setQ("");
       setResults([]);
@@ -112,10 +107,8 @@ export default function PlayersPanel({
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       const player = data.player as Player;
-      await addExisting(player.id); // reuse existing adder
-      setFirst("");
-      setLast("");
-      setAge(null);
+      await addExisting(player.id);
+      setFirst(""); setLast(""); setAge(null);
     } catch (e: any) {
       alert(e?.message ?? String(e));
     }
@@ -123,7 +116,7 @@ export default function PlayersPanel({
 
   async function removeFromTeam(playerId: number) {
     if (!teamId) return;
-    if (!confirm("Remove this player from the team?")) return;
+    if (!confirm("Να αφαιρεθεί ο παίκτης από την ομάδα;")) return;
 
     try {
       const res = await fetch(`/api/teams/${teamId}/players/${playerId}`, {
@@ -133,7 +126,6 @@ export default function PlayersPanel({
       const body = await safeJson(res);
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
-      // use the refreshed list returned by the API (fallback to local filter)
       setList((xs) => body.playerAssociations ?? xs.filter((a: PlayerAssociation) => a.player.id !== playerId));
     } catch (e: any) {
       alert(e?.message ?? String(e));
@@ -143,7 +135,7 @@ export default function PlayersPanel({
   return (
     <div className="mt-2 rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-white/90">Current Players</h3>
+        <h3 className="text-sm font-semibold text-white/90">Τρέχον ρόστερ</h3>
         <button
           type="button"
           onClick={() => {
@@ -152,16 +144,16 @@ export default function PlayersPanel({
           }}
           className="text-xs px-2 py-1 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50"
         >
-          + Add player
+          + Προσθήκη παίκτη
         </button>
       </div>
 
       {isLoading ? (
-        <p className="text-white/70">Loading players…</p>
+        <p className="text-white/70">Φόρτωση παικτών…</p>
       ) : error ? (
-        <p className="text-red-400">Error loading players: {error}</p>
+        <p className="text-red-400">Σφάλμα φόρτωσης παικτών: {error}</p>
       ) : !list || list.length === 0 ? (
-        <p className="text-gray-400">No players currently on this team.</p>
+        <p className="text-gray-400">Δεν υπάρχουν παίκτες σε αυτή την ομάδα.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {list.map((pa) => {
@@ -175,35 +167,35 @@ export default function PlayersPanel({
                   type="button"
                   onClick={() => removeFromTeam(p.id)}
                   className="absolute right-2 top-2 hidden group-hover:inline-flex text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
-                  title="Remove from team"
+                  title="Αφαίρεση από την ομάδα"
                 >
-                  Remove
+                  Αφαίρεση
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onOpenPlayer(p.id)}
                   className="w-full text-left hover:shadow-lg hover:border-orange-400/40 transition rounded-md"
-                  title="Edit player"
+                  title="Επεξεργασία παίκτη"
                 >
                   <p className="text-white font-semibold">{p.first_name} {p.last_name}</p>
-                  <p className="text-gray-300 text-sm mt-1">Age: {ageSafe ?? "N/A"}</p>
+                  <p className="text-gray-300 text-sm mt-1">Ηλικία: {ageSafe ?? "—"}</p>
 
                   <div className="mt-2 flex flex-wrap gap-2 text-xs">
                     <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-                      Goals: {num(s?.total_goals)}
+                      Γκολ: {num(s?.total_goals)}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-                      Assists: {num(s?.total_assists)}
+                      Ασίστ: {num(s?.total_assists)}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-300">
-                      YC: {num(s?.yellow_cards)}
+                      Κίτρινες: {num(s?.yellow_cards)}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-red-300">
-                      RC: {num(s?.red_cards)}
+                      Κόκκινες: {num(s?.red_cards)}
                     </span>
                     <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-300">
-                      BC: {num(s?.blue_cards)}
+                      Μπλε: {num(s?.blue_cards)}
                     </span>
                   </div>
                 </button>
@@ -213,7 +205,7 @@ export default function PlayersPanel({
         </div>
       )}
 
-      {/* Drawer */}
+      {/* Συρτάρι */}
       <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
         <div className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
         <div
@@ -229,16 +221,16 @@ export default function PlayersPanel({
                 className={`px-2 py-1 rounded ${tab === "existing" ? "bg-white/10" : ""}`}
                 onClick={() => setTab("existing")}
               >
-                Add existing
+                Προσθήκη υπάρχοντος
               </button>
               <button
                 className={`px-2 py-1 rounded ${tab === "create" ? "bg-white/10" : ""}`}
                 onClick={() => setTab("create")}
               >
-                Create new
+                Δημιουργία νέου
               </button>
             </div>
-            <button onClick={() => setOpen(false)} className="p-2 rounded-lg hover:bg-white/10" title="Close">
+            <button onClick={() => setOpen(false)} className="p-2 rounded-lg hover:bg-white/10" title="Κλείσιμο">
               <X className="h-5 w-5 text-white/80" />
             </button>
           </div>
@@ -252,7 +244,7 @@ export default function PlayersPanel({
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => (e.key === "Enter" ? (e.preventDefault(), search()) : undefined)}
-                    placeholder="Search by first or last name…"
+                    placeholder="Αναζήτηση με όνομα…"
                     className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
                   />
                   <button
@@ -261,13 +253,13 @@ export default function PlayersPanel({
                     onClick={search}
                     className="px-3 py-2 rounded-lg border border-white/15 bg-zinc-900 text-white disabled:opacity-50"
                   >
-                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Αναζήτηση"}
                   </button>
                 </label>
 
                 <div className="mt-3 space-y-2">
                   {results.length === 0 ? (
-                    <p className="text-white/60 text-sm">No results yet.</p>
+                    <p className="text-white/60 text-sm">Δεν υπάρχουν αποτελέσματα ακόμη.</p>
                   ) : (
                     results.map((pa) => {
                       const p = pa.player;
@@ -284,7 +276,7 @@ export default function PlayersPanel({
                             onClick={() => addExisting(p.id)}
                             className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50"
                           >
-                            <UserPlus className="h-3 w-3" /> Add
+                            <UserPlus className="h-3 w-3" /> Προσθήκη
                           </button>
                         </div>
                       );
@@ -296,7 +288,7 @@ export default function PlayersPanel({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">First name</span>
+                    <span className="text-sm text-white/80">Όνομα</span>
                     <input
                       value={first}
                       onChange={(e) => setFirst(e.target.value)}
@@ -304,7 +296,7 @@ export default function PlayersPanel({
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">Last name</span>
+                    <span className="text-sm text-white/80">Επώνυμο</span>
                     <input
                       value={last}
                       onChange={(e) => setLast(e.target.value)}
@@ -312,7 +304,7 @@ export default function PlayersPanel({
                     />
                   </label>
                   <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">Age</span>
+                    <span className="text-sm text-white/80">Ηλικία</span>
                     <input
                       type="number"
                       min={0}
@@ -332,7 +324,7 @@ export default function PlayersPanel({
                     onClick={createAndAdd}
                     className="px-3 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50"
                   >
-                    Create & add to team
+                    Δημιουργία & προσθήκη
                   </button>
                 </div>
               </>

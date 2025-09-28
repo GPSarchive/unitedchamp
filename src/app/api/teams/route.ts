@@ -1,3 +1,4 @@
+// app/api/teams/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
@@ -147,7 +148,7 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, logo, created_at, deleted_at");
+      .select("id, name, logo, created_at, deleted_at, season_score");
 
     if (include === "archived") {
       q = q.not("deleted_at", "is", null);
@@ -166,7 +167,7 @@ export async function GET(req: Request) {
     }
 
     if (!shouldSign) {
-      // Return raw (including deleted_at so admin UI can show 'Archived' badges)
+      // Return raw (including deleted_at/season_score for admin UI badges/fields)
       return NextResponse.json({ teams: data ?? [] });
     }
 
@@ -176,6 +177,7 @@ export async function GET(req: Request) {
         name: t.name,
         created_at: t.created_at,
         deleted_at: t.deleted_at,
+        season_score: t.season_score,
         logo: await signLogoIfNeededSafe(supa, t.id, t.logo),
       }))
     );
@@ -189,8 +191,9 @@ export async function GET(req: Request) {
 
 /* ======================================
    POST /api/teams  (admin only)
-   Body: { name, logo? } where logo may be an external URL or a signed URL
-   If a storage path is provided, it will be validated *after* creation against teams/<newId>/...
+   Body: { name, logo?, season_score? }
+   - logo may be an external URL or a signed URL
+   - If a storage path is provided, it will be validated *after* creation against teams/<newId>/...
    ====================================== */
 export async function POST(req: Request) {
   try {
@@ -217,6 +220,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
+    // season_score (optional, non-negative integer)
+    let seasonScoreRaw: number | null = null;
+    if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
+      const n = Number(body.season_score);
+      if (!Number.isInteger(n) || n < 0) {
+        return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
+      }
+      seasonScoreRaw = n;
+    }
+
     const logoCandidate = toStoragePathOrUrlSafe(body.logo);
 
     // Insert first; if logoCandidate is an external URL, we can include it now.
@@ -224,8 +237,12 @@ export async function POST(req: Request) {
 
     const { data: created, error: insErr } = await supa
       .from("teams")
-      .insert({ name: nameRaw, logo: initialLogo })
-      .select("id, name, logo, created_at, deleted_at")
+      .insert({
+        name: nameRaw,
+        logo: initialLogo,
+        season_score: seasonScoreRaw ?? 0,
+      })
+      .select("id, name, logo, created_at, deleted_at, season_score")
       .single();
 
     if (insErr || !created) {
@@ -242,7 +259,7 @@ export async function POST(req: Request) {
           .from("teams")
           .update({ logo: logoCandidate })
           .eq("id", team.id)
-          .select("id, name, logo, created_at, deleted_at")
+          .select("id, name, logo, created_at, deleted_at, season_score")
           .single();
 
         if (upErr) {
