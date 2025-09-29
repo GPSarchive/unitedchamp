@@ -149,3 +149,4 @@ export const useKnockoutDesigner = create<Store>((set, get) => ({
       dirty: { ...s.dirty, [stageIdx]: false },
     })),
 }));
+/* ------------------------------------------------------------------ */

@@ -52,16 +52,16 @@ type MatchRowWithStage = MatchRow & {
   group_idx?: number | null;
 };
 
-// Small visual atoms
+// Utility-first atoms (subtle, high-contrast on black backgrounds)
 const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center gap-2 rounded-full px-2.5 py-1 ring-1 ring-white/10 bg-white/5 text-white/80">
+  <span className="inline-flex items-center gap-2 rounded-md px-2 py-1 border border-white/10 bg-zinc-950 text-white/80">
     {children}
   </span>
 );
 
 const Section = ({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) => (
   <div className="space-y-3">
-    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-white/70">
+    <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/60">
       {icon}
       <span>{title}</span>
     </div>
@@ -194,11 +194,8 @@ export default function RowEditor({
 
   return (
     <div className="w-full max-w-5xl mx-auto">
-      {/* Stylish container */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(60%_120%_at_0%_0%,rgba(16,185,129,0.12),transparent_60%),radial-gradient(60%_120%_at_100%_0%,rgba(59,130,246,0.12),transparent_60%)] backdrop-blur-sm">
-        {/* top stripe */}
-        <div className="absolute inset-x-0 -top-8 h-24 bg-gradient-to-r from-emerald-500/20 via-emerald-400/10 to-cyan-500/20 blur-2xl pointer-events-none" />
-
+      {/* Neutral, high-contrast surface against a black page background */}
+      <div className="rounded-lg border border-white/10 bg-zinc-950/90">
         <div className="p-4 sm:p-6 space-y-6">
           {/* Read-only badges */}
           <div className="flex flex-wrap gap-2 text-xs">
@@ -222,7 +219,7 @@ export default function RowEditor({
           </div>
 
           {/* SCOREBOARD */}
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="rounded-md border border-white/10 bg-zinc-950 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
               {/* Team A */}
               <div className="flex items-center gap-3">
@@ -230,25 +227,23 @@ export default function RowEditor({
                   aria-label="Team A"
                   value={form.team_a_id}
                   onChange={(e) => set("team_a_id", Number(e.target.value) as Id)}
-                  className="max-w-xs w-full px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 ring-emerald-400/30 focus:outline-none focus:ring-2"
+                  className="max-w-xs w-full px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
                   {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {teamLabel(t)}
-                    </option>
+                    <option key={t.id} value={t.id}>{teamLabel(t)}</option>
                   ))}
                 </select>
               </div>
 
               {/* Score */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 justify-center">
                 <input
                   aria-label="Team A score"
                   type="number"
                   min={0}
                   value={form.team_a_score}
                   onChange={(e) => set("team_a_score", Number(e.target.value))}
-                  className="w-16 h-11 text-center text-lg sm:text-xl font-semibold px-2 py-1.5 rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="w-16 h-11 text-center text-lg font-semibold px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
                 <span className="text-white/70 font-semibold">—</span>
                 <input
@@ -257,22 +252,20 @@ export default function RowEditor({
                   min={0}
                   value={form.team_b_score}
                   onChange={(e) => set("team_b_score", Number(e.target.value))}
-                  className="w-16 h-11 text-center text-lg sm:text-xl font-semibold px-2 py-1.5 rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="w-16 h-11 text-center text-lg font-semibold px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
               </div>
 
               {/* Team B */}
-              <div className="flex items-center gap-3 justify-end">
+              <div className="flex items-center gap-3 sm:justify-end">
                 <select
                   aria-label="Team B"
                   value={form.team_b_id}
                   onChange={(e) => set("team_b_id", Number(e.target.value) as Id)}
-                  className="max-w-xs w-full px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 ring-emerald-400/30 focus:outline-none focus:ring-2"
+                  className="max-w-xs w-full px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
                   {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {teamLabel(t)}
-                    </option>
+                    <option key={t.id} value={t.id}>{teamLabel(t)}</option>
                   ))}
                 </select>
               </div>
@@ -288,19 +281,19 @@ export default function RowEditor({
                   type="datetime-local"
                   value={(form.match_date as string) ?? ""}
                   onChange={(e) => set("match_date", (e.target.value || null) as MatchRow["match_date"])}
-                  className="px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 ring-emerald-400/30 focus:outline-none focus:ring-2"
+                  className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
               </label>
 
               <div className="flex flex-wrap gap-2 text-xs text-white/80 sm:col-span-2">
-                <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-white/5 ring-1 ring-white/10">
-                  Saved (UTC): <span className="text-white/95 font-medium">{isoToLabelUTC(initial.match_date ?? null)}</span>
+                <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-zinc-900 ring-1 ring-white/10">
+                  Saved (UTC): <span className="text-white font-medium">{isoToLabelUTC(initial.match_date ?? null)}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-white/5 ring-1 ring-white/10">
-                  Your local: <span className="text-white/95 font-medium">{isoToLabelLocal(initial.match_date ?? null)}</span>
+                <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-zinc-900 ring-1 ring-white/10">
+                  Your local: <span className="text-white font-medium">{isoToLabelLocal(initial.match_date ?? null)}</span>
                 </span>
                 {pendingSaveUtc && (
-                  <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-emerald-500/10 ring-1 ring-emerald-400/30 text-emerald-200">
+                  <span className="inline-flex items-center gap-1 rounded px-2 py-1 bg-emerald-900/20 ring-1 ring-emerald-400/30 text-emerald-200">
                     Will save as: <span className="text-emerald-100 font-medium">{pendingSaveUtc}</span>
                   </span>
                 )}
@@ -313,12 +306,10 @@ export default function RowEditor({
                 <select
                   value={form.status}
                   onChange={(e) => set("status", e.target.value as MatchRow["status"])}
-                  className="px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
                   {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </label>
@@ -330,7 +321,7 @@ export default function RowEditor({
                 <select
                   value={form.winner_team_id ?? ""}
                   onChange={(e) => set("winner_team_id", e.target.value === "" ? null : (Number(e.target.value) as Id))}
-                  className="px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 disabled:opacity-60 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white/20"
                   disabled={isDraw}
                 >
                   <option value="">— none —</option>
@@ -339,9 +330,7 @@ export default function RowEditor({
                     .map((id) => {
                       const t = teams.find((x) => x.id === id) ?? null;
                       return (
-                        <option key={id} value={id}>
-                          {teamLabel(t, id as Id)}
-                        </option>
+                        <option key={id} value={id}>{teamLabel(t, id as Id)}</option>
                       );
                     })}
                 </select>
@@ -360,12 +349,10 @@ export default function RowEditor({
                 <select
                   value={form.team_a_id}
                   onChange={(e) => set("team_a_id", Number(e.target.value) as Id)}
-                  className="px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
                   {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {teamLabel(t)}
-                    </option>
+                    <option key={t.id} value={t.id}>{teamLabel(t)}</option>
                   ))}
                 </select>
               </label>
@@ -375,12 +362,10 @@ export default function RowEditor({
                 <select
                   value={form.team_b_id}
                   onChange={(e) => set("team_b_id", Number(e.target.value) as Id)}
-                  className="px-3 py-2 min-h-[44px] rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                  className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
                   {teams.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {teamLabel(t)}
-                    </option>
+                    <option key={t.id} value={t.id}>{teamLabel(t)}</option>
                   ))}
                 </select>
               </label>
@@ -393,7 +378,7 @@ export default function RowEditor({
                     min={0}
                     value={form.team_a_score}
                     onChange={(e) => set("team_a_score", Number(e.target.value))}
-                    className="w-24 h-11 text-center px-2 py-2 rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                    className="w-24 h-11 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                   />
                 </label>
                 <label className="flex flex-col gap-1">
@@ -403,7 +388,7 @@ export default function RowEditor({
                     min={0}
                     value={form.team_b_score}
                     onChange={(e) => set("team_b_score", Number(e.target.value))}
-                    className="w-24 h-11 text-center px-2 py-2 rounded-lg bg-zinc-950/60 text-white border border-white/10 focus:outline-none focus:ring-2 ring-emerald-400/30"
+                    className="w-24 h-11 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                   />
                 </label>
               </div>
@@ -418,15 +403,15 @@ export default function RowEditor({
             {/* live summary */}
             <div className="hidden sm:block text-xs text-white/70">
               <span className="font-medium text-white/80">Preview:</span>{" "}
-              <span className="text-white/90">{teamLabel(teamA, form.team_a_id as Id)}</span>
+              <span className="text-white">{teamLabel(teamA, form.team_a_id as Id)}</span>
               <span className="mx-1 opacity-70">vs</span>
-              <span className="text-white/90">{teamLabel(teamB, form.team_b_id as Id)}</span>
+              <span className="text-white">{teamLabel(teamB, form.team_b_id as Id)}</span>
               <span className="mx-1 opacity-70">—</span>
-              <span className="text-white/90">{aScore} : {bScore}</span>
+              <span className="text-white">{aScore} : {bScore}</span>
               {isFinished && (
                 <>
                   <span className="mx-1 opacity-70">•</span>
-                  <span className="text-white/90">{isDraw ? "Draw" : `Winner: ${teamLabel(teams.find(t => t.id === form.winner_team_id) ?? null, form.winner_team_id as Id)}`}</span>
+                  <span className="text-white">{isDraw ? "Draw" : `Winner: ${teamLabel(teams.find(t => t.id === form.winner_team_id) ?? null, form.winner_team_id as Id)}`}</span>
                 </>
               )}
             </div>
@@ -435,7 +420,7 @@ export default function RowEditor({
               <button
                 type="button"
                 onClick={onCancel}
-                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800 active:scale-[0.99] transition w-full sm:w-auto flex-1 sm:flex-none"
+                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-md border border-white/10 text-white bg-zinc-900 hover:bg-zinc-800 w-full sm:w-auto"
               >
                 <X className="h-4 w-4" /> Cancel
               </button>
@@ -443,7 +428,7 @@ export default function RowEditor({
                 type="button"
                 disabled={!!validationError || saving}
                 onClick={save}
-                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-lg border border-emerald-400/40 text-white bg-emerald-700/40 hover:bg-emerald-700/60 disabled:opacity-50 active:scale-[0.99] transition shadow-[0_0_0_2px_rgba(16,185,129,.05)] w-full sm:w-auto flex-1 sm:flex-none"
+                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-md border border-white/10 text-white bg-emerald-700/40 hover:bg-emerald-700/60 disabled:opacity-50 w-full sm:w-auto"
               >
                 <Check className="h-4 w-4" /> {saving ? "Saving…" : isEdit ? "Save" : "Create"}
               </button>
