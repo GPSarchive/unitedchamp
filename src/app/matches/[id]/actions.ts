@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
-import { progressAfterMatch } from '@/app/dashboard/components/TournamentCURD/progression';
+import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
 
 /** =========================
  *  Admin guard (server-side)

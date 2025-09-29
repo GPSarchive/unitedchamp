@@ -217,7 +217,7 @@ export async function POST(
     }
 
     // Call the exported seeding functions from progression.ts
-    const progression = await import("@/app/dashboard/components/TournamentCURD/progression");
+    const progression = await import("@/app/dashboard/tournaments/TournamentCURD/progression");
 
     if (src.kind === "groups") {
       await progression.seedNextKnockoutFromGroupsIfConfigured(srcStageId, { reseed: wantReseed || force });

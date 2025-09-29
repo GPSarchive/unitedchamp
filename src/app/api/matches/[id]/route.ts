@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 // ⬇️ Run tournament progression after finishing a match
-import { progressAfterMatch } from "@/app/dashboard/components/TournamentCURD/progression";
+import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 

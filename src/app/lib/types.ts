@@ -339,6 +339,7 @@ export type StageConfig = {
 
   // ----- Standalone KO control -----
   standalone_bracket_size?: number;
+  groups_signature?: string;
 
   // ----- KO → Groups intake -----
   from_knockout_stage_idx?: number;

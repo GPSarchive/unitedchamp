@@ -8,14 +8,28 @@ import PlayerPhoto from "./PlayerPhoto";
 type Props = {
   open: boolean;
   onClose: () => void;
-  player: PlayerWithStats | null; // if null => create
+  player: PlayerWithStats | null; // αν είναι null => δημιουργία
   onSubmit: (payload: PlayerFormPayload) => Promise<void> | void;
 };
 
-// Use your actual bucket ID (the one that currently works for teams)
+// Το τρέχον bucket id
 const BUCKET = "GPSarchive's Project";
 
-function UploadButton({ onUploaded }: { onUploaded: (path: string) => void }) {
+// Βοηθητική για να δημιουργούμε ασφαλές slug φακέλου
+function slugify(input: string) {
+  return input
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function UploadButton({
+  onUploaded,
+  dirName,
+}: {
+  onUploaded: (path: string) => void;
+  dirName: string; // ΝΕΟ: όνομα φακέλου προορισμού (π.χ. "john-doe-42")
+}) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -28,28 +42,29 @@ function UploadButton({ onUploaded }: { onUploaded: (path: string) => void }) {
     if (!file) return;
     setUploading(true);
     try {
-      // 1) Ask the server for a signed upload URL (admin-only route)
+      // 1) Μόνο για διαχειριστές: πάρε υπογεγραμμένο URL μεταφόρτωσης (με φάκελο)
       const res = await fetch("/api/storage/signed-upload", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           contentType: file.type,
-          bucket: BUCKET, // pass your bucket (private)
+          bucket: BUCKET,
+          dirName, // ΝΕΟ: ζήτα από τον server να βάλει το αρχείο κάτω από players/<dirName>/
         }),
       });
       const { signedUrl, path, error } = await res.json();
-      if (!res.ok) throw new Error(error || "Failed to get signed upload URL");
+      if (!res.ok) throw new Error(error || "Αποτυχία λήψης υπογεγραμμένου URL μεταφόρτωσης");
 
-      // 2) Upload the file directly to Storage using the signed URL
+      // 2) Ανέβασε στο storage
       const putRes = await fetch(signedUrl, {
         method: "PUT",
         headers: { "x-upsert": "false", "content-type": file.type },
         body: file,
       });
-      if (!putRes.ok) throw new Error("Upload failed");
+      if (!putRes.ok) throw new Error("Η μεταφόρτωση απέτυχε");
 
-      // 3) Private bucket: store the STORAGE PATH (e.g. "players/uuid.jpg")
+      // 3) Αποθήκευσε την διαδρομή στο storage
       onUploaded(path);
     } catch (err: any) {
       alert(err?.message || String(err));
@@ -74,9 +89,53 @@ function UploadButton({ onUploaded }: { onUploaded: (path: string) => void }) {
         onClick={pickFile}
         className="px-3 py-2 rounded-lg border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800 disabled:opacity-60"
       >
-        {uploading ? "Uploading…" : "Upload"}
+        {uploading ? "Μεταφόρτωση…" : "Μεταφόρτωση"}
       </button>
     </>
+  );
+}
+
+function DeletePhotoButton({
+  path,
+  onDeleted,
+}: {
+  path: string;
+  onDeleted: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleDelete() {
+    if (!path) return;
+    const ok = confirm("Να διαγραφεί αυτή η φωτογραφία από την αποθήκευση και να καθαριστεί το πεδίο;");
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/storage/delete-object", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ bucket: BUCKET, path }),
+      });
+      const { error } = await res.json();
+      if (!res.ok) throw new Error(error || "Η διαγραφή απέτυχε");
+      onDeleted();
+    } catch (err: any) {
+      alert(err?.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleDelete}
+      disabled={busy}
+      className="px-3 py-2 rounded-lg border border-red-400/40 text-red-200 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-60"
+      title="Διαγραφή αρχείου από την αποθήκευση και εκκαθάριση"
+    >
+      {busy ? "Διαγραφή…" : "Διαγραφή φωτογραφίας"}
+    </button>
   );
 }
 
@@ -90,8 +149,8 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
   const [goals, setGoals] = useState<string>("");
   const [assists, setAssists] = useState<string>("");
 
-  // NEW fields
-  const [photo, setPhoto] = useState(""); // will hold STORAGE PATH for private bucket
+  // ΝΕΑ πεδία
+  const [photo, setPhoto] = useState(""); // διαδρομή αποθήκευσης (ιδιωτικό bucket)
   const [height, setHeight] = useState("");
   const [position, setPosition] = useState("");
   const [birth, setBirth] = useState("");
@@ -99,25 +158,31 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
   const [rc, setRC] = useState("");
   const [bc, setBC] = useState("");
 
+  // Υπολογισμός ονόματος φακέλου για μεταφορτώσεις (π.χ. "john-doe-12")
+  const dirName = useMemo(() => {
+    const name = slugify(`${first} ${last}`.trim());
+    return [name, isEdit ? String(player?.id ?? "") : ""].filter(Boolean).join("-");
+  }, [first, last, isEdit, player?.id]);
+
   useEffect(() => {
     if (!open) return;
 
-    // Core identity
+    // Βασικά στοιχεία
     setFirst(player?.first_name ?? "");
     setLast(player?.last_name ?? "");
 
-    // Core stats (come from player_statistics[0], not the top-level)
+    // Βασικά στατιστικά από τη σχετική γραμμή
     setAge(s?.age == null ? "" : String(s.age));
     setGoals(s?.total_goals == null ? "" : String(s.total_goals));
     setAssists(s?.total_assists == null ? "" : String(s.total_assists));
 
-    // Extended player fields (on the player row)
-    setPhoto(player?.photo ?? ""); // storage path when using private bucket
+    // Εκτεταμένα πεδία παίκτη
+    setPhoto(player?.photo ?? ""); // διαδρομή
     setHeight(player?.height_cm == null ? "" : String(player.height_cm));
     setPosition(player?.position ?? "");
     setBirth(player?.birth_date ? String(player.birth_date).slice(0, 10) : "");
 
-    // Card counters (also in stats row)
+    // Μετρητές καρτών
     setYC(s?.yellow_cards == null ? "" : String(s.yellow_cards));
     setRC(s?.red_cards == null ? "" : String(s.red_cards));
     setBC(s?.blue_cards == null ? "" : String(s.blue_cards));
@@ -135,13 +200,13 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
       total_goals: goals === "" ? 0 : Number(goals),
       total_assists: assists === "" ? 0 : Number(assists),
 
-      // NEW fields
-      photo: photo.trim() || null, // STORAGE PATH (private bucket)
+      // ΝΕΑ πεδία
+      photo: photo.trim() || null, // διαδρομή αποθήκευσης
       height_cm: height === "" ? null : Number(height),
       position: position.trim() || null,
       birth_date: birth ? new Date(birth).toISOString() : null,
 
-      // Stats counters
+      // Μετρητές στατιστικών
       yellow_cards: yc === "" ? 0 : Number(yc),
       red_cards: rc === "" ? 0 : Number(rc),
       blue_cards: bc === "" ? 0 : Number(bc),
@@ -159,7 +224,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
       )}
       aria-hidden={!open}
     >
-      {/* Backdrop */}
+      {/* Φόντο */}
       <div
         className={clsx(
           "absolute inset-0 bg-black/50 transition-opacity",
@@ -168,31 +233,31 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
         onClick={onClose}
       />
 
-      {/* Drawer */}
+      {/* Συρτάρι */}
       <div
         className={clsx(
           "absolute right-0 top-0 h-full w-full sm:w-[520px] bg-zinc-950/95 backdrop-blur border-l border-white/10 shadow-2xl transition-transform",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Header */}
+        {/* Κεφαλίδα */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="font-semibold text-white">
-            {isEdit ? "Edit player" : "Create player"}
+            {isEdit ? "Επεξεργασία παίκτη" : "Δημιουργία παίκτη"}
           </div>
           <button
             onClick={onClose}
             className="px-2 py-1 rounded-lg bg-zinc-900 text-white border border-white/10"
           >
-            Close
+            Κλείσιμο
           </button>
         </div>
 
-        {/* Body */}
+        {/* Σώμα */}
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Names */}
+          {/* Ονόματα */}
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">First name</span>
+            <span className="text-sm text-white/80">Όνομα</span>
             <input
               value={first}
               onChange={(e) => setFirst(e.target.value)}
@@ -200,7 +265,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Last name</span>
+            <span className="text-sm text-white/80">Επώνυμο</span>
             <input
               value={last}
               onChange={(e) => setLast(e.target.value)}
@@ -208,19 +273,19 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
 
-          {/* Core stats */}
+          {/* Βασικά στατιστικά */}
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Age</span>
+            <span className="text-sm text-white/80">Ηλικία</span>
             <input
               value={age}
               onChange={(e) => setAge(e.target.value)}
               inputMode="numeric"
               className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="e.g. 23"
+              placeholder="π.χ. 23"
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Total goals</span>
+            <span className="text-sm text-white/80">Σύνολο γκολ</span>
             <input
               value={goals}
               onChange={(e) => setGoals(e.target.value)}
@@ -230,7 +295,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Total assists</span>
+            <span className="text-sm text-white/80">Σύνολο ασίστ</span>
             <input
               value={assists}
               onChange={(e) => setAssists(e.target.value)}
@@ -240,16 +305,16 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
 
-          {/* Extended bio & meta */}
+          {/* Εκτεταμένο βιογραφικό & μεταδεδομένα */}
           <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className="text-sm text-white/80">Photo</span>
+            <span className="text-sm text-white/80">Φωτογραφία</span>
 
-            {/* preview via signed URL (private bucket) */}
+            {/* προεπισκόπηση μέσω signed URL (ιδιωτικό bucket) */}
             {photo ? (
               <PlayerPhoto
                 bucket={BUCKET}
-                path={photo} // storage path like "players/uuid.jpg"
-                alt="Preview"
+                path={photo}
+                alt="Προεπισκόπηση"
                 className="h-24 w-24 object-cover rounded-lg border border-white/10 mb-2"
               />
             ) : null}
@@ -259,39 +324,43 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
                 value={photo}
                 onChange={(e) => setPhoto(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-                placeholder="players/uuid.jpg"
+                placeholder="players/john-doe-12/uuid.jpg"
               />
-              <UploadButton onUploaded={(path) => setPhoto(path)} />
+              {/* περνάμε το dirName ώστε οι μεταφορτώσεις να πηγαίνουν κάτω από players/<dirName>/ */}
+              <UploadButton onUploaded={(path) => setPhoto(path)} dirName={dirName} />
+              {photo ? (
+                <DeletePhotoButton path={photo} onDeleted={() => setPhoto("")} />
+              ) : null}
             </div>
 
             <p className="text-xs text-white/50">
-              Private bucket: we store the <span className="font-mono">players/&lt;uuid&gt;.ext</span> path and sign it for display.
+              Οι μεταφορτώσεις θα αποθηκεύονται κάτω από <span className="font-mono">players/{dirName || "&lt;auto&gt;"}/</span>.
             </p>
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Height (cm)</span>
+            <span className="text-sm text-white/80">Ύψος (cm)</span>
             <input
               value={height}
               onChange={(e) => setHeight(e.target.value)}
               inputMode="numeric"
               className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="e.g. 178"
+              placeholder="π.χ. 178"
             />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Position</span>
+            <span className="text-sm text-white/80">Θέση</span>
             <input
               value={position}
               onChange={(e) => setPosition(e.target.value)}
               className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="e.g. RW"
+              placeholder="π.χ. RW"
             />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Birth date</span>
+            <span className="text-sm text-white/80">Ημερομηνία γέννησης</span>
             <input
               type="date"
               value={birth}
@@ -300,9 +369,9 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
 
-          {/* Cards */}
+          {/* Κάρτες */}
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Yellow cards</span>
+            <span className="text-sm text-white/80">Κίτρινες κάρτες</span>
             <input
               value={yc}
               onChange={(e) => setYC(e.target.value)}
@@ -312,7 +381,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Red cards</span>
+            <span className="text-sm text-white/80">Κόκκινες κάρτες</span>
             <input
               value={rc}
               onChange={(e) => setRC(e.target.value)}
@@ -322,7 +391,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Blue cards</span>
+            <span className="text-sm text-white/80">Μπλε κάρτες</span>
             <input
               value={bc}
               onChange={(e) => setBC(e.target.value)}
@@ -332,14 +401,14 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
             />
           </label>
 
-          {/* Actions */}
+          {/* Ενέργειες */}
           <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
               className="px-3 py-2 rounded-lg border border-white/15 text-white bg-transparent hover:bg-white/5"
             >
-              Cancel
+              Άκυρο
             </button>
             <button
               type="button"
@@ -352,7 +421,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
                   : "border-white/15 bg-zinc-900 opacity-60"
               )}
             >
-              {isEdit ? "Save changes" : "Create player"}
+              {isEdit ? "Αποθήκευση αλλαγών" : "Δημιουργία παίκτη"}
             </button>
           </div>
         </div>

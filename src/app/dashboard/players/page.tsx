@@ -1,5 +1,5 @@
 // src/app/dashboard/players/page.tsx
-import AdminPlayersCRUD from "../AdminPlayersCRUD";
+import AdminPlayersCRUD from "./AdminPlayersCRUD";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
-// src/app/dashboard/tournaments/page.tsx
+//app/dashboard/tournaments/TournamentCURD/page.tsx
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import TournamentWizard from "../components/TournamentCURD/TournamentWizard";
-import { getTournamentForEditAction } from "../components/TournamentCURD/actions";
+import TournamentWizard from "./TournamentCURD/TournamentWizard";
+import { getTournamentForEditAction } from "./TournamentCURD/actions";
 
 export const dynamic = "force-dynamic";
 

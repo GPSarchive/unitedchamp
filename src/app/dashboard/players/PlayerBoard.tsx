@@ -4,8 +4,8 @@ import React, { useEffect, useState } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import type { PlayerRow as Player, PlayerStatisticsRow as PlayerStat } from "@/app/lib/types";
 
-// The API returns a player joined with optional statistics.
-// We extend the shared Player type locally so TS allows `player_statistics`.
+// Το API επιστρέφει έναν παίκτη ενωμένο με (προαιρετικά) στατιστικά.
+// Επεκτείνουμε το κοινόχρηστο Player τοπικά ώστε η TS να επιτρέπει `player_statistics`.
 type PlayerWithStats = Player & { player_statistics?: PlayerStat[] };
 
 export interface PlayerBoardProps {
@@ -34,7 +34,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
   const [goals, setGoals] = useState(0);
   const [assists, setAssists] = useState(0);
 
-  // Close on ESC
+  // Κλείσιμο με ESC
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => (e.key === "Escape" ? onClose() : undefined);
@@ -42,7 +42,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Load when opened + id present
+  // Φόρτωση όταν ανοίγει + υπάρχει id
   useEffect(() => {
     let ignore = false;
     async function load() {
@@ -117,13 +117,13 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
 
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      {/* Backdrop */}
+      {/* Φόντο */}
       <div
         className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
       />
 
-      {/* Drawer panel */}
+      {/* Πάνελ συρταριού */}
       <div
         className={`absolute right-0 top-0 h-full w-full sm:w-[480px] bg-zinc-950 border-l border-white/10 shadow-2xl
                     transition-transform ${open ? "translate-x-0" : "translate-x-full"}`}
@@ -131,8 +131,8 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
         aria-modal="true"
       >
         <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <h3 className="text-lg font-semibold text-white">Edit Player</h3>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" title="Close">
+          <h3 className="text-lg font-semibold text-white">Επεξεργασία παίκτη</h3>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" title="Κλείσιμο">
             <X className="h-5 w-5 text-white/80" />
           </button>
         </div>
@@ -140,15 +140,15 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
         <div className="p-4 space-y-4">
           {loading ? (
             <p className="text-white/70 inline-flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+              <Loader2 className="h-4 w-4 animate-spin" /> Φόρτωση…
             </p>
           ) : error ? (
-            <p className="text-red-400">Error: {error}</p>
+            <p className="text-red-400">Σφάλμα: {error}</p>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-white/80">First name</span>
+                  <span className="text-sm text-white/80">Όνομα</span>
                   <input
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -156,7 +156,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-white/80">Last name</span>
+                  <span className="text-sm text-white/80">Επώνυμο</span>
                   <input
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -165,7 +165,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
                 </label>
 
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-white/80">Age</span>
+                  <span className="text-sm text-white/80">Ηλικία</span>
                   <input
                     type="number"
                     min={0}
@@ -180,7 +180,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
 
                 <div />
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-white/80">Total goals</span>
+                  <span className="text-sm text-white/80">Σύνολο γκολ</span>
                   <input
                     type="number"
                     min={0}
@@ -190,7 +190,7 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-sm text-white/80">Total assists</span>
+                  <span className="text-sm text-white/80">Σύνολο ασίστ</span>
                   <input
                     type="number"
                     min={0}
@@ -206,14 +206,14 @@ export default function PlayerBoard({ open, playerId, onClose, onSaved }: Player
                   onClick={onClose}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800"
                 >
-                  Cancel
+                  Άκυρο
                 </button>
                 <button
                   onClick={save}
                   disabled={saving || !firstName.trim() || !lastName.trim() || goals < 0 || assists < 0}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50"
                 >
-                  <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+                  <Save className="h-4 w-4" /> {saving ? "Αποθήκευση…" : "Αποθήκευση"}
                 </button>
               </div>
             </>

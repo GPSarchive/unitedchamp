@@ -16,7 +16,7 @@ export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew }: Props)
         value={q}
         onChange={(e) => onChangeQ(e.target.value)}
         onKeyDown={(e) => (e.key === "Enter" ? onSearch() : undefined)}
-        placeholder="Search players…"
+        placeholder="Αναζητηση παικτων"
         className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
       />
       <button
@@ -24,7 +24,7 @@ export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew }: Props)
         onClick={onSearch}
         className="px-3 py-2 rounded-lg border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800"
       >
-        Search
+        Αναζητηση
       </button>
       <div className="flex-1" />
       <button
@@ -32,7 +32,7 @@ export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew }: Props)
         onClick={onNew}
         className="px-3 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50"
       >
-        + New player
+        + Νεος Παικτής
       </button>
     </div>
   );
