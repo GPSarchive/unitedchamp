@@ -13,7 +13,7 @@ export function Carousel({ images }: { images: string[] }) {
       autoplay={{ delay: 4000, disableOnInteraction: false }}
       pagination={{ clickable: true }}
       loop
-      className="w-full h-[1000px] sm:h-[400px] md:h-[700px]"
+      className="w-full h-full"  // Changed to h-full
     >
       {images.map((url, i) => (
         <SwiperSlide key={i}>
