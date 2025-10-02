@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo } from "react";
-import ModernKnockoutTree from "./KnockoutTree/ModernKnockoutTree"; // ✅ use the CRUD/editor tree
+import ModernKnockoutTree from "./KnockoutTree/oldknockout/ModernKnockoutTree"; // ✅ use the CRUD/editor tree
 import type { NewTournamentPayload, TeamsMap, BracketMatch } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import GroupIntakeBoard from "./groups/GroupIntakeBoard";

@@ -2,7 +2,7 @@
 "use client";
 
 import type { BracketMatch as Match, TeamsMap, Labels } from "@/app/lib/types";
-import MatchRow from "@/app/dashboard/tournaments/TournamentCURD/stages/KnockoutTree/MatchRow";
+import MatchRow from "@/app/dashboard/tournaments/TournamentCURD/stages/KnockoutTree/oldknockout/MatchRow";
 
 export default function MatchCard({
   match,

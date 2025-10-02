@@ -24,6 +24,7 @@ export interface TeamRow {
   created_at: string | null;
   /** Soft-delete timestamp (null = active) */
   deleted_at: string | null;
+  is_dummy?: boolean;            
 }
 
 export interface UserRow {
@@ -35,7 +36,7 @@ export interface PlayerRow {
   id: Id;
   first_name: string;
   last_name: string;
-
+  is_dummy?: boolean;
   // NEW fields from public.player
   photo: string;                 // NOT NULL in DB (default '/player-placeholder.jpg')
   height_cm: number | null;
@@ -238,7 +239,7 @@ export function normalizeTeamPlayers(
       id: base.id,
       first_name: base.first_name,
       last_name: base.last_name,
-
+      
       // NEW pass-throughs
       photo: base.photo,
       height_cm: base.height_cm,
@@ -246,7 +247,7 @@ export function normalizeTeamPlayers(
       birth_date: base.birth_date,
       created_at: base.created_at ?? null,
       updated_at: base.updated_at ?? null,
-
+         
       player_statistics: stats,
     };
 

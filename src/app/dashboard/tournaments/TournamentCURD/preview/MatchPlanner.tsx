@@ -7,6 +7,7 @@ import type { NewTournamentPayload } from "@/app/lib/types";
 import { generateDraftMatches } from "../util/Generators";
 import { genRoundRobin } from "../util/functions/roundRobin";
 import { genKnockoutAnyN } from "../util/functions/knockoutAnyN";
+// Kept for READS (initial hydrate). Writes now go through /api/matches/[id].
 import { supabase } from "@/app/lib/supabase/supabaseClient";
 
 // Keep DraftMatch as the single source of truth for match fields
@@ -601,10 +602,10 @@ export default function MatchPlanner({
     if (!row) return;
     const a = getEff(row, "team_a_id");
     const b = getEff(row, "team_b_id");
-    setPendingFor(localId, { team_a_id: b ?? null, team_b_id: a ?? null });
+    setPendingFor(localId, { team_a_id: (b as number | null) ?? null, team_b_id: (a as number | null) ?? null });
   };
 
-  // --- NEW: per-row save that writes to DB when db_id exists ---
+  // --- UPDATED: per-row save now writes to SERVER API when db_id exists ---
   const saveRow = async (localId: number) => {
     const patch = pending[localId];
     if (!patch) return;
@@ -612,47 +613,56 @@ export default function MatchPlanner({
     const row = withLocalIds.find((m) => m._localId === localId);
     if (!row) return;
 
-    // If this row is already persisted, write only the changed fields to DB.
+    // If this row is already persisted, write only the changed fields via API.
     if (row.db_id) {
       // Guard: optionally warn on finished
       const st = (row.status ?? inferStatus(row as any)) as "scheduled" | "finished";
       if (st === "finished") {
         const ok = confirm(
-          "Ο αγώνας έχει κλείσει (finished). Θέλετε σίγουρα να αλλάξετε τα στοιχεία;"
+          "Ο αγώνας έχει κλείσει (finished). Θέλετε σίγουρα να αλλάξετε τα στοιχεία?"
         );
         if (!ok) return;
       }
 
       setBusy(true);
       try {
-        const updatePayload: Record<string, any> = {};
-        const candidateKeys: Array<keyof EditableDraftMatch> = [
-          "match_date",
-          "team_a_id",
-          "team_b_id",
-          "matchday",
-          "round",
-          "bracket_pos",
-          "status",
-          "team_a_score",
-          "team_b_score",
-          "winner_team_id",
-          "home_source_round",
-          "home_source_bracket_pos",
-          "away_source_round",
-          "away_source_bracket_pos",
-        ];
+        // Build JSON body with only changed keys (server ignores absent keys)
+        const body: Record<string, any> = {
+          ...( "match_date" in patch ? { match_date: patch.match_date ?? null } : {} ),
 
-        for (const k of candidateKeys) {
-          if (k in patch) updatePayload[k] = (patch as any)[k];
+          // teams / structure
+          ...( "team_a_id" in patch ? { team_a_id: patch.team_a_id ?? null } : {} ),
+          ...( "team_b_id" in patch ? { team_b_id: patch.team_b_id ?? null } : {} ),
+          ...( "matchday"  in patch ? { matchday:  patch.matchday  ?? null } : {} ),
+          ...( "round"     in patch ? { round:     patch.round     ?? null } : {} ),
+          ...( "bracket_pos" in patch ? { bracket_pos: patch.bracket_pos ?? null } : {} ),
+
+          // status / scoring
+          ...( "status"         in patch ? { status:         patch.status } : {} ),
+          ...( "team_a_score"   in patch ? { team_a_score:   patch.team_a_score ?? null } : {} ),
+          ...( "team_b_score"   in patch ? { team_b_score:   patch.team_b_score ?? null } : {} ),
+          ...( "winner_team_id" in patch ? { winner_team_id: patch.winner_team_id ?? null } : {} ),
+
+          // KO pointers (stable wiring)
+          ...( "home_source_round"         in patch ? { home_source_round:         patch.home_source_round ?? null } : {} ),
+          ...( "home_source_bracket_pos"   in patch ? { home_source_bracket_pos:   patch.home_source_bracket_pos ?? null } : {} ),
+          ...( "away_source_round"         in patch ? { away_source_round:         patch.away_source_round ?? null } : {} ),
+          ...( "away_source_bracket_pos"   in patch ? { away_source_bracket_pos:   patch.away_source_bracket_pos ?? null } : {} ),
+        };
+
+        const res = await fetch(`/api/matches/${row.db_id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j?.error || `Failed to update match #${row.db_id}`);
         }
 
-        if (Object.keys(updatePayload).length > 0) {
-          const { error } = await supabase.from("matches").update(updatePayload).eq("id", row.db_id);
-          if (error) throw error;
-        }
-
-        // Mirror to local state so UI stays in sync
+        // Mirror to local state so the UI stays in sync
         setRow(localId, patch);
         clearPendingFor(localId);
       } catch (err) {
@@ -1266,6 +1276,15 @@ export default function MatchPlanner({
                 const lid = (m as EditableDraftMatch)._localId!;
                 const isDirty = hasPending(lid);
 
+                // Selected team ids (respect pending)
+                const selA = getEff(m as EditableDraftMatch, "team_a_id") as number | null;
+                const selB = getEff(m as EditableDraftMatch, "team_b_id") as number | null;
+
+                const hsr = getEff(m as EditableDraftMatch, "home_source_round") as number | null;
+                const hsb = getEff(m as EditableDraftMatch, "home_source_bracket_pos") as number | null;
+                const asr = getEff(m as EditableDraftMatch, "away_source_round") as number | null;
+                const asb = getEff(m as EditableDraftMatch, "away_source_bracket_pos") as number | null;
+
                 return (
                   <tr
                     key={`${stageIdx}-${isGroups ? groupIdx ?? 0 : "x"}-${lid}`}
@@ -1284,7 +1303,7 @@ export default function MatchPlanner({
                           <input
                             type="number"
                             className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                            value={(m as EditableDraftMatch).round ?? 1}
+                            value={(getEff(m as EditableDraftMatch, "round") as number | null) ?? 1}
                             onChange={(e) =>
                               setPendingFor(lid, {
                                 round: Number(e.target.value) || 1,
@@ -1298,25 +1317,23 @@ export default function MatchPlanner({
                             <input
                               type="number"
                               className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                              value={(m as EditableDraftMatch).bracket_pos ?? 1}
+                              value={(getEff(m as EditableDraftMatch, "bracket_pos") as number | null) ?? 1}
                               onChange={(e) =>
                                 setPendingFor(lid, { bracket_pos: Number(e.target.value) || 1 })
                               }
                             />
-                            {/* Inline KO pointer badges (read-only) */}
+                            {/* Inline KO pointer badges (read-only, reflect pending) */}
                             <div className="text-[10px] text-white/70 space-x-1">
-                              {(m as EditableDraftMatch).home_source_round ? (
+                              {hsr ? (
                                 <span className="inline-flex items-center rounded bg-white/5 px-1.5 py-0.5 ring-1 ring-white/10">
-                                  A: R{(m as EditableDraftMatch).home_source_round}-B
-                                  {(m as EditableDraftMatch).home_source_bracket_pos}
+                                  A: R{hsr}-B{hsb ?? "?"}
                                 </span>
                               ) : (
                                 <span className="text-white/30">A: —</span>
                               )}
-                              {(m as EditableDraftMatch).away_source_round ? (
+                              {asr ? (
                                 <span className="inline-flex items-center rounded bg-white/5 px-1.5 py-0.5 ring-1 ring-white/10">
-                                  B: R{(m as EditableDraftMatch).away_source_round}-B
-                                  {(m as EditableDraftMatch).away_source_bracket_pos}
+                                  B: R{asr}-B{asb ?? "?"}
                                 </span>
                               ) : (
                                 <span className="text-white/30">B: —</span>
@@ -1330,7 +1347,7 @@ export default function MatchPlanner({
                         <input
                           type="number"
                           className="w-16 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                          value={(m as EditableDraftMatch).matchday ?? 1}
+                          value={(getEff(m as EditableDraftMatch, "matchday") as number | null) ?? 1}
                           onChange={(e) =>
                             setPendingFor(lid, { matchday: Number(e.target.value) || 1 })
                           }
@@ -1342,7 +1359,7 @@ export default function MatchPlanner({
                     <td className="px-2 py-1">
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                        value={(m as EditableDraftMatch).team_a_id ?? ""}
+                        value={selA ?? ""}
                         onChange={(e) =>
                           setPendingFor(lid, {
                             team_a_id: e.target.value ? Number(e.target.value) : null,
@@ -1355,12 +1372,9 @@ export default function MatchPlanner({
                             {opt.label}
                           </option>
                         ))}
-                        {(m as EditableDraftMatch).team_a_id &&
-                          !teamOptions.some((o) => o.id === (m as EditableDraftMatch).team_a_id) && (
-                            <option value={(m as EditableDraftMatch).team_a_id!}>
-                              {teamLabel((m as EditableDraftMatch).team_a_id!)} (εκτός ομίλου)
-                            </option>
-                          )}
+                        {selA && !teamOptions.some((o) => o.id === selA) && (
+                          <option value={selA}>{teamLabel(selA)} (εκτός ομίλου)</option>
+                        )}
                       </select>
                     </td>
 
@@ -1368,7 +1382,7 @@ export default function MatchPlanner({
                     <td className="px-2 py-1">
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                        value={(m as EditableDraftMatch).team_b_id ?? ""}
+                        value={selB ?? ""}
                         onChange={(e) =>
                           setPendingFor(lid, {
                             team_b_id: e.target.value ? Number(e.target.value) : null,
@@ -1381,20 +1395,17 @@ export default function MatchPlanner({
                             {opt.label}
                           </option>
                         ))}
-                        {(m as EditableDraftMatch).team_b_id &&
-                          !teamOptions.some((o) => o.id === (m as EditableDraftMatch).team_b_id) && (
-                            <option value={(m as EditableDraftMatch).team_b_id!}>
-                              {teamLabel((m as EditableDraftMatch).team_b_id!)} (εκτός ομίλου)
-                            </option>
-                          )}
+                        {selB && !teamOptions.some((o) => o.id === selB) && (
+                          <option value={selB}>{teamLabel(selB)} (εκτός ομίλου)</option>
+                        )}
                       </select>
                     </td>
 
                     {/* Score cell */}
                     <td className="px-2 py-1">
                       {(() => {
-                        const a = (m as EditableDraftMatch).team_a_score ?? null;
-                        const b = (m as EditableDraftMatch).team_b_score ?? null;
+                        const a = (getEff(m as EditableDraftMatch, "team_a_score") as number | null) ?? null;
+                        const b = (getEff(m as EditableDraftMatch, "team_b_score") as number | null) ?? null;
                         const has = a != null || b != null;
                         return has ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
                       })()}
@@ -1404,12 +1415,12 @@ export default function MatchPlanner({
                     <td className="px-2 py-1">
                       {(() => {
                         const st =
-                          (m as EditableDraftMatch).status ??
+                          (getEff(m as EditableDraftMatch, "status") as "scheduled" | "finished" | null | undefined) ??
                           inferStatus({
-                            status: (m as EditableDraftMatch).status,
-                            team_a_score: (m as EditableDraftMatch).team_a_score,
-                            team_b_score: (m as EditableDraftMatch).team_b_score,
-                            winner_team_id: (m as EditableDraftMatch).winner_team_id,
+                            status: getEff(m as EditableDraftMatch, "status") as any,
+                            team_a_score: getEff(m as EditableDraftMatch, "team_a_score") as any,
+                            team_b_score: getEff(m as EditableDraftMatch, "team_b_score") as any,
+                            winner_team_id: getEff(m as EditableDraftMatch, "winner_team_id") as any,
                           });
                         return (
                           <span
@@ -1431,7 +1442,7 @@ export default function MatchPlanner({
                       <input
                         type="datetime-local"
                         className="bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                        value={isoToLocalInput((m as EditableDraftMatch).match_date)}
+                        value={isoToLocalInput(getEff(m as EditableDraftMatch, "match_date") as string | null)}
                         onChange={(e) =>
                           setPendingFor(lid, {
                             match_date: localInputToISO(e.target.value),

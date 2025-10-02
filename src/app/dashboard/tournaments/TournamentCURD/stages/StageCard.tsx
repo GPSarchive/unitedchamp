@@ -5,9 +5,9 @@ import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 
 import GroupsBoard from "./groups/GroupsBoard";
-import KnockoutBoard from "./KnockoutTree/KnockoutBoard";
+import KnockoutBoard from "./KnockoutTree/newknockout/KnockoutBoard";
 import GroupsConfigKOIntake from "./groups/GroupsConfigKOIntake";
-import KnockoutConfigFromGroups from "./KnockoutTree/KnockoutConfigFromGroups";
+import KnockoutConfigFromGroups from "./KnockoutTree/newknockout/KnockoutConfigFromGroups";
 import InlineMatchPlanner from "../preview/InlineMatchPlanner";
 
 import type { StageConfig } from "@/app/lib/types";

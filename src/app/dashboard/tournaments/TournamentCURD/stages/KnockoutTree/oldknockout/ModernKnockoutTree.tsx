@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Labels, BracketMatch as Match, TeamsMap } from "@/app/lib/types";
-import { getLabels } from "../../../../../tournoua/[slug]/components/teams/Knockout/labels";
+import { getLabels } from "../../../../../../tournoua/[slug]/components/teams/Knockout/labels";
 import MatchRow from "./MatchRow";
 import EditablePairCard from "./EditablePairCard";
 import CanvasBacklight from "./CanvasBacklight";

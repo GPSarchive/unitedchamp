@@ -384,6 +384,7 @@ export async function POST(req: Request) {
       .from("matches")
       .insert(payload)
       .select("id")
+      
       .single();
 
     if (error || !data) {

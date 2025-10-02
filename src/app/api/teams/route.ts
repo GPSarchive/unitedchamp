@@ -135,9 +135,9 @@ export async function HEAD() {
    GET /api/teams?sign=1&include=active|archived|all
    ====================================== */
 // Uses user/anon client so table RLS applies.
-// Default: only non-deleted teams (active).
-// include=archived → only soft-deleted
-// include=all      → both
+// Default: only non-deleted teams (active) and non-dummy teams.
+// include=archived → only soft-deleted (still excludes dummy)
+// include=all      → both (still excludes dummy)
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -148,12 +148,13 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, logo, created_at, deleted_at, season_score");
+      .select("id, name, logo, created_at, deleted_at, season_score")
+      .neq("is_dummy", true); // ⬅️ exclude dummy teams globally from this endpoint
 
     if (include === "archived") {
       q = q.not("deleted_at", "is", null);
     } else if (include === "all") {
-      // no filter
+      // no deleted_at filter; still excludes dummy via .neq above
     } else {
       // default: active only
       q = q.is("deleted_at", null);

@@ -40,10 +40,9 @@ export default function AdminPlayersCRUD() {
     let withStats = 0,
       without = 0;
 
-    const flat = list.map((p) => {
+    const flat = list.map((p: any) => {
       const s = firstStats(p);
-      if (s) withStats++;
-      else without++;
+      if (s) withStats++; else without++;
       return {
         id: p.id,
         name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
@@ -51,6 +50,11 @@ export default function AdminPlayersCRUD() {
         age: s?.age ?? null,
         goals: s?.total_goals ?? 0,
         assists: s?.total_assists ?? 0,
+        is_dummy_raw:
+          p?.is_dummy ??
+          p?.isDummy ??
+          p?.dummy ??
+          (p?.meta && (p.meta.is_dummy ?? p.meta.isDummy)), // [DUMMY-FILTER] visibility in debug
         _rawType: Array.isArray((p as any).player_statistics)
           ? "array"
           : (p as any).player_statistics
@@ -63,6 +67,23 @@ export default function AdminPlayersCRUD() {
       `[AdminPlayersCRUD] ${label}: total=${list.length}, withStats=${withStats}, without=${without}`
     );
     console.table(flat);
+  }
+
+  // [DUMMY-FILTER] robust predicate: treat true/"true"/1/"1"/"yes" as dummy
+  function isDummyPlayer(p: any) {
+    const v =
+      p?.is_dummy ??
+      p?.isDummy ??
+      p?.dummy ??
+      (p?.meta && (p.meta.is_dummy ?? p.meta.isDummy));
+    if (v === true) return true;
+    if (v === false || v == null) return false;
+    if (typeof v === "number") return v === 1;
+    if (typeof v === "string") {
+      const s = v.trim().toLowerCase();
+      return s === "true" || s === "1" || s === "yes";
+    }
+    return false;
   }
 
   // Normalize server shape so `player_statistics` is ALWAYS an array
@@ -108,22 +129,71 @@ export default function AdminPlayersCRUD() {
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
       const rows = (body?.players as PlayerWithStats[]) ?? [];
+
+      // [DIAG-LOG] RAW payload from API
       if (DEBUG) {
         console.log(
-          `[AdminPlayersCRUD] fetchPlayers took ${(performance.now() - t0).toFixed(1)} ms`
+          `[AdminPlayersCRUD] fetchPlayers RAW count=${rows.length} in ${(performance.now() - t0).toFixed(1)} ms`
         );
-        logPlayers(rows, "serverResponse (raw)");
-        if (body?.debug) console.log("[AdminPlayersCRUD] route debug:", body.debug);
+        const rawSample = rows.slice(0, 10).map((p: any) => ({
+          id: p.id,
+          name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+          keys: Object.keys(p),
+          is_dummy: p?.is_dummy,
+          isDummy: p?.isDummy,
+          dummy: p?.dummy,
+          meta_is_dummy: p?.meta?.is_dummy ?? p?.meta?.isDummy,
+        }));
+        console.table(rawSample);
       }
 
       const normalized = normalizeMany(rows);
+
+      // [DIAG-LOG] Normalized payload
       if (DEBUG) {
-        // store for quick inspection in DevTools
-        (window as any).__players = normalized;
-        logPlayers(normalized, "normalizedResponse");
+        console.log("[AdminPlayersCRUD] NORMALIZED (pre-filter) count=", normalized.length);
+        const normSample = normalized.slice(0, 10).map((p: any) => ({
+          id: p.id,
+          name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+          is_dummy: p?.is_dummy ?? p?.isDummy ?? p?.dummy ?? p?.meta?.is_dummy ?? p?.meta?.isDummy,
+        }));
+        console.table(normSample);
       }
 
-      setPlayers(normalized);
+      // [DUMMY-FILTER] apply front-end filter on initial fetch
+      const removed = normalized.filter((p) => isDummyPlayer(p));
+      const filtered = normalized.filter((p) => !isDummyPlayer(p));
+
+      // [DIAG-LOG] What we removed vs what we keep
+      if (DEBUG) {
+        console.log(
+          `[AdminPlayersCRUD] FILTERING removed=${removed.length} kept=${filtered.length}`
+        );
+        if (removed.length) {
+          console.log("[AdminPlayersCRUD] REMOVED (dummy) rows:");
+          console.table(
+            removed.map((p: any) => ({
+              id: p.id,
+              name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+              is_dummy_resolved: isDummyPlayer(p),
+              flag_raw:
+                p?.is_dummy ??
+                p?.isDummy ??
+                p?.dummy ??
+                (p?.meta && (p.meta.is_dummy ?? p.meta.isDummy)),
+            }))
+          );
+        }
+        console.log("[AdminPlayersCRUD] KEPT rows (will set state):");
+        console.table(
+          filtered.slice(0, 20).map((p: any) => ({
+            id: p.id,
+            name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+          }))
+        );
+      }
+
+      setPlayers(filtered);
     } catch (e: any) {
       setError(e?.message ?? String(e));
       if (DEBUG) console.error("[AdminPlayersCRUD] fetchPlayers error:", e);
@@ -139,7 +209,7 @@ export default function AdminPlayersCRUD() {
 
   // Log whenever state changes (what the UI will actually render)
   useEffect(() => {
-    logPlayers(players, "state");
+    logPlayers(players, "STATE (post-filter, rendered)");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players]);
 
@@ -181,7 +251,21 @@ export default function AdminPlayersCRUD() {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
         const updated = normalizePlayer(body?.player as PlayerWithStats);
-        setPlayers((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+        const next = (prev: PlayerWithStats[]) =>
+          prev
+            .map((p) => (p.id === updated.id ? updated : p))
+            .filter((p) => !isDummyPlayer(p));
+
+        // [DIAG-LOG] after PATCH
+        if (DEBUG) {
+          const prevSnap = [...players];
+          const future = next(prevSnap);
+          console.log(
+            `[AdminPlayersCRUD] PATCH apply → kept=${future.length} (prev=${prevSnap.length})`
+          );
+        }
+
+        setPlayers(next(players));
       } else {
         const res = await fetch(`/api/players${DEBUG ? "?debug=1" : ""}`, {
           method: "POST",
@@ -194,7 +278,30 @@ export default function AdminPlayersCRUD() {
         if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
         const created = normalizePlayer(body?.player as PlayerWithStats);
-        setPlayers((prev) => [created, ...prev]);
+        const next = (prev: PlayerWithStats[]) =>
+          [created, ...prev].filter((p) => !isDummyPlayer(p));
+
+        // [DIAG-LOG] after POST
+        if (DEBUG) {
+          const prevSnap = [...players];
+          const future = next(prevSnap);
+          console.log(
+            `[AdminPlayersCRUD] POST apply → kept=${future.length} (prev=${prevSnap.length})`
+          );
+          if (isDummyPlayer(created)) {
+            console.warn("[AdminPlayersCRUD] POST created player classified as DUMMY and was NOT added:", {
+              id: (created as any).id,
+              name: `${(created as any).first_name ?? ""} ${(created as any).last_name ?? ""}`.trim(),
+              flag_raw:
+                (created as any)?.is_dummy ??
+                (created as any)?.isDummy ??
+                (created as any)?.dummy ??
+                ((created as any)?.meta && ((created as any).meta.is_dummy ?? (created as any).meta.isDummy)),
+            });
+          }
+        }
+
+        setPlayers(next(players));
       }
       closeEditor();
     } catch (e: any) {

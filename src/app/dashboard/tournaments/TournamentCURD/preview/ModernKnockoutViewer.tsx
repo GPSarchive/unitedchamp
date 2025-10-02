@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Labels, BracketMatch as Match, TeamsMap } from "@/app/lib/types";
 import { getLabels } from "@/app/tournoua/[slug]/components/teams/Knockout/labels";
-import MatchRow from "@/app/dashboard/tournaments/TournamentCURD/stages/KnockoutTree/MatchRow";
+import MatchRow from "@/app/dashboard/tournaments/TournamentCURD/stages/KnockoutTree/oldknockout/MatchRow";
 
 /** Public prop types (same label args you already use) */
 export type RoundLabelFnArgs = {

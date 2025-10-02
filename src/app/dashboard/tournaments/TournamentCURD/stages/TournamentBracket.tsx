@@ -2,7 +2,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import ModernKnockoutTree from "./KnockoutTree/ModernKnockoutTree";
+import ModernKnockoutTree from "./KnockoutTree/oldknockout/ModernKnockoutTree";
 import { useTournamentMatches } from "./KnockoutTree/hooks/useTournamentMatches";
 import type { BracketMatch as Match, TeamsMap } from "@/app/lib/types";
 

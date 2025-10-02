@@ -152,6 +152,9 @@ export async function PATCH(
   try {
     ensureSameOrigin(req);
 
+    const url = new URL(req.url);
+    const force = url.searchParams.get("force") === "true"; // escape hatch for dangerous edits
+
     const { id: idParam } = await ctx.params;
     const id = parsePositiveInt(idParam);
     if (!id) return jsonError(400, "Invalid id");
@@ -170,7 +173,7 @@ export async function PATCH(
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return jsonError(400, "Invalid JSON");
 
-    // ❌ Hard-block any structural edits via this endpoint
+    // ❌ Hard-block any structural edits via this endpoint (but server may clear them internally)
     const attemptedStructural = Object.keys(body).some((k) => STRUCTURAL_FIELDS.has(k));
     if (attemptedStructural) {
       return jsonError(409, "Bracket wiring fields are immutable via PATCH; use generators/reseed.");
@@ -246,14 +249,34 @@ export async function PATCH(
       return jsonError(400, "Invalid status");
     }
 
+    // 🚦 If user manually sets a team on a KO slot, auto-break the linkage on that side
+    // (Server clears structural fields; still blocked from client payload)
+    const willSetTeamA = "team_a_id" in update && update.team_a_id != null;
+    const willSetTeamB = "team_b_id" in update && update.team_b_id != null;
+    if (stageKind === "knockout") {
+      if (willSetTeamA) {
+        update.home_source_match_id = null;
+        update.home_source_round = null;
+        update.home_source_bracket_pos = null;
+      }
+      if (willSetTeamB) {
+        update.away_source_match_id = null;
+        update.away_source_round = null;
+        update.away_source_bracket_pos = null;
+      }
+    }
+
     // Effective values after patch (merge with current)
     const teamA = "team_a_id" in update ? update.team_a_id : current.team_a_id;
     const teamB = "team_b_id" in update ? update.team_b_id : current.team_b_id;
-    if (!teamA || !teamB) return jsonError(400, "Both team_a_id and team_b_id must be set");
-    if (teamA === teamB) return jsonError(400, "team_a_id and team_b_id must differ");
 
     if ("winner_team_id" in update) update.winner_team_id = parseNullablePositiveInt(update.winner_team_id);
     const finalStatus = ("status" in update ? update.status : current.status) as string;
+
+    // ✅ Relax: only require both teams when finishing the match
+    if (finalStatus === "finished") {
+      if (!teamA || !teamB) return jsonError(400, "Both teams must be set to finish a match.");
+    }
 
     // 🚫 No revert finished → scheduled
     if (current.status === "finished" && finalStatus === "scheduled") {
@@ -354,19 +377,25 @@ export async function PATCH(
       hasAnyChild = children.length > 0;
       hasChildFinished = children.some((c: any) => c.status === "finished");
 
-      if (riskyChange && hasChildFinished) {
+      if (riskyChange && hasChildFinished && !force) {
         const blockers = children
           .filter((c: any) => c.status === "finished")
           .map((c: any) => ({ id: c.id, round: c.round, bracket_pos: c.bracket_pos }));
         return NextResponse.json(
-          { error: "Downstream match is already finished; cannot change this result. Use wipe & reseed.", blockers },
+          { error: "Downstream match is already finished; cannot change this result. Use wipe & reseed or add ?force=true.", blockers },
           { status: 409 }
         );
       }
     }
 
-    if (teamsChanged && stageKind === "knockout" && (current.status === "finished" || hasAnyChild)) {
-      return jsonError(409, "Cannot change teams of a finished/wired match.");
+    // ✅ Relax: allow changing teams on KO even if there are children — unless finished or you skip without force
+    if (teamsChanged && stageKind === "knockout") {
+      if (current.status === "finished" && !force) {
+        return jsonError(409, "Cannot change teams of a finished match without ?force=true.");
+      }
+      // If children exist but aren't finished, allow by default.
+      // If you want to require force whenever there are children at all, uncomment below:
+      // if (hasAnyChild && !force) return jsonError(409, "This match feeds other matches; use ?force=true to override.");
     }
 
     // Prune undefined/NaN (keep 0 and null)

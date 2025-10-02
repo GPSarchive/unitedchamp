@@ -47,6 +47,7 @@ export async function GET(req: Request) {
       photo,
       height_cm,
       position,
+      is_dummy,
       birth_date,
       player_statistics (
         id,
@@ -62,6 +63,7 @@ export async function GET(req: Request) {
     .order("last_name", { ascending: true })
     .limit(limit)
     .order("id", { foreignTable: "player_statistics", ascending: false })
+    .neq("is_dummy", true)   // ⬅️ filter dummy rows at the DB level
     .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
 
   if (q) {

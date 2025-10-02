@@ -1,5 +1,5 @@
 import type { Labels, BracketMatch as Match, TeamsMap } from "@/app/lib/types";
-import SelectRow, { Option } from "../../../../../tournoua/[slug]/components/teams/Knockout/SelectRow";
+import SelectRow, { Option } from "../../../../../../tournoua/[slug]/components/teams/Knockout/SelectRow";
 
 export default function EditablePairCard({
   match,

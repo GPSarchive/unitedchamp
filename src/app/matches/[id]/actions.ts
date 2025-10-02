@@ -124,9 +124,11 @@ export async function saveAllStatsAction(formData: FormData) {
   }
 
   if (toUpsert.length) {
+    // Drop the transient UI-only key so PostgREST doesn't choke on a non-existent column
+    const clean = toUpsert.map(({ _delete, ...r }) => r);
     const { error } = await supabase
       .from('match_player_stats')
-      .upsert(toUpsert, { onConflict: 'match_id,player_id' });
+      .upsert(clean, { onConflict: 'match_id,player_id' });
     if (error) throw error;
   }
 

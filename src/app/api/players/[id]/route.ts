@@ -59,6 +59,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       height_cm,
       position,
       birth_date,
+      is_dummy,
       player_statistics (
         id,
         age,
@@ -71,8 +72,11 @@ export async function GET(_req: Request, ctx: Ctx) {
       )
     `)
     .eq("id", pid)
+    
     .order("id", { foreignTable: "player_statistics", ascending: false })
+    .neq("is_dummy", true)   // ⬅️ filter dummy rows at the DB level
     .limit(1, { foreignTable: "player_statistics" })
+    
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -211,6 +215,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .eq("id", pid)
       .order("id", { foreignTable: "player_statistics", ascending: false })
       .limit(1, { foreignTable: "player_statistics" })
+      
       .maybeSingle();
 
     if (refErr) return NextResponse.json({ error: refErr.message }, { status: 400 });

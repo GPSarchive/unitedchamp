@@ -1,7 +1,7 @@
 // app/components/DashboardPageComponents/TournamentCURD/stages/ModernKnockoutTree/hooks/useBracketLayout.ts
 import { useEffect, useRef, useState } from "react";
 import type { BracketMatch as Match } from "@/app/lib/types";
-import type { Edge } from "../types";
+import type { Edge } from "../oldknockout/types";
 
 type Col = { round: number; list: Match[] };
 

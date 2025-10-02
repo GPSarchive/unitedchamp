@@ -207,11 +207,9 @@ export default async function Home() {
       <section className="py-12 sm:py-16 bg-gradient-to-b from-yellow-400/80 to-black-900 text-white">
         <div className="container mx-auto px-4 text-center text-black">
           <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-4"> {/* [CTRL-A] */}
-            Καλώς ήρθατε στο Ultra Champ
+            Ultra Champ
           </h1>
-          <p className="text-base sm:text-xl font-sans mb-8 max-w-3xl mx-auto"> {/* [CTRL-B] */}
-            Ο απόλυτος προορισμός για συναρπαστικούς αγώνες και τουρνουά ποδοσφαίρου. Ελάτε μαζί με παθιασμένους παίκτες, φτιάξτε ομάδες και ανταγωνιστείτε σε δυναμικά events που γιορτάζουν το πνεύμα του παιχνιδιού. Είτε είστε έμπειροι είτε μόλις ξεκινάτε, έχουμε το ιδανικό γήπεδο για εσάς!
-          </p>
+          
           <a
             href="/sign-up"
             className="bg-white text-black px-6 sm:px-8 py-3 rounded-full font-semibold transition border border-transparent hover:bg-black hover:text-white hover:border-white"

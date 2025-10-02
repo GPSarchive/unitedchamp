@@ -330,42 +330,46 @@ async function applyKnockoutPropagation(m: MatchRow) {
 
     const byStable =
       (child.home_source_round === m.round &&
-       child.home_source_bracket_pos === m.bracket_pos) ||
+        child.home_source_bracket_pos === m.bracket_pos) ||
       (child.away_source_round === m.round &&
-       child.away_source_bracket_pos === m.bracket_pos);
+        child.away_source_bracket_pos === m.bracket_pos);
 
     return byId || byStable;
   });
 
+  // Winner / loser from source match (null if not decided)
   const W = m.winner_team_id ?? null;
-  const L = m.winner_team_id
-    ? (m.winner_team_id === m.team_a_id ? m.team_b_id : m.team_a_id)
-    : null;
+  const L =
+    m.winner_team_id != null
+      ? (m.winner_team_id === m.team_a_id ? m.team_b_id : m.team_a_id) ?? null
+      : null;
 
   for (const child of children) {
     const patch: Partial<MatchRow> = {};
+    const childFinished = child.status === "finished";
 
     const feedsHome =
       child.home_source_match_id === m.id ||
       (child.home_source_round === m.round &&
-       child.home_source_bracket_pos === m.bracket_pos);
+        child.home_source_bracket_pos === m.bracket_pos);
 
     const feedsAway =
       child.away_source_match_id === m.id ||
       (child.away_source_round === m.round &&
-       child.away_source_bracket_pos === m.bracket_pos);
+        child.away_source_bracket_pos === m.bracket_pos);
 
-    // If outcome is missing, assume single-elim winner carry-over
+    // Default to single-elim "winner advances" if not specified
     const homeOutcome = (child.home_source_outcome ?? "W") as "W" | "L";
     const awayOutcome = (child.away_source_outcome ?? "W") as "W" | "L";
 
-    if (feedsHome && child.team_a_id == null) {
-      if (homeOutcome === "W") patch.team_a_id = W;
-      if (homeOutcome === "L") patch.team_a_id = L;
+    // NEW: overwrite downstream slots when they point to this match,
+    // as long as the child match isn't finished yet.
+    // This both fills correct teams and clears stale prefilled ones.
+    if (!childFinished && feedsHome) {
+      patch.team_a_id = homeOutcome === "L" ? L : W; // could be null if source undecided
     }
-    if (feedsAway && child.team_b_id == null) {
-      if (awayOutcome === "W") patch.team_b_id = W;
-      if (awayOutcome === "L") patch.team_b_id = L;
+    if (!childFinished && feedsAway) {
+      patch.team_b_id = awayOutcome === "L" ? L : W; // could be null if source undecided
     }
 
     if (Object.keys(patch).length > 0) {
@@ -373,6 +377,10 @@ async function applyKnockoutPropagation(m: MatchRow) {
     }
   }
 }
+
+
+
+
 
 /**
  * Auto-create intake_mappings for this KO match’s (round, bracket_pos) → next groups stage.
