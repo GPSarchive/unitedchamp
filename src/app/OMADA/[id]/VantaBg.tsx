@@ -1,105 +1,96 @@
 // app/OMADA/[id]/VantaBg.tsx
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-declare global {
-  interface Window {
-    THREE?: any;
-    VANTA?: { WAVES?: (opts: any) => { destroy?: () => void } };
-  }
-}
+import { useEffect, useRef, useState } from 'react';
 
 type VantaInstance = { destroy?: () => void } | null;
 
-export default function VantaBg({
-  className = '',
-  disabled = false,
-  useViewportOnly = true, // only render effect at viewport size (big perf win)
-}: {
-  className?: string;
-  disabled?: boolean;
-  useViewportOnly?: boolean;
-}) {
+const rIC: (cb: () => void) => void =
+  typeof window !== 'undefined' && 'requestIdleCallback' in window
+    ? // @ts-ignore
+      (cb) => window.requestIdleCallback(cb, { timeout: 1000 })
+    : (cb) => setTimeout(cb, 120); // fallback
+
+export default function VantaBg({ className = '' }: { className?: string }) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const [vanta, setVanta] = useState<VantaInstance>(null);
 
-  const prefersReducedMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    []
-  );
-
   useEffect(() => {
-    if (disabled || prefersReducedMotion) return;
     let mounted = true;
+    let io: IntersectionObserver | null = null;
 
-    (async () => {
+    // Respect prefers-reduced-motion: don't animate at all
+    const prefersReduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReduced) return;
+
+    const init = async () => {
       try {
-        let THREE: any = null;
-        let WAVES: any = null;
+        // Try node modules; if they’re not installed, this will throw
+        const THREE = await import('three');
+        const WAVES = (await import('vanta/dist/vanta.waves.min')).default;
 
-        // Try npm packages
-        try {
-          THREE = await import('three');
-          WAVES = (await import('vanta/dist/vanta.waves.min')).default;
-        } catch {
-          // Fallback to globals if you use <Script> tags
-          THREE = window.THREE ?? null;
-          WAVES = window.VANTA?.WAVES ?? null;
-        }
+        if (!mounted || !elRef.current || vanta) return;
 
-        if (!mounted || !elRef.current || vanta || !THREE || !WAVES) return;
-
-        const isMobile = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 768px)').matches;
+        const isTouch =
+          typeof window !== 'undefined' &&
+          ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
         const instance = WAVES({
           el: elRef.current,
-          THREE,
-          // PERF: inputs off
+          THREE, // pass the module object
+          // Turn off pointer tracking (big win on low-end / mobile)
           mouseControls: false,
           touchControls: false,
           gyroControls: false,
-          // PERF: reduce pixel workload
-          scale: isMobile ? 0.6 : 0.85,
+          // Keep the canvas small on mobile and internally scaled
+          scale: 0.9,
           scaleMobile: 0.6,
           minHeight: 200.0,
           minWidth: 200.0,
-          // Visuals (keep warm + cheaper shading)
+          // Warm theme
           color: 0x111115,
-          shininess: 60.0,        // lower shininess = cheaper fragment work
-          waveHeight: isMobile ? 8.0 : 10.0,
-          // Some builds support waveSpeed; if present, lower it:
-        
-          waveSpeed: 0.4,
+          shininess: isTouch ? 60.0 : 80.0,
+          waveHeight: isTouch ? 8.0 : 10.0,
+          waveSpeed: isTouch ? 0.22 : 0.3, // slower = fewer visual updates perceived
         });
 
         setVanta(instance);
       } catch (err) {
-        console.error('Vanta init failed', err);
+        // If node modules are missing, silently bail instead of crashing
+        console.error('Vanta init skipped:', err);
       }
-    })();
+    };
 
+    // Only initialize when the element is on-screen
+    rIC(() => {
+      if (!elRef.current) return;
+
+      io = new IntersectionObserver(
+        (entries) => {
+          const onScreen = entries.some((e) => e.isIntersecting);
+          if (onScreen) {
+            init();
+            io?.disconnect();
+            io = null;
+          }
+        },
+        { rootMargin: '0px 0px 200px 0px', threshold: 0.01 }
+      );
+
+      io.observe(elRef.current);
+    });
+
+    // Cleanup
     return () => {
       mounted = false;
+      io?.disconnect();
       vanta?.destroy?.();
-      setVanta(null);
     };
-  }, [disabled, prefersReducedMotion, vanta]);
+  }, [vanta]);
 
-  // If we’re only rendering viewport-sized, keep the element fixed.
-  const sizingClass = useViewportOnly
-    ? 'fixed inset-0 h-screen w-screen'
-    : 'absolute inset-0';
-
-  // If reduced motion or disabled: just render a static warm gradient as a fallback.
-  if (disabled || prefersReducedMotion) {
-    return (
-      <div
-        className={`${sizingClass} -z-10 pointer-events-none ${className} bg-gradient-to-b from-stone-900 via-amber-950/10 to-zinc-900`}
-        aria-hidden="true"
-      />
-    );
-  }
-
-  return <div ref={elRef} className={`${sizingClass} -z-10 pointer-events-none ${className}`} aria-hidden="true" />;
+  return <div ref={elRef} className={className} aria-hidden="true" />;
 }
