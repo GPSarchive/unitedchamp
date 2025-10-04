@@ -1,9 +1,8 @@
-// app/OMADA/[id]/page.tsx
-import Link from "next/link";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import TeamHeader from "@/app/OMADA/[id]/TeamHeader";
-import PlayersSection from "@/app/OMADA/[id]/PlayersSection";
-import MatchesSection from "@/app/OMADA/[id]/MatchesSection";
+import TeamSidebar from "./TeamSidebar";
+import PlayersGrid from "./PlayersGrid";
+import MatchesTimeline from "./MatchesTimeline";
+import VantaBg from "./VantaBg";
 import {
   type Team,
   type PlayerAssociation,
@@ -13,7 +12,6 @@ import {
 } from "@/app/lib/types";
 
 type TeamPageProps = {
-  // Next.js 15: params/searchParams are Promises
   params: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
@@ -41,15 +39,47 @@ export default async function TeamPage({ params }: TeamPageProps) {
     );
   }
 
-  // ── Players (normalize stats → array with at most 1 row) ───────────────────────
+  // ── Tournament membership (this team in tournaments) ───────────────────────────
+  const { data: tournamentMembership, error: membershipErr } = await supabaseAdmin
+    .from("tournament_teams")
+    .select(
+      `
+      id,
+      tournament:tournament_id (
+        id, name, season, status, winner_team_id
+      )
+    `
+    )
+    .eq("team_id", teamId)
+    .order("tournament_id", { ascending: false });
+
+  const tournaments =
+    (tournamentMembership ?? [])
+      .map((r: any) => r.tournament)
+      .filter(Boolean) ?? [];
+
+  // ── Tournament wins (championships) ────────────────────────────────────────────
+  const { data: winsList, error: winsErr } = await supabaseAdmin
+    .from("tournaments")
+    .select("id, name, season")
+    .eq("winner_team_id", teamId);
+
+  const wins = winsList ?? [];
+
+  // ── Players: include master data + 1 latest statistics row ─────────────────────
   const { data: playerAssociationsData, error: playersError } = await supabaseAdmin
     .from("player_teams")
-    .select(`
+    .select(
+      `
       id,
       player:player_id (
         id,
         first_name,
         last_name,
+        photo,
+        height_cm,
+        position,
+        birth_date,
         player_statistics (
           id,
           age,
@@ -62,7 +92,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
           updated_at
         )
       )
-    `)
+    `
+    )
     .eq("team_id", teamId)
     .order("player_id", { ascending: true })
     .order("id", { foreignTable: "player.player_statistics", ascending: false })
@@ -73,10 +104,41 @@ export default async function TeamPage({ params }: TeamPageProps) {
       ? []
       : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]);
 
+  // ── Per-player per-season stats (scoped to this team) ──────────────────────────
+  const { data: seasonStats, error: pssErr } = await supabaseAdmin
+    .from("player_season_stats")
+    .select(
+      `
+      player_id,
+      season,
+      matches,
+      goals,
+      assists,
+      yellow_cards,
+      red_cards,
+      blue_cards,
+      mvp,
+      best_gk,
+      updated_at
+    `
+    )
+    .eq("team_id", teamId)
+    .order("season", { ascending: false });
+
+  const seasonStatsByPlayer: Record<number, any[]> = (seasonStats ?? []).reduce(
+    (acc: Record<number, any[]>, row: any) => {
+      if (!acc[row.player_id]) acc[row.player_id] = [];
+      acc[row.player_id].push(row);
+      return acc;
+    },
+    {}
+  );
+
   // ── Matches ────────────────────────────────────────────────────────────────────
   const { data: matchesData, error: matchesError } = await supabaseAdmin
     .from("matches")
-    .select(`
+    .select(
+      `
       id,
       match_date,
       status,
@@ -85,31 +147,45 @@ export default async function TeamPage({ params }: TeamPageProps) {
       winner_team_id,
       team_a:teams!matches_team_a_id_fkey (id, name, logo),
       team_b:teams!matches_team_b_id_fkey (id, name, logo)
-    `)
+    `
+    )
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .order("match_date", { ascending: false });
 
   const matches = (matchesData as Match[] | null) ?? null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
-      <div className="container mx-auto px-6 pt-6 pb-10">
-        <Link href="/OMADES" className="text-blue-400 hover:underline mb-4 inline-block">
-          &larr; Back to Teams
-        </Link>
+    <div className="relative min-h-screen text-slate-50 overflow-x-hidden">
+      {/* Vanta background (client-only), positioned behind everything */}
+      <VantaBg className="absolute inset-0 -z-10" />
 
-        <TeamHeader team={team as Team} />
+      {/* Optional: a very subtle warm overlay to help contrast */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
-        <PlayersSection
-          playerAssociations={playerAssociations}
-          errorMessage={playersError?.message}
-        />
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
+          {/* Left Sidebar: Logo + Basic Info */}
+          <TeamSidebar
+            team={team as Team}
+            tournaments={tournaments}
+            wins={wins}
+            errors={{ membership: membershipErr?.message, wins: winsErr?.message }}
+          />
 
-        <MatchesSection
-          matches={matches}
-          teamId={teamId}
-          errorMessage={matchesError?.message}
-        />
+          {/* Right Content: Players + Matches */}
+          <div className="space-y-8">
+            <PlayersGrid
+              playerAssociations={playerAssociations}
+              seasonStatsByPlayer={seasonStatsByPlayer}
+              errorMessage={playersError?.message || pssErr?.message}
+            />
+            <MatchesTimeline
+              matches={matches}
+              teamId={teamId}
+              errorMessage={matchesError?.message}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

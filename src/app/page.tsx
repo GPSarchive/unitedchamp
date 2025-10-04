@@ -243,7 +243,7 @@ export default async function Home() {
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
                 <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" aria-hidden="true" />
               </div>
-              <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Διασκεδαστικοί Αγώνες</h3>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Ποιοτικοι Αγώνες</h3>
               <p className="text-gray-200 text-sm sm:text-base">
                 Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
               </p>

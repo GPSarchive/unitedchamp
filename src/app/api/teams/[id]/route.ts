@@ -2,10 +2,14 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
-// ⚠️ Prefer a bucket id without spaces/apostrophes. If you cannot rename,
-// helpers below handle decoding so comparisons still work.
+/* =========================
+   Storage / Bucket settings
+   ========================= */
 const BUCKET = "GPSarchive's Project";
 
+/* =========================
+   Types
+   ========================= */
 type Ctx = { params: Promise<{ id: string }> };
 
 /* =======================
@@ -15,11 +19,11 @@ type Ctx = { params: Promise<{ id: string }> };
 const allowedOrigins = new Set(
   (process.env.ALLOWED_ORIGINS ?? "")
     .split(",")
-    .map(s => s.trim())
+    .map((s) => s.trim())
     .filter(Boolean)
 );
 
-// Tokenless CSRF mitigation: enforce same-origin via Origin/Referer on mutating verbs
+/** Tokenless CSRF mitigation: enforce same-origin via Origin/Referer on mutating verbs. */
 function ensureSameOrigin(req: Request) {
   const m = req.method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
@@ -35,7 +39,7 @@ function ensureSameOrigin(req: Request) {
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
 
-  const ok = [origin, referer].some(val => {
+  const ok = [origin, referer].some((val) => {
     try {
       return !!val && whitelist.has(new URL(val).origin);
     } catch {
@@ -70,7 +74,7 @@ function isSafeObjectPath(raw: string, teamId: number): boolean {
   if (p.includes("..")) return false;
 
   const parts = p.split("/");
-  if (parts.some(seg => !seg || seg === ".")) return false;
+  if (parts.some((seg) => !seg || seg === ".")) return false;
 
   const prefix = `teams/${teamId}/`;
   return p.startsWith(prefix);
@@ -107,7 +111,7 @@ function toStoragePathOrUrlSafe(input: string | null | undefined, teamId?: numbe
   return v;
 }
 
-// Create a short-lived signed URL with a *user* client (Storage RLS applies).
+/** Create a short-lived signed URL with a *user* client (Storage RLS applies). */
 async function signLogoIfNeededSafe(
   supaUserClient: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
   teamId: number,
@@ -118,11 +122,7 @@ async function signLogoIfNeededSafe(
 
   if (!isSafeObjectPath(logo, teamId)) return null;
 
-  const { data, error } = await supaUserClient
-    .storage
-    .from(BUCKET)
-    .createSignedUrl(logo, 60 * 10); // 10 minutes
-
+  const { data, error } = await supaUserClient.storage.from(BUCKET).createSignedUrl(logo, 60 * 10); // 10 minutes
   if (error) {
     console.error("signLogoIfNeededSafe error", { error, teamId, logo });
     return null;
@@ -137,6 +137,7 @@ async function signLogoIfNeededSafe(
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
 }
+
 export async function HEAD() {
   return new NextResponse(null, { status: 200, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
 }
@@ -155,7 +156,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const { data, error } = await supa
       .from("teams")
-      .select("id, name, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, created_at, deleted_at, season_score")
       .eq("id", id)
       .maybeSingle();
 
@@ -182,7 +183,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
     ensureSameOrigin(req);
 
     const supa = await createSupabaseRouteClient();
-    const { data: { user }, error: userErr } = await supa.auth.getUser();
+    const {
+      data: { user },
+      error: userErr,
+    } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
@@ -197,10 +201,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    const nameRaw = typeof (body as any).name === "string" ? (body as any).name.trim() : undefined;
+    const nameRaw =
+      typeof (body as any).name === "string" ? (body as any).name.trim() : undefined;
     const logoCandidate = toStoragePathOrUrlSafe((body as any).logo, id);
 
-    // NEW: optional season_score
+    // Optional: season_score
     let seasonScoreVal: number | undefined;
     if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
       const n = Number((body as any).season_score);
@@ -208,6 +213,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
         return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
       }
       seasonScoreVal = n;
+    }
+
+    // Optional: AM (text, unique). Empty string -> null. Adjust length/regex as needed.
+    let amVal: string | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "am")) {
+      const vRaw = typeof (body as any).am === "string" ? (body as any).am.trim() : null;
+      if (vRaw && vRaw.length > 64) {
+        return NextResponse.json({ error: "AM too long (max 64 characters)" }, { status: 400 });
+      }
+      amVal = vRaw || null;
     }
 
     const update: Record<string, any> = {};
@@ -229,6 +244,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
       update.season_score = seasonScoreVal;
     }
 
+    if (amVal !== undefined) {
+      update.am = amVal;
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
@@ -238,10 +257,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .update(update)
       .eq("id", id)
       .is("deleted_at", null) // don't update soft-deleted rows
-      .select("id, name, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {
+      // Postgres unique violation (e.g., duplicate AM)
+      if ((error as any)?.code === "23505") {
+        return NextResponse.json({ error: "AM must be unique" }, { status: 400 });
+      }
       console.error("PATCH teams error", error);
       return NextResponse.json({ error: "Update failed" }, { status: 400 });
     }
@@ -266,7 +289,10 @@ export async function DELETE(req: Request, ctx: Ctx) {
     ensureSameOrigin(req);
 
     const supa = await createSupabaseRouteClient();
-    const { data: { user }, error: userErr } = await supa.auth.getUser();
+    const {
+      data: { user },
+      error: userErr,
+    } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
@@ -281,7 +307,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .is("deleted_at", null) // only delete if not already deleted
-      .select("id, name, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {
@@ -293,7 +319,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
     return NextResponse.json({
       ok: true,
       team: { ...data, logo: await signLogoIfNeededSafe(supa, data.id, data.logo) },
-      soft_deleted: true
+      soft_deleted: true,
     });
   } catch (e: any) {
     const msg = String(e?.message ?? "");

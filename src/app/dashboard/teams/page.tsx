@@ -19,8 +19,8 @@ async function signLogoIfNeeded(logo: string | null) {
 export default async function Page() {
   const { data, error } = await supabaseAdmin
   .from("teams")
-  .select("id, name, logo, created_at, deleted_at")
-  .neq("is_dummy", true)   // ⬅️ exclude dummy teams
+  .select("id, name, am, logo, created_at, deleted_at")
+
   .order("name", { ascending: true });
   if (error) {
     console.error("[AdminTeamsGrid(Server)] teams load error:", error);

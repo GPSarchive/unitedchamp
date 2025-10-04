@@ -16,8 +16,8 @@ type HomeHeroProps = {
 export default function HomeHero({
   images,
   logoSrc = "/UltraChampLogo3.png",
-  leftWords = ["Καλώς", "Ήρθατε"],
-  rightWords = ["Καλή", "Διασκέδαση"],
+  leftWords = ["Καλώς Ήρθες", "Στη Νεα Τάση"],
+  rightWords = ["ΣΤΟ ΜΙΝΙ", "Football"],
   dim = 0.5,     // darker -> higher number   /* [CTRL-1] */
   blurPx = 2,    // stronger blur -> higher   /* [CTRL-2] */
 }: HomeHeroProps) {

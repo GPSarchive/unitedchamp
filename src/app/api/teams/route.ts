@@ -148,7 +148,7 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, created_at, deleted_at, season_score")
       .neq("is_dummy", true); // ⬅️ exclude dummy teams globally from this endpoint
 
     if (include === "archived") {
@@ -168,7 +168,7 @@ export async function GET(req: Request) {
     }
 
     if (!shouldSign) {
-      // Return raw (including deleted_at/season_score for admin UI badges/fields)
+      // Return raw (including deleted_at/season_score/am for admin UI badges/fields)
       return NextResponse.json({ teams: data ?? [] });
     }
 
@@ -176,6 +176,7 @@ export async function GET(req: Request) {
       (data ?? []).map(async (t) => ({
         id: t.id,
         name: t.name,
+        am: t.am, // NEW: include AM in signed payload too
         created_at: t.created_at,
         deleted_at: t.deleted_at,
         season_score: t.season_score,
@@ -192,7 +193,7 @@ export async function GET(req: Request) {
 
 /* ======================================
    POST /api/teams  (admin only)
-   Body: { name, logo?, season_score? }
+   Body: { name, am?, logo?, season_score? }
    - logo may be an external URL or a signed URL
    - If a storage path is provided, it will be validated *after* creation against teams/<newId>/...
    ====================================== */
@@ -221,6 +222,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid name" }, { status: 400 });
     }
 
+    // AM (optional text). Empty -> null. Adjust length/regex as needed.
+    const amRaw = typeof body.am === "string" ? body.am.trim() : "";
+    if (amRaw && amRaw.length > 64) {
+      return NextResponse.json({ error: "AM too long (max 64 characters)" }, { status: 400 });
+    }
+
     // season_score (optional, non-negative integer)
     let seasonScoreRaw: number | null = null;
     if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
@@ -240,13 +247,18 @@ export async function POST(req: Request) {
       .from("teams")
       .insert({
         name: nameRaw,
+        am: amRaw || null, // NEW
         logo: initialLogo,
         season_score: seasonScoreRaw ?? 0,
       })
-      .select("id, name, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, created_at, deleted_at, season_score")
       .single();
 
     if (insErr || !created) {
+      // Postgres unique violation (duplicate AM)
+      if ((insErr as any)?.code === "23505") {
+        return NextResponse.json({ error: "AM must be unique" }, { status: 400 });
+      }
       console.error("Create team failed", insErr);
       return NextResponse.json({ error: "Create failed" }, { status: 400 });
     }
@@ -260,7 +272,7 @@ export async function POST(req: Request) {
           .from("teams")
           .update({ logo: logoCandidate })
           .eq("id", team.id)
-          .select("id, name, logo, created_at, deleted_at, season_score")
+          .select("id, name, am, logo, created_at, deleted_at, season_score")
           .single();
 
         if (upErr) {

@@ -21,6 +21,11 @@ export default function TeamRowEditor({
   const [logo, setLogo] = useState<string>(initial?.logo ?? ""); // https URL or storage path
   const [preview, setPreview] = useState<string | null>(null);
 
+  // NEW: AM (text, optional; unique)
+  const [am, setAm] = useState<string>(
+    typeof (initial as any)?.am === "string" ? (initial as any).am : ""
+  );
+
   // NEW: season_score (non-negative integer). Allow empty '' while typing.
   const initialSeasonScore =
     typeof (initial as any)?.season_score === "number" ? (initial as any).season_score : "";
@@ -37,6 +42,9 @@ export default function TeamRowEditor({
     if (!name.trim()) return "Name is required";
     if (name.trim().length < 2) return "Name must be at least 2 characters";
 
+    // AM: cap length (adjust if you want stricter rules/regex)
+    if (am && am.length > 64) return "AM must be at most 64 characters";
+
     // season_score: must be non-negative integer when provided
     if (seasonScore !== "" && (!Number.isInteger(seasonScore) || seasonScore < 0)) {
       return "Season score must be a non-negative integer";
@@ -48,7 +56,7 @@ export default function TeamRowEditor({
       return "Logo must be a full https URL or a storage path like folder/file.png";
     }
     return null;
-  }, [name, logo, seasonScore]);
+  }, [name, am, logo, seasonScore]);
 
   useEffect(() => {
     (async () => {
@@ -104,24 +112,23 @@ export default function TeamRowEditor({
     if (validationError) return;
     setSaving(true);
     try {
-      // Convert any typed storage path → stable proxy URL before sending
       let logoForSave: string | null = null;
       const v = logo.trim();
       if (v) {
         if (isUrl(v)) {
-          logoForSave = v;
+          logoForSave = v; // https ok
         } else if (isStoragePath(v)) {
-          logoForSave = (await signIfNeeded(v)) ?? null;
+          logoForSave = v; // <-- send raw storage path (fix)
         }
       }
-
-      // Build payload
+  
       const payload: Record<string, any> = {
         name: name.trim(),
         logo: logoForSave,
+        am: am.trim() || null,
       };
       if (seasonScore !== "") payload.season_score = seasonScore;
-
+  
       const res = await fetch(isEdit ? `/api/teams/${initial!.id}` : "/api/teams", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -129,12 +136,18 @@ export default function TeamRowEditor({
         credentials: "include",
       });
       const body = await safeJson(res);
-      if (!res.ok) throw new Error((body && (body as any).error) || `HTTP ${res.status}`);
-
+      if (!res.ok) {
+        const msg = (body && (body as any).error) || `HTTP ${res.status}`;
+        if (/AM must be unique/i.test(String(msg))) throw new Error("Το ΑΜ πρέπει να είναι μοναδικό.");
+        if (/Invalid logo path/i.test(String(msg))) throw new Error("Μη έγκυρη διαδρομή λογότυπου (χρησιμοποίησε https URL ή teams/<id>/...).");
+        throw new Error(String(msg));
+      }
+  
       let saved = (body as any).team as TeamRow;
-
+  
+      // For display, still map storage path → proxy URL
       if (saved?.logo && !isUrl(saved.logo) && isStoragePath(saved.logo)) {
-        const mapped = await signIfNeeded(saved.logo);
+        const mapped = await signIfNeeded(saved.logo); // ok to use proxy for preview
         saved = { ...saved, logo: mapped ?? saved.logo };
       }
       onSaved(saved);
@@ -144,6 +157,7 @@ export default function TeamRowEditor({
       setSaving(false);
     }
   }
+  
 
   return (
     <div className="p-3 rounded-xl border border-white/15 bg-black/50 space-y-3">
@@ -173,6 +187,18 @@ export default function TeamRowEditor({
             className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
             placeholder="e.g. 0"
           />
+        </label>
+
+        {/* AM */}
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-white/80">ΑΜ</span>
+          <input
+            value={am}
+            onChange={(e) => setAm(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+            placeholder="π.χ. 12345 ή REG-2025"
+          />
+          <span className="text-[11px] text-white/40">Μοναδικό αναγνωριστικό ομάδας (unique).</span>
         </label>
 
         {/* Logo */}
