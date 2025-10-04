@@ -157,7 +157,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
   return (
     <div className="relative min-h-screen text-slate-50 overflow-x-hidden">
       {/* Vanta background (client-only), positioned behind everything */}
-      <VantaBg className="absolute inset-0 -z-10" mode="eco" maxDpr={1} />
+      <VantaBg className="absolute inset-0 -z-10" />
 
       {/* Optional: a very subtle warm overlay to help contrast */}
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
