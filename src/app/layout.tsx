@@ -2,7 +2,7 @@
 import React from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import Navbar from "./lib/Navbar/Navbar";
 import {
   Geist,
