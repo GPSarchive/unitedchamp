@@ -1,96 +1,206 @@
 // app/OMADA/[id]/VantaBg.tsx
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type VantaInstance = { destroy?: () => void } | null;
+type Mode = 'eco' | 'balanced' | 'fancy';
+
+// --- cache modules across mounts (prevents re-downloading/parsing)
+let THREE_MOD: any | null = null;
+let VANTA_WAVES: any | null = null;
 
 const rIC: (cb: () => void) => void =
   typeof window !== 'undefined' && 'requestIdleCallback' in window
-    ? // @ts-ignore
-      (cb) => window.requestIdleCallback(cb, { timeout: 1000 })
-    : (cb) => setTimeout(cb, 120); // fallback
+    // @ts-ignore
+    ? (cb) => window.requestIdleCallback(cb, { timeout: 800 })
+    : (cb) => setTimeout(cb, 100);
 
-export default function VantaBg({ className = '' }: { className?: string }) {
+function getPreset(mode: Mode) {
+  switch (mode) {
+    case 'eco':
+      return {
+        mouseControls: false,
+        touchControls: false,
+        scale: 0.85,
+        scaleMobile: 0.55,
+        waveHeight: 8,
+        waveSpeed: 0.22,
+        shininess: 60,
+        color: 0x111115,
+        maxDpr: 0.85, // 👈 fewer pixels rendered
+      };
+    case 'fancy':
+      return {
+        mouseControls: true,
+        touchControls: true,
+        scale: 1.0,
+        scaleMobile: 0.8,
+        waveHeight: 12,
+        waveSpeed: 0.45,
+        shininess: 110,
+        color: 0x111115,
+        maxDpr: 1.5, // 👈 crisper (more pixels)
+      };
+    case 'balanced':
+    default:
+      return {
+        mouseControls: false,
+        touchControls: false,
+        scale: 0.9,
+        scaleMobile: 0.65,
+        waveHeight: 10,
+        waveSpeed: 0.3,
+        shininess: 80,
+        color: 0x111115,
+        maxDpr: 1.0, // 👈 default 1x pixel density
+      };
+  }
+}
+
+export default function VantaBg({
+  className = '',
+  mode = 'eco',
+  maxDpr, // 👈 optional override
+}: {
+  className?: string;
+  mode?: Mode;
+  maxDpr?: number; // e.g., 0.75 (fewer pixels) or 1.0 (1x)
+}) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const [vanta, setVanta] = useState<VantaInstance>(null);
+  const presets = useMemo(() => getPreset(mode), [mode]);
 
   useEffect(() => {
     let mounted = true;
     let io: IntersectionObserver | null = null;
+    let cleanupVisibility: (() => void) | null = null;
+    let resizeRaf = 0 as number;
 
-    // Respect prefers-reduced-motion: don't animate at all
     const prefersReduced =
       typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-    if (prefersReduced) return;
+    const applyPixelRatioCap = (instance: any) => {
+      try {
+        const renderer = instance?.renderer;
+        if (renderer?.setPixelRatio) {
+          const cap = typeof maxDpr === 'number' ? maxDpr : presets.maxDpr;
+          const dpr = Math.min(window.devicePixelRatio || 1, cap);
+          renderer.setPixelRatio(dpr);
+        }
+      } catch {
+        /* noop */
+      }
+    };
 
     const init = async () => {
+      if (!mounted || !elRef.current || vanta) return;
       try {
-        // Try node modules; if they’re not installed, this will throw
-        const THREE = await import('three');
-        const WAVES = (await import('vanta/dist/vanta.waves.min')).default;
+        // lazy-load and cache modules
+        if (!THREE_MOD) THREE_MOD = await import('three');
+        if (!VANTA_WAVES) VANTA_WAVES = (await import('vanta/dist/vanta.waves.min')).default;
 
         if (!mounted || !elRef.current || vanta) return;
 
         const isTouch =
-          typeof window !== 'undefined' &&
-          ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+          'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-        const instance = WAVES({
+        const instance = VANTA_WAVES({
           el: elRef.current,
-          THREE, // pass the module object
-          // Turn off pointer tracking (big win on low-end / mobile)
-          mouseControls: false,
-          touchControls: false,
+          THREE: THREE_MOD,
           gyroControls: false,
-          // Keep the canvas small on mobile and internally scaled
-          scale: 0.9,
-          scaleMobile: 0.6,
-          minHeight: 200.0,
-          minWidth: 200.0,
-          // Warm theme
-          color: 0x111115,
-          shininess: isTouch ? 60.0 : 80.0,
-          waveHeight: isTouch ? 8.0 : 10.0,
-          waveSpeed: isTouch ? 0.22 : 0.3, // slower = fewer visual updates perceived
+          minHeight: 200,
+          minWidth: 200,
+          scale: presets.scale,
+          scaleMobile: presets.scaleMobile,
+          mouseControls: presets.mouseControls,
+          touchControls: presets.touchControls,
+          color: presets.color,
+          shininess: presets.shininess,
+          waveHeight: presets.waveHeight,
+          waveSpeed: presets.waveSpeed * (isTouch ? 0.9 : 1),
         });
 
+        // 🔧 Cap device pixel ratio (reduces pixels rendered)
+        applyPixelRatioCap(instance);
+
         setVanta(instance);
-      } catch (err) {
-        // If node modules are missing, silently bail instead of crashing
-        console.error('Vanta init skipped:', err);
+
+        // Pause when tab is hidden; re-init on visible (cheaper than custom pause)
+        const onVisibility = () => {
+          if (document.visibilityState === 'hidden') {
+            instance?.destroy?.();
+            setVanta(null);
+          } else {
+            rIC(() => init());
+          }
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+
+        // Throttle resizes; reapply DPR cap and re-init (like your original)
+        const onResize = () => {
+          if (resizeRaf) cancelAnimationFrame(resizeRaf);
+          resizeRaf = requestAnimationFrame(() => {
+            // try a quick DPR re-cap first
+            applyPixelRatioCap(instance);
+            // then do your destroy+reinit for full layout changes
+            instance?.destroy?.();
+            setVanta(null);
+            rIC(() => init());
+          });
+        };
+        window.addEventListener('resize', onResize, { passive: true });
+
+        cleanupVisibility = () => {
+          document.removeEventListener('visibilitychange', onVisibility);
+          window.removeEventListener('resize', onResize);
+        };
+      } catch {
+        // Silent: if modules missing or SSR race, just skip
       }
     };
 
-    // Only initialize when the element is on-screen
-    rIC(() => {
-      if (!elRef.current) return;
+    if (!prefersReduced) {
+      // Only init when the element is about to be visible
+      rIC(() => {
+        if (!elRef.current) return;
+        io = new IntersectionObserver(
+          (entries) => {
+            if (entries.some((e) => e.isIntersecting)) {
+              init();
+              io?.disconnect();
+              io = null;
+            }
+          },
+          { rootMargin: '0px 0px 200px 0px', threshold: 0.01 }
+        );
+        io.observe(elRef.current);
+      });
+    }
 
-      io = new IntersectionObserver(
-        (entries) => {
-          const onScreen = entries.some((e) => e.isIntersecting);
-          if (onScreen) {
-            init();
-            io?.disconnect();
-            io = null;
-          }
-        },
-        { rootMargin: '0px 0px 200px 0px', threshold: 0.01 }
-      );
-
-      io.observe(elRef.current);
-    });
-
-    // Cleanup
     return () => {
       mounted = false;
       io?.disconnect();
+      cleanupVisibility?.();
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       vanta?.destroy?.();
     };
-  }, [vanta]);
+    // re-run if preset or cap changes
+  }, [vanta, presets, mode, maxDpr]);
 
-  return <div ref={elRef} className={className} aria-hidden="true" />;
+  return (
+    <div
+      ref={elRef}
+      className={className}
+      aria-hidden="true"
+      // CSS hints to keep composite cheap
+      style={{
+        contain: 'strict',
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)',
+      }}
+    />
+  );
 }
