@@ -1,8 +1,8 @@
+// app/dashboard/tournaments/TournamentCURD/teams/TeamPicker.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TeamDraft } from "../TournamentWizard";
-import type { TeamRow as DbTeam } from "@/app/lib/types";
 
 // --- tiny helpers (local so we don't couple to Dashboard helpers) ---
 async function safeJson(res: Response) {
@@ -15,8 +15,13 @@ async function safeJson(res: Response) {
 const isSelected = (selected: TeamDraft[], id: number) =>
   selected.some((t) => t.id === id);
 
-// accept {deleted_at?} for archived filter without hard type coupling
-type TeamRow = DbTeam & { deleted_at?: string | null };
+// Lightweight row used by the picker (not the full DB TeamRow)
+type CatalogRow = {
+  id: number;
+  name: string;
+  logo?: string | null;
+  deleted_at?: string | null;
+};
 
 export default function TeamPicker({
   teams,
@@ -30,7 +35,7 @@ export default function TeamPicker({
   groupNames?: string[];
 }) {
   // ---- catalog state (auto-loaded) ----
-  const [catalog, setCatalog] = useState<TeamRow[]>([]);
+  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -40,13 +45,27 @@ export default function TeamPicker({
     setLoading(true);
     setError(null);
     try {
-      const url = new URL("/api/teams", typeof window !== "undefined" ? window.location.origin : "http://localhost");
-      url.searchParams.set("sign", "1"); // server will sign logos or proxy them
-      if (showArchived) url.searchParams.set("include", "all");
-      const res = await fetch(url.toString(), { credentials: "include" });
+      // ✅ Use relative URL for deployment safety (client-side component)
+      const params = new URLSearchParams({ sign: "1" });
+      if (showArchived) params.set("include", "all");
+      const res = await fetch(`/api/teams?${params.toString()}`, {
+        credentials: "include",
+      });
       const body = await safeJson(res);
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      setCatalog(((body?.teams as TeamRow[]) ?? []).sort((a, b) => a.name.localeCompare(b.name)));
+
+      // Be liberal about shape & types and coerce IDs to numbers
+      const arr: Array<any> = body?.teams ?? body?.data ?? body ?? [];
+      const rows: CatalogRow[] = arr
+        .map((t: any) => ({
+          id: Number(t.id),
+          name: String(t.name ?? t.team_name ?? t.title ?? `Team #${t.id}`),
+          logo: t.logo ?? null,
+          deleted_at: t.deleted_at ?? null,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setCatalog(rows);
     } catch (e: any) {
       setError(e?.message ?? String(e));
       setCatalog([]);
@@ -61,7 +80,7 @@ export default function TeamPicker({
 
   // Fast id → team lookup
   const byId = useMemo(() => {
-    const m = new Map<number, TeamRow>();
+    const m = new Map<number, CatalogRow>();
     for (const t of catalog) m.set(t.id, t);
     return m;
   }, [catalog]);
@@ -71,21 +90,23 @@ export default function TeamPicker({
     const term = q.trim().toLowerCase();
     const list = catalog.filter((t) => (showArchived ? true : !t.deleted_at));
     if (!term) return list;
-    return list.filter((t) => t.name.toLowerCase().includes(term) || String(t.id).includes(term));
+    return list.filter(
+      (t) => t.name.toLowerCase().includes(term) || String(t.id).includes(term)
+    );
   }, [catalog, q, showArchived]);
 
-  // ---- selection ops (now we store name/logo too) ----
+  // ---- selection ops (store name/logo too) ----
   const addOne = (id: number) => {
     if (isSelected(teams, id)) return;
     const src = byId.get(id);
-    const entry = {
+    const entry: TeamDraft = {
       id,
       seed: undefined,
       groupsByStage: {},
       // extra metadata for UI downstream:
       name: src?.name ?? `Team #${id}`,
       logo: src?.logo ?? null,
-    } as unknown as TeamDraft;
+    };
     onChange([...teams, entry]);
   };
 
@@ -99,7 +120,7 @@ export default function TeamPicker({
 
   const addAllFiltered = () => {
     const existing = new Set(teams.map((t) => t.id));
-    const toAdd = filtered
+    const toAdd: TeamDraft[] = filtered
       .filter((t) => !existing.has(t.id))
       .map((t) => ({
         id: t.id,
@@ -107,7 +128,7 @@ export default function TeamPicker({
         groupsByStage: {},
         name: t.name ?? `Team #${t.id}`,
         logo: t.logo ?? null,
-      } as unknown as TeamDraft));
+      }));
     if (toAdd.length) onChange([...teams, ...toAdd]);
   };
 
@@ -121,7 +142,7 @@ export default function TeamPicker({
       .map((s) => Number(s.trim()))
       .filter((n) => Number.isFinite(n));
     const existing = new Set(teams.map((t) => t.id));
-    const next = [...teams];
+    const next: TeamDraft[] = [...teams];
     ids.forEach((id) => {
       if (existing.has(id)) return;
       const src = byId.get(id);
@@ -131,7 +152,7 @@ export default function TeamPicker({
         groupsByStage: {},
         name: src?.name ?? `Team #${id}`,
         logo: src?.logo ?? null,
-      } as unknown as TeamDraft);
+      });
     });
     onChange(next);
     setBulk("");
@@ -151,6 +172,35 @@ export default function TeamPicker({
       )
     );
   };
+
+  // ------------------------------
+  // 🔒 Ensure selected teams carry name/logo:
+  // Rehydrate missing metadata from catalog once it’s available.
+  // ------------------------------
+  useEffect(() => {
+    if (teams.length === 0 || catalog.length === 0) return;
+
+    let changed = false;
+    const next = teams.map((t) => {
+      const hasName = typeof t.name === "string" && t.name.length > 0;
+      const hasLogo = t.logo !== undefined; // allow null as a valid "known" value
+      if (hasName && hasLogo) return t;
+
+      const src = byId.get(t.id);
+      if (!src) return t;
+
+      const enriched: TeamDraft = {
+        ...t,
+        name: hasName ? t.name : src.name ?? `Team #${t.id}`,
+        logo: hasLogo ? t.logo! : src.logo ?? null,
+      };
+      if (enriched.name !== t.name || enriched.logo !== t.logo) changed = true;
+      return enriched;
+    });
+
+    if (changed) onChange(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, byId, teams]); // guarded by "changed" flag to avoid loops
 
   // ---- UI (aurora theme, consistent with your palette) ----
   return (
@@ -215,7 +265,10 @@ export default function TeamPicker({
         </button>
         <div className="ml-auto text-sm text-white/70">
           Selected: <span className="text-white">{teams.length}</span> / Available:{" "}
-          <span className="text-white">{filtered.length}{loading ? "…" : ""}</span>
+          <span className="text-white">
+            {filtered.length}
+            {loading ? "…" : ""}
+          </span>
         </div>
       </div>
 

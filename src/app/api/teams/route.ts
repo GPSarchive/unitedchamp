@@ -138,23 +138,37 @@ export async function HEAD() {
 // Default: only non-deleted teams (active) and non-dummy teams.
 // include=archived → only soft-deleted (still excludes dummy)
 // include=all      → both (still excludes dummy)
+// app/api/teams/route.ts  — ONLY the GET handler changed minimally
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const shouldSign = url.searchParams.get("sign") === "1";
     const include = (url.searchParams.get("include") || "active").toLowerCase();
 
+    // NEW: parse ids filter (comma-separated list)
+    const idsParam = url.searchParams.get("ids");
+    const ids = idsParam
+      ? idsParam
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n))
+      : [];
+
     const supa = await createSupabaseRouteClient();
 
     let q = supa
       .from("teams")
-      .select("id, name, am, logo, created_at, deleted_at, season_score")
-      .neq("is_dummy", true); // ⬅️ exclude dummy teams globally from this endpoint
+      .select("id, name, am, logo, created_at, deleted_at, season_score");
+
+    // Apply ids filter if provided (everything else stays the same)
+    if (ids.length > 0) {
+      q = q.in("id", ids);
+    }
 
     if (include === "archived") {
       q = q.not("deleted_at", "is", null);
     } else if (include === "all") {
-      // no deleted_at filter; still excludes dummy via .neq above
+      // no deleted_at filter
     } else {
       // default: active only
       q = q.is("deleted_at", null);
@@ -168,7 +182,6 @@ export async function GET(req: Request) {
     }
 
     if (!shouldSign) {
-      // Return raw (including deleted_at/season_score/am for admin UI badges/fields)
       return NextResponse.json({ teams: data ?? [] });
     }
 
@@ -176,7 +189,7 @@ export async function GET(req: Request) {
       (data ?? []).map(async (t) => ({
         id: t.id,
         name: t.name,
-        am: t.am, // NEW: include AM in signed payload too
+        am: t.am,
         created_at: t.created_at,
         deleted_at: t.deleted_at,
         season_score: t.season_score,

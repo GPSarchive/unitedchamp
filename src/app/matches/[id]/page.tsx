@@ -80,15 +80,19 @@ export default async function MatchPage({
   const bGoalsComputed = sumGoals(match.team_b.id);
   const canFinalize = aGoalsComputed !== bGoalsComputed;
 
-  const dateLabel = match.match_date
-    ? new Date(match.match_date).toLocaleString(undefined, {
+   // Format using raw UTC (no tz conversion), and make it explicit.
+  const dateLabelUTC = match.match_date
+    ? new Intl.DateTimeFormat("el-GR", {
+        timeZone: "UTC",
         year: "numeric",
         month: "short",
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
-      })
+        hour12: false,
+      }).format(new Date(match.match_date)) + " UTC"
     : "TBD";
+
 
   const aIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_a.id;
@@ -114,6 +118,12 @@ export default async function MatchPage({
 
         {/* Header / Scoreboard */}
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
+          {/* Top-center, more prominent date */}
+          <div className="mb-3 flex justify-center">
+            <div className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm font-semibold text-zinc-700">
+              {dateLabelUTC}
+            </div>
+          </div>
           <div className="flex items-center justify-between gap-4">
             <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
             <div className="min-w-[180px] text-center">
@@ -125,7 +135,6 @@ export default async function MatchPage({
                 <span className="text-gray-400">-</span>
                 {match.team_b_score}
               </div>
-              <div className="text-sm text-gray-500">{dateLabel}</div>
             </div>
             <TeamBadge
               team={match.team_b}

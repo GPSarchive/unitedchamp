@@ -20,8 +20,8 @@ export default function VantaFullBG() {
         minWidth: 20,
         scale: 1,
         scaleMobile: 1,
-        color: 0x5e4b4b,
-        backgroundColor: 0xf7bf7b,
+        color: 0x9f371b,
+        backgroundColor: 0xf4c253,
       });
     }
   }, []);
