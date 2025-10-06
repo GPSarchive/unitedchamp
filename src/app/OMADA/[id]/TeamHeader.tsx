@@ -16,6 +16,7 @@ export default function TeamHeader({ team }: { team: Team }) {
               <div className="relative">
                 <div className="relative aspect-square w-[8rem] md:w-[24rem] 2xl:w-[32rem]">
                   <LightRays
+                    
                     className="absolute inset-0 h-full w-full rounded-full pointer-events-none mix-blend-screen"
                     raysOrigin="top-center"
                     raysColor="#ffd700"

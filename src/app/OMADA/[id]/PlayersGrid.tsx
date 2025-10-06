@@ -9,6 +9,7 @@ import {
   FaExclamationTriangle,
   FaTimesCircle,
   FaCircle,
+  FaUsers,
 } from "react-icons/fa";
 import { PlayerAssociation } from "@/app/lib/types";
 
@@ -16,6 +17,35 @@ interface PlayersGridProps {
   playerAssociations: PlayerAssociation[] | null;
   seasonStatsByPlayer?: Record<number, any[]>;
   errorMessage?: string | null;
+}
+
+/**
+ * Normalizes any photo value we get from the DB into something <Image/> can load:
+ * - Full URLs (http/https) are returned as-is
+ * - Public paths starting with "/" are returned as-is (served from /public)
+ * - Relative storage keys like "players/123.jpg" are converted to:
+ *   `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/<key>`
+ */
+const PUBLIC_CDN =
+  process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public`
+    : "";
+
+function resolvePhoto(src?: string | null) {
+  const fallback = "/player-placeholder.jpg";
+  if (!src) return fallback;
+
+  // already absolute URL
+  if (/^https?:\/\//i.test(src)) return src;
+
+  // public folder path
+  if (src.startsWith("/")) return src;
+
+  // storage key (e.g., "players/123.jpg")
+  if (PUBLIC_CDN) return `${PUBLIC_CDN}/${src.replace(/^\/+/, "")}`;
+
+  // if we don't have a CDN base URL, fall back to placeholder
+  return fallback;
 }
 
 export default function PlayersGrid({
@@ -34,7 +64,7 @@ export default function PlayersGrid({
   return (
     <section className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-amber-500/20 bg-gradient-to-b from-stone-900/60 via-amber-950/5 to-zinc-900">
       <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-4 flex items-center gap-2">
-        <FaUser className="text-amber-400" /> Squad
+        <FaUsers className="text-amber-400" /> Squad
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -70,11 +100,14 @@ export default function PlayersGrid({
             >
               <div className="flex items-center gap-3 mb-3">
                 <Image
-                  src={p.photo || "/player-placeholder.jpg"}
+                  src={resolvePhoto(p.photo)}
                   alt={`${p.first_name} ${p.last_name}`}
                   width={48}
                   height={48}
-                  className="rounded-full border-2 border-amber-400/30"
+                  className="rounded-full border-2 border-amber-400/30 object-cover"
+                  sizes="48px"
+                  // If your remote host blocks the optimizer, uncomment the next line:
+                  // unoptimized
                 />
                 <div>
                   <p className="font-semibold text-white">
@@ -93,7 +126,7 @@ export default function PlayersGrid({
                     {p.birth_date && (
                       <span className="inline-flex items-center gap-1">
                         <FaBirthdayCake />{" "}
-                        {new Date(p.birth_date).toLocaleDateString()}
+                        {new Date(p.birth_date).toLocaleDateString("el-GR")}
                       </span>
                     )}
                   </p>
@@ -117,7 +150,7 @@ export default function PlayersGrid({
                   <FaTimesCircle className="mx-auto text-red-400" />
                   <p className="text-zinc-100">{stats.red_cards ?? 0}</p>
                 </div>
-                {/* Neutralize the former blue tile to match the warm theme */}
+                {/* Neutral tile to match the warm theme */}
                 <div className="text-center bg-stone-900/25 p-2 rounded">
                   <FaCircle className="mx-auto text-amber-300" />
                   <p className="text-zinc-100">{stats.blue_cards ?? 0}</p>

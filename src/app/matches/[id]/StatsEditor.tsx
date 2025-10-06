@@ -1,159 +1,153 @@
 // matches/[id]/StatsEditor.tsx
-// no "use client" needed; server components can render inputs
+"use client";
+
+import * as React from "react";
 import AddPlayerToTeamLauncher from "./AddPlayerToTeamLauncher";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
-
-type MatchPlayerStatRow = {
-  id: number;
-  match_id: number;
-  team_id: number;
-  player_id: number;
-  goals: number;
-  assists: number;
-  yellow_cards: number;
-  red_cards: number;
-  blue_cards: number;
-  mvp: boolean;
-  best_goalkeeper: boolean;
-};
+import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
 
 export default function StatsEditor({
   teamId,
   teamName,
   associations,
   existing,
+  participants,
   readOnly = false,
 }: {
   teamId: Id;
   teamName: string;
   associations: PlayerAssociation[];
   existing: Map<number, MatchPlayerStatRow>;
+  participants: Map<number, ParticipantRow>;
   readOnly?: boolean;
 }) {
+  // Local "played" state per player so toggling Συμμετοχή enables inputs immediately
+  const [playedMap, setPlayedMap] = React.useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    for (const a of associations) init[a.player.id] = participants.has(a.player.id);
+    return init;
+  });
+
+  const setPlayed = (playerId: number, next: boolean) =>
+    setPlayedMap((m) => ({ ...m, [playerId]: next }));
+
   return (
     <div className="rounded-xl border p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-semibold">
-          {teamName} – Edit stats{" "}
-          <span className="text-xs text-gray-500">
-            (players: {associations.length})
-          </span>
+          {teamName} – Edit participants & stats{" "}
+          <span className="text-xs text-gray-500">(players: {associations.length})</span>
         </h3>
 
         {!readOnly && (
           <AddPlayerToTeamLauncher
             teamId={Number(teamId)}
             label="Add player"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-white bg-emerald-600/20 hover:bg-emerald-600/30"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-emerald-600/20 px-3 py-2 text-white hover:bg-emerald-600/30"
           />
         )}
       </div>
 
-      {/* Mobile layout: stacked cards for easier editing on phones */}
-      <div className="md:hidden space-y-3">
+      {/* Mobile layout: stacked cards */}
+      <div className="space-y-3 md:hidden">
         {associations.map((assoc) => {
           const p: any = assoc.player;
-          const row = existing.get(p.id);
-          const base = `players[${teamId}][${p.id}]`;
+          const stats = existing.get(p.id);
+          const baseStats = `players[${teamId}][${p.id}]`;
+          const basePart = `participants[${teamId}][${p.id}]`;
 
-          const goalsDefault = String(row?.goals ?? 0);
-          const assistsDefault = String(row?.assists ?? 0);
-          const ycDefault = String(row?.yellow_cards ?? 0);
-          const rcDefault = String(row?.red_cards ?? 0);
-          const bcDefault = String(row?.blue_cards ?? 0);
+          const playedOn = !!playedMap[p.id];
+
+          const posVal = stats?.position ?? "";
+          const capDefault = !!stats?.is_captain;
+          const gkDefault = !!stats?.gk;
+
+          const goalsDefault = String(stats?.goals ?? 0);
+          const assistsDefault = String(stats?.assists ?? 0);
+          const ycDefault = String(stats?.yellow_cards ?? 0);
+          const rcDefault = String(stats?.red_cards ?? 0);
+          const bcDefault = String(stats?.blue_cards ?? 0);
 
           return (
             <div key={p.id} className="rounded-lg border p-3">
-              <div className="font-medium mb-2 truncate">
-                {p.first_name} {p.last_name}
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="min-w-0 truncate font-medium">
+                  {p.first_name} {p.last_name}
+                </div>
+
+                {/* Συμμετοχή switch */}
+                <label className="inline-flex items-center gap-2 text-xs">
+                  {/* fallback unchecked value */}
+                  <input type="hidden" name={`${basePart}[played]`} defaultValue="false" />
+                  <input
+                    type="checkbox"
+                    name={`${basePart}[played]`}
+                    value="true"
+                    checked={playedOn}
+                    onChange={(e) => setPlayed(p.id, e.currentTarget.checked)}
+                    aria-label="Συμμετοχή"
+                    disabled={readOnly}
+                  />
+                  Συμμετοχή
+                </label>
               </div>
 
-              {/* ensure a row exists even if only awards picked */}
-              <input type="hidden" name={`${base}[team_id]`} defaultValue={String(teamId)} />
-              <input type="hidden" name={`${base}[player_id]`} defaultValue={String(p.id)} />
+              {/* Ensure stats row exists even if only awards picked */}
+              <input type="hidden" name={`${baseStats}[team_id]`} defaultValue={String(teamId)} />
+              <input type="hidden" name={`${baseStats}[player_id]`} defaultValue={String(p.id)} />
 
+              {/* Role fields (now posted under players[...] per-match stats) */}
+              <div className="mb-2 grid grid-cols-3 gap-2 text-sm">
+                <label className="flex flex-col">
+                  <span className="text-gray-500">Position</span>
+                  <input
+                    type="text"
+                    name={`${baseStats}[position]`}
+                    defaultValue={posVal}
+                    placeholder="TBD"
+                    className="rounded border px-2 py-1"
+                    disabled={readOnly || !playedOn}
+                  />
+                </label>
+                <label className="flex items-center gap-2 pt-5 text-xs">
+                  <input
+                    type="checkbox"
+                    name={`${baseStats}[is_captain]`}
+                    defaultChecked={capDefault}
+                    disabled={readOnly || !playedOn}
+                  />
+                  Captain
+                </label>
+                <label className="flex items-center gap-2 pt-5 text-xs">
+                  <input
+                    type="checkbox"
+                    name={`${baseStats}[gk]`}
+                    defaultChecked={gkDefault}
+                    disabled={readOnly || !playedOn}
+                  />
+                  GK
+                </label>
+              </div>
+
+              {/* Per-match stats */}
               <div className="grid grid-cols-3 gap-2 text-sm">
-                <label className="flex flex-col">
-                  <span className="text-gray-500">G</span>
-                  <input
-                    name={`${base}[goals]`}
-                    defaultValue={goalsDefault}
-                    className="rounded border px-2 py-1"
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    readOnly={readOnly}
-                    aria-readonly={readOnly}
-                  />
-                </label>
-                <label className="flex flex-col">
-                  <span className="text-gray-500">A</span>
-                  <input
-                    name={`${base}[assists]`}
-                    defaultValue={assistsDefault}
-                    className="rounded border px-2 py-1"
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    readOnly={readOnly}
-                    aria-readonly={readOnly}
-                  />
-                </label>
-                <label className="flex flex-col">
-                  <span className="text-gray-500">Y</span>
-                  <input
-                    name={`${base}[yellow_cards]`}
-                    defaultValue={ycDefault}
-                    className="rounded border px-2 py-1"
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    readOnly={readOnly}
-                    aria-readonly={readOnly}
-                  />
-                </label>
-                <label className="flex flex-col">
-                  <span className="text-gray-500">R</span>
-                  <input
-                    name={`${base}[red_cards]`}
-                    defaultValue={rcDefault}
-                    className="rounded border px-2 py-1"
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    readOnly={readOnly}
-                    aria-readonly={readOnly}
-                  />
-                </label>
-                <label className="flex flex-col">
-                  <span className="text-gray-500">B</span>
-                  <input
-                    name={`${base}[blue_cards]`}
-                    defaultValue={bcDefault}
-                    className="rounded border px-2 py-1"
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    readOnly={readOnly}
-                    aria-readonly={readOnly}
-                  />
-                </label>
+                <NumInput name={`${baseStats}[goals]`} def={goalsDefault} disabled={!playedOn || readOnly} label="G" />
+                <NumInput name={`${baseStats}[assists]`} def={assistsDefault} disabled={!playedOn || readOnly} label="A" />
+                <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} disabled={!playedOn || readOnly} label="Y" />
+                <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} disabled={!playedOn || readOnly} label="R" />
+                <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} disabled={!playedOn || readOnly} label="B" />
               </div>
 
+              {/* Awards + Clear */}
               <div className="mt-3 flex items-center gap-4">
                 <label className="inline-flex items-center gap-1 text-xs">
                   <input
                     type="radio"
                     name="mvp_player_id"
                     value={String(p.id)}
-                    defaultChecked={Boolean(row?.mvp)}
+                    defaultChecked={Boolean(stats?.mvp)}
                     aria-label="MVP"
-                    disabled={readOnly}
+                    disabled={readOnly || !playedOn}
                   />
                   MVP
                 </label>
@@ -162,20 +156,20 @@ export default function StatsEditor({
                     type="radio"
                     name="best_gk_player_id"
                     value={String(p.id)}
-                    defaultChecked={Boolean(row?.best_goalkeeper)}
+                    defaultChecked={Boolean(stats?.best_goalkeeper)}
                     aria-label="Best Goalkeeper"
-                    disabled={readOnly}
+                    disabled={readOnly || !playedOn}
                   />
                   Best GK
                 </label>
 
                 {!readOnly && (
                   <>
-                    <input type="hidden" name={`${base}[_delete]`} defaultValue="false" />
-                    <label className="inline-flex items-center gap-1 text-xs ml-auto">
+                    <input type="hidden" name={`${baseStats}[_delete]`} defaultValue="false" />
+                    <label className="ml-auto inline-flex items-center gap-1 text-xs">
                       <input
                         type="checkbox"
-                        name={`${base}[_delete]`}
+                        name={`${baseStats}[_delete]`}
                         value="true"
                         defaultChecked={false}
                         aria-label="Clear row"
@@ -190,12 +184,16 @@ export default function StatsEditor({
         })}
       </div>
 
-      {/* Desktop layout: table with scroll if needed */}
-      <div className="hidden md:block overflow-x-auto">
+      {/* Desktop layout: table */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead className="text-gray-500">
             <tr className="text-left">
+              <th className="py-1 pr-2">Συμ.</th>
               <th className="py-1 pr-2">Player</th>
+              <th className="py-1 pr-2">Pos</th>
+              <th className="py-1 pr-2">Cap</th>
+              <th className="py-1 pr-2">GK</th>
               <th className="py-1 pr-2">G</th>
               <th className="py-1 pr-2">A</th>
               <th className="py-1 pr-2">Y</th>
@@ -210,98 +208,105 @@ export default function StatsEditor({
           <tbody className="divide-y">
             {associations.map((assoc) => {
               const p: any = assoc.player;
-              const row = existing.get(p.id);
-              const base = `players[${teamId}][${p.id}]`;
+              const stats = existing.get(p.id);
+              const baseStats = `players[${teamId}][${p.id}]`;
+              const basePart = `participants[${teamId}][${p.id}]`;
 
-              const goalsDefault = String(row?.goals ?? 0);
-              const assistsDefault = String(row?.assists ?? 0);
-              const ycDefault = String(row?.yellow_cards ?? 0);
-              const rcDefault = String(row?.red_cards ?? 0);
-              const bcDefault = String(row?.blue_cards ?? 0);
+              const playedOn = !!playedMap[p.id];
+
+              const posVal = stats?.position ?? "";
+              const capDefault = !!stats?.is_captain;
+              const gkDefault = !!stats?.gk;
+
+              const goalsDefault = String(stats?.goals ?? 0);
+              const assistsDefault = String(stats?.assists ?? 0);
+              const ycDefault = String(stats?.yellow_cards ?? 0);
+              const rcDefault = String(stats?.red_cards ?? 0);
+              const bcDefault = String(stats?.blue_cards ?? 0);
 
               return (
                 <tr key={p.id}>
-                  <td className="py-1 pr-2 max-w-[220px] truncate">
+                  {/* Συμμετοχή */}
+                  <td className="py-1 pr-2">
+                    <input type="hidden" name={`${basePart}[played]`} defaultValue="false" />
+                    <input
+                      type="checkbox"
+                      name={`${basePart}[played]`}
+                      value="true"
+                      checked={playedOn}
+                      onChange={(e) => setPlayed(p.id, e.currentTarget.checked)}
+                      aria-label="Συμμετοχή"
+                      disabled={readOnly}
+                    />
+                  </td>
+
+                  {/* Player */}
+                  <td className="max-w-[220px] truncate py-1 pr-2">
                     {p.first_name} {p.last_name}
-                    {/* ensure a row exists even if only awards picked */}
-                    <input type="hidden" name={`${base}[team_id]`} defaultValue={String(teamId)} />
-                    <input type="hidden" name={`${base}[player_id]`} defaultValue={String(p.id)} />
+                    <input type="hidden" name={`${baseStats}[team_id]`} defaultValue={String(teamId)} />
+                    <input type="hidden" name={`${baseStats}[player_id]`} defaultValue={String(p.id)} />
                   </td>
 
+                  {/* Position */}
                   <td className="py-1 pr-2">
                     <input
-                      name={`${base}[goals]`}
-                      defaultValue={goalsDefault}
-                      className="w-14 rounded border px-2 py-1"
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      readOnly={readOnly}
-                      aria-readonly={readOnly}
-                    />
-                  </td>
-                  <td className="py-1 pr-2">
-                    <input
-                      name={`${base}[assists]`}
-                      defaultValue={assistsDefault}
-                      className="w-14 rounded border px-2 py-1"
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      readOnly={readOnly}
-                      aria-readonly={readOnly}
-                    />
-                  </td>
-                  <td className="py-1 pr-2">
-                    <input
-                      name={`${base}[yellow_cards]`}
-                      defaultValue={ycDefault}
-                      className="w-14 rounded border px-2 py-1"
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      readOnly={readOnly}
-                      aria-readonly={readOnly}
-                    />
-                  </td>
-                  <td className="py-1 pr-2">
-                    <input
-                      name={`${base}[red_cards]`}
-                      defaultValue={rcDefault}
-                      className="w-14 rounded border px-2 py-1"
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      readOnly={readOnly}
-                      aria-readonly={readOnly}
-                    />
-                  </td>
-                  <td className="py-1 pr-2">
-                    <input
-                      name={`${base}[blue_cards]`}
-                      defaultValue={bcDefault}
-                      className="w-14 rounded border px-2 py-1"
-                      type="number"
-                      min={0}
-                      step={1}
-                      inputMode="numeric"
-                      readOnly={readOnly}
-                      aria-readonly={readOnly}
+                      type="text"
+                      name={`${baseStats}[position]`}
+                      defaultValue={posVal}
+                      placeholder="TBD"
+                      className="w-20 rounded border px-2 py-1"
+                      disabled={readOnly || !playedOn}
                     />
                   </td>
 
+                  {/* Captain */}
+                  <td className="py-1 pr-2">
+                    <input
+                      type="checkbox"
+                      name={`${baseStats}[is_captain]`}
+                      defaultChecked={capDefault}
+                      disabled={readOnly || !playedOn}
+                      aria-label="Captain"
+                    />
+                  </td>
+
+                  {/* GK */}
+                  <td className="py-1 pr-2">
+                    <input
+                      type="checkbox"
+                      name={`${baseStats}[gk]`}
+                      defaultChecked={gkDefault}
+                      disabled={readOnly || !playedOn}
+                      aria-label="GK"
+                    />
+                  </td>
+
+                  {/* Stats */}
+                  <td className="py-1 pr-2">
+                    <NumInput name={`${baseStats}[goals]`} def={goalsDefault} disabled={!playedOn || readOnly} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <NumInput name={`${baseStats}[assists]`} def={assistsDefault} disabled={!playedOn || readOnly} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} disabled={!playedOn || readOnly} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} disabled={!playedOn || readOnly} />
+                  </td>
+                  <td className="py-1 pr-2">
+                    <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} disabled={!playedOn || readOnly} />
+                  </td>
+
+                  {/* Awards */}
                   <td className="py-1 pr-2">
                     <input
                       type="radio"
                       name="mvp_player_id"
                       value={String(p.id)}
-                      defaultChecked={Boolean(row?.mvp)}
+                      defaultChecked={Boolean(stats?.mvp)}
                       aria-label="MVP"
-                      disabled={readOnly}
+                      disabled={readOnly || !playedOn}
                     />
                   </td>
                   <td className="py-1 pr-2">
@@ -309,20 +314,20 @@ export default function StatsEditor({
                       type="radio"
                       name="best_gk_player_id"
                       value={String(p.id)}
-                      defaultChecked={Boolean(row?.best_goalkeeper)}
+                      defaultChecked={Boolean(stats?.best_goalkeeper)}
                       aria-label="Best Goalkeeper"
-                      disabled={readOnly}
+                      disabled={readOnly || !playedOn}
                     />
                   </td>
 
+                  {/* Clear */}
                   <td className="py-1 pr-2">
                     {!readOnly && (
                       <>
-                        {/* hidden fallback unchecked value */}
-                        <input type="hidden" name={`${base}[_delete]`} defaultValue="false" />
+                        <input type="hidden" name={`${baseStats}[_delete]`} defaultValue="false" />
                         <input
                           type="checkbox"
-                          name={`${base}[_delete]`}
+                          name={`${baseStats}[_delete]`}
                           value="true"
                           defaultChecked={false}
                           aria-label="Clear row"
@@ -343,5 +348,34 @@ export default function StatsEditor({
         )}
       </div>
     </div>
+  );
+}
+
+/** Small numeric input helper (uncontrolled) */
+function NumInput({
+  name,
+  def,
+  disabled,
+  label,
+}: {
+  name: string;
+  def: string;
+  disabled: boolean;
+  label?: string;
+}) {
+  return (
+    <label className={label ? "flex flex-col" : "block"}>
+      {label && <span className="text-gray-500">{label}</span>}
+      <input
+        name={name}
+        defaultValue={def}
+        className="w-14 rounded border px-2 py-1"
+        type="number"
+        min={0}
+        step={1}
+        inputMode="numeric"
+        disabled={disabled}
+      />
+    </label>
   );
 }

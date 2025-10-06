@@ -25,7 +25,7 @@ export default function PlayerProfileCard({ player }: { player: PlayerLite }) {
         .join(" • ") || "—"}
 
       // look & feel
-      showBehindGradient={true}
+      showBehindGradient={false}
       enableTilt={true}
       enableMobileTilt={false}
       mobileTiltSensitivity={5}

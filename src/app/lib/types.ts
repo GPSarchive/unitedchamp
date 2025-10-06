@@ -103,6 +103,7 @@ export interface MatchWithTeams {
   team_a_score: number;
   team_b_score: number;
   winner_team_id: Id | null;
+  referee?: string | null; // ← add this if you select it
   team_a: { id: Id; name: string; logo: string | null };
   team_b: { id: Id; name: string; logo: string | null };
 }
@@ -440,3 +441,45 @@ export type Labels = {
   clearRound: string;
   swap: string;
 };
+
+export type MatchPlayerStatRow = {
+  id: number;
+  match_id: number;
+  team_id: number | null;
+  player_id: number;
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  blue_cards: number | null;
+  mvp: boolean | null;
+  best_goalkeeper: boolean | null;
+
+  // add these:
+  position: string | null;
+  is_captain: boolean | null;
+  gk: boolean | null;
+};
+
+
+
+
+export interface MatchParticipantRow {
+  id: Id;
+  match_id: Id;
+  team_id: Id;
+  player_id: Id;
+
+  starter: boolean;
+  minutes: number;
+  position: string | null;
+  shirt_number: number | null;
+  is_captain: boolean;
+  gk: boolean;
+
+  sub_on_min: number | null;
+  sub_off_min: number | null;
+
+  created_at?: string | null;
+  updated_at?: string | null;
+}

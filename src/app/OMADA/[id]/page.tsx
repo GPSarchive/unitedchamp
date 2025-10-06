@@ -134,7 +134,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     {}
   );
 
-  // ── Matches ────────────────────────────────────────────────────────────────────
+  // ── Matches (now includes tournament for the timeline) ─────────────────────────
   const { data: matchesData, error: matchesError } = await supabaseAdmin
     .from("matches")
     .select(
@@ -146,13 +146,15 @@ export default async function TeamPage({ params }: TeamPageProps) {
       team_b_score,
       winner_team_id,
       team_a:teams!matches_team_a_id_fkey (id, name, logo),
-      team_b:teams!matches_team_b_id_fkey (id, name, logo)
+      team_b:teams!matches_team_b_id_fkey (id, name, logo),
+      tournament:tournament_id (id, name, season, slug)
     `
     )
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .order("match_date", { ascending: false });
 
-  const matches = (matchesData as Match[] | null) ?? null;
+  // Keep the cast loose for now; MatchesTimeline will accept this shape after its update.
+  const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
     <div className="relative min-h-screen text-slate-50 overflow-x-hidden">

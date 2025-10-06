@@ -28,7 +28,7 @@ async function assertAdmin() {
 }
 
 /** -------------------------------
- *  Save per-player stats + auto-finalize + progression
+ *  Save per-player stats + participation + auto-finalize + progression
  *  ------------------------------- */
 export async function saveAllStatsAction(formData: FormData) {
   const supabase = await assertAdmin();
@@ -36,6 +36,16 @@ export async function saveAllStatsAction(formData: FormData) {
   const match_id = Number(formData.get('match_id'));
   if (!Number.isFinite(match_id)) throw new Error('Bad match id');
 
+  /** Match-level: Διαιτητής (referee) */
+  const rawRef = (formData.get('referee') as string | null) ?? null;
+  const referee = rawRef ? rawRef.trim() : null;
+  // Update match-level referee (nullable)
+  await supabase
+    .from('matches')
+    .update({ referee: referee && referee.length ? referee : null })
+    .eq('id', match_id);
+
+  /** Stats row (now includes position/is_captain/gk) */
   type Row = {
     match_id: number;
     team_id: number;
@@ -47,88 +57,178 @@ export async function saveAllStatsAction(formData: FormData) {
     blue_cards: number;
     mvp: boolean;
     best_goalkeeper: boolean;
+    position?: string | null;
+    is_captain?: boolean;
+    gk?: boolean;
     _delete?: boolean;
   };
 
-  const rows = new Map<string, Row>();
-  const entryRe =
-    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|yellow_cards|red_cards|blue_cards|_delete)\]$/;
+  /** Participation row (slim: attendance only) */
+  type ParticipantFormRow = {
+    match_id: number;
+    team_id: number;
+    player_id: number;
+    played: boolean; // Συμμετοχή
+  };
 
+  const statsRows = new Map<string, Row>();
+  const partRows = new Map<string, ParticipantFormRow>();
+
+  // players[...] regex (stats) — captures position/is_captain/gk too
+  const statsRe =
+    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|yellow_cards|red_cards|blue_cards|position|is_captain|gk|_delete)\]$/;
+
+  // participants[...] regex (participation) — attendance only
+  const partRe = /^participants\[(\d+)\]\[(\d+)\]\[(played)\]$/;
+
+  // Parse entire form once
   for (const [k, v] of formData.entries()) {
-    const m = entryRe.exec(k);
-    if (!m) continue;
-    const teamId = Number(m[1]);
-    const playerId = Number(m[2]);
-    const field = m[3] as keyof Row;
-    const key = `${teamId}:${playerId}`;
+    // --- stats bucket ---
+    {
+      const m = statsRe.exec(k);
+      if (m) {
+        const [_, t, p, f] = m;
+        const teamId = Number(t);
+        const playerId = Number(p);
+        const field = f as keyof Row;
+        const key = `${teamId}:${playerId}`;
 
-    if (!rows.has(key)) {
-      rows.set(key, {
-        match_id,
-        team_id: teamId,
-        player_id: playerId,
-        goals: 0,
-        assists: 0,
-        yellow_cards: 0,
-        red_cards: 0,
-        blue_cards: 0,
-        mvp: false,
-        best_goalkeeper: false,
-      });
+        if (!statsRows.has(key)) {
+          statsRows.set(key, {
+            match_id,
+            team_id: teamId,
+            player_id: playerId,
+            goals: 0,
+            assists: 0,
+            yellow_cards: 0,
+            red_cards: 0,
+            blue_cards: 0,
+            mvp: false,
+            best_goalkeeper: false,
+          });
+        }
+
+        const row = statsRows.get(key)!;
+        const val = typeof v === 'string' ? v : (v as File).name;
+
+        if (field === '_delete') {
+          (row as any)._delete = val === 'true' || val === 'on' || val === '1';
+        } else if (field === 'team_id' || field === 'player_id') {
+          // captured by key; ignore
+        } else if (field === 'is_captain' || field === 'gk') {
+          (row as any)[field] = val === 'true' || val === 'on' || val === '1';
+        } else if (field === 'position') {
+          const tpos = (val ?? '').trim();
+          (row as any).position = tpos && tpos.toUpperCase() !== 'TBD' ? tpos : null;
+        } else {
+          const n = Number(val);
+          (row as any)[field] = Number.isFinite(n) ? Math.max(0, n) : 0;
+        }
+        continue;
+      }
     }
-    const row = rows.get(key)!;
-    const val = typeof v === 'string' ? v : (v as File).name;
 
-    if (field === '_delete') {
-      row._delete = val === 'true' || val === 'on' || val === '1';
-    } else if (field === 'team_id' || field === 'player_id') {
-      // captured by key
-    } else {
-      const n = Number(val);
-      (row as any)[field] = Number.isFinite(n) ? Math.max(0, n) : 0;
+    // --- participation bucket (attendance only) ---
+    {
+      const m = partRe.exec(k);
+      if (m) {
+        const [_, t, p, f] = m;
+        const teamId = Number(t);
+        const playerId = Number(p);
+        const field = f as keyof ParticipantFormRow;
+        const key = `${teamId}:${playerId}`;
+
+        if (!partRows.has(key)) {
+          partRows.set(key, {
+            match_id,
+            team_id: teamId,
+            player_id: playerId,
+            played: false,
+          });
+        }
+
+        const row = partRows.get(key)!;
+        const raw = typeof v === 'string' ? v : (v as File).name;
+
+        if (field === 'played') {
+          row.played = raw === 'true' || raw === 'on' || raw === '1';
+        }
+        continue;
+      }
     }
   }
 
-  // radios (1 per match)
+  // Awards (1 per match) — radios (apply ONLY to participants later)
   const mvpPlayerId = Number(formData.get('mvp_player_id') ?? 0) || 0;
   const bestGkPlayerId = Number(formData.get('best_gk_player_id') ?? 0) || 0;
 
-  const ensureRow = (playerId: number) => {
-    if (!playerId) return;
-    const key = [...rows.keys()].find((k) => k.endsWith(`:${playerId}`));
-    if (!key) return;
-    return rows.get(key)!;
-  };
+  // -----------------------
+  // Persist participation
+  // -----------------------
+  const toUpsertParticipants = [...partRows.values()].filter((r) => r.played);
+  const toDeleteParticipants = [...partRows.values()]
+    .filter((r) => !r.played)
+    .map((r) => r.player_id);
 
-  const mvpRow = ensureRow(mvpPlayerId);
-  if (mvpRow) mvpRow.mvp = true;
-
-  const gkRow = ensureRow(bestGkPlayerId);
-  if (gkRow) gkRow.best_goalkeeper = true;
-
-  // Write player stats
-  const toDelete: number[] = [];
-  const toUpsert: Row[] = [];
-  for (const r of rows.values()) {
-    if (r._delete) toDelete.push(r.player_id);
-    else toUpsert.push(r);
+  if (toUpsertParticipants.length) {
+    // Strip UI-only 'played' before upsert
+    const clean = toUpsertParticipants.map(({ played, ...r }) => r);
+    const { error } = await supabase
+      .from('match_participants')
+      .upsert(clean, { onConflict: 'match_id,player_id' });
+    if (error) throw error;
   }
 
-  if (toDelete.length) {
+  if (toDeleteParticipants.length) {
+    const { error } = await supabase
+      .from('match_participants')
+      .delete()
+      .eq('match_id', match_id)
+      .in('player_id', toDeleteParticipants);
+    if (error) throw error;
+  }
+
+  // -----------------------
+  // Guard stats by participation (+ apply awards only to participants)
+  // -----------------------
+  const participatedIds = new Set<number>(toUpsertParticipants.map((r) => r.player_id));
+  const statUpserts: Row[] = [];
+  const statDeletes: number[] = [];
+
+  for (const r of statsRows.values()) {
+    const markedDelete = (r as any)._delete;
+    const isParticipant = participatedIds.has(r.player_id);
+
+    if (markedDelete || !isParticipant) {
+      statDeletes.push(r.player_id);
+    } else {
+      const { _delete, ...clean } = r as any;
+
+      // Apply awards now, only if participant
+      if (mvpPlayerId && clean.player_id === mvpPlayerId) {
+        clean.mvp = true;
+      }
+      if (bestGkPlayerId && clean.player_id === bestGkPlayerId) {
+        clean.best_goalkeeper = true;
+      }
+
+      statUpserts.push(clean as Row);
+    }
+  }
+
+  if (statDeletes.length) {
     const { error } = await supabase
       .from('match_player_stats')
       .delete()
       .eq('match_id', match_id)
-      .in('player_id', toDelete);
+      .in('player_id', statDeletes);
     if (error) throw error;
   }
 
-  if (toUpsert.length) {
-    // Drop the transient UI-only key so PostgREST doesn't choke on a non-existent column
-    const clean = toUpsert.map(({ _delete, ...r }) => r);
+  if (statUpserts.length) {
     const { error } = await supabase
       .from('match_player_stats')
-      .upsert(clean, { onConflict: 'match_id,player_id' });
+      .upsert(statUpserts, { onConflict: 'match_id,player_id' });
     if (error) throw error;
   }
 

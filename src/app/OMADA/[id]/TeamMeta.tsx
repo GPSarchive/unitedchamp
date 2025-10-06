@@ -1,7 +1,8 @@
 // app/OMADA/[id]/TeamMeta.tsx
 'use client';
 
-import { FaTrophy, FaUsers, FaHashtag, FaChartLine, FaCalendarAlt, FaAward } from "react-icons/fa";
+import { FaTrophy, FaHashtag, FaChartLine, FaCalendarAlt, FaAward } from "react-icons/fa";
+import { MdWorkspacePremium } from "react-icons/md";
 import { Team } from "@/app/lib/types";
 
 type TournamentLight = {
@@ -51,7 +52,7 @@ export default function TeamMeta({
         {/* Tournament Memberships */}
         <div className="flex flex-col items-start p-6 rounded-xl bg-orange-900/20 border border-orange-700/40 shadow-inner">
           <div className="flex items-center gap-3 mb-3 text-orange-300 text-xl">
-            <FaUsers className="text-orange-400" />
+            <MdWorkspacePremium className="text-orange-400" />
             <span className="font-semibold">Tournaments Joined</span>
           </div>
           <p className="text-white text-3xl font-bold">{membershipCount}</p>

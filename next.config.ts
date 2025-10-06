@@ -73,12 +73,40 @@ const domains = Array.from(
   ),
 );
 
+const isProd = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns,
     domains,
     // dangerouslyAllowSVG: true,
     // contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  poweredByHeader: false, // hide X-Powered-By in prod
+  async headers() {
+    const baseHeaders = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" }, // keep for legacy browsers; modern uses CSP frame-ancestors
+      // NOTE: Do NOT set Content-Security-Policy here if you'll use Middleware with nonces.
+    ];
+
+    const prodOnly = isProd
+      ? [
+          // HSTS only in prod over HTTPS (Vercel prod is HTTPS)
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+        ]
+      : [];
+
+    return [
+      {
+        source: "/(.*)",
+        headers: [...baseHeaders, ...prodOnly],
+      },
+    ];
   },
 };
 
