@@ -14,16 +14,21 @@ const appProtocol = (appUrl?.protocol?.replace(":", "") as "http" | "https") || 
 
 const remotePatterns: RemotePattern[] = [];
 
-// 1) Supabase Storage
+/**
+ * 1) Supabase Storage (public objects only)
+ * Let Next Image Optimizer fetch from public storage.
+ */
 if (supabaseHost) {
   remotePatterns.push({
     protocol: "https",
     hostname: supabaseHost,
-    pathname: "/storage/v1/object/**",
+    pathname: "/storage/v1/object/public/**",
   });
 }
 
-// 2) Your own proxy (prod/custom domain)
+/**
+ * 2) Your own proxy for team logos (prod & dev)
+ */
 if (appHost && appProtocol) {
   remotePatterns.push({
     protocol: appProtocol,
@@ -31,39 +36,55 @@ if (appHost && appProtocol) {
     pathname: "/api/public/team-logo/**",
   });
 }
-
-// ✅ 2a) Explicitly allow unitedchamp.vercel.app
+// Explicit Vercel prod host
 remotePatterns.push({
   protocol: "https",
   hostname: "unitedchamp.vercel.app",
   pathname: "/api/public/team-logo/**",
 });
-
-// (Optional) If you also want preview deploys to work, use a wildcard:
-// remotePatterns.push({
-//   protocol: "https",
-//   hostname: "**.vercel.app",
-//   pathname: "/api/public/team-logo/**",
-// });
-
-// 3) Dev/local
+// Dev/local
 remotePatterns.push(
   { protocol: "http", hostname: "localhost", port: "3000", pathname: "/api/public/team-logo/**" },
   { protocol: "http", hostname: "127.0.0.1", port: "3000", pathname: "/api/public/team-logo/**" },
 );
 
-// 4) Avatars
+/**
+ * 3) Player image proxy (private bucket via same-origin API)
+ * Add both local and production patterns for /api/player-img/**
+ */
+remotePatterns.push(
+  { protocol: "http", hostname: "localhost", port: "3000", pathname: "/api/player-img/**" },
+  { protocol: "http", hostname: "127.0.0.1", port: "3000", pathname: "/api/player-img/**" },
+);
+if (appHost && appProtocol) {
+  remotePatterns.push({
+    protocol: appProtocol,
+    hostname: appHost,
+    pathname: "/api/player-img/**",
+  });
+}
+remotePatterns.push({
+  protocol: "https",
+  hostname: "unitedchamp.vercel.app",
+  pathname: "/api/player-img/**",
+});
+
+/**
+ * 4) Common avatar providers
+ */
 remotePatterns.push(
   { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/**" },
   { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
 );
 
+/**
+ * Domains allowlist (kept for compatibility with older Next behavior)
+ */
 const domains = Array.from(
   new Set(
     [
       supabaseHost,
       appHost,
-      // ✅ Add explicit domain so domains-based allowlist also covers it
       "unitedchamp.vercel.app",
       "localhost",
       "127.0.0.1",
@@ -82,18 +103,16 @@ const nextConfig: NextConfig = {
     // dangerouslyAllowSVG: true,
     // contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  poweredByHeader: false, // hide X-Powered-By in prod
+  poweredByHeader: false,
   async headers() {
     const baseHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "X-Frame-Options", value: "SAMEORIGIN" }, // keep for legacy browsers; modern uses CSP frame-ancestors
-      // NOTE: Do NOT set Content-Security-Policy here if you'll use Middleware with nonces.
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
     ];
 
     const prodOnly = isProd
       ? [
-          // HSTS only in prod over HTTPS (Vercel prod is HTTPS)
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",

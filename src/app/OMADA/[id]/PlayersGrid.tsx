@@ -1,5 +1,3 @@
-// app/OMADA/[id]/PlayersGrid.tsx
-import Image from "next/image";
 import {
   FaUser,
   FaRulerVertical,
@@ -11,7 +9,9 @@ import {
   FaCircle,
   FaUsers,
 } from "react-icons/fa";
+import AvatarImage from "./AvatarImage";
 import { PlayerAssociation } from "@/app/lib/types";
+import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
 interface PlayersGridProps {
   playerAssociations: PlayerAssociation[] | null;
@@ -19,34 +19,7 @@ interface PlayersGridProps {
   errorMessage?: string | null;
 }
 
-/**
- * Normalizes any photo value we get from the DB into something <Image/> can load:
- * - Full URLs (http/https) are returned as-is
- * - Public paths starting with "/" are returned as-is (served from /public)
- * - Relative storage keys like "players/123.jpg" are converted to:
- *   `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/<key>`
- */
-const PUBLIC_CDN =
-  process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public`
-    : "";
-
-function resolvePhoto(src?: string | null) {
-  const fallback = "/player-placeholder.jpg";
-  if (!src) return fallback;
-
-  // already absolute URL
-  if (/^https?:\/\//i.test(src)) return src;
-
-  // public folder path
-  if (src.startsWith("/")) return src;
-
-  // storage key (e.g., "players/123.jpg")
-  if (PUBLIC_CDN) return `${PUBLIC_CDN}/${src.replace(/^\/+/, "")}`;
-
-  // if we don't have a CDN base URL, fall back to placeholder
-  return fallback;
-}
+const DEV = process.env.NODE_ENV !== "production";
 
 export default function PlayersGrid({
   playerAssociations,
@@ -70,6 +43,8 @@ export default function PlayersGrid({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {playerAssociations.map((assoc) => {
           const p = assoc.player;
+          const photoUrl = resolvePlayerPhotoUrl(p.photo);
+
           const stats =
             p.player_statistics?.[0] ?? {
               age: null,
@@ -99,15 +74,13 @@ export default function PlayersGrid({
               className="p-4 rounded-xl bg-stone-950/40 border border-amber-600/30 hover:border-amber-400/50 transition-shadow hover:shadow-md hover:shadow-orange-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
             >
               <div className="flex items-center gap-3 mb-3">
-                <Image
-                  src={resolvePhoto(p.photo)}
+                <AvatarImage
+                  src={photoUrl}
                   alt={`${p.first_name} ${p.last_name}`}
                   width={48}
                   height={48}
                   className="rounded-full border-2 border-amber-400/30 object-cover"
                   sizes="48px"
-                  // If your remote host blocks the optimizer, uncomment the next line:
-                  // unoptimized
                 />
                 <div>
                   <p className="font-semibold text-white">
@@ -119,8 +92,7 @@ export default function PlayersGrid({
                     </span>
                     {p.height_cm && (
                       <span className="inline-flex items-center gap-1">
-                        <FaRulerVertical /> {p.height_cm}
-                        cm
+                        <FaRulerVertical /> {p.height_cm}cm
                       </span>
                     )}
                     {p.birth_date && (
@@ -130,6 +102,12 @@ export default function PlayersGrid({
                       </span>
                     )}
                   </p>
+
+                  {DEV && (
+                    <p className="text-[10px] text-zinc-500 break-all mt-1">
+                      img: <code>{photoUrl}</code>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -150,7 +128,6 @@ export default function PlayersGrid({
                   <FaTimesCircle className="mx-auto text-red-400" />
                   <p className="text-zinc-100">{stats.red_cards ?? 0}</p>
                 </div>
-                {/* Neutral tile to match the warm theme */}
                 <div className="text-center bg-stone-900/25 p-2 rounded">
                   <FaCircle className="mx-auto text-amber-300" />
                   <p className="text-zinc-100">{stats.blue_cards ?? 0}</p>
