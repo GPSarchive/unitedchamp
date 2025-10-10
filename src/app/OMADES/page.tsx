@@ -1,8 +1,11 @@
+// app/OMADES/teams/page.tsx (or wherever your Teams page lives)
+import DotGrid from "@/app/OMADES/DotGrid";
 import TeamsGrid from "@/app/OMADES/TeamsGrid";
 import SearchBar from "@/app/OMADES/SearchBar";
 import Pagination from "@/app/OMADES/Pagination";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { Team } from "@/app/lib/types";
+import React from "react";
 
 type SearchMap = { [key: string]: string | string[] | undefined };
 
@@ -17,6 +20,34 @@ type TeamWithCountRPC = {
 // TeamsGrid expects logo: string (non-null) and no created_at
 type GridTeam = { id: number; name: string; logo: string };
 
+// ---- Background shell (DotGrid behind, content above) ----
+function Background() {
+  return (
+    <DotGrid
+      fullscreen
+      className="z-0 pointer-events-none"
+      baseColor="#1F1B2E"
+      activeColor="#F59E0B"
+      dotSize={2}
+      gap={10}
+      proximity={100}
+      shockRadius={250}
+      shockStrength={5}
+      resistance={750}
+      returnDuration={1.5}
+    />
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <main className="relative min-h-dvh bg-black overflow-hidden">
+      <Background />
+      <div className="relative z-10">{children}</div>
+    </main>
+  );
+}
+
 export default async function TeamsPage({
   searchParams,
 }: {
@@ -25,13 +56,13 @@ export default async function TeamsPage({
 }) {
   const sp = await searchParams;
 
-  // Safely extract values that might be string | string[] | undefined
   const pageParam = Array.isArray(sp.page) ? sp.page[0] : sp.page ?? "1";
-  const page = Number.parseInt(pageParam, 10) > 0 ? Number.parseInt(pageParam, 10) : 1;
+  const page =
+    Number.parseInt(pageParam, 10) > 0 ? Number.parseInt(pageParam, 16) : 1;
 
   const search = Array.isArray(sp.search) ? sp.search[0] : sp.search ?? "";
 
-  const limit = 14;
+  const limit = 16;
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -50,28 +81,32 @@ export default async function TeamsPage({
       teams = rows.map((row) => ({
         id: row.id,
         name: row.name,
-        logo: row.logo,          // string | null (allowed in shared Team)
-        created_at: null,        // RPC doesn't return it; keep null
+        logo: row.logo,
+        created_at: null,
       }));
       count = rows.length > 0 ? rows[0].total_count : 0;
     }
   } else {
     const query = supabaseAdmin
       .from("teams")
-      .select("id, name, logo, created_at", { count: "exact" }) // ✅ include created_at
+      .select("id, name, logo, created_at", { count: "exact" })
       .order("name", { ascending: true });
 
-    const { data, error: queryError, count: queryCount } = await query.range(from, to);
+    const { data, error: queryError, count: queryCount } = await query.range(
+      from,
+      to
+    );
     error = queryError;
     if (!error && data) {
-      teams = data as Team[]; // matches shared Team
+      teams = data as Team[];
       count = queryCount || 0;
     }
   }
 
+  // ---- Error state ----
   if (error || !teams) {
     return (
-      <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
+      <Shell>
         <div className="container mx-auto px-6 pt-6">
           <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
             Football Teams
@@ -83,13 +118,14 @@ export default async function TeamsPage({
             Error loading teams: {error?.message}
           </p>
         </div>
-      </div>
+      </Shell>
     );
   }
 
+  // ---- Empty state ----
   if (teams.length === 0) {
     return (
-      <div className="min-h-screen bg-zinc-950 [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)] [background-size:18px_18px] overflow-x-hidden">
+      <Shell>
         <div className="container mx-auto px-6 pt-6">
           <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
             Football Teams
@@ -101,7 +137,7 @@ export default async function TeamsPage({
             No teams found matching your search.
           </p>
         </div>
-      </div>
+      </Shell>
     );
   }
 
@@ -111,11 +147,12 @@ export default async function TeamsPage({
   const teamsForGrid: GridTeam[] = teams.map((t) => ({
     id: t.id,
     name: t.name,
-    logo: t.logo ?? "", // fallback to empty string if null
+    logo: t.logo ?? "",
   }));
 
+  // ---- Success ----
   return (
-    <div className="min-h-screen bg-grid-18">
+    <Shell>
       <div className="container mx-auto px-6 pt-6">
         <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
           Football Teams
@@ -132,6 +169,6 @@ export default async function TeamsPage({
       <div className="container mx-auto px-6 pb-10">
         <Pagination currentPage={page} totalPages={totalPages} search={search} />
       </div>
-    </div>
+    </Shell>
   );
 }

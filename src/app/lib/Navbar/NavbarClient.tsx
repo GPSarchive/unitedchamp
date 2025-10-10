@@ -13,10 +13,10 @@ import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser"
 /* ===================== Data ===================== */
 const NAV_LINKS = [
   { href: "/home",            label: "HOME",                     img: "/field2.jpg" },
-  { href: "/anakoinoseis",    label: "ΑΝΑΚΟΙΝΩΣΕΙΣ",             img: "/navbar7.jpg" },
+  { href: "/anakoinoseis",    label: "ΑΝΑΚΟΙΝΩΣΕΙΣ",             img: "/ανακοινωσεις.jpg" },
   { href: "/OMADES",          label: "ΟΜΑΔΕΣ",                   img: "/omades.jpg" },
   { href: "/tournoua",        label: "ΤΟΥΡΝΟΥΑ",                 img: "/NavbarTournoua.jpg" },
-  { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",              img: "/epikoinonia.jpg" },
+  { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",              img: "/επικοινωνια.jpg" },
 
   // NEW
   { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/navbar_players.jpg" },

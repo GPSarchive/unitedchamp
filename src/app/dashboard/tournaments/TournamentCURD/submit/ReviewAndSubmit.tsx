@@ -1,13 +1,14 @@
-// app/dashboard/tournaments/TournamentCURD/submit/ReviewAndSubmit.tsx
 "use client";
 
 import { useTransition, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
-import { createTournamentAction, updateTournamentAction } from "../actions";
+import { createTournamentAction } from "../actions";
+import { useTournamentStore } from "../submit/tournamentStore";
+import { loadTournamentIntoStore } from "./loadSnapshotClient";
 
 /* ----------------------------------------------------------------
-   Helpers: kinds + names
+   Helpers: kinds + names (unchanged)
 ----------------------------------------------------------------- */
 type StageKind = "league" | "groups" | "knockout";
 const kindOf = (s: NewTournamentPayload["stages"][number]): StageKind =>
@@ -16,7 +17,7 @@ const nameOf = (payload: NewTournamentPayload, i: number) =>
   payload.stages[i]?.name ?? `#${i + 1}`;
 
 /* ----------------------------------------------------------------
-   Coercion helper (defensive): accept "2" as 2, ignore NaN
+   Coercion helper (unchanged)
 ----------------------------------------------------------------- */
 const asIdx = (v: any): number | undefined => {
   const n = Number(v);
@@ -24,8 +25,7 @@ const asIdx = (v: any): number | undefined => {
 };
 
 /* ----------------------------------------------------------------
-   Canonicalize refs by ID → index (post-reorder safety)
-   - Also collect warnings if *_stage_id points to nowhere
+   Canonicalize refs by ID → index (unchanged)
 ----------------------------------------------------------------- */
 function canonicalizeStageRefsById(
   payload: NewTournamentPayload
@@ -43,7 +43,6 @@ function canonicalizeStageRefsById(
   clone.stages.forEach((s, i) => {
     const cfg = ((s as any).config ?? {}) as any;
 
-    // KO fed from League/Groups
     if (cfg.from_stage_id != null) {
       if (idToIdx.has(cfg.from_stage_id)) {
         cfg.from_stage_idx = idToIdx.get(cfg.from_stage_id);
@@ -55,7 +54,6 @@ function canonicalizeStageRefsById(
       }
     }
 
-    // Groups fed from KO
     if (cfg.from_knockout_stage_id != null) {
       if (idToIdx.has(cfg.from_knockout_stage_id)) {
         cfg.from_knockout_stage_idx = idToIdx.get(cfg.from_knockout_stage_id);
@@ -74,7 +72,7 @@ function canonicalizeStageRefsById(
 }
 
 /* ----------------------------------------------------------------
-   Validate 1: ordering & kind compatibility (no future refs)
+   Validate 1 (unchanged)
 ----------------------------------------------------------------- */
 function validateStageOrderingAndRefs(payload: NewTournamentPayload): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
@@ -154,19 +152,16 @@ function validateStageOrderingAndRefs(payload: NewTournamentPayload): { errors: 
 }
 
 /* ----------------------------------------------------------------
-   Validate 2: cycles (DAG check over stage dependencies)
-   - Edge added for each dependency: src -> i
+   Validate 2 (unchanged)
 ----------------------------------------------------------------- */
 function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] } {
   const N = payload.stages.length;
   const adj: number[][] = Array.from({ length: N }, () => []);
   const errors: string[] = [];
 
-  // Build edges
   payload.stages.forEach((stage, i) => {
     const cfg = ((stage as any).config ?? {}) as any;
 
-    // KO depends on League/Groups
     {
       const src = asIdx(cfg.from_stage_idx);
       if (kindOf(stage) === "knockout" && src !== undefined && src >= 0 && src < N) {
@@ -174,7 +169,6 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
       }
     }
 
-    // Groups depend on KO
     {
       const src = asIdx(cfg.from_knockout_stage_idx);
       if (kindOf(stage) === "groups" && src !== undefined && src >= 0 && src < N) {
@@ -183,7 +177,6 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
     }
   });
 
-  // DFS cycle detection (collect first cycle; can extend to collect all if desired)
   const VISITING = 1;
   const DONE = 2;
   const state = new Array<number>(N).fill(0);
@@ -196,7 +189,6 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
       if (state[v] === 0) {
         if (dfs(v)) return true;
       } else if (state[v] === VISITING) {
-        // found a cycle; reconstruct the path
         const j = stack.indexOf(v);
         const cyc = stack.slice(j).concat(v);
         const label = cyc.map((idx) => `“${nameOf(payload, idx)}” ( #${idx + 1} )`).join(" → ");
@@ -219,8 +211,36 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
 }
 
 /* ----------------------------------------------------------------
+   Stable selectors (fixes Next/Zustand getServerSnapshot warning)
+----------------------------------------------------------------- */
+const selectBusy = (s: any) => s.busy as boolean;
+const selectSaveAll = (s: any) => s.saveAll as () => Promise<void>;
+const selectSeedFromWizard = (s: any) => s.seedFromWizard as
+  | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
+  | undefined;
+const selectAnyDirty = (s: any) => {
+  const d = s.dirty ?? {};
+  return Boolean(
+    d.tournament ||
+      d.stages ||
+      d.groups ||
+      d.tournamentTeams ||
+      d.intakeMappings ||
+      (d.matches && d.matches.size) ||
+      (d.stageSlots && d.stageSlots.size)
+  );
+};
+
+/* ----------------------------------------------------------------
    Component
 ----------------------------------------------------------------- */
+
+type CreateTournamentOk1 = { ok: true; id: number };
+type CreateTournamentOk2 = { ok: true; tournamentId: number };
+type CreateTournamentOk3 = { ok: true; tournament: { id: number } };
+type CreateTournamentErr = { ok: false; error?: any };
+type CreateTournamentResult = CreateTournamentOk1 | CreateTournamentOk2 | CreateTournamentOk3 | CreateTournamentErr;
+
 export default function ReviewAndSubmit({
   mode = "create",
   meta,
@@ -240,16 +260,19 @@ export default function ReviewAndSubmit({
   const [error, setError] = useState<string | null>(null);
   const [warningsUi, setWarningsUi] = useState<string[]>([]);
 
+  // ✅ use stable, module-scoped selectors
+  const busy = useTournamentStore(selectBusy);
+  const saveAll = useTournamentStore(selectSaveAll);
+  const seedFromWizard = useTournamentStore(selectSeedFromWizard);
+  const anyDirty = useTournamentStore(selectAnyDirty);
+
   const submit = () => {
     setError(null);
     setWarningsUi([]);
 
-    // 1) Canonicalize by ID → idx, so refs survive reorder (and collect warnings)
+    // 1) Canonicalize id→idx + validations
     const { canon, warnings } = canonicalizeStageRefsById(payload);
-
-    // 2) Validate ordering & kinds (no “future stage” refs, no self refs, right source kinds)
     const orderCheck = validateStageOrderingAndRefs(canon);
-    // 3) Validate cycles (DAG)
     const graphCheck = validateStagesGraph(canon);
 
     const allErrors = [...orderCheck.errors, ...graphCheck.errors];
@@ -258,24 +281,59 @@ export default function ReviewAndSubmit({
     if (allWarnings.length) setWarningsUi(allWarnings);
     if (allErrors.length) {
       setError(allErrors.join("\n"));
-      return; // hard stop
+      return;
     }
-
-    const fd = new FormData();
-    fd.set("payload", JSON.stringify(canon ?? {}));
-    fd.set("teams", JSON.stringify(teams ?? []));
-    fd.set("draftMatches", JSON.stringify(draftMatches ?? []));
 
     start(async () => {
       try {
-        let res: any;
-        if (mode === "edit" && meta?.id) {
-          fd.set("tournament_id", String(meta.id));
-          res = await updateTournamentAction(fd);
-        } else {
-          res = await createTournamentAction(fd);
+        if (mode === "create") {
+          // 1) Create just to get a tournament id
+          const raw = (await createTournamentAction(
+            (() => {
+              const fd = new FormData();
+              fd.set("payload", JSON.stringify(canon));
+              fd.set("teams", JSON.stringify(teams ?? []));
+              fd.set("draftMatches", JSON.stringify(draftMatches ?? []));
+              return fd;
+            })()
+          )) as unknown as CreateTournamentResult;
+
+          if (!raw || raw.ok === false) {
+            setError(
+              raw && "error" in raw ? raw.error || "Failed to create tournament." : "Failed to create tournament."
+            );
+            return;
+          }
+
+          // Safely extract the new ID from any of the accepted shapes
+          const newId =
+            "id" in raw && typeof (raw as any).id === "number"
+              ? (raw as any).id
+              : "tournamentId" in raw && typeof (raw as any).tournamentId === "number"
+              ? (raw as any).tournamentId
+              : "tournament" in raw && raw.tournament && typeof (raw as any).tournament.id === "number"
+              ? (raw as any).tournament.id
+              : undefined;
+
+          if (typeof newId !== "number") {
+            setError("Create returned no ID. Please ensure createTournamentAction returns { ok:true, id:number }.");
+            return;
+          }
+
+          // 2) Hydrate the store from DB (so stage/group IDs are real)
+          await loadTournamentIntoStore(newId);
+
+          // 3) NOW seed wizard state into the store (marking things dirty)
+          if (seedFromWizard) {
+            seedFromWizard(canon, teams, draftMatches);
+          }
+
+          // 4) Persist via /save-all (server resolves KO ids etc)
+          await saveAll();
+          return;
         }
-        if (res && res.ok === false) setError(res.error || "Unknown error");
+
+        // EDIT MODE path can go here (not shown)
       } catch (e: any) {
         setError(e?.message || "Unexpected error");
       }
@@ -314,13 +372,21 @@ export default function ReviewAndSubmit({
         >
           Back
         </button>
+
         <button
           onClick={submit}
-          disabled={pending}
-          aria-busy={pending}
+          disabled={pending || busy}
+          aria-busy={pending || busy}
           className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          title={!anyDirty && mode === "edit" ? "No changes to save" : undefined}
         >
-          {pending ? (mode === "edit" ? "Saving…" : "Creating…") : mode === "edit" ? "Save Changes" : "Create Tournament"}
+          {pending || busy
+            ? mode === "edit"
+              ? "Saving…"
+              : "Creating…"
+            : mode === "edit"
+            ? "Save Changes"
+            : "Create & Save All"}
         </button>
       </div>
     </div>

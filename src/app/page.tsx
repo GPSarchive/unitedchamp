@@ -1,11 +1,13 @@
 // app/page.tsx
 import Image from 'next/image';
-import { Carousel } from '@/app/home/Carousel';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
-import { Trophy, Users, CalendarDays, BarChart3 } from 'lucide-react';
-import { UserRow as DbUser, TeamLite, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
-import HomeHero from './home/HomeHero';
-import EventCalendar from './home/Calendar';
+import { Trophy, Users, BarChart3 } from 'lucide-react';
+import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
+import HomeHero from '@/app/home/HomeHero';
+import EventCalendar from '@/app/home/Calendar';
+import GridBgSection from '@/app/home/GridBgSection';
+import VantaSection from '@/app/home/VantaSection';
+
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -203,35 +205,36 @@ export default async function Home() {
         ]}
       />
 
-      {/* Welcome Section - mobile-first sizes */}
-      <section className="py-12 sm:py-16 bg-gradient-to-b from-yellow-400/80 to-black-900 text-white">
-        <div className="container mx-auto px-4 text-center text-black">
-          <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-4"> {/* [CTRL-A] */}
-            Ultra Champ
-          </h1>
-          
-          <a
-            href="/sign-up"
-            className="bg-white text-black px-6 sm:px-8 py-3 rounded-full font-semibold transition border border-transparent hover:bg-black hover:text-white hover:border-white"
-          >
-            Εγγραφείτε τώρα
-          </a>
-        </div>
-      </section>
+      {/* Welcome Section (replaces orange bg with Vanta) */}
+<VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+  <div className="container mx-auto px-4 text-center">
+    <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-2 drop-shadow">
+      UltraChamp
+    </h1>
+
+
+    {/* your styled lead paragraph */}
+    <p className="text-lg sm:text-xl max-w-3xl mx-auto text-white/90 leading-relaxed">
+      Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κοσμο!
+      Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνει εσύ ο Ultrachamp! Αγωνισου
+      σε κλίμα ασφάλειας οργάνωσης και ηθικής!
+    </p>
+  </div>
+</VantaSection>
 
       {/* Calendar Section - use safer full-bleed utility */}
-      <section className="full-bleed safe-px safe-pb"> {/* [CTRL-C] */}
+      <section className="full-bleed safe-px safe-pb">
         <EventCalendar className="w-full" initialEvents={eventsToPass} fetchFromDb={false} />
       </section>
 
-      {/* Features Section */}
-      <section className="py-12 sm:py-16 bg-grid-18 text-white">
+      {/* Features Section (Dot grid background) */}
+      <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center">Η ομάδα σε περιμένει</h2>
           <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
             <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Users className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" aria-hidden="true" />
+                <Users className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4">Φιλόξενη Κοινότητα</h3>
               <p className="text-gray-200 text-sm sm:text-base">
@@ -241,7 +244,7 @@ export default async function Home() {
 
             <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" aria-hidden="true" />
+                <Trophy className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Ποιοτικοι Αγώνες</h3>
               <p className="text-gray-200 text-sm sm:text-base">
@@ -251,7 +254,7 @@ export default async function Home() {
 
             <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-orange-400" aria-hidden="true" />
+                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-semibold mb-2">Προφίλ & Στατιστικά</h3>
               <p className="text-gray-200 text-sm sm:text-base">
@@ -260,17 +263,17 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* About Us Section */}
-      <section className="py-12 sm:py-16 bg-gradient-to-r from-yellow-500 to-yellow-900 text-white">
+      {/* About Us Section (replaces orange bg with Vanta) */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
           <div>
-            <h2 className="text-2xl sm:text-4xl font-sans text-black font-bold mb-4 sm:mb-6">Σχετικά με εμάς</h2>
-            <p className="text-base sm:text-lg text-black mb-3 sm:mb-4">
-              Στο Ultra Champ , είμαστε αφοσιωμένοι στη δημιουργία μιας κοινότητας φίλων του ποδοσφαίρου. Η πλατφόρμα μας οργανώνει αγώνες και τουρνουά σε διάφορα επίπεδα, προσφέροντας ευκαιρίες στους παίκτες να δείξουν τις ικανότητές τους, να κάνουν νέους φίλους και να απολαύσουν το όμορφο παιχνίδι.
+            <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Σχετικά με εμάς</h2>
+            <p className="text-base sm:text-lg mb-3 sm:mb-4">
+              Στο Ultra Champ, είμαστε αφοσιωμένοι στη δημιουργία μιας κοινότητας φίλων του ποδοσφαίρου. Η πλατφόρμα μας οργανώνει αγώνες και τουρνουά σε διάφορα επίπεδα, προσφέροντας ευκαιρίες στους παίκτες να δείξουν τις ικανότητές τους, να κάνουν νέους φίλους και να απολαύσουν το όμορφο παιχνίδι.
             </p>
-            <p className="text-base sm:text-lg text-black">
+            <p className="text-base sm:text-lg">
               Με σύγχρονες εγκαταστάσεις, κανόνες fair play και πάθος για το ποδόσφαιρο, διασφαλίζουμε ότι κάθε event είναι αξέχαστο και συναρπαστικό.
             </p>
           </div>
@@ -284,13 +287,13 @@ export default async function Home() {
             />
           </div>
         </div>
-      </section>
+      </VantaSection>
 
-      {/* Call to Action Section */}
-      <section className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center bg-grid-18 text-white text-center">
+      {/* Call to Action Section (Dot grid background) */}
+      <GridBgSection className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center text-white text-center">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Έτοιμοι για σέντρα;</h2>
-        <p className="text-base sm:text-xl mb-6 sm:mb-8">
+          <p className="text-base sm:text-xl mb-6 sm:mb-8">
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
           </p>
           <a
@@ -300,12 +303,12 @@ export default async function Home() {
             Ξεκινήστε
           </a>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* Testimonials Section */}
-      <section className="py-12 sm:py-16 bg-gradient-to-r from-yellow-500 to-yellow-900 text-white">
+      {/* Testimonials Section (replaces orange bg with Vanta) */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl sm:text-4xl text-black font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
+          <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <div className="bg-white text-black p-6 rounded-lg shadow-md">
               <p className="mb-4">«Φοβερή εμπειρία! Τα τουρνουά είναι άρτια οργανωμένα και γεμάτα ενέργεια.»</p>
@@ -321,7 +324,7 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </VantaSection>
 
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">

@@ -1,4 +1,3 @@
-// app/dashboard/tournaments/TournamentCURD/preview/MatchPlanner.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -6,15 +5,17 @@ import type { DraftMatch, TeamDraft } from "../TournamentWizard";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import { generateDraftMatches } from "../util/Generators";
 import { genRoundRobin } from "../util/functions/roundRobin";
-import { genKnockoutAnyN } from "../util/functions/knockoutAnyN";
-// Kept for READS (initial hydrate). Writes now go through /api/matches/[id].
-import { supabase } from "@/app/lib/supabase/supabaseClient";
+
+// ✅ store
+import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+
+/* ----------------------------- Types & helpers ----------------------------- */
 
 // Keep DraftMatch as the single source of truth for match fields
 type EditableDraftMatch = DraftMatch & {
   locked?: boolean;
   _localId?: number;
-  db_id?: number | null; // 👈 allow null
+  db_id?: number | null; // rendered via overlay merge
 };
 
 type DbOverlay = Pick<
@@ -28,16 +29,16 @@ type DbOverlay = Pick<
   | "away_source_round"
   | "away_source_bracket_pos"
 > & {
-  db_id?: number | null; // 👈 allow null
+  db_id?: number | null; // stored in overlay
 };
 
-/** Build a stable signature for a match row so we can map DB-only fields back in
- * Works even if parent strips unknown fields from `DraftMatch`.
- */
+type StageOption = { i: number; name: string; kind: "league" | "groups" | "knockout" | "mixed" | string };
+
+/** Build a stable signature for a match row (MUST match the store’s) */
 function rowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
-    // m.groupIdx — intentionally omitted
+    m.groupIdx ?? "",
     m.matchday ?? "",
     m.round ?? "",
     m.bracket_pos ?? "",
@@ -48,39 +49,7 @@ function rowSignature(m: DraftMatch) {
   return parts.join("|");
 }
 
-/** Recompute KO local *_match_idx pointers for a given stage */
-function reindexKOPointersForStage(stageIdx: number, rows: DraftMatch[]) {
-  const sameStage = rows.filter((m) => m.stageIdx === stageIdx && (m.round ?? null) != null);
-
-  const key = (r?: number | null, p?: number | null) => (r && p ? `${r}:${p}` : "");
-  const idxOf = new Map<string, number>();
-
-  sameStage
-    .slice()
-    .sort(
-      (a, b) =>
-        (a.round ?? 0) - (b.round ?? 0) ||
-        (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0)
-    )
-    .forEach((m, i) => {
-      idxOf.set(key(m.round ?? null, m.bracket_pos ?? null), i);
-    });
-
-  sameStage.forEach((m) => {
-    const hk = key(m.home_source_round ?? null, m.home_source_bracket_pos ?? null);
-    const ak = key(m.away_source_round ?? null, m.away_source_bracket_pos ?? null);
-    const hIdx = hk ? idxOf.get(hk) : undefined;
-    const aIdx = ak ? idxOf.get(ak) : undefined;
-    if (typeof hIdx === "number") (m as any).home_source_match_idx = hIdx;
-    else delete (m as any).home_source_match_idx;
-    if (typeof aIdx === "number") (m as any).away_source_match_idx = aIdx;
-    else delete (m as any).away_source_match_idx;
-  });
-
-  return rows;
-}
-
-/** Strip UI-only fields before calling onChange */
+/** Strip UI-only fields (when we need DraftMatch purity) */
 function toDraft(m: EditableDraftMatch): DraftMatch {
   const { _localId, locked, db_id, ...rest } = m;
   return rest as DraftMatch;
@@ -125,19 +94,13 @@ function inferStatus(row: {
 export default function MatchPlanner({
   payload,
   teams,
-  draftMatches,
-  onChange,
-  // lock planner to a specific stage (hides stage picker)
+  // no draftMatches/onChange — we use the store
   forceStageIdx,
-  // tighter spacing for embedding in StageCard
   compact,
-  // allow parent to trigger seeding before regeneration (KO)
   onAutoAssignTeamSeeds,
 }: {
   payload: NewTournamentPayload;
   teams: TeamDraft[];
-  draftMatches: DraftMatch[];
-  onChange: (next: DraftMatch[]) => void;
   forceStageIdx?: number;
   compact?: boolean;
   onAutoAssignTeamSeeds?: () => Promise<number[]> | number[];
@@ -146,8 +109,10 @@ export default function MatchPlanner({
   const [groupIdx, setGroupIdx] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Local cache of DB-only fields keyed by row signature
-  const [dbOverlayBySig, setDbOverlayBySig] = useState<Record<string, DbOverlay>>({});
+  // 🔗 store (all selectors are stable — no per-render function creation)
+  const draftMatches = useTournamentStore((s) => s.draftMatches);
+  const overlay = useTournamentStore((s) => s.dbOverlayBySig);
+  const updateMatches = useTournamentStore((s) => s.updateMatches);
 
   // Keep stageIdx synced with forced value
   useEffect(() => {
@@ -158,134 +123,7 @@ export default function MatchPlanner({
   }, [forceStageIdx]);
 
   // --------------------------
-  // Load saved matches from DB and also populate overlay cache.
-  // We still push rows via onChange so match_date & structure update,
-  // and we keep status/scores too (no stripping).
-  // --------------------------
-  useEffect(() => {
-    const stageIdToIdx = new Map<number, number>();
-    (payload.stages as any)?.forEach((s: any, i: number) => {
-      if (typeof s?.id === "number") stageIdToIdx.set(s.id, i);
-    });
-
-    const haveStageIds = stageIdToIdx.size > 0;
-    const shouldPrefillBase = (draftMatches?.length ?? 0) === 0; // only replace base if empty
-
-    if (!haveStageIds) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const stageIds = Array.from(stageIdToIdx.keys());
-        if (stageIds.length === 0) return;
-
-        const { data, error } = await supabase
-          .from("matches")
-          .select(
-            [
-              "id",
-              "stage_id",
-              "group_id",
-              "round",
-              "bracket_pos",
-              "matchday",
-              "match_date",
-              "team_a_id",
-              "team_b_id",
-              "team_a_score",
-              "team_b_score",
-              "status",
-              "winner_team_id",
-              "home_source_round",
-              "home_source_bracket_pos",
-              "away_source_round",
-              "away_source_bracket_pos",
-            ].join(",")
-          )
-          .in("stage_id", stageIds)
-          .order("stage_id", { ascending: true })
-          .order("round", { ascending: true, nullsFirst: true })
-          .order("bracket_pos", { ascending: true, nullsFirst: true })
-          .order("matchday", { ascending: true, nullsFirst: true })
-          .order("id", { ascending: true });
-
-        if (error) throw error;
-
-        const incoming: EditableDraftMatch[] = (data ?? [])
-          .map((m: any) => {
-            const sIdx = stageIdToIdx.get(m.stage_id);
-            if (typeof sIdx !== "number") return null;
-
-            // Map DB group_id (FK) -> 0-based group index for this stage
-            let gIdx: number | null = null;
-            const s = (payload.stages as any)[sIdx];
-            if (m.group_id != null && s?.groups?.length) {
-              const gi = (s.groups as any).findIndex((g: any) => g?.id === m.group_id);
-              gIdx = gi >= 0 ? gi : null;
-            }
-
-            const row: EditableDraftMatch = {
-              db_id: m.id, // keep locally; will be stripped via toDraft() on parent updates
-              stageIdx: sIdx,
-              groupIdx: gIdx,
-              round: m.round ?? null,
-              bracket_pos: m.bracket_pos ?? null,
-              matchday: m.matchday ?? null,
-              match_date: m.match_date ?? null,
-              team_a_id: m.team_a_id ?? null,
-              team_b_id: m.team_b_id ?? null,
-              // advanced:
-              team_a_score: m.team_a_score ?? null,
-              team_b_score: m.team_b_score ?? null,
-              status: (m.status as "scheduled" | "finished" | null) ?? null,
-              winner_team_id: m.winner_team_id ?? null,
-              home_source_round: m.home_source_round ?? null,
-              home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-              away_source_round: m.away_source_round ?? null,
-              away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-              locked: false,
-            };
-            return row;
-          })
-          .filter(Boolean) as EditableDraftMatch[];
-
-        if (cancelled) return;
-
-        // Build overlay cache from incoming (also store db_id here)
-        const overlay: Record<string, DbOverlay> = {};
-        for (const r of incoming) {
-          overlay[rowSignature(r)] = {
-            db_id: r.db_id,
-            status: r.status ?? null,
-            team_a_score: r.team_a_score ?? null,
-            team_b_score: r.team_b_score ?? null,
-            winner_team_id: r.winner_team_id ?? null,
-            home_source_round: r.home_source_round ?? null,
-            home_source_bracket_pos: r.home_source_bracket_pos ?? null,
-            away_source_round: r.away_source_round ?? null,
-            away_source_bracket_pos: r.away_source_bracket_pos ?? null,
-          };
-        }
-        setDbOverlayBySig(overlay);
-
-        // If parent has no matches yet, hydrate with ALL fields (except UI-only+db_id)
-        if (shouldPrefillBase && incoming.length > 0) {
-          onChange(incoming.map(toDraft));
-        }
-      } catch {
-        // Silent — if this fails we just keep current local state.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload?.stages, onChange]); // intentionally not depending on draftMatches
-
-  // --------------------------
-  // Team names lookup
+  // Team names lookup (local + auto-hydration)
   // --------------------------
   const [teamMeta, setTeamMeta] = useState<Record<number, { name: string }>>(() => {
     const init: Record<number, { name: string }> = {};
@@ -296,81 +134,35 @@ export default function MatchPlanner({
     return init;
   });
 
-  // Load names from /api/teams if some IDs are unknown
+  // (1) Merge in any names that arrive/change via props (e.g., TeamPicker or server-hydrated lists)
   useEffect(() => {
-    const ids = teams.map((t) => t.id);
-    const unknown = ids.filter((id) => !teamMeta[id]);
-    if (unknown.length === 0) return;
+    const add: Record<number, { name: string }> = {};
+    teams.forEach((t) => {
+      const nm = pickLocalName(t);
+      if (nm && !teamMeta[t.id]) add[t.id] = { name: nm };
+    });
+    if (Object.keys(add).length) setTeamMeta((p) => ({ ...p, ...add }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teams]);
 
-    (async () => {
-      try {
-        const tryIds = async () => {
-          const url = new URL("/api/teams", window.location.origin);
-          url.searchParams.set("ids", unknown.join(","));
-          const res = await fetch(url.toString(), { credentials: "include" });
-          if (!res.ok) throw new Error(String(res.status));
-          const body = await res.json().catch(() => null);
-          const list: Array<{ id: number; name: string }> = body?.teams ?? body ?? [];
-          if (!Array.isArray(list) || list.length === 0) throw new Error("empty");
-          return list;
-        };
+  // Build simple labels with seeds (if provided in TeamDraft)
+  const teamLabel = (id?: number | null) => {
+    if (!id) return "— Ομάδα —";
+    const nm = teamMeta[id]?.name;
+    const seed = teams.find((t) => t.id === id)?.seed;
+    const base = nm ?? `Ομάδα #${id}`;
+    return seed != null ? `${base} (S${seed})` : base;
+  };
 
-        const tryAll = async () => {
-          const url = new URL("/api/teams", window.location.origin);
-          const res = await fetch(url.toString(), { credentials: "include" });
-          if (!res.ok) throw new Error(String(res.status));
-          const body = await res.json().catch(() => null);
-          const list: Array<{ id: number; name: string }> = body?.teams ?? body ?? [];
-          return list.filter((r) => ids.includes(r.id));
-        };
-
-        let list: Array<{ id: number; name: string }>;
-        try {
-          list = await tryIds();
-        } catch {
-          list = await tryAll();
-        }
-
-        setTeamMeta((prev) => {
-          const next = { ...prev };
-          list.forEach((r) => {
-            next[r.id] = { name: r.name };
-          });
-          return next;
-        });
-      } catch {
-        // fallback: show Team #id
-      }
-    })();
-  }, [teams, teamMeta]);
-
+  // Stage meta from payload (we’re not deriving from store here to keep things stable)
   const stage = (payload.stages as any)[stageIdx];
   const isGroups = stage?.kind === "groups";
   const isLeague = stage?.kind === "league";
   const isKO = stage?.kind === "knockout";
-  const stageCfg: any = (stage?.config ?? {}) as any;
-  const isKOFromPrevious = isKO && Number.isFinite(stageCfg?.from_stage_idx as any);
-  const koStageDbId: number | undefined = stage?.id;
   const groups = isGroups ? stage?.groups ?? [] : [];
   const showStagePicker = typeof forceStageIdx !== "number";
 
-  // 🔎 New: figure out the source stage DB id (so the reseed button knows when to enable)
-  const srcStageIdx = isKOFromPrevious ? Number(stageCfg?.from_stage_idx) : undefined;
-  const srcStageDbId: number | undefined =
-    typeof srcStageIdx === "number" ? (payload.stages as any)[srcStageIdx]?.id : undefined;
-
-  const hasKOStageDbId = typeof koStageDbId === "number";
-  const hasSrcStageDbId = typeof srcStageDbId === "number";
-  console.log("KO reseed debug →", {
-    busy,
-    koStageDbId,
-    hasKOStageDbId,
-    srcStageIdx,
-    srcStageDbId,
-    hasSrcStageDbId,
-  });
-
-  // ✅ per-row lock state (unique by local id to avoid collisions)
+  // ✅ per-row lock state (unique per structural key or db_id)
   const [locksByPos, setLocksByPos] = useState<Record<string, boolean>>({});
 
   // Which team IDs belong to the currently selected group?
@@ -382,42 +174,30 @@ export default function MatchPlanner({
       .map((t) => t.id);
   }, [teams, stageIdx, groupIdx, isGroups]);
 
-  const teamLabel = (id?: number | null) => {
-    if (!id) return "— Ομάδα —";
-    const nm = teamMeta[id]?.name;
-    const seed = teams.find((t) => t.id === id)?.seed;
-    const base = nm ?? `Ομάδα #${id}`;
-    return seed != null ? `${base} (S${seed})` : base;
-  };
-
   // Options shown in selects:
   //  - groups: ONLY this group's teams
   //  - league/KO: all tournament teams
   const teamOptions = useMemo(() => {
     const ids = isGroups ? groupTeamIds : teams.map((t) => t.id);
+    const byName = (id: number) => teamMeta[id]?.name || "";
     return ids
       .slice()
-      .sort((a, b) => (teamMeta[a]?.name || "").localeCompare(teamMeta[b]?.name || ""))
+      .sort((a, b) => byName(a).localeCompare(byName(b)))
       .map((id) => ({ id, label: teamLabel(id) }));
   }, [teams, teamMeta, isGroups, groupTeamIds]);
 
   // --------------------------
-  // Rows & local "pending" edits
-  // IMPORTANT: merge in DB overlay so status/scores/db_id always render even if parent strips them.
+  // Merge overlay for rendering and assign local ids
   // --------------------------
   const withLocalIds: EditableDraftMatch[] = useMemo(
     () =>
       draftMatches.map((m, i) => {
-        const base: EditableDraftMatch = { ...m, _localId: i };
-        const k = lockKeyStable(base);
-        const locked = !!(k && locksByPos[k]);
-        const mergedBase = { ...base, locked };
-
-        const sig = rowSignature(mergedBase);
-        const overlay = dbOverlayBySig[sig];
-        return overlay ? { ...mergedBase, ...overlay } : mergedBase;
+        const base: EditableDraftMatch = { ...m, _localId: i, locked: false };
+        const sig = rowSignature(base);
+        const ov = overlay[sig] as DbOverlay | undefined;
+        return ov ? ({ ...base, ...ov } as EditableDraftMatch) : base;
       }),
-    [draftMatches, dbOverlayBySig, locksByPos]
+    [draftMatches, overlay]
   );
 
   const rows = useMemo(() => {
@@ -435,6 +215,58 @@ export default function MatchPlanner({
         return (a.matchday ?? 0) - (b.matchday ?? 0) || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0);
       });
   }, [withLocalIds, stageIdx, isGroups, isLeague, isKO, groupIdx]);
+
+  // (2) Auto-hydrate ANY missing names for ids visible now (rows + selectable options)
+  useEffect(() => {
+    const need = new Set<number>();
+
+    // From current rows
+    rows.forEach((r) => {
+      const a = (r as EditableDraftMatch).team_a_id ?? null;
+      const b = (r as EditableDraftMatch).team_b_id ?? null;
+      if (a && !teamMeta[a]) need.add(a);
+      if (b && !teamMeta[b]) need.add(b);
+    });
+
+    // From selectable ids in current view
+    const selectableIds = isGroups ? groupTeamIds : teams.map((t) => t.id);
+    selectableIds.forEach((id) => {
+      if (id && !teamMeta[id]) need.add(id);
+    });
+
+    const ids = Array.from(need);
+    if (ids.length === 0) return;
+
+    let aborted = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams({ ids: ids.join(",") });
+        const res = await fetch(`/api/teams?${params.toString()}`, { credentials: "include" });
+        const body = await res.json().catch(() => null);
+        if (!res.ok || !body) return;
+
+        // Accept several common shapes: {teams:[...]}, {data:[...]}, or a raw array
+        const list: any[] = body?.teams ?? body?.data ?? body ?? [];
+        const map: Record<number, { name: string }> = {};
+        list.forEach((t: any) => {
+          const id = Number(t?.id);
+          if (!Number.isFinite(id)) return;
+          const name = String(t?.name ?? t?.team_name ?? t?.title ?? `Ομάδα #${id}`);
+          map[id] = { name };
+        });
+
+        if (!aborted && Object.keys(map).length) {
+          setTeamMeta((prev) => ({ ...prev, ...map }));
+        }
+      } catch {
+        // silent fail; labels will fallback to Ομάδα #ID
+      }
+    })();
+
+    return () => {
+      aborted = true;
+    };
+  }, [rows, isGroups, groupTeamIds, teams, teamMeta]);
 
   // Helpful labels for stage / group (shown per-row)
   const stageName = (idx: number | undefined) =>
@@ -485,67 +317,60 @@ export default function MatchPlanner({
   const pendingCount = pendingIdsInView.length;
 
   // --------------------------
-  // Mutators
+  // Mutators (store-only)
   // --------------------------
-  const setRow = (localId: number, patch: Partial<EditableDraftMatch>) => {
-    const next = withLocalIds.map((m) => (m._localId === localId ? { ...m, ...patch } : m));
-    const draft = next.map(toDraft);
-    const finalDraft = isKO ? reindexKOPointersForStage(stageIdx, draft) : draft;
-    onChange(finalDraft);
+  function isKOStage() {
+    const s = (payload.stages as any)[stageIdx];
+    return s?.kind === "knockout";
+  }
 
-    // Update overlay cache for DB-only fields so UI keeps showing them
-    const changed = next.find((m) => m._localId === localId);
-    if (changed) {
-      const sig = rowSignature(changed);
-      setDbOverlayBySig((prev) => ({
-        ...prev,
-        [sig]: {
-          db_id: (changed as EditableDraftMatch).db_id,
-          status: changed.status ?? null,
-          team_a_score: changed.team_a_score ?? null,
-          team_b_score: changed.team_b_score ?? null,
-          winner_team_id: changed.winner_team_id ?? null,
-          home_source_round: changed.home_source_round ?? null,
-          home_source_bracket_pos: changed.home_source_bracket_pos ?? null,
-          away_source_round: changed.away_source_round ?? null,
-          away_source_bracket_pos: changed.away_source_bracket_pos ?? null,
-        },
-      }));
-    }
+  /** Apply a change to a single row into the store (no network) */
+  const setRow = (localId: number, patch: Partial<EditableDraftMatch>) => {
+    const target = withLocalIds.find((m) => m._localId === localId);
+    if (!target) return;
+
+    updateMatches(stageIdx, (rows) => {
+      const next = rows.slice();
+      const beforeSig = rowSignature(target);
+      const idx = next.findIndex((r) => rowSignature(r) === beforeSig);
+
+      const merged: DraftMatch = {
+        ...(idx >= 0 ? next[idx] : {}),
+        ...toDraft({ ...(target as any), ...patch }),
+      } as DraftMatch;
+
+      if (idx >= 0) next[idx] = merged;
+      else next.push(merged);
+
+      return next; // KO pointers are reindexed inside the store's update helper
+    });
+
+    clearPendingFor(localId);
   };
 
   const saveAllPendingInView = () => {
     if (pendingCount === 0) return;
-    const next = withLocalIds.map((m) => {
-      const pid = m._localId!;
-      return pending[pid] ? { ...m, ...pending[pid] } : m;
-    });
-    const draft = next.map(toDraft);
-    const finalDraft = isKO ? reindexKOPointersForStage(stageIdx, draft) : draft;
-    onChange(finalDraft);
 
-    // refresh overlay for all rows in view that had pending
-    setDbOverlayBySig((prev) => {
-      const n = { ...prev };
-      for (const m of next) {
+    updateMatches(stageIdx, (rows) => {
+      const next = rows.slice();
+
+      for (const m of withLocalIds) {
         const pid = m._localId!;
-        if (!pending[pid]) continue;
-        const sig = rowSignature(m);
-        n[sig] = {
-          db_id: (m as EditableDraftMatch).db_id,
-          status: m.status ?? null,
-          team_a_score: m.team_a_score ?? null,
-          team_b_score: m.team_b_score ?? null,
-          winner_team_id: m.winner_team_id ?? null,
-          home_source_round: m.home_source_round ?? null,
-          home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-          away_source_round: m.away_source_round ?? null,
-          away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-        };
+        const patch = pending[pid];
+        if (!patch) continue;
+
+        const beforeSig = rowSignature(m);
+        const idx = next.findIndex((r) => rowSignature(r) === beforeSig);
+        const merged = toDraft({ ...(m as any), ...patch });
+
+        if (idx >= 0) next[idx] = merged;
+        else next.push(merged);
       }
-      return n;
+
+      return next;
     });
-    // clear only the ones we applied in this view
+
+    // clear only the ones in view
     setPending((prev) => {
       const n = { ...prev };
       pendingIdsInView.forEach((id) => delete n[id]);
@@ -554,19 +379,23 @@ export default function MatchPlanner({
   };
 
   const removeRow = (localId: number) => {
-    const next = withLocalIds.filter((m) => m._localId !== localId);
-    const draft = next.map(toDraft);
-    const finalDraft = isKO ? reindexKOPointersForStage(stageIdx, draft) : draft;
-    onChange(finalDraft);
+    const target = withLocalIds.find((m) => m._localId === localId);
+    if (!target) return;
+
+    updateMatches(stageIdx, (rows) => {
+      const next = rows.filter((r) => rowSignature(r) !== rowSignature(target));
+      return next;
+    });
+
     clearPendingFor(localId);
   };
 
   const addRow = () => {
-    if (isKO) {
+    if (isKOStage()) {
       const last = rows[rows.length - 1];
       const newRound = (last?.round ?? 0) || 1;
       const newBracket = (last?.bracket_pos ?? 0) + 1 || 1;
-      const newRow: EditableDraftMatch = {
+      const newRow: DraftMatch = {
         stageIdx,
         groupIdx: null,
         matchday: null,
@@ -575,14 +404,11 @@ export default function MatchPlanner({
         team_a_id: null,
         team_b_id: null,
         match_date: null,
-        locked: false,
       };
-      const draft = [...draftMatches, toDraft(newRow)];
-      const finalDraft = reindexKOPointersForStage(stageIdx, draft);
-      onChange(finalDraft);
+      updateMatches(stageIdx, (rows) => [...rows, newRow]);
     } else {
       const md = (rows[rows.length - 1]?.matchday ?? 0) + 1;
-      const newRow: EditableDraftMatch = {
+      const newRow: DraftMatch = {
         stageIdx,
         groupIdx: isGroups ? (groupIdx ?? 0) : null,
         matchday: md,
@@ -591,9 +417,8 @@ export default function MatchPlanner({
         round: null,
         bracket_pos: null,
         match_date: null,
-        locked: false,
       };
-      onChange([...draftMatches, toDraft(newRow)]);
+      updateMatches(stageIdx, (rows) => [...rows, newRow]);
     }
   };
 
@@ -605,189 +430,14 @@ export default function MatchPlanner({
     setPendingFor(localId, { team_a_id: (b as number | null) ?? null, team_b_id: (a as number | null) ?? null });
   };
 
-  // --- UPDATED: per-row save now writes to SERVER API when db_id exists ---
+  // Per-row save now only applies pending → store
   const saveRow = async (localId: number) => {
     const patch = pending[localId];
     if (!patch) return;
-
-    const row = withLocalIds.find((m) => m._localId === localId);
-    if (!row) return;
-
-    // If this row is already persisted, write only the changed fields via API.
-    if (row.db_id) {
-      // Guard: optionally warn on finished
-      const st = (row.status ?? inferStatus(row as any)) as "scheduled" | "finished";
-      if (st === "finished") {
-        const ok = confirm(
-          "Ο αγώνας έχει κλείσει (finished). Θέλετε σίγουρα να αλλάξετε τα στοιχεία?"
-        );
-        if (!ok) return;
-      }
-
-      setBusy(true);
-      try {
-        // Build JSON body with only changed keys (server ignores absent keys)
-        const body: Record<string, any> = {
-          ...( "match_date" in patch ? { match_date: patch.match_date ?? null } : {} ),
-
-          // teams / structure
-          ...( "team_a_id" in patch ? { team_a_id: patch.team_a_id ?? null } : {} ),
-          ...( "team_b_id" in patch ? { team_b_id: patch.team_b_id ?? null } : {} ),
-          ...( "matchday"  in patch ? { matchday:  patch.matchday  ?? null } : {} ),
-          ...( "round"     in patch ? { round:     patch.round     ?? null } : {} ),
-          ...( "bracket_pos" in patch ? { bracket_pos: patch.bracket_pos ?? null } : {} ),
-
-          // status / scoring
-          ...( "status"         in patch ? { status:         patch.status } : {} ),
-          ...( "team_a_score"   in patch ? { team_a_score:   patch.team_a_score ?? null } : {} ),
-          ...( "team_b_score"   in patch ? { team_b_score:   patch.team_b_score ?? null } : {} ),
-          ...( "winner_team_id" in patch ? { winner_team_id: patch.winner_team_id ?? null } : {} ),
-
-          // KO pointers (stable wiring)
-          ...( "home_source_round"         in patch ? { home_source_round:         patch.home_source_round ?? null } : {} ),
-          ...( "home_source_bracket_pos"   in patch ? { home_source_bracket_pos:   patch.home_source_bracket_pos ?? null } : {} ),
-          ...( "away_source_round"         in patch ? { away_source_round:         patch.away_source_round ?? null } : {} ),
-          ...( "away_source_bracket_pos"   in patch ? { away_source_bracket_pos:   patch.away_source_bracket_pos ?? null } : {} ),
-        };
-
-        const res = await fetch(`/api/matches/${row.db_id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j?.error || `Failed to update match #${row.db_id}`);
-        }
-
-        // Mirror to local state so the UI stays in sync
-        setRow(localId, patch);
-        clearPendingFor(localId);
-      } catch (err) {
-        console.error(err);
-        alert("Αποτυχία αποθήκευσης στη βάση. Δοκιμάστε ξανά.");
-      } finally {
-        setBusy(false);
-      }
-    } else {
-      // Not persisted yet → keep current local behavior
-      setRow(localId, patch);
-      clearPendingFor(localId);
-    }
+    setRow(localId, patch);
   };
 
-  // --------------------------
-  // Helper: fetch standings (server)
-  // --------------------------
-  async function fetchStandings(
-    stageId: number
-  ): Promise<Array<{ group_id: number | null; team_id: number; rank: number }>> {
-    const url = new URL(`/api/stages/${stageId}/standings`, window.location.origin);
-    const res = await fetch(url.toString(), { credentials: "include" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.json().catch(() => null);
-    const rows: Array<{ group_id: number | null; team_id: number; rank: number }> =
-      body?.rows ?? body?.standings ?? body ?? [];
-    return Array.isArray(rows) ? rows : [];
-  }
-
-  // ✅ per-row lock key (stable in this UI by local id; fallback to signature)
-  function lockKeyStable(m: EditableDraftMatch) {
-    // If this row is persisted already, prefer the DB id.
-    if (m.db_id) return `DB:${m.db_id}`;
-
-    // KO rows have a stable, structural identity: round + bracket_pos.
-    if (m.round != null && m.bracket_pos != null) {
-      return `KO:S${m.stageIdx}:R${m.round}:B${m.bracket_pos}`;
-    }
-
-    // League/Groups rows: lock by (stage, group, matchday, team A, team B) when both teams are picked.
-    const g = m.groupIdx ?? -1;
-    const md = m.matchday ?? -1;
-    const a = m.team_a_id ?? 0;
-    const b = m.team_b_id ?? 0;
-    if (a && b && md > 0) return `LG:S${m.stageIdx}:G${g}:MD${md}:A${a}:B${b}`;
-
-    // Not stable yet → do not allow locking.
-    return null;
-  }
-
-  // --------------------------
-  // KO Recalc helpers
-  // --------------------------
-  function buildKOFromGroupStandings(opts: {
-    stageIdx: number;
-    groupsCount: number;
-    perGroupTop: number[][];
-    semisCross: "A1-B2" | "A1-B1";
-  }): DraftMatch[] {
-    const { stageIdx, groupsCount: G, perGroupTop, semisCross } = opts;
-
-    if (G === 2 && perGroupTop[0]?.length >= 2 && perGroupTop[1]?.length >= 2) {
-      const [A1, A2] = perGroupTop[0];
-      const [B1, B2] = perGroupTop[1];
-      const semiPairs =
-        semisCross === "A1-B2"
-          ? [
-              [A1 ?? null, B2 ?? null],
-              [B1 ?? null, A2 ?? null],
-            ]
-          : [
-              [A1 ?? null, B1 ?? null],
-              [A2 ?? null, B2 ?? null],
-            ];
-
-      const out: DraftMatch[] = [];
-      semiPairs.forEach((pair, i) => {
-        out.push({
-          stageIdx,
-          round: 1,
-          bracket_pos: i + 1,
-          team_a_id: pair[0] ?? null,
-          team_b_id: pair[1] ?? null,
-          match_date: null,
-        });
-      });
-      out.push({
-        stageIdx,
-        round: 2,
-        bracket_pos: 1,
-        home_source_round: 1,
-        home_source_bracket_pos: 1,
-        home_source_outcome: "W",
-        away_source_round: 1,
-        away_source_bracket_pos: 2,
-        away_source_outcome: "W",
-        match_date: null,
-      });
-      return out;
-    }
-
-    const layers: number[][] = [];
-    const maxRank = Math.max(...perGroupTop.map((arr) => arr.length));
-    for (let r = 0; r < maxRank; r++) {
-      const layer: number[] = [];
-      for (let g = 0; g < G; g++) {
-        const teamId = perGroupTop[g]?.[r];
-        if (teamId != null) layer.push(teamId);
-      }
-      if (layer.length) layers.push(layer);
-    }
-    const ordered = layers.flat(); // A1,B1,...,A2,B2,...
-
-    const seeded = ordered.map((id, i) => ({ id, seed: i + 1 }));
-    return genKnockoutAnyN(ordered, stageIdx, seeded).map((m) => ({ ...m, match_date: null }));
-  }
-
-  function buildKOFromLeagueStandings(opts: { stageIdx: number; topIds: number[] }): DraftMatch[] {
-    const { stageIdx, topIds } = opts;
-    const seeded = topIds.map((id, i) => ({ id, seed: i + 1 }));
-    return genKnockoutAnyN(topIds, stageIdx, seeded).map((m) => ({ ...m, match_date: null }));
-  }
-
-  // ---- structural keys for diff/merge ----
+  // ---- KO/League builders (local-only helpers, no network) ----
   const pairKey = (a?: number | null, b?: number | null) => {
     const x = a ?? 0,
       y = b ?? 0;
@@ -834,91 +484,29 @@ export default function MatchPlanner({
   }
 
   // -------------------------------------------------------
-  // Re-generate ONLY the current stage (or group) via diff/merge
+  // Re-generate ONLY the current stage (or group) via diff/merge — store-only
   // -------------------------------------------------------
   const regenerateHere = async () => {
-    const cfg = (((payload.stages as any)[stageIdx]?.config ?? {}) as any) || {};
-    const isKOIntake = isKO && Number.isFinite(cfg.from_stage_idx as any);
-
     const isTarget = (m: DraftMatch) => {
       if (isGroups) return m.stageIdx === stageIdx && m.groupIdx === (groupIdx ?? 0);
       if (isKO) return m.stageIdx === stageIdx;
       return m.stageIdx === stageIdx && (m.groupIdx == null || m.groupIdx === null);
     };
 
-    // 1) Build the "fresh" schedule subset for this scope (KO intake aware)
-    let freshSubset: DraftMatch[] | null = null;
-
-    if (isKOIntake) {
-      const srcIdx = Number(cfg.from_stage_idx);
-      const srcStage = (payload.stages as any)[srcIdx];
-      const srcId: number | undefined = srcStage?.id;
-      const semisCross: "A1-B2" | "A1-B1" = cfg.semis_cross === "A1-B1" ? "A1-B1" : "A1-B2";
-
+    // Generate fresh subset locally (no server calls)
+    if (isKO && onAutoAssignTeamSeeds) {
       try {
-        if (srcStage?.kind === "groups" && typeof srcId === "number") {
-          const adv = Math.max(1, Number(cfg.advancers_per_group ?? 2));
-          const standings = await fetchStandings(srcId);
-
-          // Map DB group ids -> 0-based indexes for that source stage
-          const groupsMeta = srcStage.groups ?? [];
-          const groupsCount = groupsMeta.length || 1;
-          const idToIdx = new Map<number, number>();
-          groupsMeta.forEach((g: any, i: number) => {
-            if (typeof g?.id === "number") idToIdx.set(g.id, i);
-          });
-
-          const perGroup: number[][] = Array.from({ length: groupsCount }, () => []);
-          standings
-            .slice()
-            .sort((a, b) => (a.group_id ?? 0) - (b.group_id ?? 0) || a.rank - b.rank)
-            .forEach((r) => {
-              if (r.rank <= adv) {
-                const gId = r.group_id ?? null;
-                const gIdx = gId != null && idToIdx.has(gId) ? (idToIdx.get(gId) as number) : 0;
-                perGroup[gIdx].push(r.team_id);
-              }
-            });
-
-          freshSubset = buildKOFromGroupStandings({
-            stageIdx,
-            groupsCount,
-            perGroupTop: perGroup,
-            semisCross,
-          });
-        } else if (srcStage?.kind === "league" && typeof srcId === "number") {
-          const total = Math.max(
-            2,
-            Number(cfg.advancers_total ?? cfg.standalone_bracket_size ?? 8)
-          );
-          const standings = await fetchStandings(srcId);
-          const topIds = standings
-            .slice()
-            .sort((a, b) => a.rank - b.rank)
-            .slice(0, total)
-            .map((r) => r.team_id);
-
-          freshSubset = buildKOFromLeagueStandings({ stageIdx, topIds });
-        }
-      } catch {
-        // fall through to default generator
-      }
+        await Promise.resolve(onAutoAssignTeamSeeds());
+      } catch {}
     }
+    const freshAll = generateDraftMatches({ payload, teams });
+    const freshSubset = freshAll.filter(isTarget);
 
-    if (!freshSubset) {
-      if (isKO && onAutoAssignTeamSeeds) {
-        try {
-          await Promise.resolve(onAutoAssignTeamSeeds());
-        } catch {}
-      }
-      const freshAll = generateDraftMatches({ payload, teams });
-      freshSubset = freshAll.filter(isTarget);
-    }
-
-    // 2) Prepare old/new maps by structural key
+    // Old/current target
     const oldTarget = withLocalIds.filter(isTarget).map(toDraft);
     const locked = withLocalIds.filter((m) => isTarget(m) && (m as EditableDraftMatch).locked);
 
+    // Map by structural key
     const oldMap = new Map<string, DraftMatch>();
     const newMap = new Map<string, DraftMatch>();
 
@@ -932,10 +520,10 @@ export default function MatchPlanner({
       freshSubset.forEach((m) => newMap.set(makeRrKey(m, newOrd.get(m) ?? 0), m));
     }
 
-    // 3) Merge: keep/update, insert, delete (but never touch locked keys)
+    // Locked keys that must be preserved
     const lockedKeys = new Set<string>();
     if (isKO) {
-      locked.forEach((l) => lockedKeys.add(makeKoKey(l)));
+      locked.map(toDraft).forEach((l) => lockedKeys.add(makeKoKey(l)));
     } else {
       const ord = indexRrOrdinals(locked.map(toDraft));
       locked.map(toDraft).forEach((l) => lockedKeys.add(makeRrKey(l, ord.get(l) ?? 0)));
@@ -943,11 +531,10 @@ export default function MatchPlanner({
 
     const keepAndUpdate: DraftMatch[] = [];
     const toInsert: DraftMatch[] = [];
-    const toDelete: DraftMatch[] = [];
 
     // Inserts + updates
     for (const [k, newM] of newMap.entries()) {
-      if (lockedKeys.has(k)) continue; // locked row wins
+      if (lockedKeys.has(k)) continue; // locked wins
       const oldM = oldMap.get(k);
       if (!oldM) {
         toInsert.push(newM);
@@ -972,13 +559,7 @@ export default function MatchPlanner({
       oldMap.delete(k);
     }
 
-    // Deletions: whatever old keys remain (and not locked) are orphans
-    for (const [k, orphan] of oldMap.entries()) {
-      if (lockedKeys.has(k)) continue;
-      toDelete.push(orphan);
-    }
-
-    // 4) Build next list:
+    // Build next list:
     // - everything not in target scope stays as-is
     // - locked rows kept verbatim
     // - keep/update rows merged
@@ -986,69 +567,16 @@ export default function MatchPlanner({
     const others = withLocalIds.filter((m) => !isTarget(m)).map(toDraft);
     const lockedKept = locked.map(toDraft);
 
-    const next = [...others, ...lockedKept, ...keepAndUpdate, ...toInsert];
+    updateMatches(stageIdx, (_rows) => {
+      const next = [...others, ...lockedKept, ...keepAndUpdate, ...toInsert];
+      return next;
+    });
 
-    onChange(next);
     setPending({});
   };
 
   // =========================
-  // Server reseed for derived KO
-  // =========================
-  const reseedKOFromServer = async () => {
-    if (!isKOFromPrevious) return;
-
-    // 🚫 Hard guard: if ids are missing, notify and do nothing (so it's obvious in the UI)
-    if (!hasKOStageDbId || !hasSrcStageDbId) {
-      alert(
-        !hasKOStageDbId
-          ? "Αποθήκευση πρώτα: Το KO στάδιο δεν έχει id στη ΒΔ. Κάντε Save και ξαναδοκιμάστε."
-          : "Αποθήκευση πρώτα: Το στάδιο-πηγή (League/Groups) δεν έχει id στη ΒΔ. Κάντε Save και ξαναδοκιμάστε."
-      );
-      console.info("Reseed blocked — koStageDbId:", koStageDbId, "srcStageDbId:", srcStageDbId);
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/stages/${koStageDbId}/reseed?reseed=1&force=1`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        // Fall back to local if server endpoint errors out
-        await regenerateHere();
-        return;
-      }
-
-      const fresh: DraftMatch[] = (body?.matches ?? []).map((r: any) => ({
-        stageIdx,
-        groupIdx: null,
-        matchday: r.matchday ?? null,
-        round: r.round ?? null,
-        bracket_pos: r.bracket_pos ?? null,
-        team_a_id: r.team_a_id ?? null,
-        team_b_id: r.team_b_id ?? null,
-        match_date: null,
-        home_source_round: r.home_source_round ?? null,
-        home_source_bracket_pos: r.home_source_bracket_pos ?? null,
-        away_source_round: r.away_source_round ?? null,
-        away_source_bracket_pos: r.away_source_bracket_pos ?? null,
-      }));
-
-      const others = withLocalIds.filter((m) => m.stageIdx !== stageIdx).map(toDraft);
-      onChange([...others, ...fresh]);
-      setPending({});
-    } catch {
-      await regenerateHere();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // =========================
-  // Auto-assign (Round Robin) — Groups & League
+  // Auto-assign (Round Robin) — Groups & League (store-only)
   // =========================
   const autoAssignRR = () => {
     if (!(isGroups || isLeague)) return;
@@ -1109,6 +637,50 @@ export default function MatchPlanner({
   };
 
   // --------------------------
+  // Lock key helper
+  // --------------------------
+  function lockKeyStable(m: EditableDraftMatch) {
+    // If persisted already, prefer DB id (from overlay merge)
+    if (m.db_id) return `DB:${m.db_id}`;
+
+    // KO rows have a stable, structural identity: round + bracket_pos.
+    if (m.round != null && m.bracket_pos != null) {
+      return `KO:S${m.stageIdx}:R${m.round}:B${m.bracket_pos}`;
+    }
+
+    // League/Groups rows: lock by (stage, group, matchday, team A, team B) when both teams are picked.
+    const g = m.groupIdx ?? -1;
+    const md = m.matchday ?? -1;
+    const a = m.team_a_id ?? 0;
+    const b = m.team_b_id ?? 0;
+    if (a && b && md > 0) return `LG:S${m.stageIdx}:G${g}:MD${md}:A${a}:B${b}`;
+
+    // Not stable yet → do not allow locking.
+    return null;
+  }
+
+  // Stage select options (typed) — avoids implicit any
+  const stageOptions: StageOption[] = useMemo(() => {
+    // Prefer store order if available
+    const st = useTournamentStore.getState();
+    const idxToId = st.ids.stageIdByIndex;
+    const idxs = Object.keys(idxToId).map(Number).sort((a, b) => a - b);
+    if (idxs.length > 0) {
+      return idxs.map((i) => {
+        const sid = idxToId[i]!;
+        const sObj = st.entities.stagesById[sid];
+        return { i, name: sObj?.name ?? `Στάδιο #${i + 1}`, kind: (sObj?.kind as any) ?? "league" };
+      });
+    }
+    // Fallback to payload
+    return (payload.stages as any).map((s: any, i: number) => ({
+      i,
+      name: s?.name ?? `Στάδιο #${i + 1}`,
+      kind: (s?.kind as any) ?? "league",
+    }));
+  }, [payload.stages]);
+
+  // --------------------------
   // Render
   // --------------------------
   return (
@@ -1136,14 +708,6 @@ export default function MatchPlanner({
         </div>
       )}
 
-      {/* New: inline hint if reseed would be disabled due to missing DB ids */}
-      {isKOFromPrevious && (!hasKOStageDbId || !hasSrcStageDbId) && (
-        <div className="rounded-md border border-amber-400/30 bg-amber-500/10 p-2 text-amber-200 text-xs">
-          Για να γίνει «Επανασπορά από Αποτελέσματα», αποθηκεύστε το τουρνουά ώστε να πάρουν id τα στάδια
-          {!hasKOStageDbId ? " (KO)" : ""}{!hasSrcStageDbId ? " (Πρωτάθλημα/Όμιλοι-πηγή)" : ""}.
-        </div>
-      )}
-
       <header
         className={[
           "flex gap-3",
@@ -1160,8 +724,8 @@ export default function MatchPlanner({
               }}
               className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white"
             >
-              {(payload.stages as any).map((s: any, i: number) => (
-                <option key={i} value={i}>
+              {stageOptions.map((s: StageOption) => (
+                <option key={s.i} value={s.i}>
                   {s.name} ({kindLabel(s.kind)})
                 </option>
               ))}
@@ -1175,8 +739,8 @@ export default function MatchPlanner({
               className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white"
             >
               {groups.map((g: any, i: number) => (
-                <option key={g.name + i} value={i}>
-                  {g.name}
+                <option key={g?.id ?? i} value={i}>
+                  {g?.name ?? `Όμιλος ${i + 1}`}
                 </option>
               ))}
             </select>
@@ -1184,33 +748,14 @@ export default function MatchPlanner({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {!isKOFromPrevious && (
-            <button
-              className="px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50"
-              onClick={() => void regenerateHere()}
-              disabled={busy}
-              title="Επαναδημιουργία αυτού του σταδίου (ή ομίλου) κρατώντας τους κλειδωμένους αγώνες"
-            >
-              Επαναδημιουργία τρέχοντος
-            </button>
-          )}
-
-          {isKOFromPrevious && (
-            <button
-              className="px-3 py-1.5 rounded-md border border-amber-400/40 text-amber-200 hover:bg-amber-500/10 disabled:opacity-50"
-              onClick={() => void reseedKOFromServer()}
-              disabled={busy || !hasKOStageDbId || !hasSrcStageDbId}
-              title={
-                !hasKOStageDbId
-                  ? "Αποθηκεύστε πρώτα: το KO στάδιο δεν έχει id στη ΒΔ."
-                  : !hasSrcStageDbId
-                  ? "Αποθηκεύστε πρώτα: το στάδιο-πηγή (League/Groups) δεν έχει id στη ΒΔ."
-                  : "Ανανέωση του KO από τα πραγματικά αποτελέσματα/βαθμολογίες"
-              }
-            >
-              🔄 Επανασπορά από Αποτελέσματα
-            </button>
-          )}
+          <button
+            className="px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50"
+            onClick={() => void regenerateHere()}
+            disabled={busy}
+            title="Επαναδημιουργία αυτού του σταδίου (ή ομίλου) κρατώντας τους κλειδωμένους αγώνες"
+          >
+            Επαναδημιουργία τρέχοντος
+          </button>
 
           {(isGroups || isLeague) && (
             <button
@@ -1234,7 +779,7 @@ export default function MatchPlanner({
 
       {/* Context line */}
       <div className="text-xs text-white/70">
-        Προβολή: <span className="text-white/90 font-medium">{stage?.name}</span>{" "}
+        Προβολή: <span className="text-white/90 font-medium">{stage?.name ?? `Στάδιο #${stageIdx + 1}`}</span>{" "}
         <span className="text-white/60">({kindLabel(stage?.kind)})</span>
         {isGroups && typeof (groupIdx ?? 0) === "number" ? (
           <span className="ml-2">

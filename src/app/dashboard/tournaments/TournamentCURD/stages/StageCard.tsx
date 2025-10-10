@@ -1,8 +1,9 @@
+// app/dashboard/tournaments/TournamentCURD/stages/StageCard.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
-import type { TeamDraft, DraftMatch } from "../TournamentWizard";
+import type { TeamDraft } from "../TournamentWizard";
 
 import GroupsBoard from "./groups/GroupsBoard";
 import KnockoutBoard from "./KnockoutTree/newknockout/KnockoutBoard";
@@ -12,6 +13,9 @@ import InlineMatchPlanner from "../preview/InlineMatchPlanner";
 
 import type { StageConfig } from "@/app/lib/types";
 import { computeGroupsSignature } from "@/app/dashboard/tournaments/TournamentCURD/util/groupsSignature";
+
+// ✅ store
+import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 // ----------------- Helpers -----------------
 const asCfg = (x: unknown): StageConfig => (x ?? {}) as StageConfig;
@@ -50,8 +54,6 @@ export default function StageCard({
   onMoveDown,
   allStages,
   teams,
-  draftMatches,
-  onDraftChange,
 }: {
   value: NewTournamentPayload["stages"][number];
   index: number;
@@ -61,9 +63,12 @@ export default function StageCard({
   onMoveDown: () => void;
   allStages: NewTournamentPayload["stages"];
   teams: TeamDraft[];
-  draftMatches: DraftMatch[];
-  onDraftChange: (next: DraftMatch[]) => void;
 }) {
+  // ---- store-backed matches (no props) ----
+  const draftMatches = useTournamentStore((s) => s.draftMatches);
+  const replaceAllDraftMatches = useTournamentStore((s) => s.replaceAllDraftMatches);
+  const onDraftChange = (next: any[]) => replaceAllDraftMatches(next as any);
+
   const stage = value as any;
   const cfg = asCfg(stage.config);
   const setCfg = (patch: Partial<StageConfig>) =>
@@ -79,7 +84,6 @@ export default function StageCard({
     ((cfg as any)?.groups_intake?.length ?? 0) > 0;
 
   // ======= Team catalog hydration (pull names/logos by id) =======
-  // Collect all IDs we might display: selected teams + any ids referenced in matches of this stage
   const idsNeeded = useMemo(() => {
     const ids = new Set<number>();
     teams.forEach((t) => ids.add(t.id));
@@ -98,7 +102,6 @@ export default function StageCard({
     let aborted = false;
     (async () => {
       if (idsNeeded.length === 0) return;
-      // build /api/teams?ids=1,2,3&sign=1 (server proxies/signs logos)
       const url = new URL("/api/teams", window.location.origin);
       url.searchParams.set("sign", "1");
       url.searchParams.set("ids", idsNeeded.join(","));
@@ -119,12 +122,11 @@ export default function StageCard({
     return () => {
       aborted = true;
     };
-  }, [idsNeeded.join(",")]); // re-run if id set changes
+  }, [idsNeeded.join(",")]);
 
   // Build teamsMap from hydrated catalog, with dual keys (number + string)
   const teamsMap: Record<number | string, { name: string; seed?: number | null; logo?: string | null }> =
     useMemo(() => {
-      // fall back to teams[] if catalog hasn't returned yet
       const base = new Map<number, { name: string; logo?: string | null; seed?: number | null }>();
       teams.forEach((t) => {
         base.set(t.id, {
@@ -137,7 +139,6 @@ export default function StageCard({
         base.set(r.id, { name: r.name, logo: r.logo ?? null, seed: base.get(r.id)?.seed ?? null });
       });
 
-      // dual-key map
       const out: Record<number | string, { name: string; logo?: string | null; seed?: number | null }> = {};
       for (const [id, rec] of base.entries()) {
         out[id] = rec;
@@ -145,14 +146,6 @@ export default function StageCard({
       }
       return out;
     }, [teams, catalog]);
-
-  // Debug: verify keys
-  console.log(
-    "StageCard teamsMap keys sample:",
-    Object.keys(teamsMap).slice(0, 10),
-    "example:",
-    teamsMap[Object.keys(teamsMap)[0] as any]
-  );
 
   // ------- Groups occupancy -------
   const groupsArr: UiGroup[] = (isGroups ? stage.groups ?? [] : []) as UiGroup[];
@@ -353,9 +346,8 @@ export default function StageCard({
         <KnockoutBoard
           stageIdx={index}
           teamsMap={teamsMap}
-          eligibleTeamIds={teams.map((t) => t.id)}
-          draftMatches={draftMatches}
-          onDraftChange={onDraftChange}
+    
+
         />
       )}
 
@@ -363,8 +355,7 @@ export default function StageCard({
       <InlineMatchPlanner
         miniPayload={newMiniPayload(allStages, teams)}
         teams={teams}
-        draftMatches={draftMatches}
-        onDraftChange={onDraftChange}
+        // store-backed
         forceStageIdx={index}
       />
 

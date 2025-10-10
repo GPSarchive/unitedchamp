@@ -95,8 +95,6 @@ export default function WizardPreview({
         <MatchPlanner
           payload={payload}
           teams={teams}
-          draftMatches={draftMatches}
-          onChange={onDraftChange}
         />
       </section>
     </div>

@@ -1,42 +1,29 @@
-// app/components/OMADESPageComponents/TeamsGrid.tsx (updated with correct redirect path)
+// app/components/OMADESPageComponents/TeamsGrid.tsx
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { easeOut } from "framer-motion";
+import { motion, easeOut } from "framer-motion";
 
 interface Team {
   id: number;
   name: string;
   logo: string;
 }
-
 interface TeamsGridProps {
   teams: Team[];
 }
 
-// Variants for the whole grid (stagger children)
 const containerVariants = {
   hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  show: { transition: { staggerChildren: 0.1 } },
 };
 
-// Variants for each card
 const cardVariants = {
   hidden: { opacity: 0, y: 40 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: easeOut },
-  },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: easeOut } },
 };
 
-// Variants for the logo grayscale → color
 const logoVariants = {
   hidden: { filter: "grayscale(100%)", opacity: 0 },
   show: {
@@ -49,9 +36,8 @@ const logoVariants = {
 export default function TeamsGrid({ teams }: TeamsGridProps) {
   return (
     <motion.div
-      // Full-width, auto-fit responsive columns
-      className="grid gap-6 w-full
-                 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))]"
+      // tighter gaps between columns
+      className="mx-auto max-w-5xl grid justify-items-center gap-4  lg:gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
       variants={containerVariants}
       initial="hidden"
       animate="show"
@@ -59,23 +45,35 @@ export default function TeamsGrid({ teams }: TeamsGridProps) {
       {teams.map((team) => (
         <motion.div key={team.id} variants={cardVariants}>
           <Link
-            href={`/OMADA/${team.id}`} // Updated to match the detail page path /OMADA/[id]
-            className="block rounded-xl border border-white/10 
-                       bg-gradient-to-b from-zinc-950 to-zinc-900
-                       hover:border-white/30 hover:shadow-lg hover:shadow-white/10 
-                       transition-all duration-300"
+            href={`/OMADA/${team.id}`}
+            className={[
+              "group relative block overflow-hidden rounded-lg aspect-square",
+              "w-28 sm:w-32 lg:w-36 xl:w-40",
+              // softer tint + lighter blur
+              "border border-white/20 bg-white/[0.04]",
+              "ring-1 ring-white/5",
+              "backdrop-blur-sm hover:backdrop-blur-md",
+              "transition-all duration-300 hover:bg-white/[0.06]",
+              "hover:shadow-[0_0_0_1px_rgba(255,255,255,0.14),0_6px_18px_rgba(0,0,0,0.25)]",
+            ].join(" ")}
           >
-            <div className="flex flex-col items-center p-6">
+            {/* Shine sweep */}
+            <span className="pointer-events-none absolute inset-0">
+              <span className="absolute top-0 left-[-40%] h-full w-[45%] rotate-12 bg-gradient-to-r from-transparent via-white/12 to-transparent transition-transform duration-700 ease-out -translate-x-[120%] group-hover:translate-x-[220%] blur-[2px]" />
+            </span>
+
+            {/* slightly reduced inner blur and padding */}
+            <div className="flex h-full w-full flex-col items-center justify-center p-2 sm:p-2 backdrop-blur-[1px] sm:backdrop-blur-0">
               <motion.div variants={logoVariants}>
                 <Image
                   src={team.logo}
                   alt={`${team.name} logo`}
-                  width={80}
-                  height={80}
-                  className="object-contain mb-4"
+                  width={88}
+                  height={88}
+                  className="mb-1 h-10 w-10 sm:h-24 sm:w-24 lg:h-28 lg:w-28 object-contain opacity-90 transition-opacity group-hover:opacity-100"
                 />
               </motion.div>
-              <p className="text-base font-medium text-white text-center">
+              <p className="mt-1 max-w-[90%] truncate text-[10px] sm:text-[11px] font-medium text-white/85 text-center">
                 {team.name}
               </p>
             </div>

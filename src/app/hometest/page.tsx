@@ -1,13 +1,13 @@
 // app/page.tsx
 import Image from 'next/image';
-import VantaFullBG from './VantaFullBG'; // 👈 add this
-
-import { Carousel } from '@/app/home/Carousel';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
-import { Trophy, Users, CalendarDays, BarChart3 } from 'lucide-react';
-import { UserRow as DbUser, TeamLite, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
-import HomeHero from './HomeHero';
-import EventCalendar from './Calendar';
+import { Trophy, Users, BarChart3 } from 'lucide-react';
+import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
+import HomeHero from '@/app/home/HomeHero';
+import EventCalendar from '@/app/home/Calendar';
+import GridBgSection from '@/app/home/GridBgSection';
+import VantaSection from '@/app/home/VantaSection';
+
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -194,9 +194,7 @@ export default async function Home() {
   const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
 
   return (
-    <div className="relative min-h-screen flex flex-col overflow-x-hidden">
-      <VantaFullBG /> {/* 👈 mount the background */}
-
+    <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">
       {/* Hero Carousel Section */}
       <HomeHero
         images={[
@@ -207,93 +205,91 @@ export default async function Home() {
         ]}
       />
 
-      {/* Welcome Section — make it translucent so Vanta shows */}
-      <section className="py-12 sm:py-16 text-white">
+      {/* Welcome Section (replaces orange bg with Vanta) */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4 text-center">
-          <div className="inline-block rounded-2xl bg-white/70 text-black px-6 sm:px-8 py-6 shadow-lg backdrop-blur">
-            <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-4">Ultra Champ</h1>
-            <a
-              href="/sign-up"
-              className="bg-black text-white px-6 sm:px-8 py-3 rounded-full font-semibold transition hover:bg-white hover:text-black border border-black"
-            >
-              Εγγραφείτε τώρα
-            </a>
-          </div>
+          <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-4">
+            Ultra Champ
+          </h1>
+          <a
+            href="/sign-up"
+            className="bg-white text-black px-6 sm:px-8 py-3 rounded-full font-semibold transition border border-transparent hover:bg-black hover:text-white hover:border-white"
+          >
+            Εγγραφείτε τώρα
+          </a>
         </div>
-      </section>
+      </VantaSection>
 
-      {/* Calendar Section */}
+      {/* Calendar Section - use safer full-bleed utility */}
       <section className="full-bleed safe-px safe-pb">
-        <div className="bg-black/40 backdrop-blur rounded-2xl p-4 sm:p-6 mx-auto container">
-          <EventCalendar className="w-full" initialEvents={eventsToPass} fetchFromDb={false} />
-        </div>
+        <EventCalendar className="w-full" initialEvents={eventsToPass} fetchFromDb={false} />
       </section>
 
-      {/* Features Section — translucent card grid */}
-      <section className="py-12 sm:py-16 text-white">
+      {/* Features Section (Dot grid background) */}
+      <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center">Η ομάδα σε περιμένει</h2>
           <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/30 bg-black/40 backdrop-blur transition">
+            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Users className="w-7 h-7 sm:w-8 sm:h-8 text-orange-300" aria-hidden="true" />
+                <Users className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4">Φιλόξενη Κοινότητα</h3>
-              <p className="text-gray-100 text-sm sm:text-base">
+              <p className="text-gray-200 text-sm sm:text-base">
                 Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
               </p>
-            </div>  
+            </div>
 
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/30 bg-black/40 backdrop-blur transition">
+            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-orange-300" aria-hidden="true" />
+                <Trophy className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Ποιοτικοι Αγώνες</h3>
-              <p className="text-gray-100 text-sm sm:text-base">
+              <p className="text-gray-200 text-sm sm:text-base">
                 Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
               </p>
             </div>
 
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/30 bg-black/40 backdrop-blur transition">
+            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
               <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-orange-300" aria-hidden="true" />
+                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
               </div>
               <h3 className="text-xl sm:text-2xl font-semibold mb-2">Προφίλ & Στατιστικά</h3>
-              <p className="text-gray-100 text-sm sm:text-base">
+              <p className="text-gray-200 text-sm sm:text-base">
                 Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
               </p>
             </div>
           </div>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* About Us Section — keep image card, lighten panel */}
-      <section className="py-12 sm:py-16 text-white">
+      {/* About Us Section (replaces orange bg with Vanta) */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
-          <div className="bg-white/80 text-black rounded-xl p-6 shadow-lg backdrop-blur">
+          <div>
             <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Σχετικά με εμάς</h2>
             <p className="text-base sm:text-lg mb-3 sm:mb-4">
-              Στο Ultra Champ , είμαστε αφοσιωμένοι στη δημιουργία μιας κοινότητας φίλων του ποδοσφαίρου...
+              Στο Ultra Champ, είμαστε αφοσιωμένοι στη δημιουργία μιας κοινότητας φίλων του ποδοσφαίρου. Η πλατφόρμα μας οργανώνει αγώνες και τουρνουά σε διάφορα επίπεδα, προσφέροντας ευκαιρίες στους παίκτες να δείξουν τις ικανότητές τους, να κάνουν νέους φίλους και να απολαύσουν το όμορφο παιχνίδι.
             </p>
             <p className="text-base sm:text-lg">
-              Με σύγχρονες εγκαταστάσεις, κανόνες fair play και πάθος για το ποδόσφαιρο...
+              Με σύγχρονες εγκαταστάσεις, κανόνες fair play και πάθος για το ποδόσφαιρο, διασφαλίζουμε ότι κάθε event είναι αξέχαστο και συναρπαστικό.
             </p>
           </div>
-          <div className="relative h-56 sm:h-64 md:h-96 rounded-xl overflow-hidden shadow-xl">
+          <div className="relative h-56 sm:h-64 md:h-96">
             <Image
               src="/pexels-omar2.jpg"
               alt="Ποδοσφαιριστές σε δράση"
               fill
-              className="object-cover"
+              className="object-cover rounded-lg shadow-lg"
               priority
             />
           </div>
         </div>
-      </section>
+      </VantaSection>
 
-      {/* CTA */}
-      <section className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center text-white text-center">
-        <div className="container mx-auto px-4 bg-black/40 backdrop-blur rounded-2xl py-10">
+      {/* Call to Action Section (Dot grid background) */}
+      <GridBgSection className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center text-white text-center">
+        <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Έτοιμοι για σέντρα;</h2>
           <p className="text-base sm:text-xl mb-6 sm:mb-8">
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
@@ -305,37 +301,37 @@ export default async function Home() {
             Ξεκινήστε
           </a>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* Testimonials */}
-      <section className="py-12 sm:py-16">
+      {/* Testimonials Section (replaces orange bg with Vanta) */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl sm:text-4xl text-white font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
+          <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-white/85 text-black p-6 rounded-lg shadow-md backdrop-blur">
-              <p className="mb-4">«Φοβερή εμπειρία!...»</p>
+            <div className="bg-white text-black p-6 rounded-lg shadow-md">
+              <p className="mb-4">«Φοβερή εμπειρία! Τα τουρνουά είναι άρτια οργανωμένα και γεμάτα ενέργεια.»</p>
               <div className="font-semibold">- Alex Johnson</div>
             </div>
-            <div className="bg-white/85 text-black p-6 rounded-lg shadow-md backdrop-blur">
-              <p className="mb-4">«Βρήκα την ιδανική ομάδα...»</p>
+            <div className="bg-white text-black p-6 rounded-lg shadow-md">
+              <p className="mb-4">«Βρήκα την ιδανική ομάδα μου εδώ. Το προτείνω ανεπιφύλακτα!»</p>
               <div className="font-semibold">- Maria Gonzalez</div>
             </div>
-            <div className="bg-white/85 text-black p-6 rounded-lg shadow-md backdrop-blur">
-              <p className="mb-4">«Υπέροχη πλατφόρμα...»</p>
+            <div className="bg-white text-black p-6 rounded-lg shadow-md">
+              <p className="mb-4">«Υπέροχη πλατφόρμα για τους λάτρεις του ποδοσφαίρου. Εύχρηστη και διασκεδαστική!»</p>
               <div className="font-semibold">- David Lee</div>
             </div>
           </div>
         </div>
-      </section>
+      </VantaSection>
 
       {/* Footer */}
-      <footer className="py-8 text-white text-center">
-        <div className="container mx-auto px-4 bg-black/40 backdrop-blur rounded-2xl py-6">
+      <footer className="py-8 bg-zinc-950 text-white text-center">
+        <div className="container mx-auto px-4">
           <p>© 2025 Ultra Champ.</p>
-          <div className="mt-4 space-x-3">
-            <a href="/privacy" className="hover:underline">Πολιτική Απορρήτου</a>
-            <a href="/terms" className="hover:underline">Όροι Χρήσης</a>
-            <a href="/contact" className="hover:underline">Επικοινωνία</a>
+          <div className="mt-4">
+            <a href="/privacy" className="mx-2 hover:underline">Πολιτική Απορρήτου</a>
+            <a href="/terms" className="mx-2 hover:underline">Όροι Χρήσης</a>
+            <a href="/contact" className="mx-2 hover:underline">Επικοινωνία</a>
           </div>
         </div>
       </footer>

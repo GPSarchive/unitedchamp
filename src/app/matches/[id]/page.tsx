@@ -109,7 +109,7 @@ export default async function MatchPage({
         )}
 
         {/* Header / Scoreboard */}
-        <section className="rounded-2xl border bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border bg-[radial-gradient(closest-side,rgba(240,46,170,0.18),transparent)] p-5 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
             <div className="min-w-[200px] text-center">

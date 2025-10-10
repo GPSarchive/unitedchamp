@@ -1,16 +1,17 @@
-//app/dashboard/tournaments/TournamentCURD/TournamentWizard.tsx
+// app/dashboard/tournaments/TournamentCURD/TournamentWizard.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { generateDraftMatches } from "./util/Generators";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import TournamentBasicsForm from "./basics/TournamentBasicsForm";
 import ValidationSummary from "./shared/ValidationSummary";
 import StageList from "./stages/StageList";
 import TeamPicker from "./teams/TeamPicker";
-import WizardPreview from "./preview/WizardPreview";
-import TournamentFlowPreview from "./preview/TournamentFlowPreview";
 import ReviewAndSubmit from "./submit/ReviewAndSubmit";
+
+// Store
+import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 /* =========================================================
    Local types used across the builder
@@ -26,12 +27,10 @@ export type TeamDraft = {
 
 /**
  * DraftMatch now supports BOTH draft-only fields and real DB-backed fields.
- * - We keep DB identity (db_id, stage_db_id, group_db_id) so rows are stable.
- * - We store real match fields (status/scores/winner) so “Κατάσταση” reflects DB.
- * - KO pointers are already supported as stable links between rounds/positions.
+ * (Kept for types used elsewhere.)
  */
 export type DraftMatch = {
-  db_id?: number | null;     // <-- DB id (matches.id). Keep this!
+  db_id?: number | null;
   stageIdx: number;
   groupIdx?: number | null;
   bracket_pos?: number | null;
@@ -41,13 +40,11 @@ export type DraftMatch = {
   team_b_id?: number | null;
   round?: number | null;
 
-  // live fields (REAL match data)
-  status?: 'scheduled' | 'finished' | null;
+  status?: "scheduled" | "finished" | null;
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
 
-  // KO links (transient by index) + stable pointers
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
   home_source_outcome?: "W" | "L" | null;
@@ -57,7 +54,6 @@ export type DraftMatch = {
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
 };
-
 
 export type WizardMode = "create" | "edit";
 export type WizardMeta = { id: number; slug: string | null; updated_at: string; created_at: string };
@@ -78,71 +74,6 @@ const empty: NewTournamentPayload = {
   tournament_team_ids: [],
 };
 
-/** Wrapper that chooses the right props for TournamentFlowPreview */
-function FlowPreviewMount({
-  mode,
-  meta,
-  payload,
-  teams,
-  draftMatches,
-  className,
-  // optional editing hooks passed through when in "create" mode
-  editable,
-  eligibleTeamIds,
-  onAutoAssignTeamSeeds,
-  onAssignSlot,
-  onSwapPair,
-  onBulkAssignFirstRound,
-  onClearFirstRound,
-}: {
-  mode: WizardMode;
-  meta: WizardMeta | null;
-  payload: NewTournamentPayload;
-  teams: TeamDraft[];
-  draftMatches: DraftMatch[];
-  className?: string;
-  editable?: boolean;
-  eligibleTeamIds?: number[];
-  onAutoAssignTeamSeeds?: () => Promise<number[]> | number[];
-  onAssignSlot?: (matchId: number, slot: "A" | "B", teamId: number | null) => void;
-  onSwapPair?: (matchId: number) => void;
-  onBulkAssignFirstRound?: (
-    rows: Array<{ matchId: number; team_a_id: number | null; team_b_id: number | null }>
-  ) => void;
-  onClearFirstRound?: () => void;
-}) {
-  if (mode === "edit" && meta?.id) {
-    // Server-backed preview (read-only)
-    return <TournamentFlowPreview tournamentId={meta.id} className={className} />;
-  }
-
-  // Client draft preview (can be editable)
-  const passEditableProps =
-    editable
-      ? {
-          editable: true,
-          eligibleTeamIds,
-          onAutoAssignTeamSeeds,
-          onAssignSlot,
-          onSwapPair,
-          onBulkAssignFirstRound,
-          onClearFirstRound,
-        }
-      : {};
-
-  // Cast keeps us source-compatible even if TournamentFlowPreview
-  // hasn't declared these optional props yet.
-  return (
-    <TournamentFlowPreview
-      payload={payload}
-      teams={teams}
-      draftMatches={draftMatches}
-      className={className}
-      {...(passEditableProps as any)}
-    />
-  );
-}
-
 export default function TournamentWizard({
   mode = "create",
   meta = null,
@@ -156,11 +87,35 @@ export default function TournamentWizard({
   initialTeams?: TeamDraft[];
   initialDraftMatches?: DraftMatch[];
 }) {
-  // --- core state -----------------------------------------------------------
+  // --- core local state (teams + payload only) ------------------------------
   const [payload, setPayload] = useState<NewTournamentPayload>(initialPayload ?? empty);
   const [teams, setTeams] = useState<TeamDraft[]>(initialTeams ?? []);
-  /** Holds BOTH draft and real (DB-backed) matches; includes status/scores/etc. */
-  const [draftMatches, setDraftMatches] = useState<DraftMatch[]>(initialDraftMatches ?? []);
+
+  // Keep a ref to previous stages for diffing into the store
+  const prevStagesRef = useRef<Array<any>>(payload.stages ?? []);
+
+  // --- store hooks (matches live in the store) ------------------------------
+  const storeDraftMatches = useTournamentStore((s) => s.draftMatches);
+  const seedFromWizard = useTournamentStore((s) => s.seedFromWizard);
+  const replaceAllDraftMatches = useTournamentStore((s) => s.replaceAllDraftMatches);
+
+  const upsertStage = useTournamentStore((s) => s.upsertStage);
+  const removeStage = useTournamentStore((s) => s.removeStage);
+  const upsertGroup = useTournamentStore((s) => s.upsertGroup);
+  const removeGroup = useTournamentStore((s) => s.removeGroup);
+
+  // hydrate the store once from incoming props (payload + initial matches + teams)
+  useEffect(() => {
+    seedFromWizard(payload, teams, initialDraftMatches ?? []);
+    // also mirror payload to the store for any components reading from there
+    useTournamentStore.setState({ payload });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
+
+  // keep store payload in sync if user edits basics/stages here
+  useEffect(() => {
+    useTournamentStore.setState({ payload });
+  }, [payload]);
 
   // --- derived: groups context ---------------------------------------------
   const groupStageIndices = useMemo(
@@ -198,20 +153,40 @@ export default function TournamentWizard({
 
   // --- helpers --------------------------------------------------------------
 
-  // Reassign contiguous seeds (1..N) based on current ordering:
-  // - Teams with an existing seed come first (ascending),
-  // - then unseeded teams (by name/id),
-  // - write seeds back into state,
-  // - return ordered team ids by seed (for auto-pairing).
+  // apply Stage & Group changes from the wizard props down into the store (best-effort diff)
+  const syncStagesIntoStore = (prevStages: any[], nextStages: any[]) => {
+    // upsert/update stages in order
+    nextStages.forEach((s, i) => {
+      upsertStage(i, { name: s.name, kind: s.kind, config: s.config ?? null });
+      const groups: any[] = Array.isArray(s.groups) ? s.groups : [];
+      // upsert/update groups for this stage
+      groups.forEach((g, gi) => {
+        upsertGroup(i, gi, { name: g?.name ?? `Group ${gi + 1}`, ordering: gi });
+      });
+
+      // remove any trailing groups that existed before but not now
+      const prevGroupCount = Array.isArray(prevStages[i]?.groups) ? prevStages[i].groups.length : 0;
+      for (let gi = prevGroupCount - 1; gi >= groups.length; gi--) {
+        removeGroup(i, gi);
+      }
+    });
+
+    // remove trailing stages that no longer exist
+    for (let si = prevStages.length - 1; si >= nextStages.length; si--) {
+      removeStage(si);
+    }
+  };
+
+  // Reassign contiguous seeds (1..N) based on current ordering, then persist teams list
   const handleAutoAssignTeamSeeds = (): number[] => {
     const seeded = teams
       .map((t) => ({ ...t, seedNorm: t.seed ?? null }))
       .sort((a, b) => {
-        const A = a.seedNorm, B = b.seedNorm;
+        const A = a.seedNorm,
+          B = b.seedNorm;
         if (A != null && B != null) return A - B;
         if (A != null) return -1;
         if (B != null) return 1;
-        // both unseeded → fallback by name then id
         const an = (a.name ?? "").toLowerCase();
         const bn = (b.name ?? "").toLowerCase();
         if (an !== bn) return an < bn ? -1 : 1;
@@ -223,51 +198,42 @@ export default function TournamentWizard({
     return reassigned.map((t) => t.id);
   };
 
-  // The following are no-ops here because the *mapping from visible matchId to DraftMatch index*
-  // is owned by TournamentFlowPreview. It can call back up with a transformed DraftMatch[] later
-  // if you want the wizard to persist edits. For now we forward the hooks down.
+  // Regenerate fixtures from generators keeping DB/live fields where possible
   const regenerateKeepingDB = () => {
-  const fresh = generateDraftMatches({ payload, teams });
-  const key = (m: DraftMatch) =>
-    [
-      m.stageIdx,
-      m.groupIdx ?? "",
-      m.round ?? "",
-      m.bracket_pos ?? "",
-      m.matchday ?? "",
-      // include stable source pointers when present
-      m.home_source_round ?? "",
-      m.home_source_bracket_pos ?? "",
-      m.away_source_round ?? "",
-      m.away_source_bracket_pos ?? "",
-    ].join("|");
-  
+    const fresh = generateDraftMatches({ payload, teams });
 
-  const oldByKey = new Map(draftMatches.map((m) => [key(m), m]));
-  const merged = fresh.map((f) => {
-    const old = oldByKey.get(key(f));
-    return old
-      ? {
-          ...f,
-          // carry DB identity & live fields forward
-          db_id: old.db_id ?? null,
-          status: old.status ?? null,
-          team_a_score: old.team_a_score ?? null,
-          team_b_score: old.team_b_score ?? null,
-          winner_team_id: old.winner_team_id ?? null,
-        }
-      : f;
-  });
+    const key = (m: DraftMatch) =>
+      [
+        m.stageIdx,
+        m.groupIdx ?? "",
+        m.round ?? "",
+        m.bracket_pos ?? "",
+        m.matchday ?? "",
+        m.home_source_round ?? "",
+        m.home_source_bracket_pos ?? "",
+        m.away_source_round ?? "",
+        m.away_source_bracket_pos ?? "",
+      ].join("|");
 
-  setDraftMatches(merged);
-};
+    const oldByKey = new Map(storeDraftMatches.map((m) => [key(m), m]));
+    const merged = fresh.map((f) => {
+      const old = oldByKey.get(key(f));
+      return old
+        ? {
+            ...f,
+            db_id: old.db_id ?? null,
+            status: old.status ?? null,
+            team_a_score: old.team_a_score ?? null,
+            team_b_score: old.team_b_score ?? null,
+            winner_team_id: old.winner_team_id ?? null,
+          }
+        : f;
+    });
 
-  const noopAssign = (_matchId: number, _slot: "A" | "B", _id: number | null) => {};
-  const noopSwap = (_matchId: number) => {};
-  const noopBulk = (_rows: Array<{ matchId: number; team_a_id: number | null; team_b_id: number | null }>) => {};
-  const noopClear = () => {};
+    replaceAllDraftMatches(merged);
+  };
 
-  // --- UI: single-page editor ----------------------------------------------
+  // --- UI -------------------------------------------------------------------
   return (
     <div className="space-y-6">
       {/* Advisory validation panel */}
@@ -279,9 +245,9 @@ export default function TournamentWizard({
         onChange={(t) => setPayload((p) => ({ ...p, tournament: t }))}
       />
 
-      {/* 2) Setup: Teams + Stages (with live flow) */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(320px,1fr)_2fr]">
-        {/* Left column: Teams & group assignment */}
+      {/* 2) Setup: Teams + Stages */}
+      <div className="space-y-6">
+        {/* Teams & group assignment */}
         <div className="space-y-4">
           {groupStageIndices.length > 0 && (
             <div className="rounded-md border border-white/10 p-2 text-sm text-white/80">
@@ -318,74 +284,45 @@ export default function TournamentWizard({
           />
         </div>
 
-        {/* Right column: Stages + Live flow */}
+        {/* Stages (keep local payload for UI; mirror edits to the store immediately) */}
         <div className="space-y-4">
           <StageList
             stages={payload.stages}
-            onChange={(stages) => setPayload((p) => ({ ...p, stages }))}
+            onChange={(nextStages) => {
+              const prevStages = prevStagesRef.current;
+              // 1) update local payload
+              setPayload((p) => ({ ...p, stages: nextStages }));
+              // 2) reflect edits into the store (best-effort diff)
+              syncStagesIntoStore(prevStages, nextStages);
+              // 3) remember for next diff
+              prevStagesRef.current = nextStages;
+            }}
             teams={teams}
-            draftMatches={draftMatches}
-            onDraftChange={setDraftMatches}
           />
-
-          {payload.stages.length > 0 && (
-            <div className="pt-2">
-              <h4 className="text-sm font-medium text-white/80 mb-2">Live flow</h4>
-              <FlowPreviewMount
-                mode={mode}
-                meta={meta}
-                payload={payload}
-                teams={teams}
-                draftMatches={draftMatches}
-                // enable editing in CREATE mode
-                editable={mode === "create"}
-                eligibleTeamIds={teams.map((t) => t.id)}
-                onAutoAssignTeamSeeds={handleAutoAssignTeamSeeds}
-                // Until TournamentFlowPreview returns updated draftMatches back up,
-                // keep these as no-ops (or wire them once you add a callback there).
-                onAssignSlot={noopAssign}
-                onSwapPair={noopSwap}
-                onBulkAssignFirstRound={noopBulk}
-                onClearFirstRound={noopClear}
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* 3) Preview + Match Planner */}
+      {/* 4) Regenerate & Save */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-cyan-200 font-semibold">Preview</h3>
+          <h3 className="text-cyan-200 font-semibold">Fixtures</h3>
           <button
             type="button"
-            onClick={regenerateKeepingDB} 
+            onClick={regenerateKeepingDB}
             className="ml-auto px-3 py-2 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
           >
             Regenerate fixtures
           </button>
         </div>
-
-        <WizardPreview
-          payload={payload}
-          teams={teams}
-          draftMatches={draftMatches}
-          onBack={() => {}}
-          onProceed={() => {}}
-          onRegenerate={regenerateKeepingDB} 
-          onDraftChange={setDraftMatches}
-          onTeamsChange={setTeams}
-          hideActions
-        />
       </div>
 
-      {/* 4) Single Save button at the bottom */}
+      {/* 5) Single Save button at the bottom (submit still receives matches; now from the store) */}
       <ReviewAndSubmit
         mode={mode}
         meta={meta ?? undefined}
         payload={payload}
         teams={teams}
-        draftMatches={draftMatches}
+        draftMatches={storeDraftMatches}
         onBack={() => {}}
       />
     </div>
