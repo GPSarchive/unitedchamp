@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -50,10 +51,11 @@ function hhmm(naiveIso: string) {
 // ===================== Public component =====================
 export default function EventPillShrimp({ items }: EventPillShrimpProps) {
   const [active, setActive] = useState<number | null>(null);
+  const router = useRouter();
 
   if (!items?.length) return null;
 
-  // Single-match pill: keep your existing UI
+  // Single-match pill (already entirely clickable via <Link/>)
   if (items.length === 1) {
     const item = items[0];
     const a = item.teams?.[0] ?? 'Team A';
@@ -83,21 +85,21 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
             filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))',
           }}
         >
-          <span className="text-[13px] pb-3 md:text-[15px] font-extrabold tracking-wide text-white/90">
+          <span className="text-[16px] md:text-[18px] leading-tight pb-2 font-extrabold tracking-wide text-white/90">
             {timeText}
           </span>
-          <div className="flex items-center justify-between w-full">
+          <div className="flex items-center justify-center gap-4 px-2 w-full max-w-[92%] mx-auto">
             {/* Team A */}
             <div className="flex flex-col items-center min-w-0">
-              <img src={la} alt={a} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/20" />
+              <img src={la} alt={a} className="h-12 w-12 md:h-10 md:w-10 rounded-full object-contain ring-3 ring-white/20" />
               <span className="mt-1 max-w-[8rem] truncate font-extrabold text-[12px] text-white uppercase tracking-wide text-center">
                 {a}
               </span>
             </div>
-            <span className="mx-2 text-white/60 font-black text-[12px] shrink-0">vs</span>
+            <span className="mx-3 text-white/80 font-extrabold text-[20px] md:text-[22px] leading-none uppercase shrink-0">VS</span>
             {/* Team B */}
             <div className="flex flex-col items-center min-w-0">
-              <img src={lb} alt={b} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/20" />
+              <img src={lb} alt={b} className="h-12 w-12 rounded-full object-contain ring-3 ring-white/20" />
               <span className="mt-1 max-w-[8rem] truncate font-extrabold text-[12px] text-white uppercase tracking-wide text-center">
                 {b}
               </span>
@@ -125,10 +127,18 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
           const accent = accentFor(`${a}-${b}`);
           const expanded = active === i;
 
+          const goToMatch = () => router.push(`/matches/${item.id}`);
+          const onKeyGoToMatch: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              goToMatch();
+            }
+          };
+
           return (
             <div
               key={item.id}
-              className="relative border rounded-md bg-gradient-to-br from-red-950 via-zinc to-zinc-900 overflow-hidden group focus-within:ring-2"
+              className="relative border rounded-md bg-gradient-to-br from-red-950 via-zinc to-zinc-900 overflow-hidden group focus-within:ring-2 cursor-pointer"
               style={{
                 borderColor: accent.solid,
                 /* animate flex-grow for the smooth vertical accordion effect */
@@ -137,6 +147,11 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
                 minHeight: 0, // allow panes to compress without overflowing
               }}
               onMouseEnter={() => setActive(i)}
+              onClick={goToMatch}
+              onKeyDown={onKeyGoToMatch}
+              role="link"
+              tabIndex={0}
+              aria-label={`${a} vs ${b} — ${timeText}`}
             >
               {/* subtle overlay shine */}
               <div
@@ -145,24 +160,27 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
                 style={{ transition: 'opacity 450ms ease', background: 'rgba(255,255,255,0.08)' }}
               />
 
- {/* Collapsed summary layer (visible when not expanded) */}
- <button
-   type="button"
-   onClick={() => setActive(expanded ? null : i)}
-   /* match expanded typography/tint but keep compact height */
-   className={`${expanded ? 'hidden' : 'flex flex-col items-center justify-center gap-1 w-full p-3 text-center cursor-pointer select-none'}`}
-   aria-label={`Expand ${a} vs ${b}`}
- >
-   {/* time: mimic expanded (small, semibold, muted) */}
-   <span className="text-[11px] font-semibold tracking-wide text-white/70">{timeText}</span>
+              {/* Collapsed summary layer (visible when not expanded) */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActive(expanded ? null : i);
+                }}
+                /* match expanded typography/tint but keep compact height */
+                className={`${expanded ? 'hidden' : 'flex flex-col items-center justify-center gap-1 w/full p-3 text-center cursor-pointer select-none'}`.replace('w/full', 'w-full')}
+                aria-label={`Expand ${a} vs ${b}`}
+              >
+                {/* time */}
+                <span className="text-[12px] md:text-[13px] font-semibold tracking-wide text-white/80">{timeText}</span>
 
-   {/* logos row centered, same rings as expanded */}
-   <div className="flex items-center justify-center gap-2">
-     <img src={la} alt={a} className="h-6 w-6 md:h-7 md:w-7 rounded-full object-contain ring-1 ring-white/20" />
-     <span className="mx-1 text-white/60 font-black text-[12px]">vs</span>
-     <img src={lb} alt={b} className="h-6 w-6 md:h-7 md:w-7 rounded-full object-contain ring-1 ring-white/20" />
-   </div>
- </button>
+                {/* logos row centered */}
+                <div className="flex items-center justify-center gap-3 px-2 max-w-[92%] mx-auto">
+                  <img src={la} alt={a} className="h-12 w-12 md:h-7 md:w-7 rounded-full object-contain ring-3 ring-white/20" />
+                  <span className="mx-2 text-white/80 font-extrabold text-[16px] md:text-[18px] leading-none uppercase">VS</span>
+                  <img src={lb} alt={b} className="h-12 w-12 md:h-7 md:w-7 rounded-full object-contain ring-3 ring-white/20" />
+                </div>
+              </button>
 
               {/* Expanded content */}
               <AnimatePresence initial={false}>
@@ -181,45 +199,41 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
                     <div className="absolute top-1 left-1 z-10">
                       <button
                         className="bg-red/50 rounded-full p-1 text-white hover:bg-black/70"
-                        onClick={() => setActive(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActive(null);
+                        }}
                         aria-label="Back to list"
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </button>
                     </div>
 
-                    {/* View Match CTA */}
-                    <Link
-                      href={`/matches/${item.id}`}
-                      className="absolute top-1 right-1 z-10 bg-white/90 text-black text-xs font-bold rounded-full px-3 py-1 hover:bg-white"
-                      aria-label="Προβολή αγώνα"
-                    >
-                      Προβολή αγώνα
-                    </Link>
+                    {/* Entire expanded card is clickable; removed the top-right CTA */}
 
                     <div className="p-3 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-red-950/60 via-black-900/85 to-black-800/80 h-full">
-                      <span className="text-[11px] font-semibold tracking-wide text-white/70 select-none">
+                      <span className="text-[14px] md:text-[16px] leading-tight font-semibold tracking-wide text-white/80 select-none">
                         {timeText}
                       </span>
-                      <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center justify-center gap-4 px-2 w-full max-w-[92%] mx-auto">
                         {/* Team A */}
                         <div className="flex flex-col items-center min-w-0">
                           <img
                             src={la}
                             alt={a}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/20"
+                            className="h-12 w-12 rounded-full object-contain ring-3 ring-white/20"
                           />
                           <span className="mt-1 max-w-[8rem] truncate font-extrabold text-[12px] text-white uppercase tracking-wide text-center">
                             {a}
                           </span>
                         </div>
-                        <span className="mx-2 text-white/60 font-black text-[12px] shrink-0">vs</span>
+                        <span className="mx-3 text-white/80 font-extrabold text-[20px] md:text-[22px] leading-none uppercase shrink-0">VS</span>
                         {/* Team B */}
                         <div className="flex flex-col items-center min-w-0">
                           <img
                             src={lb}
                             alt={b}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/20"
+                            className="h-12 w-12 rounded-full object-contain ring-3 ring-white/20"
                           />
                           <span className="mt-1 max-w-[8rem] truncate font-extrabold text-[12px] text-white uppercase tracking-wide text-center">
                             {b}

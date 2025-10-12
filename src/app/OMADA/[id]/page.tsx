@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
 import MatchesTimeline from "./MatchesTimeline";
-import VantaBg from "./VantaBg";
+import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
   type PlayerAssociation,

@@ -1,31 +1,32 @@
-// matches/[id]/queries.ts
+// app/tournoua/match/[id]/queries.ts
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   normalizeTeamPlayers,
   type Id,
   type MatchWithTeams,
   type PlayerAssociation,
-  type TeamPlayersRowRaw,MatchPlayerStatRow
+  type TeamPlayersRowRaw,
+  type MatchPlayerStatRow,
 } from "@/app/lib/types";
 
 export type { MatchPlayerStatRow } from "@/app/lib/types";
 
-
 export async function fetchMatch(id: Id) {
   const { data, error } = await supabaseAdmin
     .from("matches")
-    .select([
-      "id",
-      "match_date",
-      "status",
-      "team_a_score",
-      "team_b_score",
-      "winner_team_id",
-      "referee", // ← add
-      "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
-      "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
-    ].join(","))
-    
+    .select(
+      [
+        "id",
+        "match_date",
+        "status",
+        "team_a_score",
+        "team_b_score",
+        "winner_team_id",
+        "referee",
+        "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
+        "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
+      ].join(",")
+    )
     .eq("id", id)
     .single();
 
@@ -43,6 +44,7 @@ export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation
         id,
         first_name,
         last_name,
+        photo,
         player_statistics(
           id,
           age,
@@ -66,11 +68,11 @@ export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation
   return normalizeTeamPlayers(data as TeamPlayersRowRaw[]);
 }
 
-
 export async function fetchMatchStatsMap(matchId: Id) {
   const { data, error } = await supabaseAdmin
     .from("match_player_stats")
-    .select(`
+    .select(
+      `
       id,
       match_id,
       team_id,
@@ -85,7 +87,8 @@ export async function fetchMatchStatsMap(matchId: Id) {
       gk,
       mvp,
       best_goalkeeper
-    `)
+    `
+    )
     .eq("match_id", matchId);
 
   const map = new Map<number, MatchPlayerStatRow>();
@@ -94,23 +97,23 @@ export async function fetchMatchStatsMap(matchId: Id) {
   }
   return map;
 }
+
 export type ParticipantRow = {
   id: number;
   match_id: number;
   team_id: number;
   player_id: number;
   played: boolean;
-  position: string | null;
-  is_captain: boolean;
-  gk: boolean;
+  // optional legacy fields (not selected here)
+  position?: string | null;
+  is_captain?: boolean;
+  gk?: boolean;
 };
-
-
 
 export async function fetchParticipantsMap(matchId: Id) {
   const { data, error } = await supabaseAdmin
     .from("match_participants")
-    .select("id, match_id, team_id, player_id, played, position, is_captain, gk")
+    .select("id, match_id, team_id, player_id, played")
     .eq("match_id", matchId);
 
   const map = new Map<number, ParticipantRow>();

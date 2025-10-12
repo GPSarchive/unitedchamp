@@ -17,6 +17,9 @@ import { notFound } from "next/navigation";
 import type { Id } from "@/app/lib/types";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
 
+// Adjust this path to wherever you placed the shared Vanta component
+import VantaBg from "@/app/lib/VantaBg";
+
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
   if (typeof e === "string") return e;
@@ -90,11 +93,13 @@ export default async function MatchPage({
     match.winner_team_id && match.winner_team_id === match.team_b.id;
 
   return (
-    <div
-      className="min-h-dvh bg-zinc-950
-      [background-image:radial-gradient(rgba(255,255,255,.06)_1px,transparent_1px)]
-      [background-size:18px_18px]"
-    >
+    <div className="relative min-h-dvh overflow-x-hidden">
+      {/* Vanta BG behind everything */}
+      <VantaBg className="absolute inset-0 -z-10" mode="balanced" />
+
+      {/* Optional veil for contrast (like Omada) */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+
       <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
         {/* Error banner if any */}
         {dataLoadErrors.length > 0 && (
@@ -109,21 +114,21 @@ export default async function MatchPage({
         )}
 
         {/* Header / Scoreboard */}
-        <section className="rounded-2xl border bg-[radial-gradient(closest-side,rgba(240,46,170,0.18),transparent)] p-5 shadow-sm">
+        <section className="rounded-2xl border bg-[radial-gradient(closest-side,rgba(240,46,170,0.18),transparent)] p-5 shadow-sm backdrop-blur">
           <div className="flex items-center justify-between gap-4">
             <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
             <div className="min-w-[200px] text-center">
-              <div className="text-xs uppercase tracking-wide text-gray-500">
+              <div className="text-xs uppercase tracking-wide text-gray-200">
                 {formatStatus(match.status)}
               </div>
-              <div className="text-4xl font-bold leading-none">
+              <div className="text-4xl font-bold leading-none text-white">
                 {match.team_a_score}
-                <span className="text-gray-400">-</span>
+                <span className="text-gray-300">-</span>
                 {match.team_b_score}
               </div>
-              <div className="text-sm text-gray-500">{dateLabel}</div>
+              <div className="text-sm text-gray-200/80">{dateLabel}</div>
               {match.referee && (
-                <div className="mt-1 text-xs text-gray-500">
+                <div className="mt-1 text-xs text-gray-200/80">
                   Διαιτητής: <span className="font-medium">{match.referee}</span>
                 </div>
               )}

@@ -454,11 +454,11 @@ export type MatchPlayerStatRow = {
   blue_cards: number | null;
   mvp: boolean | null;
   best_goalkeeper: boolean | null;
-
-  // add these:
   position: string | null;
-  is_captain: boolean | null;
+    is_captain: boolean | null;
   gk: boolean | null;
+
+
 };
 
 

@@ -109,7 +109,10 @@ export default function StatsEditor({
                     disabled={readOnly || !playedOn}
                   />
                 </label>
+
+                {/* Captain with hidden fallback */}
                 <label className="flex items-center gap-2 pt-5 text-xs">
+                  <input type="hidden" name={`${baseStats}[is_captain]`} value="false" />
                   <input
                     type="checkbox"
                     name={`${baseStats}[is_captain]`}
@@ -118,7 +121,10 @@ export default function StatsEditor({
                   />
                   Captain
                 </label>
+
+                {/* GK with hidden fallback */}
                 <label className="flex items-center gap-2 pt-5 text-xs">
+                  <input type="hidden" name={`${baseStats}[gk]`} value="false" />
                   <input
                     type="checkbox"
                     name={`${baseStats}[gk]`}
@@ -261,6 +267,7 @@ export default function StatsEditor({
 
                   {/* Captain */}
                   <td className="py-1 pr-2">
+                    <input type="hidden" name={`${baseStats}[is_captain]`} value="false" />
                     <input
                       type="checkbox"
                       name={`${baseStats}[is_captain]`}
@@ -272,6 +279,7 @@ export default function StatsEditor({
 
                   {/* GK */}
                   <td className="py-1 pr-2">
+                    <input type="hidden" name={`${baseStats}[gk]`} value="false" />
                     <input
                       type="checkbox"
                       name={`${baseStats}[gk]`}
