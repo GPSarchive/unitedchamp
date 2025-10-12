@@ -19,7 +19,7 @@ const NAV_LINKS = [
   { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",              img: "/επικοινωνια.jpg" },
 
   // NEW
-  { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/Παικτες.jpg" },
+  { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/παικτες.jpg" },
   { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/αγωνες.jpg" },
   { href: "/geniki-katataxi",           label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",         img: "/γενικη-καταταξη.jpg" },
   { href: "/kanonismos",                label: "ΚΑΝΟΝΙΣΜΟΣ",              img: "/κανονισμος.jpg" },

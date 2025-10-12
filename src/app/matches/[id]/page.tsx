@@ -113,39 +113,47 @@ export default async function MatchPage({
           </div>
         )}
 
-        {/* Header / Scoreboard */}
-        <section className="rounded-2xl border bg-[radial-gradient(closest-side,rgba(240,46,170,0.18),transparent)] p-5 shadow-sm backdrop-blur">
-          <div className="flex items-center justify-between gap-4">
+        {/* Combined Scoreboard + Stats (single card) */}
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 shadow-sm backdrop-blur text-white">
+          {/* Top: badges + score */}
+          <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_auto_1fr] md:gap-8">
             <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
-            <div className="min-w-[200px] text-center">
-              <div className="text-xs uppercase tracking-wide text-gray-200">
+
+            <div className="relative mx-auto min-w-[220px] text-center">
+              <div className="text-xs uppercase tracking-wide text-white/70">
                 {formatStatus(match.status)}
               </div>
               <div className="text-4xl font-bold leading-none text-white">
                 {match.team_a_score}
-                <span className="text-gray-300">-</span>
+                <span className="text-white/60">-</span>
                 {match.team_b_score}
               </div>
-              <div className="text-sm text-gray-200/80">{dateLabel}</div>
+              <div className="text-sm text-white/70">{dateLabel}</div>
               {match.referee && (
-                <div className="mt-1 text-xs text-gray-200/80">
+                <div className="mt-1 text-xs text-white/75">
                   Διαιτητής: <span className="font-medium">{match.referee}</span>
                 </div>
               )}
             </div>
+
             <TeamBadge team={match.team_b} className="text-right" highlight={!!bIsWinner} />
           </div>
-        </section>
 
-        {/* Participants & Stats (side-by-side teams) */}
-        <MatchStats
-          teamA={{ id: match.team_a.id, name: match.team_a.name }}
-          teamB={{ id: match.team_b.id, name: match.team_b.name }}
-          associationsA={teamAPlayers}
-          associationsB={teamBPlayers}
-          statsByPlayer={existingStats}
-          participants={participants} // ← NEW
-        />
+          {/* Divider */}
+          <div className="my-6 h-px w-full bg-white/10" />
+
+          {/* Bottom: embedded per-team stats with vertical split + labels */}
+          <MatchStats
+            renderAs="embedded"
+            labels={{ left: "Home", right: "Away" }}
+            teamA={{ id: match.team_a.id, name: match.team_a.name }}
+            teamB={{ id: match.team_b.id, name: match.team_b.name }}
+            associationsA={teamAPlayers}
+            associationsB={teamBPlayers}
+            statsByPlayer={existingStats}
+            participants={participants} // ← NEW
+          />
+        </section>
 
         {/* Video */}
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
@@ -227,9 +235,7 @@ export default async function MatchPage({
               </div>
             </form>
           </section>
-        ) : (
-          <></>
-        )}
+        ) : null}
       </div>
     </div>
   );

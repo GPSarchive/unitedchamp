@@ -14,6 +14,8 @@ const GLASS_ROW =
 const GLASS_BADGE =
   "rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-sm";
 
+const cx = (...c: Array<string | false | undefined | null>) => c.filter(Boolean).join(" ");
+
 /** Small pill badge (glass) */
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className={GLASS_BADGE}>{children}</span>;
@@ -38,19 +40,11 @@ function sameTeam(a: unknown, b: unknown) {
 /** Safely resolve player image sources for next/image */
 function resolveImgSrc(raw?: string | null): string | undefined {
   if (!raw) return undefined;
-
-  // Absolute URL → allowed only if domain matches next.config images.remotePatterns
   if (/^https?:\/\//i.test(raw)) return raw;
-
-  // Root-relative path → fine
   if (raw.startsWith("/")) return raw;
-
-  // Common case: public asset stored as "players/..."
   if (raw.startsWith("players/")) return `/${raw}`;
-
-  // Otherwise treat as a storage key for the proxy: sanitize first
   const key = raw.replace(/^\/+/, "");
-  if (key.includes("..")) return undefined; // guard against traversal
+  if (key.includes("..")) return undefined;
   return `/api/player-img/${encodeURI(key)}`;
 }
 
@@ -82,8 +76,6 @@ function TeamPanel({
   }>;
 }) {
   // Decide who to render:
-  // - If a participant played for this team (byParticipants)
-  // - OR if there is a stats row for this team (byStats)
   const played = associations.filter((a) => {
     const part = participants.get(a.player.id) || null;
     const row = statsByPlayer.get(a.player.id) || null;
@@ -110,7 +102,7 @@ function TeamPanel({
   const align = tone === "left" ? "items-start text-left" : "items-end text-right";
 
   return (
-    <div className={`flex flex-1 flex-col gap-4 ${GLASS_CARD}`}>
+    <div className="flex flex-1 flex-col gap-4">
       {/* Header: Team + Totals + (optional) team metrics */}
       <div className={`flex flex-col gap-3 ${align}`}>
         <div className="text-lg font-semibold text-white">{title}</div>
@@ -146,9 +138,7 @@ function TeamPanel({
             const part = participants.get(player.id) || null;
             const row = statsByPlayer.get(player.id) || null;
 
-            // unified source of truth (stats row first, then participants for old data)
-            const pos: string | null =
-              (row?.position ?? part?.position ?? null) || null; // show nothing if missing
+            const pos: string | null = (row?.position ?? part?.position ?? null) || null;
             const isCaptain = !!(row?.is_captain ?? part?.is_captain);
             const isGK = !!(row?.gk ?? part?.gk);
             const isMvp = !!row?.mvp;
@@ -194,7 +184,7 @@ function TeamPanel({
                       {isBestGk && <Badge>🧤 Best GK</Badge>}
                     </div>
 
-                    {/* Detailed per-player stats list (full words, not abbreviations) */}
+                    {/* Detailed per-player stats list */}
                     <ul className="mt-2 list-disc list-inside text-xs text-white/80 space-y-0.5">
                       <li>Goals: {goals}</li>
                       <li>Assists: {assists}</li>
@@ -204,7 +194,6 @@ function TeamPanel({
                     </ul>
                   </div>
                 </div>
-                {/* no right-side abbreviated chips anymore */}
               </div>
             );
           })}
@@ -213,6 +202,8 @@ function TeamPanel({
     </div>
   );
 }
+
+type TeamPanelProps = React.ComponentProps<typeof TeamPanel>;
 
 export default function MatchStats({
   teamA,
@@ -223,6 +214,11 @@ export default function MatchStats({
   participants,
   teamAMetrics,
   teamBMetrics,
+  /** NEW: embed inside another card without wrapper */
+  renderAs = "card",
+  /** NEW: optional side labels above the two panels */
+  labels,
+  className,
 }: {
   teamA: { id: Id; name: string };
   teamB: { id: Id; name: string };
@@ -233,33 +229,56 @@ export default function MatchStats({
   /** optional injected team-level metrics (wire up later if you track them) */
   teamAMetrics?: TeamPanelProps["teamMetrics"];
   teamBMetrics?: TeamPanelProps["teamMetrics"];
-}) {
-  return (
-    <section className={GLASS_CARD}>
-      <h2 className="mb-4 text-lg font-semibold text-white">Match Participants & Stats</h2>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        <TeamPanel
-          title={teamA.name}
-          teamId={teamA.id}
-          associations={associationsA}
-          participants={participants}
-          statsByPlayer={statsByPlayer}
-          tone="left"
-          teamMetrics={teamAMetrics}
-        />
-        <TeamPanel
-          title={teamB.name}
-          teamId={teamB.id}
-          associations={associationsB}
-          participants={participants}
-          statsByPlayer={statsByPlayer}
-          tone="right"
-          teamMetrics={teamBMetrics}
-        />
+  renderAs?: "card" | "embedded";
+  labels?: { left?: string; right?: string };
+  className?: string;
+}) {
+  const outer = renderAs === "card" ? GLASS_CARD : "";
+  return (
+    <section className={cx(outer, className)}>
+      {renderAs === "card" && (
+        <h2 className="mb-4 text-lg font-semibold text-white">Match Participants & Stats</h2>
+      )}
+
+      <div className="relative">
+        {/* Center divider on desktop */}
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 bg-white/15 md:block" />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div>
+            {labels?.left && (
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-white/60">{labels.left}</div>
+            )}
+            <TeamPanel
+              title={teamA.name}
+              teamId={teamA.id}
+              associations={associationsA}
+              participants={participants}
+              statsByPlayer={statsByPlayer}
+              tone="left"
+              teamMetrics={teamAMetrics}
+            />
+          </div>
+
+          <div>
+            {labels?.right && (
+              <div className="mb-2 text-right text-[11px] uppercase tracking-wider text-white/60">
+                {labels.right}
+              </div>
+            )}
+            <TeamPanel
+              title={teamB.name}
+              teamId={teamB.id}
+              associations={associationsB}
+              participants={participants}
+              statsByPlayer={statsByPlayer}
+              tone="right"
+              teamMetrics={teamBMetrics}
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
 }
-
-type TeamPanelProps = React.ComponentProps<typeof TeamPanel>;
