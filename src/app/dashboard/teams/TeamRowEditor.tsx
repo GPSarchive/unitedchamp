@@ -17,6 +17,7 @@ export default function TeamRowEditor({
 }) {
   const isEdit = Boolean(initial?.id);
 
+  // form state
   const [name, setName] = useState(initial?.name ?? "");
   const [logo, setLogo] = useState<string>(initial?.logo ?? ""); // https URL or storage path
   const [preview, setPreview] = useState<string | null>(null);
@@ -34,50 +35,22 @@ export default function TeamRowEditor({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // NEW: pending file & modal
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // modal state for confirm
   const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  const validationError = useMemo(() => {
-    if (!name.trim()) return "Name is required";
-    if (name.trim().length < 2) return "Name must be at least 2 characters";
-
-    // AM: cap length (adjust if you want stricter rules/regex)
-    if (am && am.length > 64) return "AM must be at most 64 characters";
-
-    // season_score: must be non-negative integer when provided
-    if (seasonScore !== "" && (!Number.isInteger(seasonScore) || seasonScore < 0)) {
-      return "Season score must be a non-negative integer";
-    }
-
-    const v = logo.trim();
-    if (!v) return null;
-    if (!isUrl(v) && !isStoragePath(v)) {
-      return "Logo must be a full https URL or a storage path like folder/file.png";
-    }
-    return null;
-  }, [name, am, logo, seasonScore]);
-
+  // map logo to preview: if it's a storage path → proxy, else use as-is
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const v = (initial?.logo ?? "").trim();
-      if (!v) return setPreview(null);
-      if (isUrl(v)) return setPreview(v);
-      const mapped = await signIfNeeded(v);
-      setPreview(mapped);
+      const v = logo?.trim();
+      const url = await signIfNeeded(v || null);
+      if (cancelled) return;
+      setPreview(url);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const v = logo.trim();
-    if (!v) return setPreview(null);
-    if (isUrl(v)) return setPreview(v);
-    (async () => {
-      if (!isStoragePath(v)) return setPreview(null);
-      const mapped = await signIfNeeded(v);
-      setPreview(mapped);
-    })();
+    return () => {
+      cancelled = true;
+    };
   }, [logo]);
 
   function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -101,6 +74,35 @@ export default function TeamRowEditor({
       // Store & preview the stable proxy URL from the uploader
       setLogo(body.publicUrl as string);
       setPreview((body.publicUrl as string) ?? null);
+
+      // NEW: auto-save logo into DB when editing an existing team
+      if (isEdit && initial?.id) {
+        setSaving(true);
+        try {
+          const res2 = await fetch(`/api/teams/${initial.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ logo: body.publicUrl }),
+          });
+          const body2 = await safeJson(res2);
+          if (!res2.ok) throw new Error(body2?.error || `HTTP ${res2.status}`);
+
+          let saved = (body2 as any).team as TeamRow;
+
+          // Update preview in case the API normalized the logo value
+          const mapped = await signIfNeeded(saved.logo ?? null);
+          setPreview(mapped ?? saved.logo ?? (body.publicUrl as string));
+
+          // Notify parent so lists refresh
+          onSaved(saved);
+        } catch (e: any) {
+          console.error(e);
+          alert(e?.message ?? String(e));
+        } finally {
+          setSaving(false);
+        }
+      }
     } catch (err: any) {
       alert(err?.message ?? String(err));
     } finally {
@@ -121,14 +123,14 @@ export default function TeamRowEditor({
           logoForSave = v; // <-- send raw storage path (fix)
         }
       }
-  
+
       const payload: Record<string, any> = {
         name: name.trim(),
         logo: logoForSave,
         am: am.trim() || null,
       };
       if (seasonScore !== "") payload.season_score = seasonScore;
-  
+
       const res = await fetch(isEdit ? `/api/teams/${initial!.id}` : "/api/teams", {
         method: isEdit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,28 +138,54 @@ export default function TeamRowEditor({
         credentials: "include",
       });
       const body = await safeJson(res);
+
       if (!res.ok) {
-        const msg = (body && (body as any).error) || `HTTP ${res.status}`;
-        if (/AM must be unique/i.test(String(msg))) throw new Error("Το ΑΜ πρέπει να είναι μοναδικό.");
+        const msg = body?.error || `HTTP ${res.status}`;
+        // provide friendlier messages for common issues
+        if (/duplicate key.*am/i.test(String(msg))) {
+          throw new Error("Το ΑΜ υπάρχει ήδη σε άλλη ομάδα.");
+        }
         if (/Invalid logo path/i.test(String(msg))) throw new Error("Μη έγκυρη διαδρομή λογότυπου (χρησιμοποίησε https URL ή teams/<id>/...).");
-        throw new Error(String(msg));
+        throw new Error(msg);
       }
-  
+
       let saved = (body as any).team as TeamRow;
-  
-      // For display, still map storage path → proxy URL
-      if (saved?.logo && !isUrl(saved.logo) && isStoragePath(saved.logo)) {
-        const mapped = await signIfNeeded(saved.logo); // ok to use proxy for preview
-        saved = { ...saved, logo: mapped ?? saved.logo };
-      }
+
+      // keep preview in sync with saved value
+      const mapped = await signIfNeeded(saved.logo ?? null);
+      saved = { ...saved, logo: mapped ?? saved.logo };
+
       onSaved(saved);
-    } catch (e: any) {
-      alert(e?.message ?? String(e));
+    } catch (err: any) {
+      alert(err?.message ?? String(err));
     } finally {
       setSaving(false);
     }
   }
   
+
+  const validationError = useMemo(() => {
+    if (!name.trim()) return "Name is required";
+    if (name.trim().length < 2) return "Name must be at least 2 characters";
+
+    // AM: cap length (adjust if you want stricter rules/regex)
+    if (am && am.length > 64) return "AM must be at most 64 characters";
+
+    // season_score: must be non-negative integer when provided
+    if (seasonScore !== "" && (!Number.isInteger(seasonScore) || seasonScore < 0)) {
+      return "Season score must be a non-negative integer";
+    }
+
+    const v = logo.trim();
+    if (v) {
+      // Only allow https URLs or storage paths (e.g., teams/<id>/file.png)
+      if (!isUrl(v) && !isStoragePath(v)) {
+        return "Logo must be an https URL or a storage path like teams/<id>/file.png";
+      }
+    }
+
+    return null;
+  }, [name, logo, am, seasonScore]);
 
   return (
     <div className="p-3 rounded-xl border border-white/15 bg-black/50 space-y-3">
@@ -196,53 +224,63 @@ export default function TeamRowEditor({
             value={am}
             onChange={(e) => setAm(e.target.value)}
             className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-            placeholder="π.χ. 12345 ή REG-2025"
+            placeholder="e.g. AM-12345"
           />
-          <span className="text-[11px] text-white/40">Μοναδικό αναγνωριστικό ομάδας (unique).</span>
         </label>
 
-        {/* Logo */}
-        <label className="flex flex-col gap-1 md:col-span-2">
-          <span className="text-sm text-white/80">Logo (URL or upload)</span>
-          <div className="flex items-center gap-2">
-            <input
-              value={logo}
-              onChange={(e) => setLogo(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="https://… or folder/file.png"
-            />
-            <label
-              className={clsx(
-                "px-3 py-2 rounded-lg border text-white cursor-pointer",
-                uploading ? "border-white/20 bg-zinc-800 opacity-70" : "border-white/15 bg-zinc-900 hover:bg-zinc-800"
-              )}
-            >
-              {uploading ? "Uploading…" : "Upload"}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                className="hidden"
-                onChange={onPick}
-                disabled={uploading}
-              />
-            </label>
-          </div>
-          {preview && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={preview}
-              alt="Logo preview"
-              className="mt-2 h-12 w-12 object-contain rounded ring-1 ring-white/10"
-            />
-          )}
+        {/* Logo (text input) */}
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-white/80">Logo (URL or storage path)</span>
+          <input
+            value={logo}
+            onChange={(e) => setLogo(e.target.value)}
+            className={clsx(
+              "px-3 py-2 rounded-lg bg-zinc-900 text-white border",
+              validationError?.toLowerCase().includes("logo")
+                ? "border-red-500/40"
+                : "border-white/10"
+            )}
+            placeholder="https://… or folder/file.png"
+          />
         </label>
       </div>
 
-      <div className="flex gap-2 justify-end">
+      {/* Logo picker + preview */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/15 bg-zinc-900">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              alt="logo preview"
+              src={preview}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center text-xs text-white/40">
+              No logo
+            </div>
+          )}
+        </div>
+
+        <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 hover:bg-white/5 cursor-pointer">
+          <span>{uploading ? "Uploading…" : "Upload"}</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="hidden"
+            onChange={onPick}
+            disabled={uploading}
+          />
+        </label>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-2 rounded-lg border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800"
+          className="px-3 py-2 rounded-lg border border-white/15 text-white/80 hover:bg-white/5"
+          disabled={saving || uploading}
         >
           Cancel
         </button>

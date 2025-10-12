@@ -14,18 +14,18 @@ import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser"
 const NAV_LINKS = [
   { href: "/home",            label: "HOME",                     img: "/field2.jpg" },
   { href: "/anakoinoseis",    label: "ΑΝΑΚΟΙΝΩΣΕΙΣ",             img: "/ανακοινωσεις.jpg" },
-  { href: "/OMADES",          label: "ΟΜΑΔΕΣ",                   img: "/omades.jpg" },
-  { href: "/tournoua",        label: "ΤΟΥΡΝΟΥΑ",                 img: "/NavbarTournoua.jpg" },
+  { href: "/OMADES",          label: "ΟΜΑΔΕΣ",                   img: "/Ομαδες.jpg" },
+  { href: "/tournoua",        label: "ΤΟΥΡΝΟΥΑ",                 img: "/τουρνουα.jpg" },
   { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",              img: "/επικοινωνια.jpg" },
 
   // NEW
-  { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/navbar_players.jpg" },
-  { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/navbar_matches.jpg" },
-  { href: "/geniki-katataxi",           label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",         img: "/navbar_standings.jpg" },
-  { href: "/kanonismos",                label: "ΚΑΝΟΝΙΣΜΟΣ",              img: "/navbar_rules.jpg" },
-  { href: "/gallery",                   label: "GALLERY",                 img: "/navbar_gallery.jpg" },
-  { href: "/meikti-omada-ultrachamp",   label: "ΜΕΙΚΤΗ ΟΜΑΔΑ ULTRACHAMP", img: "/navbar_mixedteam.jpg" },
-  { href: "/elliniki-omada-f7",         label: "ΕΛΛΗΝΙΚΗ ΟΜΑΔΑ F7",       img: "/navbar_hellenic_f7.jpg" },
+  { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/Παικτες.jpg" },
+  { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/αγωνες.jpg" },
+  { href: "/geniki-katataxi",           label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",         img: "/γενικη-καταταξη.jpg" },
+  { href: "/kanonismos",                label: "ΚΑΝΟΝΙΣΜΟΣ",              img: "/κανονισμος.jpg" },
+  { href: "/gallery",                   label: "GALLERY",                 img: "/gallery.jpg" },
+  { href: "/meikti-omada-ultrachamp",   label: "ΜΕΙΚΤΗ ΟΜΑΔΑ ULTRACHAMP", img: "/μεικτη-ομαδα.jpg" },
+  { href: "/elliniki-omada-f7",         label: "ΕΛΛΗΝΙΚΗ ΟΜΑΔΑ F7",       img: "/ελλινικη-ομαδα.jpg" },
 ] as const;
 
 /* ===================== Styles ===================== */

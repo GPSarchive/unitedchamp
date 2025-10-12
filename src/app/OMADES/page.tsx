@@ -155,7 +155,7 @@ export default async function TeamsPage({
     <Shell>
       <div className="container mx-auto px-6 pt-6">
         <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
-          Football Teams
+          Ο Μ Α Δ Ε Σ
         </h1>
         <SearchBar initialSearch={search} />
       </div>

@@ -1,4 +1,4 @@
-//api/tournaments/id/save-all/route.ts
+// app/api/tournaments/[id]/save-all/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
@@ -66,39 +66,33 @@ type IntakeMappingRow = {
 
 type MatchRow = {
   id?: number | null;
-  // required routing info
   stage_id: number;
   group_id?: number | null;
-  // identity
   team_a_id?: number | null;
   team_b_id?: number | null;
-  // result
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
   status?: "scheduled" | "finished";
   match_date?: string | null;
   matchday?: number | null;
-  // KO placement & sources
   round?: number | null;
   bracket_pos?: number | null;
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
-
   updated_at?: string | null; // for concurrency
 };
 
 type SaveAllRequest = {
-  // each section optional; only changed parts need to be sent
   tournament?: { patch: PatchTournament };
   stages?: { upsert?: StageRow[]; deleteIds?: number[] };
   groups?: { upsert?: GroupRow[]; deleteIds?: number[] };
   tournamentTeams?: { upsert?: TournamentTeamRow[]; deleteIds?: number[] };
-  stageSlots?: { upsert?: StageSlotRow[] }; // (PK: stage_id,group_id,slot_id)
+  stageSlots?: { upsert?: StageSlotRow[] };
   intakeMappings?: { replace?: IntakeMappingRow[]; targetStageIds?: number[] };
-  matches?: { upsert?: MatchRow[]; deleteIds?: number[] }; // ← deleteIds supported
+  matches?: { upsert?: MatchRow[]; deleteIds?: number[] };
 };
 
 type SaveAllResponse = {
@@ -111,24 +105,23 @@ type SaveAllResponse = {
   tournamentTeams?: TournamentTeamRow[];
   stageSlots?: StageSlotRow[];
   intakeMappings?: IntakeMappingRow[];
-  matches?: MatchRow[]; // authoritative (with ids/updated_at)
+  matches?: MatchRow[];
 };
 
-/* ------------------------------- Handler ------------------------------- */
+type Params = { id: string };
 
-export async function POST(req: Request, ctx: { params: { id: string } }) {
-  const tournamentId = Number(ctx.params.id);
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<Params> }
+) {
+  const { id } = await params;
+  const tournamentId = Number(id);
   if (!Number.isFinite(tournamentId)) {
     return NextResponse.json({ error: "Invalid tournament id" }, { status: 400 });
   }
 
   const body = (await req.json()) as SaveAllRequest;
-
-  // Batch response accumulator
   const out: SaveAllResponse = { ok: true };
-
-  // We’ll best-effort the order: tournament → stages → groups → teams → slots → intake → matches
-  // (Deletions for groups/stages go before upserts to avoid FK conflicts)
 
   try {
     /* 1) Tournament basics (PATCH) ---------------------------------------- */
@@ -166,18 +159,18 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
     /* 4) Stages upsert ----------------------------------------------------- */
     if (body.stages?.upsert?.length) {
-      // Separate creates (no id) & updates (id present)
       const createRows = body.stages.upsert
-        .filter((r) => !r.id)
-        .map((r) => ({ ...r, tournament_id: tournamentId }));
-      const updateRows = body.stages.upsert.filter((r) => r.id);
+        .filter((r) => r.id == null) // null or undefined → create
+        .map(({ id: _drop, ...r }) => ({ ...r, tournament_id: tournamentId }));
+      const updateRows = body.stages.upsert
+        .filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
       if (createRows.length) {
         const { data: stgCreateData, error: stgCreateErr } = await supabaseAdmin
           .from("tournament_stages")
-          .insert(createRows)
+          .insert(createRows) // id omitted → default sequence
           .select();
         if (stgCreateErr) return NextResponse.json({ error: stgCreateErr.message }, { status: 500 });
         upserted = upserted.concat(stgCreateData ?? []);
@@ -197,8 +190,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
     /* 5) Groups upsert ----------------------------------------------------- */
     if (body.groups?.upsert?.length) {
-      const createRows = body.groups.upsert.filter((r) => !r.id);
-      const updateRows = body.groups.upsert.filter((r) => r.id);
+      const createRows = body.groups.upsert
+        .filter((r) => r.id == null)
+        .map(({ id: _drop, ...r }) => r);
+      const updateRows = body.groups.upsert
+        .filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
@@ -226,9 +222,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     /* 6) Tournament teams upsert ------------------------------------------ */
     if (body.tournamentTeams?.upsert?.length) {
       const createRows = body.tournamentTeams.upsert
-        .filter((r) => !r.id)
-        .map((r) => ({ ...r, tournament_id: tournamentId }));
-      const updateRows = body.tournamentTeams.upsert.filter((r) => r.id);
+        .filter((r) => r.id == null)
+        .map(({ id: _drop, ...r }) => ({ ...r, tournament_id: tournamentId }));
+      const updateRows = body.tournamentTeams.upsert
+        .filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
@@ -257,11 +254,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     if (body.stageSlots?.upsert?.length) {
       const rows = body.stageSlots.upsert;
 
-      // For concurrency, when updated_at is provided, do guarded updates; otherwise upsert.
       const guarded = rows.filter((r) => r.updated_at);
       const rest = rows.filter((r) => !r.updated_at);
 
-      // Guarded updates (409 on stale)
       for (const r of guarded) {
         const { data: slotUpdData, error: slotUpdErr } = await supabaseAdmin
           .from("stage_slots")
@@ -270,7 +265,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
           .eq("group_id", r.group_id)
           .eq("slot_id", r.slot_id)
           .eq("updated_at", r.updated_at)
-          .select("*"); // no { count } in this overload
+          .select("*");
 
         if (slotUpdErr) return NextResponse.json({ error: slotUpdErr.message }, { status: 500 });
         if (!slotUpdData || slotUpdData.length === 0) {
@@ -285,7 +280,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         }
       }
 
-      // Plain upsert for the rest/new rows
       if (rest.length) {
         const { error: slotUpsertErr } = await supabaseAdmin
           .from("stage_slots")
@@ -293,7 +287,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         if (slotUpsertErr) return NextResponse.json({ error: slotUpsertErr.message }, { status: 500 });
       }
 
-      // Return authoritative current rows for the affected stages
       const affectedStageIds = Array.from(new Set(rows.map((r) => r.stage_id)));
       const { data: slotCur, error: slotFetchErr } = await supabaseAdmin
         .from("stage_slots")
@@ -318,10 +311,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         if (intakeDelErr) return NextResponse.json({ error: intakeDelErr.message }, { status: 500 });
       }
 
-      if (body.intakeMappings.replace.length) {
+      const createRows = (body.intakeMappings.replace ?? []).map(({ id: _drop, ...r }) => r);
+
+      if (createRows.length) {
         const { data: intakeInsData, error: intakeInsErr } = await supabaseAdmin
           .from("intake_mappings")
-          .insert(body.intakeMappings.replace)
+          .insert(createRows) // id omitted
           .select();
         if (intakeInsErr) return NextResponse.json({ error: intakeInsErr.message }, { status: 500 });
         out.intakeMappings = intakeInsData ?? [];
@@ -333,7 +328,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     /* 8.5) Matches deletions (before upserts) ------------------------------ */
     let matchDeleteStageIds: number[] = [];
     if (body.matches?.deleteIds?.length) {
-      // Fetch stages for the matches being deleted so we can refresh KO pointers afterwards
       const { data: delRows, error: delFetchErr } = await supabaseAdmin
         .from("matches")
         .select("id,stage_id")
@@ -356,8 +350,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     if (body.matches?.upsert?.length) {
       const rows = body.matches.upsert.map((m) => ({ ...m, tournament_id: tournamentId }));
 
-      const toUpdate = rows.filter((r) => r.id);
-      const toCreate = rows.filter((r) => !r.id);
+      const toUpdate = rows.filter((r) => r.id != null);
+      const toCreate = rows
+        .filter((r) => r.id == null)
+        .map(({ id: _drop, updated_at: _drop2, ...r }) => r); // strip id & updated_at
 
       const updated: any[] = [];
       const created: any[] = [];
@@ -384,10 +380,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
           away_source_bracket_pos: r.away_source_bracket_pos ?? null,
         });
 
-        // If caller provided updated_at, guard the update
         if (r.updated_at) q.eq("updated_at", r.updated_at);
 
-        const { data: updMatchData, error: updMatchErr } = await q.eq("id", r.id!).select("*");
+        const { data: updMatchData, error: updMatchErr } = await q.eq("id", r.id as number).select("*");
         if (updMatchErr) return NextResponse.json({ error: updMatchErr.message }, { status: 500 });
         if (r.updated_at && (!updMatchData || updMatchData.length === 0)) {
           return NextResponse.json(
@@ -402,7 +397,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       if (toCreate.length) {
         const { data: createdMatches, error: createMatchErr } = await supabaseAdmin
           .from("matches")
-          .insert(toCreate)
+          .insert(toCreate) // id omitted → default sequence
           .select();
         if (createMatchErr) return NextResponse.json({ error: createMatchErr.message }, { status: 500 });
         created.push(...(createdMatches ?? []));
@@ -419,7 +414,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const touchedStageIds = Array.from(new Set([...upsertStageIds, ...matchDeleteStageIds])) as number[];
 
     if (touchedStageIds.length) {
-      // 1) Pull all matches for the affected stages (minimal columns needed)
       const { data: allStageMatches, error: stageSelErr } = await supabaseAdmin
         .from("matches")
         .select(
@@ -442,7 +436,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         return NextResponse.json({ error: stageSelErr.message }, { status: 500 });
       }
 
-      // 2) Build resolver map: (stage, round, pos) -> match id
       type Key = string;
       const keyOf = (s: number, r: number | null | undefined, p: number | null | undefined): Key =>
         `${s}#${r ?? "n"}#${p ?? "n"}`;
@@ -454,7 +447,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         }
       }
 
-      // 3) Compute patches for children
       const pointerPatches = (allStageMatches ?? [])
         .map((m) => {
           const homeId =
@@ -467,15 +459,13 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
               ? idByPos.get(keyOf(m.stage_id, m.away_source_round, m.away_source_bracket_pos)) ?? null
               : null;
 
-          // only send when changed (reduces writes & avoids touching updated_at needlessly)
           const changes: any = { id: m.id };
           if (homeId !== (m.home_source_match_id ?? null)) changes.home_source_match_id = homeId;
           if (awayId !== (m.away_source_match_id ?? null)) changes.away_source_match_id = awayId;
           return changes;
         })
-        .filter((p) => Object.keys(p).length > 1); // keep rows that actually change something
+        .filter((p) => Object.keys(p).length > 1);
 
-      // 4) Upsert the pointer columns by primary key (id)
       if (pointerPatches.length) {
         const { error: pointerUpsertErr } = await supabaseAdmin
           .from("matches")
@@ -485,7 +475,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         }
       }
 
-      // 5) Re-fetch authoritative matches for these stages
       const { data: resolvedMatches, error: resolvedFetchErr } = await supabaseAdmin
         .from("matches")
         .select("*")
@@ -499,7 +488,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     }
     // ======================================================================
 
-    // Done
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });

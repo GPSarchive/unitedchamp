@@ -176,6 +176,41 @@ function stageOrderArray(map: Record<number, number | undefined>) {
 }
 
 /* =========================================================
+   NEW: Build group-index maps from actual DB matches (fallback)
+   ========================================================= */
+function buildGroupIndexFallbackFromMatches(
+  dbMatches: { stage_id?: number | null; group_id?: number | null }[],
+  stageIndexById: Record<number, number | undefined>
+) {
+  const groupIdByStage: Record<number, Record<number, number>> = {};
+  const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
+
+  // Per stage_id, collect distinct group_ids in first-seen order
+  const seen: Record<number, Map<number, number>> = {};
+  for (const m of dbMatches) {
+    const sid = m.stage_id ?? undefined;
+    const gid = m.group_id ?? undefined;
+    if (!sid || !gid) continue;
+    const sMap = (seen[sid] ??= new Map());
+    if (!sMap.has(gid)) sMap.set(gid, sMap.size);
+  }
+
+  Object.entries(seen).forEach(([stageIdStr, map]) => {
+    const stageId = Number(stageIdStr);
+    const sIdx = stageIndexById[stageId];
+    if (typeof sIdx !== "number") return;
+    groupIdByStage[sIdx] = {};
+    groupIndexByStageAndId[stageId] = {};
+    for (const [gid, idx] of map.entries()) {
+      groupIdByStage[sIdx][idx] = gid;
+      groupIndexByStageAndId[stageId][gid] = idx;
+    }
+  });
+
+  return { groupIdByStage, groupIndexByStageAndId };
+}
+
+/* =========================================================
    Store shape
    ========================================================= */
 export type TournamentState = {
@@ -203,7 +238,7 @@ export type TournamentState = {
   ids: {
     tournamentId?: number;
     stageIdByIndex: Record<number, number | undefined>;
-    groupIdByStage: Record<number, Record<number, number | undefined>>; // groupIdx → DB id
+    groupIdByStage: Record<number, Record<number, number | undefined>>;// groupIdx → DB id
     stageIndexById: Record<number, number | undefined>; // reverse map
     groupIndexByStageAndId: Record<number, Record<number, number | undefined>>; // stageId -> (groupId -> idx)
   };
@@ -408,27 +443,22 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     return Array.from(ids);
   },
   listGroupTeamIds: (stageIdx, groupIdx) => {
-    const stageId = get().ids.stageIdByIndex[stageIdx];
-    if (!stageId && stageId !== 0) return [];
-    const dbGroupId = get().ids.groupIdByStage[stageIdx]?.[groupIdx];
-
-    const fromTT = get()
-      .entities
-      .tournamentTeams
-      .filter((tt) => tt.stage_id === stageId && (dbGroupId ? tt.group_id === dbGroupId : tt.group_id == null))
-      .map((tt) => tt.team_id);
-
-    if (fromTT.length > 0) return Array.from(new Set(fromTT));
-
-    const fromSlots = get()
-      .entities
-      .stageSlots
-      .filter((s) => s.stage_id === stageId && s.group_id === groupIdx && s.team_id != null)
-      .map((s) => s.team_id!) as number[];
-
-    if (fromSlots.length > 0) return Array.from(new Set(fromSlots));
-    return get().listParticipants();
-  },
+        const stageId = get().ids.stageIdByIndex[stageIdx];
+        if (!stageId && stageId !== 0) return [];
+        const dbGroupId = get().ids.groupIdByStage[stageIdx]?.[groupIdx];
+    
+        const fromTT = get().entities.tournamentTeams
+          .filter(tt => tt.stage_id === stageId && (dbGroupId ? tt.group_id === dbGroupId : tt.group_id == null))
+          .map(tt => tt.team_id);
+        if (fromTT.length > 0) return Array.from(new Set(fromTT));
+    
+        const fromSlots = get().entities.stageSlots
+          .filter(s => s.stage_id === stageId && s.group_id === groupIdx && s.team_id != null)
+          .map(s => s.team_id!) as number[];
+        if (fromSlots.length > 0) return Array.from(new Set(fromSlots));
+    
+        return get().listParticipants();
+      },
   listStageSlots: (stageIdx, groupIdx) => {
     const stageId = get().ids.stageIdByIndex[stageIdx];
     if (!stageId) return [];
@@ -451,8 +481,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     // Build index maps
     const stageIdByIndex: Record<number, number> = {};
     const stageIndexById: Record<number, number> = {};
-    const groupIdByStage: Record<number, Record<number, number>> = {};
-    const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
+    let groupIdByStage: Record<number, Record<number, number>> = {};
+    let groupIndexByStageAndId: Record<number, Record<number, number>> = {};
 
     const sortedStages = snap.stages.slice().sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
     sortedStages.forEach((s, i) => {
@@ -475,6 +505,28 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       });
     });
 
+    // Fallback: if no groups present in snapshot (or incomplete), derive from matches
+    const built = buildGroupIndexFallbackFromMatches(
+      snap.matches ?? [],
+      stageIndexById as Record<number, number>
+    );
+    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]) => {
+      const sIdx = Number(sIdxStr);
+      const dst = (groupIdByStage[sIdx] ??= {});
+      Object.entries(m).forEach(([giStr, gid]) => {
+        const gi = Number(giStr);
+        if (dst[gi] == null) dst[gi] = gid;
+      });
+    });
+    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]) => {
+      const sid = Number(sidStr);
+      const dst = (groupIndexByStageAndId[sid] ??= {});
+      Object.entries(m).forEach(([gidStr, gi]) => {
+        const gid = Number(gidStr);
+        if (dst[gid] == null) dst[gid] = gi;
+      });
+    });
+
     const stagesById: Record<number, DbStage> = {};
     const groupsById: Record<number, DbGroup> = {};
     const teamsById: Record<number, DbTeam> = {};
@@ -486,8 +538,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const draftMatches: DraftMatch[] = [];
     const overlay: Record<string, DbOverlay> = {};
     for (const m of snap.matches) {
-      const stageIdx = stageIndexById[m.stage_id];
-      if (stageIdx == null) continue;
+      const sIdx = stageIndexById[m.stage_id];
+      if (sIdx == null) continue;
       let groupIdx: number | null = null;
       if (m.group_id != null) {
         const gi = groupIndexByStageAndId[m.stage_id]?.[m.group_id];
@@ -495,7 +547,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
-        stageIdx,
+        stageIdx: sIdx,
         groupIdx,
         round: m.round ?? null,
         bracket_pos: m.bracket_pos ?? null,
@@ -568,6 +620,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const stageIndexById: Record<number, number | undefined> = {};
     const groupIndexByStageAndId: Record<number, Record<number, number | undefined>> = {};
 
+    // --- Build stage map from payload
     (payload.stages as any)?.forEach((s: any, i: number) => {
       if (typeof s?.id === "number") {
         stageIdByIndex[i] = s.id;
@@ -585,11 +638,37 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
     });
 
+    // --- NEW: derive fallback group maps from actual DB matches and merge
+    const built = buildGroupIndexFallbackFromMatches(
+      dbMatches ?? [],
+      stageIndexById as Record<number, number>
+    );
+
+    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]) => {
+      const sIdx = Number(sIdxStr);
+      const dst = (groupIdByStage[sIdx] ??= {});
+      Object.entries(m).forEach(([giStr, gid]) => {
+        const gi = Number(giStr);
+        if (dst[gi] == null) dst[gi] = gid;
+      });
+    });
+
+    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]) => {
+      const sid = Number(sidStr);
+      const dst = (groupIndexByStageAndId[sid] ??= {});
+      Object.entries(m).forEach(([gidStr, gi]) => {
+        const gid = Number(gidStr);
+        if (dst[gid] == null) dst[gid] = gi;
+      });
+    });
+
+    // Convert DB matches → DraftMatch + overlay
     const draftMatches: DraftMatch[] = [];
     const overlay: Record<string, DbOverlay> = {};
     (dbMatches ?? []).forEach((m) => {
-      const stageIdx = Number(Object.entries(stageIdByIndex).find(([, sid]) => sid === m.stage_id)?.[0]);
-      if (!Number.isFinite(stageIdx)) return;
+      const sIdx = stageIndexById[m.stage_id ?? -1];
+      if (!Number.isFinite(sIdx)) return;
+
       let groupIdx: number | null = null;
       if (m.group_id != null) {
         const gi = groupIndexByStageAndId[m.stage_id ?? -1]?.[m.group_id];
@@ -597,7 +676,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
-        stageIdx,
+        stageIdx: sIdx as number,
         groupIdx,
         round: m.round ?? null,
         bracket_pos: m.bracket_pos ?? null,
@@ -1412,86 +1491,87 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         if (resp2.groups) {
           // Rebuild groupsById and index maps from authoritative groups
           const groupsById: Record<number, DbGroup> = {};
-          resp2.groups.forEach((g) => (groupsById[g.id] = g));
-
-        const stageIndexByIdAfter = get().ids.stageIndexById as Record<number, number>;
-        const groupIdByStage: Record<number, Record<number, number>> = {};
-        const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
-
-        // group rows grouped by stage, sorted by ordering
-        const byStage: Record<number, DbGroup[]> = {};
-        Object.values(groupsById).forEach((g) => {
-          (byStage[g.stage_id] ??= []).push(g);
-        });
-        Object.entries(byStage).forEach(([stageIdStr, arr]) => {
-          const stageId = Number(stageIdStr);
-          arr.sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name));
-          const sIdx = stageIndexByIdAfter[stageId] ?? -1;
-          const mapIdxToId: Record<number, number> = {};
-          const rev: Record<number, number> = {};
-          arr.forEach((g, gi) => {
-            mapIdxToId[gi] = g.id;
-            rev[g.id] = gi;
+          (resp2.groups as DbGroup[]).forEach((g: DbGroup) => {
+            groupsById[g.id] = g;
           });
-          if (sIdx >= 0) groupIdByStage[sIdx] = mapIdxToId;
-          groupIndexByStageAndId[stageId] = rev;
-        });
-
-        set((curr) => ({
-          entities: { ...curr.entities, groupsById },
-          ids: { ...curr.ids, groupIdByStage, groupIndexByStageAndId },
-          dirty: { ...curr.dirty, groups: false, deletedGroupIds: new Set() },
-        }));
-
-        // Build mapping oldGroupId -> newGroupId per stage using BEFORE indices → AFTER ids
-        const after_groupIdByStage = get().ids.groupIdByStage as Record<number, Record<number, number>>;
-        const stageIndexByIdBefore = before_stageIndexById; // still available
-
-        const groupIdMapByOldStage: Record<number, Record<number, number>> = {};
-        Object.entries(before_groupIndexByStageAndId).forEach(([stageOldIdStr, groupOldMap]) => {
-          const stageOldId = Number(stageOldIdStr);
-          const idx = stageIndexByIdBefore[stageOldId];
-          if (typeof idx !== "number") return;
-          const newGroupIdsForIdx = after_groupIdByStage[idx] ?? {};
-          const inner: Record<number, number> = {};
-          Object.entries(groupOldMap).forEach(([groupOldIdStr, groupIdx]) => {
-            const oldGid = Number(groupOldIdStr);
-            if (typeof groupIdx === "number") {
-              const newGid = newGroupIdsForIdx[groupIdx];
-              if (newGid) inner[oldGid] = newGid;
-            }
+        
+          const stageIndexByIdAfter = get().ids.stageIndexById as Record<number, number>;
+          const groupIdByStage: Record<number, Record<number, number>> = {};
+          const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
+        
+          // group rows grouped by stage, sorted by ordering
+          const byStage: Record<number, DbGroup[]> = {};
+          Object.values(groupsById).forEach((g: DbGroup) => {
+            (byStage[g.stage_id] ??= []).push(g);
           });
-          groupIdMapByOldStage[stageOldId] = inner;
-        });
+        
+          Object.entries(byStage).forEach(([stageIdStr, arr]) => {
+            const stageId = Number(stageIdStr);
+            arr.sort(
+              (a, b) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name)
+            );
+            const sIdx = stageIndexByIdAfter[stageId] ?? -1;
+            const mapIdxToId: Record<number, number> = {};
+            const rev: Record<number, number> = {};
+            arr.forEach((g, gi) => {
+              mapIdxToId[gi] = g.id;
+              rev[g.id] = gi;
+            });
+            if (sIdx >= 0) groupIdByStage[sIdx] = mapIdxToId;
+            groupIndexByStageAndId[stageId] = rev;
+          });
+        
+          set((curr) => ({
+            entities: { ...curr.entities, groupsById },
+            ids: { ...curr.ids, groupIdByStage, groupIndexByStageAndId },
+            dirty: { ...curr.dirty, groups: false, deletedGroupIds: new Set() },
+          }));
 
-        // Translate tournamentTeams.group_id for any negative (temp) ids, using old-stage id to resolve index
-        set((curr) => {
-          const tt = curr.entities.tournamentTeams.slice().map((row) => {
-            let { stage_id, group_id } = row;
+          // Build mapping oldGroupId -> newGroupId per stage using BEFORE indices → AFTER ids
+          const after_groupIdByStage = get().ids.groupIdByStage as Record<number, Record<number, number>>;
+          const stageIndexByIdBefore = before_stageIndexById; // still available
 
-            // if stage_id was temp previously and already translated in phase 1, we need the old stage id to find group mapping
-            // Try both: (1) mapping by old negative stage id; (2) mapping by persisted stage id using BEFORE maps
-            if (group_id != null && group_id < 0) {
-              // Case A: we still have the old temp stage id reference in the mapping table
-              const mapA = groupIdMapByOldStage[stage_id as number];
-              if (mapA && mapA[group_id]) {
-                group_id = mapA[group_id];
-              } else if (stage_id && stage_id > 0) {
-                // Case B: stage persisted; use before maps to get index and then after map to resolve
-                const giBefore = before_groupIndexByStageAndId[stage_id]?.[group_id];
-                if (typeof giBefore === "number") {
-                  const sIdx = (get().ids.stageIndexById as any)[stage_id];
-                  const newId = sIdx != null ? (get().ids.groupIdByStage as any)[sIdx]?.[giBefore] : undefined;
-                  if (newId) group_id = newId;
+          const groupIdMapByOldStage: Record<number, Record<number, number>> = {};
+          Object.entries(before_groupIndexByStageAndId).forEach(([stageOldIdStr, groupOldMap]) => {
+            const stageOldId = Number(stageOldIdStr);
+            const idx = stageIndexByIdBefore[stageOldId];
+            if (typeof idx !== "number") return;
+            const newGroupIdsForIdx = after_groupIdByStage[idx] ?? {};
+            const inner: Record<number, number> = {};
+            Object.entries(groupOldMap).forEach(([groupOldIdStr, groupIdx]) => {
+              const oldGid = Number(groupOldIdStr);
+              if (typeof groupIdx === "number") {
+                const newGid = newGroupIdsForIdx[groupIdx];
+                if (newGid) inner[oldGid] = newGid;
+              }
+            });
+            groupIdMapByOldStage[stageOldId] = inner;
+          });
+
+          // Translate tournamentTeams.group_id for any negative (temp) ids, using old-stage id to resolve index
+          set((curr) => {
+            const tt = curr.entities.tournamentTeams.slice().map((row) => {
+              let { stage_id, group_id } = row;
+
+              if (group_id != null && group_id < 0) {
+                const mapA = groupIdMapByOldStage[stage_id as number];
+                if (mapA && mapA[group_id]) {
+                  group_id = mapA[group_id];
+                } else if (stage_id && stage_id > 0) {
+                  const giBefore = before_groupIndexByStageAndId[stage_id]?.[group_id];
+                  if (typeof giBefore === "number") {
+                    const sIdx = (get().ids.stageIndexById as any)[stage_id];
+                    const newId = sIdx != null ? (get().ids.groupIdByStage as any)[sIdx]?.[giBefore] : undefined;
+                    if (newId) group_id = newId;
+                  }
                 }
               }
-            }
-            return { ...row, stage_id, group_id };
+              return { ...row, stage_id, group_id };
+            });
+            return { entities: { ...curr.entities, tournamentTeams: tt } };
           });
-          return { entities: { ...curr.entities, tournamentTeams: tt } };
-        });
+        }
       }
-    }
 
       /* -------- PHASE 3: tournamentTeams -------- */
       const st3 = get();

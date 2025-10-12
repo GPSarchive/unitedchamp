@@ -104,15 +104,15 @@ function computePointers(opts: {
   const { nodes, connections, meta } = opts;
   const hasMeta = (id: string) => !!meta[id];
   const { roundOf, posOf } = bucketRoundsByX(nodes);
-  const roundOfId = (id: string) => (hasMeta(id) ? meta[id].round : roundOf.get(id) ?? 1);
-  const posOfId = (id: string) => (hasMeta(id) ? meta[id].bracket_pos : posOf.get(id) ?? 1);
+  const roundOfId = (id: string) => (hasMeta(id) ? meta[id].round : (roundOf.get(id) ?? 1));
+  const posOfId = (id: string) => (hasMeta(id) ? meta[id].bracket_pos : (posOf.get(id) ?? 1));
 
   const incoming = new Map<string, Array<{ from: string; r: number; p: number }>>();
   connections.forEach(([from, to]) => {
     const rFrom = roundOfId(from);
     const pFrom = posOfId(from);
     const rTo = roundOfId(to);
-    if (rFrom !== rTo - 1) return; // only allow prev-round → next-round
+    if (rFrom !== rTo - 1) return; // only prev-round → next-round
     const list = incoming.get(to) ?? [];
     if (list.length < 2) list.push({ from, r: rFrom, p: pFrom });
     incoming.set(to, list);
@@ -126,6 +126,71 @@ function computePointers(opts: {
   }
 
   return { incoming, ptr };
+}
+
+/* ============================
+   Guardrails: sanitize connections (visual + persistence)
+   - Enforce: prevRound -> nextRound only
+   - Enforce: ≤ 2 parents per child
+   - Enforce: ≤ 1 child per parent (no fan-out)
+   - Drop self-loops and duplicates
+   ============================ */
+function sanitizeConnections(
+  cx: Connection[],
+  meta: Record<string, NodeMeta>
+): { cx: Connection[]; violations: string[] } {
+  const allowed: Connection[] = [];
+  const dedupe = new Set<string>();
+  const violations: string[] = [];
+
+  const hasMeta = (id: string) => !!meta[id];
+
+  // 1) Filter to edges with meta, no self-loops, strictly prev->next round
+  for (const [from, to] of cx) {
+    const key = `${from}→${to}`;
+    if (dedupe.has(key)) continue;
+    dedupe.add(key);
+
+    if (from === to) { violations.push(`Self-loop dropped: ${key}`); continue; }
+    if (!hasMeta(from) || !hasMeta(to)) { violations.push(`Missing meta: ${key}`); continue; }
+
+    const mFrom = meta[from];
+    const mTo   = meta[to];
+    if (mFrom.round !== mTo.round - 1) { violations.push(`Cross/skip round dropped: ${key}`); continue; }
+
+    allowed.push([from, to]);
+  }
+
+  // 2) ≤2 parents per child: keep 2 with lowest parent bracket_pos
+  const byTo = new Map<string, Array<{ from: string; to: string; fromPos: number }>>();
+  for (const [from, to] of allowed) {
+    const list = byTo.get(to) ?? [];
+    list.push({ from, to, fromPos: meta[from].bracket_pos });
+    byTo.set(to, list);
+  }
+  const cappedParents: Connection[] = [];
+  for (const [to, list] of byTo) {
+    const chosen = list.sort((a, b) => a.fromPos - b.fromPos).slice(0, 2);
+    if (list.length > 2) violations.push(`Too many parents for ${to}: kept 2, dropped ${list.length - 2}`);
+    for (const item of chosen) cappedParents.push([item.from, item.to]);
+  }
+
+  // 3) ≤1 child per parent (KO semantics): keep child with lowest bracket_pos
+  const byFrom = new Map<string, Array<{ from: string; to: string; toPos: number }>>();
+  for (const [from, to] of cappedParents) {
+    const list = byFrom.get(from) ?? [];
+    list.push({ from, to, toPos: meta[to].bracket_pos });
+    byFrom.set(from, list);
+  }
+
+  const result: Connection[] = [];
+  for (const [from, list] of byFrom) {
+    const chosen = list.sort((a, b) => a.toPos - b.toPos)[0];
+    if (list.length > 1) violations.push(`Fan-out from ${from}: kept ${chosen.to}, dropped ${list.length - 1} child link(s)`);
+    result.push([from, chosen.to]);
+  }
+
+  return { cx: result, violations };
 }
 
 /* ============================
@@ -150,7 +215,7 @@ export default function BracketCanvas({
   const stageIdByIndex  = useTournamentStore(selStageIdByIndex);
   const tournamentTeams = useTournamentStore(selTournamentTeams);
 
-  // Raw slices (stable selectors) + local merge so unsaved matches appear immediately
+  // Raw slices + local merge (show overlay without a save)
   const draftMatches   = useTournamentStore(selDraftMatches);
   const dbOverlayBySig = useTournamentStore(selDbOverlayBySig);
 
@@ -187,6 +252,7 @@ export default function BracketCanvas({
       .map((tt) => tt.team_id)
       .filter((id): id is number => typeof id === "number");
     if (ids.length) return ids as number[];
+    // fallback to provided map keys
     const maybes = Object.keys(teamsMap ?? {});
     const nums = maybes.map((k) => Number(k)).filter((n) => Number.isFinite(n)) as number[];
     return nums;
@@ -214,11 +280,17 @@ export default function BracketCanvas({
   const sigRef = useRef<{ n: string; c: string; m: string; t: string }>({ n: "", c: "", m: "", t: "" });
   const syncingRef = useRef(false); // true while we intentionally write to the store
 
+  // Authoring guard: read-only by default; enabling tools turns on writes
+  const [showTools, setShowTools] = useState<boolean>(false);
+  const [allowWrites, setAllowWrites] = useState<boolean>(false);
+
+  // Ignore the very first connections change after we set them from store
+  const skipNextConnectionsRef = useRef<boolean>(false);
+
   // design tools selection
   const [selA, setSelA] = useState<string>("");
   const [selB, setSelB] = useState<string>("");
   const [target, setTarget] = useState<string>("");
-  const [showTools, setShowTools] = useState<boolean>(false);
 
   const getTeamName = (id: number | null | undefined) => {
     if (id == null) return "TBD";
@@ -227,16 +299,15 @@ export default function BracketCanvas({
   };
 
   /* ============================
-     LOAD FROM STORE (draft + overlay)
+     LOAD FROM STORE (draft + overlay) — LISTEN ONLY
      ============================ */
   const loadFromStore = useCallback(() => {
-    // only KO rows with round/bracket_pos
     const stageRows = (rows ?? []).filter(
       (m) => (m.round ?? null) != null && (m.bracket_pos ?? null) != null
     );
 
     if (!stageRows.length) {
-      // visual starter
+      // visual starter only
       const A = nextId(), B = nextId(), C = nextId();
       const meta: Record<string, NodeMeta> = {
         [A]: { round: 1, bracket_pos: 1 },
@@ -260,6 +331,9 @@ export default function BracketCanvas({
       if (sigRef.current.c !== cSig) { setConnections(edges); sigRef.current.c = cSig; }
       if (sigRef.current.m !== mSig) { setNodeMeta(meta); sigRef.current.m = mSig; prevMetaRef.current = meta; }
       if (sigRef.current.t !== tSig) { setTeamsByNode(tbn); sigRef.current.t = tSig; }
+
+      // prevent the first onConnectionsChange from writing
+      skipNextConnectionsRef.current = true;
       return;
     }
 
@@ -297,7 +371,6 @@ export default function BracketCanvas({
       tbn[id] = { A: m.team_a_id ?? null, B: m.team_b_id ?? null };
     });
 
-    // signature-based setState (prevents useless local updates → effects)
     const nSig = JSON.stringify(nx.map(n => [n.id, n.x, n.y, n.w, n.h, n.label]));
     const cSig = JSON.stringify(edges);
     const mSig = JSON.stringify(meta);
@@ -307,16 +380,19 @@ export default function BracketCanvas({
     if (sigRef.current.c !== cSig) { setConnections(edges); sigRef.current.c = cSig; }
     if (sigRef.current.m !== mSig) { setNodeMeta(meta); sigRef.current.m = mSig; prevMetaRef.current = meta; }
     if (sigRef.current.t !== tSig) { setTeamsByNode(tbn); sigRef.current.t = tSig; }
+
+    // prevent the first onConnectionsChange from writing
+    skipNextConnectionsRef.current = true;
   }, [rows]);
 
-  // Reload canvas when merged rows change (skip during intentional writes)
+  // Reload canvas when merged rows change (pure read)
   useEffect(() => {
     if (syncingRef.current) return;
     loadFromStore();
   }, [loadFromStore]);
 
   /* ============================
-     finished detection from merged rows
+     finished detection from merged rows (read-only)
      ============================ */
   const finishedNodeIds = useMemo(() => {
     const done = new Set<string>();
@@ -335,8 +411,24 @@ export default function BracketCanvas({
   }, [rows]);
 
   /* ============================
-     Slot helpers (soft/hard)
+     Helpers
      ============================ */
+  const sameLink = (a?: { r: number; p: number } | null, b?: { r: number; p: number } | null) =>
+    (!a && !b) || (!!a && !!b && a.r === b.r && a.p === b.p);
+
+  function currentStoreLinksFor(r: number, p: number) {
+    const row = rowByNodeKey.get(`R${r}-B${p}`);
+    const home =
+      row?.home_source_round && row?.home_source_bracket_pos
+        ? { r: row.home_source_round, p: row.home_source_bracket_pos }
+        : null;
+    const away =
+      row?.away_source_round && row?.away_source_bracket_pos
+        ? { r: row.away_source_round, p: row.away_source_bracket_pos }
+        : null;
+    return { home, away };
+  }
+
   function ensureRowExists(r: number, p: number) {
     const stageRows = useTournamentStore.getState().draftMatches.filter((m) => m.stageIdx === stageIdx);
     const exists = stageRows.some((m) => m.round === r && m.bracket_pos === p);
@@ -363,6 +455,7 @@ export default function BracketCanvas({
   }
 
   function clearSlot(r: number, p: number) {
+    if (!allowWrites) return;
     syncingRef.current = true;
     setKOLink(stageIdx, { round: r, bracket_pos: p }, "home", null);
     setKOLink(stageIdx, { round: r, bracket_pos: p }, "away", null);
@@ -379,6 +472,7 @@ export default function BracketCanvas({
   }
 
   function hardDeleteSlotById(id: string) {
+    if (!allowWrites) return;
     const m = nodeMeta[id];
     if (!m) return;
     clearSlot(m.round, m.bracket_pos);
@@ -406,141 +500,7 @@ export default function BracketCanvas({
   }
 
   /* ============================
-     Helpers to compare links
-     ============================ */
-  const sameLink = (a?: { r: number; p: number } | null, b?: { r: number; p: number } | null) =>
-    (!a && !b) || (!!a && !!b && a.r === b.r && a.p === b.p);
-
-  function currentStoreLinksFor(r: number, p: number) {
-    const row = rowByNodeKey.get(`R${r}-B${p}`);
-    const home =
-      row?.home_source_round && row?.home_source_bracket_pos
-        ? { r: row.home_source_round, p: row.home_source_bracket_pos }
-        : null;
-    const away =
-      row?.away_source_round && row?.away_source_bracket_pos
-        ? { r: row.away_source_round, p: row.away_source_bracket_pos }
-        : null;
-    return { home, away };
-  }
-
-  /* ============================
-     Auto-sync canvas → store
-     ============================ */
-  // 1) When nodeMeta changes: ensure rows exist and move slots that changed
-  useEffect(() => {
-    const prev = prevMetaRef.current;
-    const curr = nodeMeta;
-
-    let moved = false;
-
-    Object.keys(curr).forEach((id) => {
-      const before = prev[id];
-      const after = curr[id];
-      ensureRowExists(after.round, after.bracket_pos);
-      if (before && (before.round !== after.round || before.bracket_pos !== after.bracket_pos)) {
-        syncingRef.current = true;
-        setKORoundPos(
-          stageIdx,
-          { round: before.round, bracket_pos: before.bracket_pos },
-          { round: after.round, bracket_pos: after.bracket_pos }
-        );
-        moved = true;
-      }
-    });
-
-    prevMetaRef.current = { ...curr };
-    if (moved) setTimeout(() => (syncingRef.current = false), 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeMeta, stageIdx]);
-
-  // 2) When connections change: rewrite KO pointers (home/away) — DIFF ONLY
-  useEffect(() => {
-    if (!Object.keys(nodeMeta).length) return;
-
-    // ensure all target rows exist before writing links
-    Object.values(nodeMeta).forEach(({ round, bracket_pos }) => ensureRowExists(round, bracket_pos));
-
-    const { ptr } = computePointers({ nodes, connections, meta: nodeMeta });
-
-    let changed = false;
-
-    Object.keys(nodeMeta).forEach((id) => {
-      const r = nodeMeta[id].round;
-      const p = nodeMeta[id].bracket_pos;
-
-      const nextHome = ptr[id]?.home ? { r: ptr[id]!.home!.r, p: ptr[id]!.home!.p } : null;
-      const nextAway = ptr[id]?.away ? { r: ptr[id]!.away!.r, p: ptr[id]!.away!.p } : null;
-
-      const { home: currHome, away: currAway } = currentStoreLinksFor(r, p);
-
-      if (!sameLink(currHome, nextHome)) {
-        syncingRef.current = true;
-        setKOLink(
-          stageIdx,
-          { round: r, bracket_pos: p },
-          "home",
-          nextHome ? { round: nextHome.r, bracket_pos: nextHome.p } : null,
-          "W"
-        );
-        changed = true;
-      }
-
-      if (!sameLink(currAway, nextAway)) {
-        syncingRef.current = true;
-        setKOLink(
-          stageIdx,
-          { round: r, bracket_pos: p },
-          "away",
-          nextAway ? { round: nextAway.r, bracket_pos: nextAway.p } : null,
-          "W"
-        );
-        changed = true;
-      }
-    });
-
-    if (changed) {
-      reindexKOPointers(stageIdx);
-      setTimeout(() => (syncingRef.current = false), 0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connections, nodes, nodeMeta, rowByNodeKey, stageIdx]);
-
-  // 3) When leaf team picks change: push A/B teams for leaves (diff only)
-  useEffect(() => {
-    if (!Object.keys(nodeMeta).length) return;
-
-    const incomingByLocal = new Map<string, string[]>();
-    for (const [from, to] of connections) {
-      incomingByLocal.set(to, [...(incomingByLocal.get(to) ?? []), from]);
-    }
-
-    let wrote = false;
-
-    Object.keys(nodeMeta).forEach((id) => {
-      const parents = incomingByLocal.get(id) ?? [];
-      if (parents.length > 0) return; // not a leaf
-
-      const picks = teamsByNode[id] ?? { A: null, B: null };
-      const meta = nodeMeta[id];
-      const row = rowByNodeKey.get(`R${meta.round}-B${meta.bracket_pos}`);
-
-      const currA = row?.team_a_id ?? null;
-      const currB = row?.team_b_id ?? null;
-
-      if (currA !== (picks.A ?? null) || currB !== (picks.B ?? null)) {
-        syncingRef.current = true;
-        setKOTeams(stageIdx, { round: meta.round, bracket_pos: meta.bracket_pos }, picks.A, picks.B);
-        wrote = true;
-      }
-    });
-
-    if (wrote) setTimeout(() => (syncingRef.current = false), 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamsByNode, nodeMeta, connections, rowByNodeKey, stageIdx]);
-
-  /* ============================
-     UI helpers
+     Node content (display-only)
      ============================ */
   const incomingBy = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -566,30 +526,25 @@ export default function BracketCanvas({
     [nodes, nodeMeta]
   );
 
+  // Only show an actual winner when winner_team_id exists (no BYE inference)
   const describeParent = useCallback(
     (srcId: string) => {
       const parentRow = rowByNodeKey.get(srcId);
-      const aId = parentRow?.team_a_id ?? teamsByNode[srcId]?.A ?? null;
-      const bId = parentRow?.team_b_id ?? teamsByNode[srcId]?.B ?? null;
-      if (aId || bId) {
-        return `W(${getTeamName(aId)} vs ${getTeamName(bId)})`;
+      if (parentRow?.winner_team_id != null) {
+        return `Winner: ${getTeamName(parentRow.winner_team_id)}`;
       }
       const m = nodeMeta[srcId];
       return m ? `Winner R${m.round}-B${m.bracket_pos}` : `Winner of ${srcId}`;
     },
-    [rowByNodeKey, teamsByNode, nodeMeta]
+    [rowByNodeKey, nodeMeta]
   );
 
   const linkLabel = (lp?: { r: number; p: number } | null) => (lp ? `W(R${lp.r}-B${lp.p})` : "—");
 
-  /* ============================
-     Node content
-     ============================ */
   const nodeContent = (n: NodeBox) => {
     const parents = incomingBy.get(n.id) ?? [];
     const row = rowByNodeKey.get(n.id);
 
-    // --- Resolve which sources feed this node (store → fallback to canvas connections) ---
     const meta = nodeMeta[n.id];
     const { home: storeHome, away: storeAway } = meta
       ? currentStoreLinksFor(meta.round, meta.bracket_pos)
@@ -606,21 +561,24 @@ export default function BracketCanvas({
     const connHome = connParents[0] ?? null;
     const connAway = connParents[1] ?? null;
 
-    // --- Display-side names: show exactly what we have (TBD vs TBD / Team A vs TBD / …) ---
+    // STRICT: do not infer BYE winners visually
+    const parentWinnerId = (src?: { r: number; p: number } | null): number | null => {
+      if (!src) return null;
+      const parentKey = `R${src.r}-B${src.p}`;
+      const parentRow = rowByNodeKey.get(parentKey);
+      return (parentRow?.winner_team_id ?? null) as number | null;
+    };
+
     const resolveSideName = (side: "home" | "away") => {
-      // Direct assignment wins
+      // If the child match has an explicit team id, show it.
       const directId = side === "home" ? (row?.team_a_id ?? null) : (row?.team_b_id ?? null);
       if (directId != null) return getTeamName(directId);
 
-      // Else, try winner from the sourced parent (store pointer first, then connection)
+      // Else, try the actual persisted winner from the sourced parent (no inference).
       const src = side === "home" ? (storeHome ?? connHome) : (storeAway ?? connAway);
-      if (src) {
-        const parentKey = `R${src.r}-B${src.p}`;
-        const parentRow = rowByNodeKey.get(parentKey);
-        if (parentRow?.winner_team_id != null) {
-          return getTeamName(parentRow.winner_team_id);
-        }
-      }
+      const w = parentWinnerId(src);
+      if (w != null) return getTeamName(w);
+
       return "TBD";
     };
 
@@ -648,7 +606,6 @@ export default function BracketCanvas({
       return st === "finished" || typeof a === "number" || typeof b === "number" || w != null;
     })();
 
-    // store vs connections, show if mismatched (helps authors avoid bad saves)
     const sameHome = sameLink(storeHome, connHome);
     const sameAway = sameLink(storeAway, connAway);
 
@@ -687,13 +644,15 @@ export default function BracketCanvas({
               className="rounded px-1.5 py-0.5 text-[10px] border border-white/15 bg-white/5 hover:bg-white/10"
               onClick={(e) => { e.stopPropagation(); clearSlotById(n.id); }}
               title="Clear match (keep slot)"
+              disabled={!allowWrites}
             >
               Clear
             </button>
             <button
-              className="rounded px-1.5 py-0.5 text-[10px] border border-rose-400/40 text-rose-200 hover:bg-rose-500/10"
+              className="rounded px-1.5 py-0.5 text-[10px] border border-rose-400/40 text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
               onClick={(e) => { e.stopPropagation(); hardDeleteSlotById(n.id); }}
               title="Remove slot"
+              disabled={!allowWrites}
             >
               Remove
             </button>
@@ -731,7 +690,7 @@ export default function BracketCanvas({
   };
 
   /* ============================
-     Design helpers
+     Design helpers (user actions WRITE here)
      ============================ */
   function firstFreePos(round: number) {
     const used = new Set(Object.values(nodeMeta).filter((m) => m.round === round).map((m) => m.bracket_pos));
@@ -740,11 +699,11 @@ export default function BracketCanvas({
     return p;
   }
 
-  // NEW: ensure store row immediately on add
   function addFirstRoundMatch() {
+    if (!allowWrites) return;
     const round = 1;
     const bracket_pos = firstFreePos(round);
-    ensureRowExists(round, bracket_pos); // create in store now
+    ensureRowExists(round, bracket_pos);
 
     const colW = 240, rowH = 130, x0 = 60, y0 = 60;
     const id = nextId();
@@ -752,17 +711,15 @@ export default function BracketCanvas({
     const y = (bracket_pos - 1) * rowH + y0;
 
     setNodes((prev) => [...prev, { id, x, y, w: 220, h: 120, label: `R${round} • Pos ${bracket_pos}` }]);
-    setNodeMeta((prev) => ({ ...prev, [id]: { round, bracket_pos } })); // effect will keep store synced
+    setNodeMeta((prev) => ({ ...prev, [id]: { round, bracket_pos } }));
   }
 
-  // NEW: write links to the store immediately after creating a child
   function writeLinksForChild(round: number, bracket_pos: number, parentA: NodeMeta, parentB: NodeMeta) {
-    // guarantee rows
+    if (!allowWrites) return;
     ensureRowExists(round, bracket_pos);
     ensureRowExists(parentA.round, parentA.bracket_pos);
     ensureRowExists(parentB.round, parentB.bracket_pos);
 
-    // order parents by bracket_pos to map → home, away
     const [homeP, awayP] =
       parentA.bracket_pos <= parentB.bracket_pos ? [parentA, parentB] : [parentB, parentA];
 
@@ -773,12 +730,19 @@ export default function BracketCanvas({
     setTimeout(() => (syncingRef.current = false), 0);
   }
 
+  // STRICT: block illegal wiring when auto-creating a child
   function addChildFromTwoParents() {
+    if (!allowWrites) return;
     if (!selA || !selB || selA === selB) return;
     const A = nodeMeta[selA];
     const B = nodeMeta[selB];
     if (!A || !B) return;
     if (A.round !== B.round) { alert("Parents must be in the same round."); return; }
+
+    // Fan-out guard: a KO match can feed only one child
+    const fanOutA = connections.some(([from, to]) => from === selA);
+    const fanOutB = connections.some(([from, to]) => from === selB);
+    if (fanOutA || fanOutB) { alert("Each parent may feed only one child in a KO bracket."); return; }
 
     const round = A.round + 1;
     const base = Math.min(A.bracket_pos, B.bracket_pos);
@@ -789,17 +753,17 @@ export default function BracketCanvas({
     const x = (round - 1) * colW + x0;
     const y = (bracket_pos - 1) * rowH + y0;
 
-    // UI
     setNodes((prev) => [...prev, { id, x, y, w: 220, h: 120, label: `R${round} • Pos ${bracket_pos}` }]);
     setNodeMeta((prev) => ({ ...prev, [id]: { round, bracket_pos } }));
     setConnections((prev) => [...prev, [selA, id], [selB, id]]);
     setTarget(id);
 
-    // Store: create row + write links now
     writeLinksForChild(round, bracket_pos, A, B);
   }
 
+  // STRICT: block fan-out, cross/skip round, and 3rd parent
   function connectParentsToTarget() {
+    if (!allowWrites) return;
     if (!target) return;
     const tMeta = nodeMeta[target];
     if (!tMeta) return;
@@ -815,25 +779,29 @@ export default function BracketCanvas({
         alert("Each parent must be in the previous round of the target.");
         return;
       }
+      // Fan-out guard: parent cannot already feed a different child
+      const existingOtherChild = connections.some(([f, to]) => f === from && to !== target);
+      if (existingOtherChild) {
+        alert("A parent may feed only one child in a KO bracket.");
+        return;
+      }
     }
     const already = connections.filter(([, to]) => to === target).length;
     if (already + conns.length > 2) { alert("A KO match can have at most 2 parents."); return; }
 
-    // UI
     setConnections((prev) => [...prev, ...conns]);
 
-    // Store: write links immediately (order by bracket_pos)
     const parents = conns.map(([from]) => nodeMeta[from]!).sort((a, b) => a.bracket_pos - b.bracket_pos);
-    const [pA, pB] = [parents[0], parents[1] ?? parents[0]]; // if only one, use it as home
+    const [pA, pB] = [parents[0], parents[1] ?? parents[0]];
     writeLinksForChild(tMeta.round, tMeta.bracket_pos, pA, pB);
   }
 
   function reflowFromMeta() {
-    const colW = 240, rowH = 130, x0 = 60, y0 = 60;
     setNodes((prev) =>
       prev.map((n) => {
         const m = nodeMeta[n.id];
         if (!m) return n;
+        const colW = 240, rowH = 130, x0 = 60, y0 = 60;
         return {
           ...n,
           x: (m.round - 1) * colW + x0,
@@ -843,6 +811,131 @@ export default function BracketCanvas({
       })
     );
   }
+
+  /* ============================
+     WRITE only in handlers (guarded)
+     ============================ */
+  const handleConnectionsChange = (cx: Connection[]) => {
+    // Sanitize first so illegal wires never "stick" visually.
+    const { cx: safeCx, violations } = sanitizeConnections(cx, nodeMeta);
+
+    // Reflect sanitized graph immediately
+    setConnections(safeCx);
+
+    // Surface issues (swap to toast/snackbar in your app if desired)
+    if (violations.length) {
+      // eslint-disable-next-line no-console
+      console.warn("[Bracket] connections sanitized:", violations);
+      // Or: alert(violations.join("\n"));
+    }
+
+    // Skip the very first call that follows a store-driven load,
+    // and never write if authoring is disabled.
+    if (skipNextConnectionsRef.current) {
+      skipNextConnectionsRef.current = false;
+      return;
+    }
+    if (!allowWrites) return;
+    if (!Object.keys(nodeMeta).length) return;
+
+    // compute intended pointers from the sanitized connections
+    const { ptr } = computePointers({ nodes, connections: safeCx, meta: nodeMeta });
+
+    let changed = false;
+    Object.keys(nodeMeta).forEach((id) => {
+      const r = nodeMeta[id].round;
+      const p = nodeMeta[id].bracket_pos;
+
+      const nextHome = ptr[id]?.home ? { r: ptr[id]!.home!.r, p: ptr[id]!.home!.p } : null;
+      const nextAway = ptr[id]?.away ? { r: ptr[id]!.away!.r, p: ptr[id]!.away!.p } : null;
+
+      ensureRowExists(r, p);
+      if (nextHome) ensureRowExists(nextHome.r, nextHome.p);
+      if (nextAway) ensureRowExists(nextAway.r, nextAway.p);
+
+      const { home: currHome, away: currAway } = currentStoreLinksFor(r, p);
+
+      if (!sameLink(currHome, nextHome)) {
+        syncingRef.current = true;
+        setKOLink(
+          stageIdx,
+          { round: r, bracket_pos: p },
+          "home",
+          nextHome ? { round: nextHome.r, bracket_pos: nextHome.p } : null,
+          "W"
+        );
+        changed = true;
+      }
+      if (!sameLink(currAway, nextAway)) {
+        syncingRef.current = true;
+        setKOLink(
+          stageIdx,
+          { round: r, bracket_pos: p },
+          "away",
+          nextAway ? { round: nextAway.r, bracket_pos: nextAway.p } : null,
+          "W"
+        );
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      reindexKOPointers(stageIdx);
+      setTimeout(() => (syncingRef.current = false), 0);
+    }
+  };
+
+  const handleApplyPos = (id: string) => {
+    if (!allowWrites) return;
+    const m = nodeMeta[id];
+    if (!m) return;
+    const prev = prevMetaRef.current[id];
+    prevMetaRef.current = { ...nodeMeta };
+
+    // move in store only when Apply is pressed
+    if (prev && (prev.round !== m.round || prev.bracket_pos !== m.bracket_pos)) {
+      ensureRowExists(prev.round, prev.bracket_pos);
+      ensureRowExists(m.round, m.bracket_pos);
+      syncingRef.current = true;
+      setKORoundPos(
+        stageIdx,
+        { round: prev.round, bracket_pos: prev.bracket_pos },
+        { round: m.round, bracket_pos: m.bracket_pos }
+      );
+      setTimeout(() => (syncingRef.current = false), 0);
+    }
+
+    const colW = 240, rowH = 130, x0 = 60, y0 = 60;
+    setNodes((prevNodes) =>
+      prevNodes.map((nb) =>
+        nb.id === id
+          ? { ...nb, x: (m.round - 1) * colW + x0, y: (m.bracket_pos - 1) * rowH + y0, label: `R${m.round} • Pos ${m.bracket_pos}` }
+          : nb
+      )
+    );
+  };
+
+  const handleTeamChange = (nodeId: string, side: "A" | "B", value: string) => {
+    const idNum = value ? Number(value) : null;
+    setTeamsByNode((prev) => {
+      const next = { ...(prev[nodeId] ?? { A: null, B: null }), [side]: idNum } as { A: number | null; B: number | null };
+      // persist immediately if leaf and authoring allowed
+      if (allowWrites) {
+        const parents: string[] = [];
+        connections.forEach(([from, to]) => { if (to === nodeId) parents.push(from); });
+        if (parents.length === 0) {
+          const meta = nodeMeta[nodeId];
+          if (meta) {
+            ensureRowExists(meta.round, meta.bracket_pos);
+            syncingRef.current = true;
+            setKOTeams(stageIdx, { round: meta.round, bracket_pos: meta.bracket_pos }, next.A, next.B);
+            setTimeout(() => (syncingRef.current = false), 0);
+          }
+        }
+      }
+      return { ...prev, [nodeId]: next };
+    });
+  };
 
   /* ============================
      UI
@@ -860,17 +953,24 @@ export default function BracketCanvas({
 
         <button
           className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
-          onClick={() => setShowTools((s) => !s)}
+          onClick={() => {
+            setShowTools((s) => {
+              const next = !s;
+              setAllowWrites(next); // writes only when tools are visible
+              return next;
+            });
+          }}
           title="Show/hide knockout designer tools"
         >
-          {showTools ? "Hide design tools" : "Design tools"}
+          {showTools ? "Hide design tools (writing enabled)" : "Design tools (enable writing)"}
         </button>
 
         {showTools && (
           <button
-            className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+            className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
             onClick={addFirstRoundMatch}
             title="Create a new Round 1 slot and persist it in the store"
+            disabled={!allowWrites}
           >
             + Add 1st-round match
           </button>
@@ -907,9 +1007,10 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
                 onClick={addChildFromTwoParents}
                 title="Create child in next round and connect both parents (and persist links)"
+                disabled={!allowWrites}
               >
                 + Child of A & B
               </button>
@@ -929,9 +1030,10 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
                 onClick={connectParentsToTarget}
                 title="Connect selected parent(s) to target (and persist links)"
+                disabled={!allowWrites}
               >
                 Connect → Target
               </button>
@@ -952,8 +1054,8 @@ export default function BracketCanvas({
       <BracketEditor
         nodes={nodes}
         connections={connections}
-        onNodesChange={(nx) => setNodes(nx)}
-        onConnectionsChange={setConnections}
+        onNodesChange={setNodes}
+        onConnectionsChange={handleConnectionsChange}
         nodeContent={nodeContent}
         isFinished={(id) => finishedNodeIds.has(id)}
         snap={10}
@@ -983,12 +1085,8 @@ export default function BracketCanvas({
                 <select
                   className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
                   value={teamsByNode[n.id]?.A ?? ""}
-                  onChange={(e) =>
-                    setTeamsByNode((prev) => ({
-                      ...prev,
-                      [n.id]: { ...(prev[n.id] ?? { A: null, B: null }), A: e.target.value ? Number(e.target.value) : null },
-                    }))
-                  }
+                  onChange={(e) => handleTeamChange(n.id, "A", e.target.value)}
+                  disabled={!allowWrites}
                 >
                   <option value="">— Team A —</option>
                   {participantIds.map((id) => (
@@ -1001,12 +1099,8 @@ export default function BracketCanvas({
                 <select
                   className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
                   value={teamsByNode[n.id]?.B ?? ""}
-                  onChange={(e) =>
-                    setTeamsByNode((prev) => ({
-                      ...prev,
-                      [n.id]: { ...(prev[n.id] ?? { A: null, B: null }), B: e.target.value ? Number(e.target.value) : null },
-                    }))
-                  }
+                  onChange={(e) => handleTeamChange(n.id, "B", e.target.value)}
+                  disabled={!allowWrites}
                 >
                   <option value="">— Team B —</option>
                   {participantIds.map((id) => (
@@ -1043,19 +1137,9 @@ export default function BracketCanvas({
                   title="Bracket position"
                 />
                 <button
-                  className="px-2 py-1 rounded border border-white/15 text-xs hover:bg-white/10"
-                  onClick={() => {
-                    const m = nodeMeta[n.id];
-                    if (!m) return;
-                    const colW = 240, rowH = 130, x0 = 60, y0 = 60;
-                    setNodes((prev) =>
-                      prev.map((nb) =>
-                        nb.id === n.id
-                          ? { ...nb, x: (m.round - 1) * colW + x0, y: (m.bracket_pos - 1) * rowH + y0, label: `R${m.round} • Pos ${m.bracket_pos}` }
-                          : nb
-                      )
-                    );
-                  }}
+                  className="px-2 py-1 rounded border border-white/15 text-xs hover:bg-white/10 disabled:opacity-50"
+                  onClick={() => handleApplyPos(n.id)}
+                  disabled={!allowWrites}
                 >
                   Apply pos
                 </button>

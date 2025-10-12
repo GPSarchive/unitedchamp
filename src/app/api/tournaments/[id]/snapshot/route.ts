@@ -6,12 +6,16 @@ import type { FullTournamentSnapshot } from "@/app/dashboard/tournaments/Tournam
 /** Avoid ISR here; editor needs fresh reads */
 export const dynamic = "force-dynamic";
 
+type Params = { id: string };
+
 export async function GET(
   _req: Request,
-  ctx: { params: { id: string } }
+  { params }: { params: Promise<Params> }
 ) {
-  const id = Number(ctx.params.id);
-  if (!Number.isFinite(id)) {
+  // Next.js App Router: params is async; await it before use
+  const { id } = await params;
+  const num = Number(id);
+  if (!Number.isFinite(num)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
@@ -19,7 +23,7 @@ export async function GET(
   const { data: t, error: tErr } = await supabaseAdmin
     .from("tournaments")
     .select("id,name,slug,format,season")
-    .eq("id", id)
+    .eq("id", num)
     .single();
 
   if (tErr || !t) {
@@ -30,7 +34,7 @@ export async function GET(
   const { data: stages, error: sErr } = await supabaseAdmin
     .from("tournament_stages")
     .select("id,tournament_id,name,kind,ordering,config")
-    .eq("tournament_id", id)
+    .eq("tournament_id", num)
     .order("ordering", { ascending: true });
 
   if (sErr) {
@@ -63,7 +67,7 @@ export async function GET(
       away_source_round, away_source_bracket_pos,
       updated_at
     `)
-    .eq("tournament_id", id)
+    .eq("tournament_id", num)
     .order("round", { ascending: true, nullsFirst: true })
     .order("bracket_pos", { ascending: true, nullsFirst: true })
     .order("matchday", { ascending: true, nullsFirst: true })
@@ -77,7 +81,7 @@ export async function GET(
   const { data: tournamentTeams, error: pErr } = await supabaseAdmin
     .from("tournament_teams")
     .select("id,tournament_id,team_id,stage_id,group_id,seed")
-    .eq("tournament_id", id);
+    .eq("tournament_id", num);
 
   if (pErr) {
     return NextResponse.json({ error: pErr.message }, { status: 500 });

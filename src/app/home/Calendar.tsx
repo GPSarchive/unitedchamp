@@ -1,4 +1,3 @@
-
 /* =========================
    Client Calendar component
    ========================= */
@@ -12,7 +11,7 @@
    import interactionPlugin from '@fullcalendar/interaction';
    import { supabase } from '@/app/lib/supabase/supabaseClient';
    import { ChevronLeft, ChevronRight, RotateCw, CalendarDays as LCDays } from 'lucide-react';
-   import EventPill from './EventPill';
+   import EventPillShrimp from './EventPillShrimp';
    import '@/styles/fullcalendar-overrides.css';
    import { motion, AnimatePresence } from 'framer-motion';
    
@@ -237,11 +236,49 @@
      const [error, setError] = useState<string | null>(null);
      const [title, setTitle] = useState<string>('');
      const [canGoPrev, setCanGoPrev] = useState<boolean>(false);
+   
+     // ===== Mobile brightness variables =====
+     const [mobileVars, setMobileVars] = useState({
+       headerAlpha: 1,      // 0..1
+       headerBrightness: 1, // 0.8..1.2
+       topbarBg: 0.04,      // 0..0.3
+       topbarBlurPx: 0      // px
+     });
+     type Preset = 'dim' | 'normal' | 'bright';
+     const applyMobilePreset = (p: Preset) => {
+       if (p === 'dim') {
+         setMobileVars({ headerAlpha: 1, headerBrightness: 0.9, topbarBg: 0.08, topbarBlurPx: 0 });
+       } else if (p === 'bright') {
+         setMobileVars({ headerAlpha: 1, headerBrightness: 1.1, topbarBg: 0.0, topbarBlurPx: 0 });
+       } else {
+         setMobileVars({ headerAlpha: 1, headerBrightness: 1.0, topbarBg: 0.04, topbarBlurPx: 0 });
+       }
+     };
+   
      const calendarRef = useRef<FullCalendar>(null);
+     const scopeRef = useRef<HTMLDivElement>(null);
+     const [headerH, setHeaderH] = useState(0);
    
      useEffect(() => {
        setEvents(collapseOverlapsToCompositeEvents(mapIncomingEvents(initialEvents)));
      }, [initialEvents]);
+   
+     // Measure FullCalendar day-header height and keep overlays below it
+     useEffect(() => {
+       const measure = () => {
+         const header = scopeRef.current?.querySelector('.fc .fc-col-header') as HTMLElement | null;
+         setHeaderH(header?.offsetHeight ?? 0);
+       };
+       measure();
+   
+       const ro = new ResizeObserver(measure);
+       if (scopeRef.current) ro.observe(scopeRef.current);
+       window.addEventListener('resize', measure);
+       return () => {
+         ro.disconnect();
+         window.removeEventListener('resize', measure);
+       };
+     }, []);
    
      const fetchFromMatches = useCallback(async () => {
        if (!fetchFromDb) return;
@@ -305,27 +342,39 @@
        }> | undefined;
    
        if (items && items.length) {
-         const EventPillAny = EventPill as any;
-         return <EventPillAny items={items} />;
+         return <EventPillShrimp items={items} />;
        }
    
-       const ext = eventInfo.event.extendedProps as {
-         teams?: [string, string];
-         logos?: [string, string];
-       };
-       // @ts-ignore old signature support
-       return <EventPill timeText={eventInfo.timeText} teams={ext?.teams} logos={ext?.logos} />;
+       const ext = eventInfo.event.extendedProps as { teams?: [string, string]; logos?: [string, string] };
+       return (
+         <EventPillShrimp
+           items={[{
+             id: String(eventInfo.event.id),
+             title: eventInfo.event.title,
+             start: String(eventInfo.event.startStr),
+             end: String(eventInfo.event.endStr ?? eventInfo.event.startStr),
+             teams: ext?.teams,
+             logos: ext?.logos,
+           }]}
+         />
+       );
      };
    
      return (
        <div
-         className={`${className ?? ''} overflow-hidden border border-black shadow-black shadow-xl
-                     bg-zinc-950 bg-gradient-to-br bg-black text-white`}
+         className={`${className ?? ''} overflow-hidden border border-black shadow-black shadow-xl bg-zinc-950 bg-gradient-to-br bg-black text-white`}
+         style={{
+           // Mobile-tunable CSS variables
+           ['--m-header-alpha' as any]: String(mobileVars.headerAlpha),
+           ['--m-header-brightness' as any]: String(mobileVars.headerBrightness),
+           ['--m-topbar-bg' as any]: String(mobileVars.topbarBg),
+           ['--m-topbar-blur' as any]: `${mobileVars.topbarBlurPx}px`,
+         }}
        >
-         {/* ======= Custom Glass Header ======= */}
-         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 backdrop-blur-md bg-gradient-to-b from-black/10 to-zinc-900/60 p-4 shadow-inner border-zinc">
+         {/* ======= Top bar (force above everything) ======= */}
+         <div className="calendar-topbar relative z-[80] grid grid-cols-[1fr_auto_1fr] items-center gap-4 backdrop-blur bg-gradient-to-b from-black/0 to-zinc-900/10 p-4 shadow-inner">
            <div className="flex items-center gap-3">
-             <div className="p-2 rounded-lg bg-transparent border border-black-400/10">
+             <div className="p-2 rounded-lg bg-transparent border border-white/10">
                <LCDays className="h-5 w-5 text-white" />
              </div>
              <h2 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide drop-shadow-md bg-white text-transparent bg-clip-text select-none">
@@ -361,8 +410,37 @@
            </div>
    
            <div className="flex items-center gap-3 justify-self-end">
+             {/* Right-side title (desktop) */}
              <div className="text-sm text-white/80 font-medium select-none hidden sm:block">
                {title}
+             </div>
+   
+             {/* Mobile brightness controls */}
+             <div className="sm:hidden flex items-center gap-1">
+               <button
+                 onClick={() => applyMobilePreset('dim')}
+                 className="px-2 py-1 text-xs rounded-full border border-white/20 bg-black/40"
+                 aria-label="Dim headers"
+                 title="Dim headers"
+               >
+                 Aa−
+               </button>
+               <button
+                 onClick={() => applyMobilePreset('normal')}
+                 className="px-2 py-1 text-xs rounded-full border border-white/20 bg-black/40"
+                 aria-label="Normal headers"
+                 title="Normal headers"
+               >
+                 Aa
+               </button>
+               <button
+                 onClick={() => applyMobilePreset('bright')}
+                 className="px-2 py-1 text-xs rounded-full border border-white/20 bg-black/40"
+                 aria-label="Bright headers"
+                 title="Bright headers"
+               >
+                 Aa+
+               </button>
              </div>
            </div>
          </div>
@@ -374,16 +452,22 @@
            </div>
          )}
    
-         {/* ======= Calendar container (responsive height) ======= */}
-         <div className="relative overflow-hidden shadow-2xl bg-gradient-to-b from-emerald-950 via-black to-emerald-950 fc-scope">
-           {/* Loading overlay (can cover grid; header will sit above via CSS below) */}
+         {/* ======= Calendar container (white on mobile; gradient only ≥ sm) ======= */}
+         <div
+           ref={scopeRef}
+           className="relative isolate overflow-hidden shadow-2xl fc-scope bg-white sm:bg-gradient-to-b sm:from-emerald-950 sm:via-black sm:to-emerald-950"
+         >
+           {/* Loading overlay — starts BELOW the day headers */}
            {loading && (
-             <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 backdrop-blur-md">
-               <RotateCw className="h-12 w-12 animate-spin text-white-400" />
+             <div
+               className="pointer-events-none absolute left-0 right-0 bottom-0 z-20 flex items-center justify-center bg-black/30"
+               style={{ top: headerH }}
+             >
+               <RotateCw className="h-12 w-12 animate-spin text-white/70" />
              </div>
            )}
    
-           {/* Empty state overlay */}
+           {/* Empty state overlay — also BELOW the day headers */}
            <AnimatePresence>
              {!loading && events.length === 0 && (
                <motion.div
@@ -391,22 +475,21 @@
                  animate={{ opacity: 1, scale: 1 }}
                  exit={{ opacity: 0, scale: 0.95 }}
                  transition={{ duration: 0.3 }}
-                 className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3"
+                 className="absolute left-0 right-0 bottom-0 z-10 flex flex-col items-center justify-center gap-3"
+                 style={{ top: headerH }}
                >
-                 <div className="h-14 w-14 rounded-full border border-white-400/10 bg-black backdrop-blur-sm flex items-center justify-center">
-                   <LCDays className="h-7 w-7 text-white-400/80" />
+                 <div className="h-14 w-14 rounded-full border border-black/10 bg-black/80 flex items-center justify-center">
+                   <LCDays className="h-7 w-7 text-white/90" />
                  </div>
-                 <p className="text-white/80 font-semibold">No matches scheduled for this view</p>
-                 <p className="text-white/50 text-sm">Try a different week or click Refresh.</p>
+                 <p className="text-black/70 font-semibold">No matches scheduled for this view</p>
+                 <p className="text-black/50 text-sm">Try a different week or click Refresh.</p>
                </motion.div>
              )}
            </AnimatePresence>
    
            {/* >>> Responsive height + horizontal scroll on mobile <<< */}
            <div className="h-[60vh] sm:h-[68vh] md:h-[74vh] lg:h-[80vh] xl:h-[86vh]">
-             {/* On <640px, enable horizontal scroll. On ≥640px, let it behave normally */}
              <div className="overflow-x-auto sm:overflow-x-visible h-full">
-               {/* Give the calendar a min width on mobile so it doesn't squash */}
                <div className="min-w-[900px] sm:min-w-0 h-full">
                  <FullCalendar
                    ref={calendarRef}
@@ -451,33 +534,37 @@
            </div>
          </div>
    
-         {/* SCOPED FIX: keep day headers above overlays & make them opaque */}
+         {/* SCOPED FIX: keep day headers on top & fully opaque (with mobile tuning) */}
          <style jsx global>{`
            /* Only affects calendars inside .fc-scope wrapper */
            .fc-scope .fc .fc-col-header,
            .fc-scope .fc .fc-col-header-cell,
            .fc-scope .fc .fc-scrollgrid-section-header {
              position: sticky;
-             background-color: rgba(255, 255, 255, 0.9) !important; /* opaque-ish so no dimming */
+             top: 0;
+             background-color: #ffffff !important; /* Desktop default: solid white */
              backdrop-filter: none !important;
-             z-index: 3; /* ensure above overlays while scrolling */
+             z-index: 60 !important; /* above overlays (z-20/10) */
            }
-           /* Ensure header cell content remains readable */
            .fc-scope .fc .fc-col-header-cell-cushion {
-             color: #e5e7eb; /* Tailwind zinc-200-ish */
+             color: #111827; /* gray-900 */
              font-weight: 800;
              letter-spacing: 0.02em;
            }
    
-           /* Optional: tighter headers on very small screens */
-           @media (max-width: 640px) {
-             .fc-scope .fc .fc-col-header-cell-cushion {
-               font-weight: 700;
-               letter-spacing: 0;
-               font-size: 0.9rem;
+           /* iOS/Safari stacking fix: promote sticky headers to their own layer */
+           @supports (-webkit-touch-callout: none) {
+             .fc-scope .fc .fc-col-header,
+             .fc-scope .fc .fc-scrollgrid-section-header {
+               transform: translateZ(0);
+               -webkit-transform: translateZ(0);
+               will-change: transform;
              }
            }
+   
+           
          `}</style>
        </div>
      );
    }
+   

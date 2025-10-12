@@ -14,7 +14,7 @@ import InlineMatchPlanner from "../preview/InlineMatchPlanner";
 import type { StageConfig } from "@/app/lib/types";
 import { computeGroupsSignature } from "@/app/dashboard/tournaments/TournamentCURD/util/groupsSignature";
 
-// ✅ store
+// ✅ store (make sure this import path matches everywhere)
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 // ----------------- Helpers -----------------
@@ -64,9 +64,13 @@ export default function StageCard({
   allStages: NewTournamentPayload["stages"];
   teams: TeamDraft[];
 }) {
-  // ---- store-backed matches (no props) ----
+  // ---- store slices ----
   const draftMatches = useTournamentStore((s) => s.draftMatches);
   const replaceAllDraftMatches = useTournamentStore((s) => s.replaceAllDraftMatches);
+  const stageIdByIndex = useTournamentStore((s) => s.ids.stageIdByIndex);
+  const stageIndexById = useTournamentStore((s) => s.ids.stageIndexById);
+  const stagesById = useTournamentStore((s) => s.entities.stagesById);
+
   const onDraftChange = (next: any[]) => replaceAllDraftMatches(next as any);
 
   const stage = value as any;
@@ -78,6 +82,53 @@ export default function StageCard({
   const isGroups = stage.kind === "groups";
   const isLeague = stage.kind === "league";
 
+  // ---------- Pick an effective stageIdx based on the STORE ----------
+  const payloadStageId = (allStages as any)?.[index]?.id as number | undefined;
+
+  const matchesPerIdx = useMemo(() => {
+    const map = new Map<number, number>();
+    draftMatches.forEach((m) => {
+      const si = (m.stageIdx ?? -1) as number;
+      if (si >= 0) map.set(si, (map.get(si) ?? 0) + 1);
+    });
+    return map;
+  }, [draftMatches]);
+
+  const effectiveStageIdx = useMemo(() => {
+    const preferred = payloadStageId != null ? stageIndexById[payloadStageId] : undefined;
+    const preferIdx =
+      typeof preferred === "number" && (matchesPerIdx.get(preferred) ?? 0) > 0
+        ? preferred
+        : undefined;
+    if (preferIdx != null) return preferIdx;
+    if ((matchesPerIdx.get(index) ?? 0) > 0) return index;
+
+    // match by kind if possible
+    const kindAt = (idx: number) => {
+      const sid = stageIdByIndex[idx];
+      return sid ? (stagesById as any)[sid]?.kind : undefined;
+    };
+    const wantKind = kindAt(typeof preferred === "number" ? preferred : index);
+
+    let best: number | undefined;
+    let bestCount = -1;
+    matchesPerIdx.forEach((count, idx) => {
+      if (!count) return;
+      if (wantKind && kindAt(idx) !== wantKind) return;
+      if (count > bestCount) {
+        bestCount = count;
+        best = idx;
+      }
+    });
+    if (best != null) return best;
+
+    // last resort
+    for (const [idx, count] of matchesPerIdx.entries()) {
+      if (count > 0) return idx;
+    }
+    return typeof preferred === "number" ? preferred : index;
+  }, [payloadStageId, stageIndexById, stageIdByIndex, stagesById, index, matchesPerIdx]);
+
   // ----- Intake mode toggle (KO → Groups) -----
   const intakeEnabled =
     Number.isFinite((cfg as any)?.from_knockout_stage_idx as any) &&
@@ -88,13 +139,13 @@ export default function StageCard({
     const ids = new Set<number>();
     teams.forEach((t) => ids.add(t.id));
     draftMatches
-      .filter((m) => m.stageIdx === index)
+      .filter((m) => m.stageIdx === effectiveStageIdx)
       .forEach((m) => {
         if (m.team_a_id != null) ids.add(m.team_a_id as number);
         if (m.team_b_id != null) ids.add(m.team_b_id as number);
       });
     return Array.from(ids.values());
-  }, [teams, draftMatches, index]);
+  }, [teams, draftMatches, effectiveStageIdx]);
 
   const [catalog, setCatalog] = useState<Record<number, CatalogRow>>({});
 
@@ -233,7 +284,7 @@ export default function StageCard({
     <div className="rounded-lg border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-3 space-y-4">
       {/* Actions */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-white/70">Στάδιο #{index + 1}</div>
+        <div className="text-sm text-white/70">Στάδιο #{effectiveStageIdx + 1}</div>
         <div className="flex gap-2">
           <button
             onClick={onMoveUp}
@@ -344,10 +395,8 @@ export default function StageCard({
 
       {isKnockout && (
         <KnockoutBoard
-          stageIdx={index}
+          stageIdx={effectiveStageIdx}   
           teamsMap={teamsMap}
-    
-
         />
       )}
 
@@ -355,8 +404,7 @@ export default function StageCard({
       <InlineMatchPlanner
         miniPayload={newMiniPayload(allStages, teams)}
         teams={teams}
-        // store-backed
-        forceStageIdx={index}
+        forceStageIdx={effectiveStageIdx} 
       />
 
       {/* Config: Groups (incl. KO → Groups intake) */}

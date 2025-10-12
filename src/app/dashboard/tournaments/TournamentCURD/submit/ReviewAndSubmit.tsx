@@ -215,11 +215,20 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
 ----------------------------------------------------------------- */
 const selectBusy = (s: any) => s.busy as boolean;
 const selectSaveAll = (s: any) => s.saveAll as () => Promise<void>;
-const selectSeedFromWizard = (s: any) => s.seedFromWizard as
-  | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
-  | undefined;
+const selectSeedFromWizard = (s: any) =>
+  s.seedFromWizard as
+    | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
+    | undefined;
 const selectAnyDirty = (s: any) => {
-  const d = s.dirty ?? {};
+  const d = (s.dirty ?? {}) as {
+    tournament?: boolean;
+    stages?: boolean;
+    groups?: boolean;
+    tournamentTeams?: boolean;
+    intakeMappings?: boolean;
+    matches?: Set<any>;
+    stageSlots?: Set<any>;
+  };
   return Boolean(
     d.tournament ||
       d.stages ||
@@ -298,20 +307,24 @@ export default function ReviewAndSubmit({
             })()
           )) as unknown as CreateTournamentResult;
 
-          if (!raw || raw.ok === false) {
+          if (!raw || (raw as any).ok === false) {
             setError(
-              raw && "error" in raw ? raw.error || "Failed to create tournament." : "Failed to create tournament."
+              raw && "error" in (raw as any)
+                ? (raw as any).error || "Failed to create tournament."
+                : "Failed to create tournament."
             );
             return;
           }
 
           // Safely extract the new ID from any of the accepted shapes
           const newId =
-            "id" in raw && typeof (raw as any).id === "number"
+            "id" in (raw as any) && typeof (raw as any).id === "number"
               ? (raw as any).id
-              : "tournamentId" in raw && typeof (raw as any).tournamentId === "number"
+              : "tournamentId" in (raw as any) && typeof (raw as any).tournamentId === "number"
               ? (raw as any).tournamentId
-              : "tournament" in raw && raw.tournament && typeof (raw as any).tournament.id === "number"
+              : "tournament" in (raw as any) &&
+                (raw as any).tournament &&
+                typeof (raw as any).tournament.id === "number"
               ? (raw as any).tournament.id
               : undefined;
 
@@ -333,7 +346,24 @@ export default function ReviewAndSubmit({
           return;
         }
 
-        // EDIT MODE path can go here (not shown)
+        // =============== EDIT MODE ===============
+        // 0) Ensure store has real ids (fills ids.stageIdByIndex mapping)
+        if (meta?.id) {
+          await loadTournamentIntoStore(meta.id);
+        }
+
+        // 1) Push wizard changes into the store so dirty flags are set
+        if (seedFromWizard) {
+          seedFromWizard(canon, teams, draftMatches);
+        }
+
+        // 2) Persist via /save-all
+        await saveAll();
+
+        // 3) Optional: refresh from DB so KO pointers / updated_at reflect server truth
+        // if (meta?.id) await loadTournamentIntoStore(meta.id);
+
+        return;
       } catch (e: any) {
         setError(e?.message || "Unexpected error");
       }
