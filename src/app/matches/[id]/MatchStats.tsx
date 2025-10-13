@@ -1,32 +1,47 @@
-// app/tournoua/match/[id]/MatchStats.tsx
+// src/app/matches/[id]/MatchStats.tsx
 import * as React from "react";
 import Image from "next/image";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
+import GlossOverlay from "@/app/paiktes/GlossOverlay"; // 👈 uses your provided gloss effect
 
-/* ──────────────────────────────────────────────────────────────────────────
+/* ──────────────────────────────────────────────────────────
    Glass UI tokens
-   ────────────────────────────────────────────────────────────────────────── */
+   ────────────────────────────────────────────────────────── */
 const GLASS_CARD =
-  "rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] text-white";
+  "rounded-2xl border border-black/40 bg-white/5 backdrop-blur-md p-8 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] text-white";
 const GLASS_ROW =
-  "flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10 backdrop-blur";
+  "flex flex-col gap-4 rounded-xl border border-black/40 bg-white/10 p-6 hover:bg-white/15 backdrop-blur transition-all";
 const GLASS_BADGE =
-  "rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-sm";
+  "rounded-full border border-white/20 bg-white/15 px-3 py-1 text-sm font-semibold text-white/90 backdrop-blur-sm";
 
-const cx = (...c: Array<string | false | undefined | null>) => c.filter(Boolean).join(" ");
+const cx = (...c: Array<string | false | undefined | null>) =>
+  c.filter(Boolean).join(" ");
 
 /** Small pill badge (glass) */
 function Badge({ children }: { children: React.ReactNode }) {
   return <span className={GLASS_BADGE}>{children}</span>;
 }
 
-/** Stat chip (for team totals only) */
-function Chip({ label, value }: { label: string; value: React.ReactNode }) {
+/** Labeled stat row with icon */
+function StatLine({
+  icon,
+  label,
+  value,
+  color = "text-white/90",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  color?: string;
+}) {
   return (
-    <div className="flex flex-col items-center">
-      <div className="text-base font-semibold leading-none text-white">{value}</div>
-      <div className="mt-1 text-[11px] uppercase tracking-wide text-white/60">{label}</div>
+    <div className="flex items-center justify-between text-lg font-medium">
+      <div className="flex items-center gap-2">
+        <span className={`text-2xl ${color}`}>{icon}</span>
+        <span className="text-white/80">{label}</span>
+      </div>
+      <span className="text-white font-semibold">{value}</span>
     </div>
   );
 }
@@ -37,167 +52,125 @@ function sameTeam(a: unknown, b: unknown) {
   return String(a) === String(b);
 }
 
-/** Safely resolve player image sources for next/image */
+/** Resolve image sources */
 function resolveImgSrc(raw?: string | null): string | undefined {
   if (!raw) return undefined;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return raw;
-  if (raw.startsWith("players/")) return `/${raw}`;
-  const key = raw.replace(/^\/+/, "");
-  if (key.includes("..")) return undefined;
-  return `/api/player-img/${encodeURI(key)}`;
+  const s = String(raw).trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.startsWith("/")) return s;
+  const key = s.replace(/^\/+/, "");
+  if (!key || key.includes("..")) return undefined;
+  return `/api/storage/player-img?path=${encodeURIComponent(key)}`;
 }
 
-/** Team panel */
+/** Team panel (list view, stacked layout) */
 function TeamPanel({
-  title,
   teamId,
   associations,
   participants,
   statsByPlayer,
   tone = "left",
-  teamMetrics,
 }: {
-  title: string;
   teamId: Id;
   associations: PlayerAssociation[];
   participants: Map<number, ParticipantRow>;
   statsByPlayer: Map<number, MatchPlayerStatRow>;
   tone?: "left" | "right";
-  /** Optional team-level metrics */
-  teamMetrics?: Partial<{
-    possessionPct: number;
-    shots: number;
-    shotsOnTarget: number;
-    fouls: number;
-    corners: number;
-    offsides: number;
-    xg: number;
-  }>;
 }) {
-  // Decide who to render:
   const played = associations.filter((a) => {
     const part = participants.get(a.player.id) || null;
     const row = statsByPlayer.get(a.player.id) || null;
-    const byParticipants = !!(part?.played && sameTeam(part.team_id, teamId));
-    const byStats = !!(row && sameTeam(row.team_id, teamId));
+    const byParticipants = !!(part?.played && String(part.team_id) === String(teamId));
+    const byStats = !!(row && String(row.team_id) === String(teamId));
     return byParticipants || byStats;
   });
 
-  // team totals from match_player_stats
-  let tGoals = 0,
-    tAssists = 0,
-    tY = 0,
-    tR = 0,
-    tB = 0;
-  for (const a of played) {
-    const s = statsByPlayer.get(a.player.id);
-    tGoals += s?.goals ?? 0;
-    tAssists += s?.assists ?? 0;
-    tY += s?.yellow_cards ?? 0;
-    tR += s?.red_cards ?? 0;
-    tB += s?.blue_cards ?? 0;
-  }
-
-  const align = tone === "left" ? "items-start text-left" : "items-end text-right";
-
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      {/* Header: Team + Totals + (optional) team metrics */}
-      <div className={`flex flex-col gap-3 ${align}`}>
-        <div className="text-lg font-semibold text-white">{title}</div>
-
-        <div className="flex flex-wrap gap-4">
-          <Chip label="Goals" value={tGoals} />
-          <Chip label="Assists" value={tAssists} />
-          <Chip label="Yellow" value={tY} />
-          <Chip label="Red" value={tR} />
-          <Chip label="Blue" value={tB} />
-          {typeof teamMetrics?.possessionPct === "number" && (
-            <Chip label="Possession" value={`${teamMetrics.possessionPct}%`} />
-          )}
-          {typeof teamMetrics?.shots === "number" && <Chip label="Shots" value={teamMetrics.shots} />}
-          {typeof teamMetrics?.shotsOnTarget === "number" && (
-            <Chip label="On Target" value={teamMetrics.shotsOnTarget} />
-          )}
-          {typeof teamMetrics?.fouls === "number" && <Chip label="Fouls" value={teamMetrics.fouls} />}
-          {typeof teamMetrics?.corners === "number" && <Chip label="Corners" value={teamMetrics.corners} />}
-          {typeof teamMetrics?.offsides === "number" && <Chip label="Offsides" value={teamMetrics.offsides} />}
-          {typeof teamMetrics?.xg === "number" && <Chip label="xG" value={teamMetrics.xg} />}
-        </div>
-      </div>
-
-      {/* Players list */}
+    <div className="flex flex-col gap-6">
       {played.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-white/15 bg-white/5 p-4 text-sm text-white/70 backdrop-blur-sm">
+        <div className="rounded-lg border border-dashed border-black/40 bg-white/5 p-4 text-base text-white/75 backdrop-blur-sm">
           No participants yet.
         </div>
       ) : (
-        <div className="grid gap-2">
-          {played.map(({ player }) => {
-            const part = participants.get(player.id) || null;
-            const row = statsByPlayer.get(player.id) || null;
+        played.map(({ player }) => {
+          const part = participants.get(player.id) || null;
+          const row = statsByPlayer.get(player.id) || null;
 
-            const pos: string | null = (row?.position ?? part?.position ?? null) || null;
-            const isCaptain = !!(row?.is_captain ?? part?.is_captain);
-            const isGK = !!(row?.gk ?? part?.gk);
-            const isMvp = !!row?.mvp;
-            const isBestGk = !!row?.best_goalkeeper;
+          const pos = row?.position ?? part?.position ?? null;
+          const isCaptain = !!(row?.is_captain ?? part?.is_captain);
+          const isGK = !!(row?.gk ?? part?.gk);
+          const isMvp = !!row?.mvp;
+          const isBestGk = !!row?.best_goalkeeper;
 
-            const name = `${player.first_name} ${player.last_name}`.trim();
-            const imgSrc = resolveImgSrc((player as any).photo as string | null | undefined);
-            const initials = `${player.first_name?.[0] ?? ""}${player.last_name?.[0] ?? ""}`.toUpperCase();
+          const name = `${player.first_name} ${player.last_name}`.trim();
+          const imgSrc = resolveImgSrc((player as any).photo as string | null | undefined);
+          const initials = `${player.first_name?.[0] ?? ""}${player.last_name?.[0] ?? ""}`.toUpperCase();
 
-            const goals = row?.goals ?? 0;
-            const assists = row?.assists ?? 0;
-            const yellow = row?.yellow_cards ?? 0;
-            const red = row?.red_cards ?? 0;
-            const blue = row?.blue_cards ?? 0;
+          const goals = row?.goals ?? 0;
+          const assists = row?.assists ?? 0;
+          const yellow = row?.yellow_cards ?? 0;
+          const red = row?.red_cards ?? 0;
+          const blue = row?.blue_cards ?? 0;
 
-            return (
-              <div key={player.id} className={GLASS_ROW}>
-                <div className="min-w-0 flex items-start gap-3">
-                  <div className="h-9 w-9 overflow-hidden rounded-full ring-1 ring-white/20 bg-white/10 backdrop-blur-sm">
-                    {imgSrc ? (
+          return (
+            <div key={player.id} className={GLASS_ROW}>
+              <div className="flex items-center gap-6">
+                {/* Portrait with black bg + gloss animation */}
+                <div className="relative h-28 w-20 overflow-hidden rounded-lg border border-black/50 bg-black shrink-0">
+                  {imgSrc ? (
+                    <>
                       <Image
                         src={imgSrc}
                         alt={`${name} photo`}
-                        width={36}
-                        height={36}
-                        className="h-full w-full object-cover"
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                        unoptimized
                       />
-                    ) : (
-                      <div className="grid h-full w-full place-items-center text-[10px] font-semibold text-white/80">
-                        {initials}
-                      </div>
-                    )}
+                      {/* Gloss overlay (uses your provided animation) */}
+                      <GlossOverlay
+                        src={imgSrc}
+                        maskSrc={imgSrc}
+                        run
+                        disableIfOpaque={false} // show effect even for JPEGs (no alpha)
+                        intensity={1}
+                        angle={18}
+                        thickness={120}
+                        duration={3.2}
+                      />
+                    </>
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-xl font-bold text-white/85">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="text-xl font-bold tracking-wide text-white drop-shadow-sm">
+                    {name}
                   </div>
 
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-white">{name}</div>
-
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {pos && <Badge>Pos: {pos}</Badge>}
-                      {isCaptain && <Badge>Captain</Badge>}
-                      {isGK && <Badge>GK</Badge>}
-                      {isMvp && <Badge>🏅 MVP</Badge>}
-                      {isBestGk && <Badge>🧤 Best GK</Badge>}
-                    </div>
-
-                    {/* Detailed per-player stats list */}
-                    <ul className="mt-2 list-disc list-inside text-xs text-white/80 space-y-0.5">
-                      <li>Goals: {goals}</li>
-                      <li>Assists: {assists}</li>
-                      <li>Yellow cards: {yellow}</li>
-                      <li>Red cards: {red}</li>
-                      <li>Blue cards: {blue}</li>
-                    </ul>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {pos && <Badge>Pos: {pos}</Badge>}
+                    {isCaptain && <Badge>Captain</Badge>}
+                    {isGK && <Badge>GK</Badge>}
+                    {isMvp && <Badge>🏅 MVP</Badge>}
+                    {isBestGk && <Badge>🧤 Best GK</Badge>}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="mt-4 flex flex-col gap-3 border-t border-black/30 pt-4">
+                <StatLine icon="⚽️" label="Goals" value={goals} />
+                <StatLine icon="🅰️" label="Assists" value={assists} color="text-sky-400" />
+                <StatLine icon="🟨" label="Κίτρινη Κάρτα" value={yellow} color="text-yellow-400" />
+                <StatLine icon="🟥" label="Κόκκινη Κάρτα" value={red} color="text-red-400" />
+                <StatLine icon="🟦" label="Μπλέ καρτα" value={blue} color="text-blue-400" />
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -205,18 +178,14 @@ function TeamPanel({
 
 type TeamPanelProps = React.ComponentProps<typeof TeamPanel>;
 
-export default function MatchStats({
+export default function ParticipantsStats({
   teamA,
   teamB,
   associationsA,
   associationsB,
   statsByPlayer,
   participants,
-  teamAMetrics,
-  teamBMetrics,
-  /** NEW: embed inside another card without wrapper */
   renderAs = "card",
-  /** NEW: optional side labels above the two panels */
   labels,
   className,
 }: {
@@ -226,10 +195,6 @@ export default function MatchStats({
   associationsB: PlayerAssociation[];
   statsByPlayer: Map<number, MatchPlayerStatRow>;
   participants: Map<number, ParticipantRow>;
-  /** optional injected team-level metrics (wire up later if you track them) */
-  teamAMetrics?: TeamPanelProps["teamMetrics"];
-  teamBMetrics?: TeamPanelProps["teamMetrics"];
-
   renderAs?: "card" | "embedded";
   labels?: { left?: string; right?: string };
   className?: string;
@@ -238,43 +203,43 @@ export default function MatchStats({
   return (
     <section className={cx(outer, className)}>
       {renderAs === "card" && (
-        <h2 className="mb-4 text-lg font-semibold text-white">Match Participants & Stats</h2>
+        <h2 className="mb-6 text-2xl font-semibold text-white">
+          Match Participants &amp; Stats
+        </h2>
       )}
 
       <div className="relative">
-        {/* Center divider on desktop */}
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 bg-white/15 md:block" />
+        {/* center divider → black tint */}
+        <div className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-px -translate-x-1/2 bg-black/30 md:block" />
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
           <div>
             {labels?.left && (
-              <div className="mb-2 text-[11px] uppercase tracking-wider text-white/60">{labels.left}</div>
+              <div className="mb-3 text-sm uppercase tracking-wider text-white/70">
+                {labels.left}
+              </div>
             )}
             <TeamPanel
-              title={teamA.name}
               teamId={teamA.id}
               associations={associationsA}
               participants={participants}
               statsByPlayer={statsByPlayer}
               tone="left"
-              teamMetrics={teamAMetrics}
             />
           </div>
 
           <div>
             {labels?.right && (
-              <div className="mb-2 text-right text-[11px] uppercase tracking-wider text-white/60">
+              <div className="mb-3 text-right text-sm uppercase tracking-wider text-white/70">
                 {labels.right}
               </div>
             )}
             <TeamPanel
-              title={teamB.name}
               teamId={teamB.id}
               associations={associationsB}
               participants={participants}
               statsByPlayer={statsByPlayer}
               tone="right"
-              teamMetrics={teamBMetrics}
             />
           </div>
         </div>

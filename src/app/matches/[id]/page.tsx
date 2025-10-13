@@ -1,24 +1,72 @@
-// app/tournoua/match/[id]/page.tsx
+// src/app/matches/[id]/page.tsx
 export const revalidate = 0;
 
 import TeamBadge from "./TeamBadge";
-// import TeamPlayers from "./TeamPlayers"; // ← removed
-import MatchStats from "./MatchStats"; // ← shows public stats
+import ParticipantsStats from "./MatchStats";
 import StatsEditor from "./StatsEditor";
 import { saveAllStatsAction } from "./actions";
 import {
   fetchMatch,
   fetchPlayersForTeam,
   fetchMatchStatsMap,
-  fetchParticipantsMap, // ← NEW
+  fetchParticipantsMap,
 } from "./queries";
 import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
-import type { Id } from "@/app/lib/types";
+import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
-
-// Adjust this path to wherever you placed the shared Vanta component
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import VantaBg from "@/app/lib/VantaBg";
+import styles from "./triumph.module.css";
+import ShinyText from "./ShinyText";
+// ⬇️ NEW: import the client LaurelWreath
+import LaurelWreath from "./LaurelWreath";
+
+/* ─────────────────────────────────────────────────────────
+   Προ-υπογραφή (signed URLs) για φωτογραφίες παικτών
+   ───────────────────────────────────────────────────────── */
+const PLAYER_BUCKET =
+  process.env.NEXT_PUBLIC_PLAYER_PHOTO_BUCKET || "GPSarchive's Project";
+const SIGN_TTL_SECONDS = 60 * 5;
+
+/** Type guard: είναι storage key (σχετική διαδρομή) κι όχι πλήρες URL */
+function isStorageKey(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  if (/^(https?:)?\/\//i.test(v)) return false; // absolute URL
+  if (v.startsWith("/")) return false; // absolute path
+  if (v.startsWith("data:")) return false; // data URL
+  return v.trim().length > 0;
+}
+
+/** Μαζικά signed URLs για keys */
+async function bulkSign(keys: string[]) {
+  const unique = Array.from(new Set(keys));
+  if (unique.length === 0) return new Map<string, string>();
+  const { data, error } = await supabaseAdmin.storage
+    .from(PLAYER_BUCKET)
+    .createSignedUrls(unique, SIGN_TTL_SECONDS);
+  const map = new Map<string, string>();
+  if (!error && data) {
+    unique.forEach((k, i) => {
+      const u = data[i]?.signedUrl;
+      if (u) map.set(k, u);
+    });
+  }
+  return map;
+}
+
+/** Εφαρμογή signed URLs και εξαναγκασμός photo => string */
+function applySignedUrls(
+  list: PlayerAssociation[],
+  signedMap: Map<string, string>
+): PlayerAssociation[] {
+  return list.map((a) => {
+    const raw = (a.player as any).photo as unknown;
+    const photoSigned = isStorageKey(raw) ? signedMap.get(raw) : undefined;
+    const normalizedPhoto = (photoSigned ?? (typeof raw === "string" ? raw : "")) as string;
+    return { ...a, player: { ...a.player, photo: normalizedPhoto } };
+  });
+}
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -27,14 +75,14 @@ function errMsg(e: unknown) {
   return anyE?.message || anyE?.error?.message || JSON.stringify(anyE);
 }
 
-export default async function MatchPage({
+export default async function Page({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ video?: string }>;
 }) {
-  // --- admin check (server-side) ---
+  // --- Έλεγχος admin (server-side) ---
   const supabase = await createSupabaseRouteClient();
   const {
     data: { user },
@@ -48,22 +96,26 @@ export default async function MatchPage({
   const id = parseId(idStr) as Id | null;
   if (!id) return notFound();
 
-  // Fetch match first (fail hard only here)
+  // 1) Αγώνας
   const match = await fetchMatch(id);
   if (!match) return notFound();
 
-  // Fetch the rest resiliently
+  // 2) Παράλληλα: παίκτες/στατς/συμμετοχές
   const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
-    fetchParticipantsMap(match.id), // ← NEW
+    fetchParticipantsMap(match.id),
   ]);
 
-  const teamAPlayers = aRes.status === "fulfilled" ? aRes.value : [];
-  const teamBPlayers = bRes.status === "fulfilled" ? bRes.value : [];
-  const existingStats = statsRes.status === "fulfilled" ? statsRes.value : new Map();
-  const participants = partsRes.status === "fulfilled" ? partsRes.value : new Map();
+  let teamAPlayers: PlayerAssociation[] =
+    aRes.status === "fulfilled" ? (aRes.value as PlayerAssociation[]) : [];
+  let teamBPlayers: PlayerAssociation[] =
+    bRes.status === "fulfilled" ? (bRes.value as PlayerAssociation[]) : [];
+  const existingStats =
+    statsRes.status === "fulfilled" ? statsRes.value : new Map();
+  const participants =
+    partsRes.status === "fulfilled" ? partsRes.value : new Map();
 
   const dataLoadErrors: string[] = [];
   if (aRes.status === "rejected")
@@ -74,6 +126,19 @@ export default async function MatchPage({
     dataLoadErrors.push(`Match stats: ${errMsg(statsRes.reason)}`);
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
+
+  // 3) Υπογραφή φωτογραφιών (αν είναι storage keys)
+  try {
+    const photoKeys: string[] = [
+      ...teamAPlayers.map((a) => a.player.photo).filter(isStorageKey),
+      ...teamBPlayers.map((a) => a.player.photo).filter(isStorageKey),
+    ];
+    const signedMap = await bulkSign(photoKeys);
+    teamAPlayers = applySignedUrls(teamAPlayers, signedMap);
+    teamBPlayers = applySignedUrls(teamBPlayers, signedMap);
+  } catch (e) {
+    dataLoadErrors.push(`Photo signing: ${errMsg(e)}`);
+  }
 
   const videoId = extractYouTubeId(video ?? null);
 
@@ -92,16 +157,93 @@ export default async function MatchPage({
   const bIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_b.id;
 
-  return (
-    <div className="relative min-h-dvh overflow-x-hidden">
-      {/* Vanta BG behind everything */}
-      <VantaBg className="absolute inset-0 -z-10" mode="balanced" />
+  // Στατική περιστροφή στεφανιού (όχι ολόκληρο SVG animation)
+  const LAUREL_ROTATE = 95;
 
-      {/* Optional veil for contrast (like Omada) */}
+  return (
+    <div className="relative min-h-dvh overflow-x-visible">
+      {/* Φόντο Vanta */}
+      <VantaBg className="absolute inset-0 -z-10" mode="balanced" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
+      {/* ───────────── Triumphant Cup + Laurel (Gold) ───────────── */}
+      <div className="container mx-auto max-w-6xl px-4 pt-6">
+        <div className="flex justify-center">
+          <div className={`${styles.cupFadeUp} pointer-events-none select-none`}>
+            <svg
+              role="img"
+              aria-label="Triumphant gold cup with laurel wreath"
+              width={132}
+              height={132}
+              overflow="visible"
+              viewBox="0 0 132 132"
+              className="drop-shadow-[0_6px_24px_rgba(250,204,21,0.35)]"
+              style={{ filter: "drop-shadow(0 6px 22px rgba(250,204,21,0.28))" }}
+            >
+              <defs>
+                {/* Gradient «χρυσού» */}
+                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#FFF6BF" />
+                  <stop offset="35%" stopColor="#FFD347" />
+                  <stop offset="65%" stopColor="#F59E0B" />
+                  <stop offset="100%" stopColor="#FFF3A3" />
+                </linearGradient>
+                {/* Κάθετη λάμψη */}
+                <linearGradient id="goldShine" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.65)" />
+                  <stop offset="40%" stopColor="rgba(255,255,255,0.15)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+              </defs>
+
+              {/* ΣΤΕΦΑΝΙ ΩΣ CLIENT COMPONENT — κάθε φύλλο κινείται */}
+              <LaurelWreath rotation={LAUREL_ROTATE} />
+
+              {/* ΚΥΠΕΛΛΟ */}
+              <g>
+                <path d="M36 44c0 17 13 29 30 29s30-12 30-29V28H36v16Z" fill="url(#goldGrad)" />
+                <path
+                  d="M26 34c-6 0-10 5-9 10 1 6 6 10 12 11 4 .7 8-2 8-6 0-1-.1-2-.4-3-1.3-3.9-1.6-7.4-1.6-12h-5c0 4.2.3 7.6 1.3 10.8.2.7.3 1.3.3 1.9 0 1.7-1.5 3.1-3.2 2.8-3.8-.6-6.5-3.3-6.9-6.6-.4-3.4 2.1-6.1 5.5-6.1H26Z"
+                  fill="url(#goldGrad)"
+                />
+                <path
+                  d="M106 34c6 0 10 5 9 10-1 6-6 10-12 11-4 .7-8-2-8-6 0-1 .1-2 .4-3 1.3-3.9 1.6-7.4 1.6-12h5c0 4.2-.3 7.6-1.3 10.8-.2.7-.3 1.3-.3 1.9 0 1.7 1.5 3.1 3.2 2.8 3.8-.6 6.5-3.3 6.9-6.6.4-3.4-2.1-6.1-5.5-6.1H106Z"
+                  fill="url(#goldGrad)"
+                />
+                <rect x="61" y="73" width="10" height="14" rx="3" fill="url(#goldGrad)" />
+                <rect x="49" y="86" width="34" height="8" rx="4" fill="url(#goldGrad)" />
+                <rect x="44" y="94" width="44" height="8" rx="4" fill="url(#goldGrad)" />
+                {/* Λάμψη στο κύπελλο */}
+                <path
+                  d="M40 28h52v11c0 14-12 23-26 23-14 0-26-9-26-23V28Z"
+                  fill="url(#goldShine)"
+                />
+              </g>
+            </svg>
+
+            {/* Tournament Title (shiny) */}
+          <div className="mt-4 flex justify-center">
+            <ShinyText
+              text={
+                (match as any)?.tournament?.name ??
+                `${match.team_a.name} vs ${match.team_b.name}`
+              }
+              speed={3}
+              className="
+                text-center
+                text-3xl md:text-5xl
+                font-extrabold leading-tight tracking-tight
+                drop-shadow-[0_1px_0_rgba(0,0,0,.25)]
+              "
+            />
+          </div>
+          </div>
+                    
+        </div>
+      </div>
+
+      {/* ───────────── Πίνακας αγώνα + Συμμετέχοντες ───────────── */}
       <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
-        {/* Error banner if any */}
         {dataLoadErrors.length > 0 && (
           <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-amber-200 text-sm">
             <p className="font-medium">Some data failed to load:</p>
@@ -113,9 +255,7 @@ export default async function MatchPage({
           </div>
         )}
 
-        {/* Combined Scoreboard + Stats (single card) */}
         <section className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 shadow-sm backdrop-blur text-white">
-          {/* Top: badges + score */}
           <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_auto_1fr] md:gap-8">
             <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
 
@@ -139,11 +279,9 @@ export default async function MatchPage({
             <TeamBadge team={match.team_b} className="text-right" highlight={!!bIsWinner} />
           </div>
 
-          {/* Divider */}
           <div className="my-6 h-px w-full bg-white/10" />
 
-          {/* Bottom: embedded per-team stats with vertical split + labels */}
-          <MatchStats
+          <ParticipantsStats
             renderAs="embedded"
             labels={{ left: "Home", right: "Away" }}
             teamA={{ id: match.team_a.id, name: match.team_a.name }}
@@ -151,11 +289,11 @@ export default async function MatchPage({
             associationsA={teamAPlayers}
             associationsB={teamBPlayers}
             statsByPlayer={existingStats}
-            participants={participants} // ← NEW
+            participants={participants}
           />
         </section>
 
-        {/* Video */}
+        {/* Βίντεο αγώνα */}
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-lg font-semibold">Match Video</h2>
           {videoId ? (
@@ -171,57 +309,37 @@ export default async function MatchPage({
           ) : (
             <div className="text-sm text-gray-600">
               <p>
-                No video provided. Append{" "}
-                <code>?video=YOUTUBE_ID_OR_URL</code> to the page URL to embed
-                the match video.
+                No video provided. Append <code>?video=YOUTUBE_ID_OR_URL</code> to the page URL.
               </p>
             </div>
           )}
         </section>
 
-        {/* Admin-only editor */}
+        {/* Επεξεργασία (admin) */}
         {isAdmin ? (
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-lg font-semibold">Admin: Match Player Stats</h2>
             <p className="mb-4 text-xs text-gray-500">
-              Toggle <strong>Συμμετοχή</strong>, set Position/Captain/GK and
-              enter stats. Click <strong>Save all</strong> to apply changes.
+              Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
+              στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
             </p>
 
             <form action={saveAllStatsAction}>
               <input type="hidden" name="match_id" value={String(match.id)} />
-
-              {/* Referee (Διαιτητής) */}
-              <div className="mb-4 rounded-xl border bg-white/50 p-4">
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Διαιτητής
-                </label>
-                <input
-                  type="text"
-                  name="referee"
-                  defaultValue={match.referee ?? ""}
-                  placeholder="π.χ. Γιώργος Παπαδόπουλος"
-                  className="w-full rounded border px-3 py-2"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Συμπλήρωσε το όνομα του διαιτητή για το συγκεκριμένο παιχνίδι.
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 gap-6">
                 <StatsEditor
                   teamId={match.team_a.id}
                   teamName={match.team_a.name}
                   associations={teamAPlayers}
                   existing={existingStats}
-                  participants={participants} // ← NEW
+                  participants={participants}
                 />
                 <StatsEditor
                   teamId={match.team_b.id}
                   teamName={match.team_b.name}
                   associations={teamBPlayers}
                   existing={existingStats}
-                  participants={participants} // ← NEW
+                  participants={participants}
                 />
               </div>
 

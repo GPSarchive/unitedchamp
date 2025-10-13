@@ -11,6 +11,17 @@ import {
 
 export type { MatchPlayerStatRow } from "@/app/lib/types";
 
+// Lightweight type for the tournament relation
+type TournamentLite = {
+  id: number;
+  name: string;
+};
+
+// Your existing type, augmented with an optional tournament
+export type MatchWithTournament = MatchWithTeams & {
+  tournament: TournamentLite | null;
+};
+
 export async function fetchMatch(id: Id) {
   const { data, error } = await supabaseAdmin
     .from("matches")
@@ -23,15 +34,21 @@ export async function fetchMatch(id: Id) {
         "team_b_score",
         "winner_team_id",
         "referee",
+        // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
+        // Tournament (NEW)
+        // If your FK column is matches.tournament_id -> tournaments.id, Supabase can infer:
+        "tournament:tournaments(id,name)",
+        // If inference doesn't work in your project, swap the line above with:
+        // "tournament:tournaments!matches_tournament_id_fkey(id,name)",
       ].join(",")
     )
     .eq("id", id)
     .single();
 
   if (error || !data) return null;
-  return data as unknown as MatchWithTeams;
+  return data as unknown as MatchWithTournament;
 }
 
 export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation[]> {

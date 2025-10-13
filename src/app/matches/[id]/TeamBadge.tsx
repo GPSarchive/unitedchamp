@@ -17,7 +17,7 @@ function initials(name: string) {
 
 /**
  * TeamBadge – Neon Triumph Edition
- * - New palette: deep navy card with neon magenta→cyan accents
+ * - Deep navy card with neon magenta→cyan accents
  * - Animated gradient outline & hover lift
  * - Image shimmer-in + subtle parallax
  * - Trophy pulse + stardust when highlight=true
@@ -34,7 +34,7 @@ export default function TeamBadge({
   const [loaded, setLoaded] = React.useState(false);
 
   // Palette
-  const cardBg = "bg-[#0b1020]"; // deep navy (different from your current orange theme)
+  const cardBg = "bg-[#0b1020]";
   const baseRing =
     "border border-white/10 ring-1 ring-white/10 shadow-[0_1px_0_rgba(255,255,255,0.05)]";
   const winRing =
@@ -89,11 +89,15 @@ export default function TeamBadge({
       <div className="relative z-10 flex items-center gap-4">
         {/* Crest */}
         <motion.div
-          className={`relative h-14 w-14 overflow-hidden rounded-2xl ${ringClass}`}
-          style={{
-            background:
-              "linear-gradient(135deg, rgba(240,46,170,0.18), rgba(0,212,255,0.12))",
-          }}
+          className={
+            // ⬇️ FIXES:
+            // - shrink-0: prevent flex from collapsing the crest to 0px
+            // - responsive sizes: give more room on md/lg screens
+            // - bg-black + object-contain for logos with transparency and odd aspect ratios
+            // - aspect-square to keep shape consistent
+            // - min-w ensures truncation happens to the name, not the logo
+            `relative shrink-0 h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 aspect-square overflow-hidden rounded-2xl ${ringClass} bg-black`
+          }
           title={team.name}
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.98 }}
@@ -126,9 +130,14 @@ export default function TeamBadge({
                   src={team.logo}
                   alt={`${team.name} logo`}
                   fill
-                  sizes="56px"
-                  className="object-cover"
+                  // ⬇️ Prefer contain so full logo fits the square
+                  className="object-contain"
+                  // ⬇️ Provide correct intrinsic size hints for larger screens
+                  sizes="(min-width: 1280px) 96px, (min-width: 1024px) 80px, (min-width: 768px) 64px, 56px"
                   onLoadingComplete={() => setLoaded(true)}
+                  onError={() => setLoaded(true)}
+                  draggable={false}
+                  priority={false}
                 />
               </motion.div>
             </>
@@ -157,8 +166,8 @@ export default function TeamBadge({
         </motion.div>
 
         {/* Name + meta */}
-        <div className="leading-tight">
-          <div className={`max-w-[14rem] truncate text-base font-semibold ${nameClass}`}>
+        <div className="leading-tight min-w-0 flex-1">
+          <div className={`truncate text-base md:text-lg font-semibold ${nameClass}`}>
             {team.name}
           </div>
           <div className={`text-xs ${subClass}`}>Team #{team.id}</div>
