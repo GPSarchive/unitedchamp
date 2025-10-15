@@ -7,6 +7,7 @@ import HomeHero from '@/app/home/HomeHero';
 import EventCalendar from '@/app/home/Calendar';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
+import MiniAnnouncements from './home/MiniAnnouncements';
 
 /**
  * ------------------------------
@@ -296,12 +297,15 @@ export default async function Home() {
           <p className="text-base sm:text-xl mb-6 sm:mb-8">
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
           </p>
-          <a
-            href="/sign-up"
-            className="bg-yellow-600 text-white px-6 sm:px-8 py-3 rounded-full font-semibold transition hover:bg-black hover:border hover:border-white"
-          >
-            Ξεκινήστε
-          </a>
+          {/* ⬇️ Mini announcements board (instead of the Ξεκινήστε button) */}
+          <div>
+          <MiniAnnouncements
+            limit={4}             // show 3 or 4 non-pinned
+            pinnedPageSize={3}    // 3 pinned per page
+            basePath="/anakoinoseis"
+            allLinkHref="/anakoinoseis"
+          />
+        </div>
         </div>
       </GridBgSection>
 

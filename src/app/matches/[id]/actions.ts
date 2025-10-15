@@ -273,12 +273,12 @@ export async function saveAllStatsAction(formData: FormData) {
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when finished (non-tie)
+  // Run progression only when finished (non-tie) — fire-and-forget to avoid blocking the UI
   if (!isTie) {
-    await progressAfterMatch(match_id).catch(console.error);
+    progressAfterMatch(match_id).catch(console.error);
   }
 
-  revalidatePath(`/matches/${match_id}`);
+  // Intentionally not calling revalidatePath here; the route is dynamic (revalidate = 0).
 }
 
 /** -------------------------------

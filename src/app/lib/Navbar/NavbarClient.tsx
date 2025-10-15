@@ -20,7 +20,7 @@ const NAV_LINKS = [
 
   // NEW
   { href: "/paiktes",                   label: "ΠΑΙΚΤΕΣ",                 img: "/παικτες.jpg" },
-  { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/αγωνες.jpg" },
+  { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/αγωνes.jpg" },
   { href: "/geniki-katataxi",           label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",         img: "/γενικη-καταταξη.jpg" },
   { href: "/kanonismos",                label: "ΚΑΝΟΝΙΣΜΟΣ",              img: "/κανονισμος.jpg" },
   { href: "/gallery",                   label: "GALLERY",                 img: "/gallery.jpg" },
@@ -146,7 +146,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/20" />
 
         {/* Left: Brand (mobile) + Desktop tile group */}
-        <div className="relative z-10 flex items-center gap-3">
+        <div className="relative z-10 flex items-center gap-3 w-full">
           {/* Mobile brand (hidden on md+) */}
           <Link href="/home" className="flex items-center gap-2 md:hidden">
             <Image
@@ -156,12 +156,12 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             <span className="text-base font-semibold tracking-wide">Ultra Champ</span>
           </Link>
 
-          {/* Desktop tile links — horizontally scrollable with invisible scrollbar */}
+          {/* Desktop tile links — now stretch full width with a bit more spacing */}
           <div
             className={`
-              hidden md:flex items-center gap-4
-              overflow-x-auto desktop-scroll pr-1
-              max-w-[78vw] lg:max-w-[82vw] xl:max-w-[86vw]
+              hidden md:flex items-center gap-5
+              overflow-x-auto desktop-scroll
+              w-full flex-1
             `}
             role="list"
             aria-label="Primary navigation"
@@ -187,7 +187,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
         {/* Right: Session + Mobile Menu Button */}
         <div className="relative z-10 flex items-center gap-2 md:gap-3">
-          {/* Desktop session controls */}
+          {/* Desktop session controls (commented out) */}
+          {/*
           <div className="hidden md:flex items-center gap-3">
             {user ? (
               <>
@@ -234,8 +235,10 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               </Link>
             )}
           </div>
+          */}
 
-          {/* Mobile: avatar or login (compact) */}
+          {/* Mobile: avatar or login (compact) — commented out */}
+          {/*
           <div className="md:hidden">
             {user ? (
               <Link
@@ -269,6 +272,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               </Link>
             )}
           </div>
+          */}
 
           {/* Mobile: hamburger */}
           <button
@@ -311,7 +315,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             `}
           >
             {/* horizontally scrollable cards on mobile (scrollbar hidden via global class) */}
-            <div className="flex items-stretch gap-3 px-3 py-3 overflow-x-auto no-scrollbar">
+            <div className="flex items-stretch gap-4 px-3 py-3 overflow-x-auto no-scrollbar">
               {NAV_LINKS.map(({ href, label, img }) => (
                 <Link
                   key={href}
@@ -337,7 +341,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               ))}
             </div>
 
-            {/* Mobile sign out / login in the dropdown */}
+            {/* Mobile sign out / login in the dropdown — commented out */}
+            {/*
             <div className="px-3 pb-3">
               {user ? (
                 <form method="post" action="/api/auth/sign-out">
@@ -360,6 +365,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 </Link>
               )}
             </div>
+            */}
           </motion.div>
         )}
       </AnimatePresence>

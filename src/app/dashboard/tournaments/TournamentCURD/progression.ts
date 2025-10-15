@@ -111,14 +111,15 @@ async function listParticipantsForStage(stage: StageRow): Promise<
     return (data ?? []) as any;
   }
 
-  // league
+  // league (dedupe to be safe)
   const { data } = await supabase
     .from("tournament_teams")
     .select("team_id")
     .eq("tournament_id", stage.tournament_id)
     .is("stage_id", null);
   const rows = (data ?? []) as Array<{ team_id: Id }>;
-  return rows.map((r) => ({ team_id: r.team_id, group_id: null }));
+  const uniq = Array.from(new Set(rows.map((r) => r.team_id)));
+  return uniq.map((team_id) => ({ team_id, group_id: null }));
 }
 
 /**
@@ -275,11 +276,16 @@ export async function progressAfterMatch(matchId: Id) {
   if (mErr || !m) throw new Error(mErr?.message || "Match not found");
   if (m.status !== "finished") return { ok: true, skipped: "not finished" };
 
-  // 1) KO child propagation (same stage)
-  await applyKnockoutPropagation(m);
-
-  // 2) Ensure intake mappings exist (if you have a KO → next groups edge)
-  await ensureIntakeMappingsForFinishedMatch(m);
+  // KO-only work (propagation + KO→Groups intake mapping creation)
+  if (m.stage_id) {
+    const st = await getStage(m.stage_id);
+    if (st?.kind === "knockout") {
+      // 1) KO child propagation (same stage)
+      await applyKnockoutPropagation(m);
+      // 2) Ensure intake mappings exist (if you have a KO → next groups edge)
+      await ensureIntakeMappingsForFinishedMatch(m);
+    }
+  }
 
   // 3) Apply KO → Groups intake (writes into stage_slots) and then hydrate those Groups stages
   const targetGroupsStages = await applyIntakeMappings(m);
@@ -315,6 +321,13 @@ export async function recomputeStandingsNow(stageId: Id) {
 async function applyKnockoutPropagation(m: MatchRow) {
   if (!m.stage_id) return;
 
+  // Only propagate inside KO stages
+  const stage = await getStage(m.stage_id);
+  if (!stage || stage.kind !== "knockout") return;
+
+  // KO propagation only makes sense when the source match has stable coords
+  if (m.round == null || m.bracket_pos == null) return;
+
   // Pull children in same stage; filter in code to support BOTH id + stable pointers
   const { data: allChildren, error } = await supabase
     .from("matches")
@@ -328,11 +341,18 @@ async function applyKnockoutPropagation(m: MatchRow) {
       child.home_source_match_id === m.id ||
       child.away_source_match_id === m.id;
 
-    const byStable =
-      (child.home_source_round === m.round &&
-        child.home_source_bracket_pos === m.bracket_pos) ||
-      (child.away_source_round === m.round &&
-        child.away_source_bracket_pos === m.bracket_pos);
+    // Only consider stable pointers when BOTH sides are non-null
+    const homeStable =
+      child.home_source_round != null &&
+      child.home_source_bracket_pos != null &&
+      child.home_source_round === m.round &&
+      child.home_source_bracket_pos === m.bracket_pos;
+    const awayStable =
+      child.away_source_round != null &&
+      child.away_source_bracket_pos != null &&
+      child.away_source_round === m.round &&
+      child.away_source_bracket_pos === m.bracket_pos;
+    const byStable = homeStable || awayStable;
 
     return byId || byStable;
   });
@@ -362,13 +382,12 @@ async function applyKnockoutPropagation(m: MatchRow) {
     const homeOutcome = (child.home_source_outcome ?? "W") as "W" | "L";
     const awayOutcome = (child.away_source_outcome ?? "W") as "W" | "L";
 
-    // NEW: overwrite downstream slots when they point to this match,
-    // as long as the child match isn't finished yet.
-    // This both fills correct teams and clears stale prefilled ones.
-    if (!childFinished && feedsHome) {
+    // Conservative: only fill when the slot is currently NULL (respect manual edits),
+    // and only if the child match isn't finished yet.
+    if (!childFinished && feedsHome && child.team_a_id == null) {
       patch.team_a_id = homeOutcome === "L" ? L : W; // could be null if source undecided
     }
-    if (!childFinished && feedsAway) {
+    if (!childFinished && feedsAway && child.team_b_id == null) {
       patch.team_b_id = awayOutcome === "L" ? L : W; // could be null if source undecided
     }
 
@@ -377,10 +396,6 @@ async function applyKnockoutPropagation(m: MatchRow) {
     }
   }
 }
-
-
-
-
 
 /**
  * Auto-create intake_mappings for this KO match’s (round, bracket_pos) → next groups stage.
@@ -545,11 +560,15 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
     teamsByGroup.set(0, allTeams);
   }
 
-  // If no matches are finished yet, we still want a zeroed baseline so KO can seed.
+  // If no matches are finished yet and we couldn't resolve participants, ensure a baseline
   const bucketKeys = new Set<number>([
     ...teamsByGroup.keys(),
     ...buckets.keys(),
   ]);
+  if (bucketKeys.size === 0) {
+    await ensureBaselineStandings(stageId);
+    return;
+  }
 
   for (const gid of bucketKeys) {
     const list = (buckets.get(gid) ?? []) as MatchRow[];
@@ -654,12 +673,12 @@ export async function seedNextKnockoutFromGroupsIfConfigured(
   // KO “already has matches?” guard
   const { data: existingMatches } = await supabase
     .from("matches")
-    .select("id,status")
+    .select("id,status,winner_team_id")
     .eq("stage_id", nextKO.id);
 
   if (existingMatches && existingMatches.length > 0) {
-    const hasFinished = existingMatches.some((m: any) => m.status === "finished");
-    if (hasFinished) return; // never reseed once KO started
+    const hasFinished = existingMatches.some((m: any) => m.status === "finished" || m.winner_team_id != null);
+    if (hasFinished) return; // never reseed once KO started / winner exists
     if (!reseed) return;     // keep idempotent by default unless caller asks to reseed
     await supabase.from("matches").delete().eq("stage_id", nextKO.id);
   }
@@ -832,11 +851,11 @@ export async function seedNextKnockoutFromLeagueIfConfigured(
   // KO “already has matches?” guard
   const { data: existingMatches } = await supabase
     .from("matches")
-    .select("id,status")
+    .select("id,status,winner_team_id")
     .eq("stage_id", nextKO.id);
 
   if (existingMatches && existingMatches.length > 0) {
-    const hasFinished = existingMatches.some((m: any) => m.status === "finished");
+    const hasFinished = existingMatches.some((m: any) => m.status === "finished" || m.winner_team_id != null);
     if (hasFinished) return;
     if (!reseed) return;
     await supabase.from("matches").delete().eq("stage_id", nextKO.id);
@@ -916,6 +935,19 @@ async function findNextGroupsStageFor(sourceStageId: Id): Promise<StageRow | nul
 
 /** Compute next free slot_id for a given (stage_id, group_idx) in stage_slots */
 async function nextFreeSlot(stageId: Id, groupIdx: number): Promise<number> {
+  // Prefer atomic RPC if available; fallback to simple scan if not
+  try {
+    const { data, error } = await supabase.rpc("alloc_stage_slot", {
+      p_stage_id: stageId,
+      p_group_idx: groupIdx,
+    });
+    if (!error && typeof data === "number") {
+      return data as number;
+    }
+  } catch {
+    // ignore and fallback
+  }
+
   const { data: rows } = await supabase
     .from("stage_slots")
     .select("slot_id")
@@ -968,9 +1000,13 @@ async function applyGroupIntakeToMatches(groupsStageId: Id) {
     slotsByIdx.set(gidx, arr);
   });
 
-  // 4) Determine repeats from stage config
+  // 4) Determine repeats from stage config (support legacy/alt keys)
   const cfg = (stage.config ?? {}) as any;
-  const repeatsRaw = Number(cfg.rounds_per_opponent ?? cfg["αγώνες_ανά_αντίπαλο"]);
+  const repeatsRaw = Number(
+    cfg.rounds_per_opponent ??
+    cfg["αγώνες_ανά_αντίπαλο"] ??
+    cfg["roundsPerOpponent"]
+  );
   const doubleRound = !!(cfg.double_round ?? cfg["διπλός_γύρος"]);
   const repeats: number = Number.isFinite(repeatsRaw)
     ? Math.max(1, Number(repeatsRaw))
@@ -1100,7 +1136,7 @@ function seedOrder(n: number): number[] {
  * Build insert rows for a seeded knockout for any N (with byes).
  * - Computes next power-of-two P
  * - Seeds into standard bracket order for P
- * - R1: create only real-vs-real matches; byes advance the real seed into R2
+ * - R1: create only real-vs-real matches; byes advance the real seed to R2
  * - R>=2: create matches and wire stable pointers (round, bracket_pos) with outcome="W"
  */
 function buildAnyNKnockoutInsertRows(opts: {
