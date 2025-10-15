@@ -9,7 +9,9 @@ export type Id = number;
 export type Nullable<T> = T | null;
 export type MaybeArray<T> = T | T[] | null;
 
-export interface SupaError { message: string }
+export interface SupaError {
+  message: string;
+}
 export type SupaResp<T> = { data: T | null; error: SupaError | null };
 
 /**
@@ -26,7 +28,7 @@ export interface TeamRow {
   season_score?: number | null;
   /** Soft-delete timestamp (null = active) */
   deleted_at: string | null;
-  is_dummy?: boolean;            
+  is_dummy?: boolean;
 }
 
 export interface UserRow {
@@ -39,11 +41,12 @@ export interface PlayerRow {
   first_name: string;
   last_name: string;
   is_dummy?: boolean;
+
   // NEW fields from public.player
-  photo: string;                 // NOT NULL in DB (default '/player-placeholder.jpg')
+  photo: string; // NOT NULL in DB (default '/player-placeholder.jpg')
   height_cm: number | null;
   position: string | null;
-  birth_date: string | null;     // 'YYYY-MM-DD'
+  birth_date: string | null; // 'YYYY-MM-DD'
 
   // optional timestamps (exist in table but not always selected)
   created_at?: string | null;
@@ -53,6 +56,7 @@ export interface PlayerRow {
 export interface PlayerStatisticsRow {
   /** PK on player_statistics */
   id: Id;
+
   /** optional timestamps in your table */
   created_at: string | null;
   updated_at: string | null;
@@ -156,15 +160,44 @@ export interface PlayerAssociation {
  * View models (UI-facing shapes)
  * ---------------------------------
  */
-export type Team = Pick<TeamRow, "id" | "name" | "logo" | "created_at" | "am" | "season_score">;
+export type Team = Pick<
+  TeamRow,
+  "id" | "name" | "logo" | "created_at" | "am" | "season_score"
+>;
 
+/**
+ * Compact player card/list item used by the Players page.
+ * - `goals` = career/all-time goals (from player_statistics.total_goals)
+ * - `tournament_goals` = optional per-tournament goals (attached when sorting by a tournament)
+ */
+export type PlayerLite = {
+  id: Id;
+  first_name: string;
+  last_name: string;
+  photo: string;
+  position: string;
+  height_cm: number | null;
+  birth_date: string | null;
+  age: number | null;
+  team: TeamLite | null;
+  matches: number;
+  goals: number; // all-time
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp: number;
+  best_gk: number;
+  /** Present only when sorting/filtering by a tournament */
+  tournament_goals?: number;
+};
 
 /** Calendar events for EventCalendar */
 export interface CalendarEvent {
   id: string;
   title: string;
   start: string; // 'YYYY-MM-DDTHH:mm:ss' (no tz)
-  end: string;   // 'YYYY-MM-DDTHH:mm:ss' (no tz)
+  end: string; // 'YYYY-MM-DDTHH:mm:ss' (no tz)
   all_day: boolean;
   teams: [string, string];
   logos: [string, string];
@@ -211,7 +244,9 @@ export function oneLatestStats(
     arr.sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
   } else {
     // falls back to string compare; works for ISO timestamps too
-    arr.sort((a, b) => String(b[sortBy] ?? "").localeCompare(String(a[sortBy] ?? "")));
+    arr.sort((a, b) =>
+      String(b[sortBy] ?? "").localeCompare(String(a[sortBy] ?? ""))
+    );
   }
   return arr.slice(0, 1);
 }
@@ -222,20 +257,21 @@ export function normalizeTeamPlayers(
 ): PlayerAssociation[] {
   return (input ?? []).map((row) => {
     const pRaw = normalizeOne(row.player);
-    const base: PlayerWithStatsRaw = pRaw ?? {
-      id: 0,
-      first_name: "",
-      last_name: "",
-      // NEW defaults mirroring DB
-      photo: "/player-placeholder.jpg",
-      height_cm: null,
-      position: null,
-      birth_date: null,
-      created_at: null,
-      updated_at: null,
+    const base: PlayerWithStatsRaw =
+      pRaw ?? {
+        id: 0,
+        first_name: "",
+        last_name: "",
+        // NEW defaults mirroring DB
+        photo: "/player-placeholder.jpg",
+        height_cm: null,
+        position: null,
+        birth_date: null,
+        created_at: null,
+        updated_at: null,
 
-      player_statistics: null,
-    };
+        player_statistics: null,
+      };
 
     const stats = oneLatestStats(base.player_statistics, "id");
 
@@ -243,7 +279,7 @@ export function normalizeTeamPlayers(
       id: base.id,
       first_name: base.first_name,
       last_name: base.last_name,
-      
+
       // NEW pass-throughs
       photo: base.photo,
       height_cm: base.height_cm,
@@ -251,7 +287,7 @@ export function normalizeTeamPlayers(
       birth_date: base.birth_date,
       created_at: base.created_at ?? null,
       updated_at: base.updated_at ?? null,
-         
+
       player_statistics: stats,
     };
 
@@ -280,7 +316,7 @@ export type NewTournamentPayload = {
     winner_team_id?: number | null;
   };
   stages: Array<{
-    id?: number;                // <- include if you hydrate from DB
+    id?: number; // <- include if you hydrate from DB
     name: string;
     kind: StageKind;
     ordering?: number;
@@ -290,7 +326,11 @@ export type NewTournamentPayload = {
   tournament_team_ids?: number[]; // optional
 };
 
-export type TournamentStatus = "scheduled" | "running" | "completed" | "archived";
+export type TournamentStatus =
+  | "scheduled"
+  | "running"
+  | "completed"
+  | "archived";
 export type TournamentFormat = "league" | "groups" | "knockout" | "mixed";
 
 export interface TournamentRow {
@@ -303,7 +343,7 @@ export interface TournamentRow {
   status: TournamentStatus;
   format: TournamentFormat;
   start_date: string | null; // 'YYYY-MM-DD'
-  end_date: string | null;   // 'YYYY-MM-DD'
+  end_date: string | null; // 'YYYY-MM-DD'
   winner_team_id: Id | null;
 }
 
@@ -386,11 +426,11 @@ export interface BracketMatch extends SourcePointers {
 export type BracketEdge = { fromId: Id; toId: Id };
 
 /** Build a TeamsMap from simple list */
-export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | null; seed?: number | null }>(
-  teams: T[] | null | undefined
-): TeamsMap {
+export function buildTeamsMap<
+  T extends { id: Id; name: string; logo?: string | null; seed?: number | null }
+>(teams: T[] | null | undefined): TeamsMap {
   const map: TeamsMap = {};
-  (teams ?? []).forEach(t => {
+  (teams ?? []).forEach((t) => {
     map[t.id] = { name: t.name, logo: t.logo ?? null, seed: t.seed ?? null };
   });
   return map;
@@ -398,8 +438,11 @@ export function buildTeamsMap<T extends { id: Id; name: string; logo?: string | 
 
 /** Prefer row values; fall back to extras (works before & after schema change) */
 export function toBracketMatch(
-  row: MatchRow & Partial<SourcePointers> & Partial<{ round: number | null; bracket_pos: number | null }>,
-  extras?: Partial<SourcePointers> & Partial<{ round: number | null; bracket_pos: number | null }>
+  row: MatchRow &
+    Partial<SourcePointers> &
+    Partial<{ round: number | null; bracket_pos: number | null }>,
+  extras?: Partial<SourcePointers> &
+    Partial<{ round: number | null; bracket_pos: number | null }>
 ): BracketMatch {
   const src = { ...(extras ?? {}), ...(row as any) }; // row wins after schema migration
   return {
@@ -455,14 +498,9 @@ export type MatchPlayerStatRow = {
   mvp: boolean | null;
   best_goalkeeper: boolean | null;
   position: string | null;
-    is_captain: boolean | null;
+  is_captain: boolean | null;
   gk: boolean | null;
-
-
 };
-
-
-
 
 export interface MatchParticipantRow {
   id: Id;
