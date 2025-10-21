@@ -61,6 +61,8 @@ const selSetKORoundPos = (s: TournamentState) =>
     from: { round: number; bracket_pos: number },
     to: { round: number; bracket_pos: number }
   ) => void;
+const selMoveOverlaySig = (s: TournamentState) =>
+  s.moveOverlaySig as (prevSig: string, nextSig: string) => void;
 
 /* ---------------- component ---------------- */
 export default function InlineMatchPlanner({
@@ -90,6 +92,7 @@ export default function InlineMatchPlanner({
   const removeMatch = useTournamentStore(selRemoveMatch);
   const reindexKOPointers = useTournamentStore(selReindexKOPointers);
   const setKORoundPos = useTournamentStore(selSetKORoundPos);
+  const moveOverlaySig = useTournamentStore(selMoveOverlaySig);
 
   // DEV: expose store in console
   useEffect(() => {
@@ -298,6 +301,8 @@ export default function InlineMatchPlanner({
 
   const applyPatch = (target: DraftMatch, patch: Patch) => {
     const beforeSig = rowSignature(target);
+    const preview = { ...target, ...patch } as DraftMatch;
+    const afterSig = rowSignature(preview);
 
     if (isKO) {
       const currR = target.round ?? 1;
@@ -313,6 +318,8 @@ export default function InlineMatchPlanner({
           { round: newR, bracket_pos: newP }
         );
         reindexKOPointers(effectiveStageIdx);
+
+        if (afterSig !== beforeSig) moveOverlaySig(beforeSig, afterSig);
 
         const { round: _r, bracket_pos: _p, ...rest } = patch;
         if (Object.keys(rest).length > 0) {
@@ -337,6 +344,8 @@ export default function InlineMatchPlanner({
       else next.push(merged);
       return next;
     });
+
+    if (afterSig !== beforeSig) moveOverlaySig(beforeSig, afterSig);
   };
 
   const addRow = () => {
