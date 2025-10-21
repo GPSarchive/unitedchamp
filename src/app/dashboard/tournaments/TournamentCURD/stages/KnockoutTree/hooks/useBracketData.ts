@@ -1,7 +1,7 @@
 // KnockoutTree/hooks/useBracketData.ts
 import { useMemo } from "react";
 import type { BracketMatch as Match } from "@/app/lib/types";
-import type { Edge } from "../oldknockout/types";
+import type { Edge } from "../newknockout/types";
 
 export function useBracketData(matches: Match[]) {
   /** Group by round & sort by bracket_pos (base) */

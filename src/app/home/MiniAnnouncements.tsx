@@ -131,106 +131,106 @@ export default function MiniAnnouncements({
   // =============== UI ===============
   return (
     <section className={className} aria-label="Mini announcements list with pinned and pagination">
-      <div className="mx-auto w-full max-w-4xl">
-        {/* Shared surface: same background for pinned + list, separators only via bottom borders */}
-        <div className="rounded-2xl border border-white/10 bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur overflow-hidden">
-          {/* Header on the same background */}
-          <div className="px-5 sm:px-6 py-4 flex items-end justify-between border-b border-white/10">
-            <h3 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">Ανακοινώσεις</h3>
-            <Link
-              href={allLinkHref}
-              className="text-xs sm:text-sm font-semibold text-white/80 hover:text-white underline underline-offset-4"
-            >
-              Δες όλες
-            </Link>
-          </div>
+  <div className="mx-auto w-full max-w-none"> {/* Removed max-w-4xl */}
+    {/* Shared surface: same background for pinned + list, separators only via bottom borders */}
+    <div className="rounded-2xl border border-white/10 bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur overflow-hidden">
+      {/* Header on the same background */}
+      <div className="px-5 sm:px-6 py-4 flex items-end justify-between border-b border-white/10">
+        <h3 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">Ανακοινώσεις</h3>
+        <Link
+          href={allLinkHref}
+          className="text-xs sm:text-sm font-semibold text-white/80 hover:text-white underline underline-offset-4"
+        >
+          Δες όλες
+        </Link>
+      </div>
 
-          {/* Loading state (skeleton) */}
-          {loading && (
-            <ul className="divide-y divide-white/10">
-              {/* Pinned skeleton */}
-              {[0,1,2].map(i => (
-                <li key={i} className="px-5 sm:px-6 py-5">
-                  <div className="h-4 w-1/5 bg-white/10 rounded mb-2 animate-pulse" />
-                  <div className="h-4 w-2/3 bg-white/10 rounded mb-3 animate-pulse" />
-                  <div className="h-3 w-full bg-white/10 rounded mb-2 animate-pulse" />
-                  <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
-                </li>
-              ))}
-              {Array.from({ length: Number(limit) }).map((_, i) => (
-                <li key={i} className="px-5 sm:px-6 py-5">
-                  <div className="h-4 w-2/3 bg-white/10 rounded mb-3 animate-pulse" />
-                  <div className="h-3 w-full bg-white/10 rounded mb-2 animate-pulse" />
-                  <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* Loading state (skeleton) */}
+      {loading && (
+        <ul className="divide-y divide-white/10">
+          {/* Pinned skeleton */}
+          {[0, 1, 2].map(i => (
+            <li key={i} className="px-5 sm:px-6 py-5">
+              <div className="h-4 w-1/5 bg-white/10 rounded mb-2 animate-pulse" />
+              <div className="h-4 w-2/3 bg-white/10 rounded mb-3 animate-pulse" />
+              <div className="h-3 w-full bg-white/10 rounded mb-2 animate-pulse" />
+              <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
+            </li>
+          ))}
+          {Array.from({ length: Number(limit) }).map((_, i) => (
+            <li key={i} className="px-5 sm:px-6 py-5">
+              <div className="h-4 w-2/3 bg-white/10 rounded mb-3 animate-pulse" />
+              <div className="h-3 w-full bg-white/10 rounded mb-2 animate-pulse" />
+              <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
+            </li>
+          ))}
+        </ul>
+      )}
 
-          {!loading && error && (
-            <div className="px-5 sm:px-6 py-5 text-sm text-red-400">Σφάλμα: {error}</div>
-          )}
+      {!loading && error && (
+        <div className="px-5 sm:px-6 py-5 text-sm text-red-400">Σφάλμα: {error}</div>
+      )}
 
-          {!loading && !error && (
+      {!loading && !error && (
+        <div>
+          {/* Pinned Section (paginated, 3 per page) */}
+          {allPinned.length > 0 && (
             <div>
-              {/* Pinned Section (paginated, 3 per page) */}
-              {allPinned.length > 0 && (
-                <div>
-                  <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center gap-3">
-                    <div className="text-[11px] uppercase tracking-[0.12em] text-white/60">Pinned</div>
-                    {/* Pagination controls (only if more than one page) */}
-                    {pinnedPages.length > 1 && (
-                      <div className="ml-auto flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setPinnedPage(p => Math.max(0, p - 1))}
-                          disabled={clampedPinnedPage === 0}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40"
-                          aria-label="Previous pinned"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <span className="px-2 text-[11px] text-white/70 tabular-nums">
-                          {clampedPinnedPage + 1}/{pinnedPages.length}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setPinnedPage(p => Math.min(pinnedPages.length - 1, p + 1))}
-                          disabled={clampedPinnedPage >= pinnedPages.length - 1}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40"
-                          aria-label="Next pinned"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
+              <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center gap-3">
+                <div className="text-[11px] uppercase tracking-[0.12em] text-white/60">Pinned</div>
+                {/* Pagination controls (only if more than one page) */}
+                {pinnedPages.length > 1 && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPinnedPage(p => Math.max(0, p - 1))}
+                      disabled={clampedPinnedPage === 0}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40"
+                      aria-label="Previous pinned"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="px-2 text-[11px] text-white/70 tabular-nums">
+                      {clampedPinnedPage + 1}/{pinnedPages.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPinnedPage(p => Math.min(pinnedPages.length - 1, p + 1))}
+                      disabled={clampedPinnedPage >= pinnedPages.length - 1}
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-40"
+                      aria-label="Next pinned"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
-
-                  <ul className="divide-y divide-white/10">
-                    {visiblePinned.map((a) => (
-                      <Row key={a.id} a={a} basePath={basePath} pinned />
-                    ))}
-                  </ul>
-
-                  {/* Divider between pinned and the rest */}
-                  {mainRows.length > 0 && <div className="border-t border-white/10" />}
-                </div>
-              )}
-
-              {/* Main list (3 or 4) */}
-              <ul className="divide-y divide-white/10">
-                {mainRows.length === 0 && allPinned.length === 0 && (
-                  <li className="px-5 sm:px-6 py-5 text-sm text-white/70">Δεν υπάρχουν ενεργές ανακοινώσεις.</li>
                 )}
-                {mainRows.map((a) => (
-                  <Row key={a.id} a={a} basePath={basePath} />
+              </div>
+
+              <ul className="divide-y divide-white/10">
+                {visiblePinned.map((a) => (
+                  <Row key={a.id} a={a} basePath={basePath} pinned />
                 ))}
               </ul>
+
+              {/* Divider between pinned and the rest */}
+              {mainRows.length > 0 && <div className="border-t border-white/10" />}
             </div>
           )}
+
+          {/* Main list (3 or 4) */}
+          <ul className="divide-y divide-white/10">
+            {mainRows.length === 0 && allPinned.length === 0 && (
+              <li className="px-5 sm:px-6 py-5 text-sm text-white/70">Δεν υπάρχουν ενεργές ανακοινώσεις.</li>
+            )}
+            {mainRows.map((a) => (
+              <Row key={a.id} a={a} basePath={basePath} />
+            ))}
+          </ul>
         </div>
-      </div>
-    </section>
+      )}
+    </div>
+  </div>
+</section>
   );
 }
 

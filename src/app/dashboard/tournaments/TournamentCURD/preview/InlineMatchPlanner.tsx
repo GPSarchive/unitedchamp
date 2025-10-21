@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useDeferredValue } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
@@ -37,6 +37,8 @@ function localInputToISO(localStr?: string) {
   const utc = new Date(Date.UTC(+yStr, +moStr - 1, +dStr, +hhStr, +mmStr, 0, 0));
   return utc.toISOString();
 }
+const norm = (s: string) =>
+  s.normalize?.("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 /* ---------------- selectors ---------------- */
 const selDraftMatches = (s: TournamentState) => s.draftMatches as DraftMatch[];
@@ -245,6 +247,26 @@ export default function InlineMatchPlanner({
     return ids.map((id) => ({ id, label: nameOf(id) }));
   }, [isGroups, useAllGroups, groupIdx, effectiveStageIdx, listGroupTeamIds, nameOf, miniPayload.tournament_team_ids]);
 
+  /* ---------- Team text filter ---------- */
+  const [teamQuery, setTeamQuery] = useState("");
+  const deferredTeamQuery = useDeferredValue(teamQuery);
+
+  const rowTeamHaystack = (m: DraftMatch) => {
+    const aName = nameOf(m.team_a_id ?? null);
+    const bName = nameOf(m.team_b_id ?? null);
+    return `${aName} ${bName} ${m.team_a_id ?? ""} ${m.team_b_id ?? ""}`;
+  };
+
+  const filteredVisible = useMemo(() => {
+    const q = norm(deferredTeamQuery || "").trim();
+    if (!q) return visible;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return visible.filter((m) => {
+      const hay = norm(rowTeamHaystack(m));
+      return tokens.every((t) => hay.includes(t));
+    });
+  }, [visible, deferredTeamQuery]);
+
   /* ---------- KO helpers ---------- */
   function ensureRowExists(stageIdxArg: number, round: number, bracket_pos: number) {
     updateMatches(stageIdxArg, (stageRows) => {
@@ -385,7 +407,7 @@ export default function InlineMatchPlanner({
   };
 
   // --- tiny debug line so you can see what the planner sees ---
-  const debugLine = `stageIdx=${effectiveStageIdx} | rows=${allRowsForStage.length} | visible=${visible.length} | isGroups=${isGroups} | storeGroups=${storeGroups.length} | inferredGroupsFromRows=${hasAnyGrouped}`;
+  const debugLine = `stageIdx=${effectiveStageIdx} | rows=${allRowsForStage.length} | visible=${filteredVisible.length} | isGroups=${isGroups} | storeGroups=${storeGroups.length} | inferredGroupsFromRows=${hasAnyGrouped}`;
 
   return (
     <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
@@ -423,6 +445,22 @@ export default function InlineMatchPlanner({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Team search */}
+          <input
+            type="text"
+            className="w-56 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white text-sm"
+            placeholder="Filter by team name or ID…"
+            value={teamQuery}
+            onChange={(e) => setTeamQuery(e.target.value)}
+          />
+          <button
+            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
+            onClick={() => setTeamQuery("")}
+            title="Clear team filter"
+          >
+            Clear
+          </button>
+
           <button
             className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
             onClick={regenerateStage}
@@ -439,7 +477,7 @@ export default function InlineMatchPlanner({
         </div>
       </header>
 
-      {visible.length === 0 ? (
+      {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
           No matches for this selection.
           {allRowsForStage.length > 0 && isGroups && (
@@ -470,7 +508,7 @@ export default function InlineMatchPlanner({
               </tr>
             </thead>
             <tbody>
-              {visible.map((m) => {
+              {filteredVisible.map((m) => {
                 const sig = rowSignature(m);
                 return (
                   <tr key={sig} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">

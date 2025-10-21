@@ -12,6 +12,7 @@ import ReviewAndSubmit from "./submit/ReviewAndSubmit";
 
 // Store
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { loadTournamentIntoStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/loadSnapshotClient";
 
 /* =========================================================
    Local types used across the builder
@@ -48,7 +49,7 @@ export type DraftMatch = {
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
   home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | null;
+  away_source_outcome?: "W" | "L" | "L" | null;
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
@@ -116,6 +117,62 @@ export default function TournamentWizard({
   useEffect(() => {
     useTournamentStore.setState({ payload });
   }, [payload]);
+
+  // ---- EDIT MODE: load full snapshot (standings, maps, etc.) into the store
+  useEffect(() => {
+    if (mode !== "edit" || !meta?.id) return;
+
+    const ctrl = new AbortController();
+
+    (async () => {
+      try {
+        // Fetch + hydrate via helper (includes standings)
+        const snap: any = await loadTournamentIntoStore(meta.id, { signal: ctrl.signal });
+
+        // Dev-only diagnostics
+        if (process.env.NODE_ENV !== "production") {
+          console.groupCollapsed(
+            `%c[SNAPSHOT] tournament=%c${meta.id}%c hydrated`,
+            "color:#88f", "color:#fff;font-weight:bold", "color:#888"
+          );
+
+          // From body
+          const sCount = Array.isArray(snap?.standings) ? snap.standings.length : 0;
+          const stageIds = Array.isArray(snap?.stages) ? snap.stages.map((s: any) => s.id) : [];
+          console.info("standings.length (body):", sCount);
+          console.info("stage ids (body):", stageIds.join(","));
+
+          // From store after hydrate
+          const st = useTournamentStore.getState();
+          const storeCount = Array.isArray(st.entities?.standings) ? st.entities.standings.length : 0;
+          console.info("store entities.standings.length:", storeCount);
+          console.dir({
+            stageIdByIndex: st.ids.stageIdByIndex,
+            groupIdByStage: st.ids.groupIdByStage,
+          });
+
+          // Quick peek of first 10 standing rows
+          if (storeCount > 0) {
+            console.table(
+              st.entities.standings.slice(0, 10).map((r) => ({
+                stage_id: r.stage_id,
+                group_id: r.group_id,
+                team_id: r.team_id,
+                played: r.played,
+                points: r.points,
+                rank: r.rank,
+              }))
+            );
+          }
+          console.groupEnd();
+        }
+      } catch (err) {
+        console.error("[TournamentWizard] snapshot load failed:", err);
+      }
+    })();
+
+    return () => ctrl.abort();
+  }, [mode, meta?.id]);
 
   // --- derived: groups context ---------------------------------------------
   const groupStageIndices = useMemo(

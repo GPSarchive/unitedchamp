@@ -56,11 +56,12 @@ type DbIntakeMapping = {
 };
 type DbStanding = {
   stage_id: number;
-  group_id: number;
+  group_id: number | null; // ✅ leagues can have null here
   team_id: number;
   played: number; won: number; drawn: number; lost: number;
   gf: number; ga: number; gd: number; points: number; rank?: number | null;
 };
+
 type DbMatchRow = {
   id?: number | null;
   stage_id: number;

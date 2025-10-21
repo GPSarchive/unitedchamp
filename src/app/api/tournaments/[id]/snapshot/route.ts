@@ -10,11 +10,11 @@ type Params = { id: string };
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<Params> }
+  context: { params: Promise<Params> } // <-- exactly a Promise (matches Next's RouteContext check)
 ) {
-  // Next.js App Router: params is async; await it before use
-  const { id } = await params;
+  const { id } = await context.params; // await the params
   const num = Number(id);
+
   if (!Number.isFinite(num)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
@@ -54,19 +54,18 @@ export async function GET(
   }
 
   // ---- 4) Matches (all useful fields + updated_at) -------------------------
-  // Note: group_id here is a FK for groups stages; null for league/KO
   const { data: matches, error: mErr } = await supabaseAdmin
     .from("matches")
-    .select(`
-      id, stage_id, group_id,
-      team_a_id, team_b_id,
-      team_a_score, team_b_score, winner_team_id,
-      status, matchday, match_date,
-      round, bracket_pos,
-      home_source_round, home_source_bracket_pos,
-      away_source_round, away_source_bracket_pos,
-      updated_at
-    `)
+    .select(
+      `id, stage_id, group_id,
+       team_a_id, team_b_id,
+       team_a_score, team_b_score, winner_team_id,
+       status, matchday, match_date,
+       round, bracket_pos,
+       home_source_round, home_source_bracket_pos,
+       away_source_round, away_source_bracket_pos,
+       updated_at`
+    )
     .eq("tournament_id", num)
     .order("round", { ascending: true, nullsFirst: true })
     .order("bracket_pos", { ascending: true, nullsFirst: true })
@@ -88,7 +87,6 @@ export async function GET(
   }
 
   // ---- 6) KO→Groups intake helpers ----------------------------------------
-  // stage_slots: (stage_id, group_id=index, slot_id, team_id, source, updated_at)
   const { data: stageSlots, error: ssErr } = await supabaseAdmin
     .from("stage_slots")
     .select("stage_id,group_id,slot_id,team_id,source,updated_at")
@@ -98,7 +96,6 @@ export async function GET(
     return NextResponse.json({ error: ssErr.message }, { status: 500 });
   }
 
-  // intake_mappings for KO→Groups (target stage perspective)
   const { data: intakeMappings, error: imErr } = await supabaseAdmin
     .from("intake_mappings")
     .select("id,target_stage_id,group_idx,slot_idx,from_stage_id,round,bracket_pos,outcome")
@@ -112,7 +109,10 @@ export async function GET(
   const { data: standings, error: stErr } = await supabaseAdmin
     .from("stage_standings")
     .select("stage_id,group_id,team_id,played,won,drawn,lost,gf,ga,gd,points,rank")
-    .in("stage_id", stageIds.length ? stageIds : [-1]);
+    .in("stage_id", stageIds.length ? stageIds : [-1])
+    .order("stage_id", { ascending: true })
+    .order("group_id", { ascending: true, nullsFirst: true })
+    .order("rank", { ascending: true, nullsFirst: true });
 
   if (stErr) {
     return NextResponse.json({ error: stErr.message }, { status: 500 });
@@ -201,15 +201,15 @@ export async function GET(
       home_source_bracket_pos: m.home_source_bracket_pos == null ? null : Number(m.home_source_bracket_pos),
       away_source_round: m.away_source_round == null ? null : Number(m.away_source_round),
       away_source_bracket_pos: m.away_source_bracket_pos == null ? null : Number(m.away_source_bracket_pos),
-      updated_at: (m as any).updated_at ?? null, // ← concurrency token
+      updated_at: (m as any).updated_at ?? null,
     })),
     stageSlots: (stageSlots ?? []).map((s) => ({
       stage_id: Number(s.stage_id),
-      group_id: Number(s.group_id), // index-based (0..)
+      group_id: Number(s.group_id),
       slot_id: Number(s.slot_id),
       team_id: s.team_id == null ? null : Number(s.team_id),
       source: (s.source as "manual" | "intake") ?? "manual",
-      updated_at: (s as any).updated_at ?? undefined, // ← concurrency token
+      updated_at: (s as any).updated_at ?? undefined,
     })),
     intakeMappings: (intakeMappings ?? []).map((r) => ({
       id: Number(r.id),
@@ -223,7 +223,7 @@ export async function GET(
     })),
     standings: (standings ?? []).map((row) => ({
       stage_id: Number(row.stage_id),
-      group_id: Number(row.group_id),
+      group_id: row.group_id == null ? null : Number(row.group_id),
       team_id: Number(row.team_id),
       played: Number(row.played),
       won: Number(row.won),
@@ -237,5 +237,29 @@ export async function GET(
     })),
   };
 
-  return NextResponse.json(snapshot, { status: 200 });
+  // ---- 10) Debug + headers right before returning --------------------------
+  const standingsCount = Array.isArray(snapshot.standings) ? snapshot.standings.length : 0;
+  const stageIdsCSV = stageIds.join(",");
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[snapshot] tournament=${num} stages=${stageIdsCSV || "(none)"} standingsCount=${standingsCount}`
+    );
+  }
+
+  const responseBody: any = snapshot;
+  if (process.env.NODE_ENV !== "production") {
+    responseBody.__debug = {
+      standingsCount,
+      stageIds,
+    };
+  }
+
+  return NextResponse.json(responseBody, {
+    status: 200,
+    headers: {
+      "x-standings-count": String(standingsCount),
+      "x-stage-ids": stageIdsCSV,
+    },
+  });
 }

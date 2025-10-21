@@ -8,6 +8,7 @@ import EventCalendar from '@/app/home/Calendar';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
 import MiniAnnouncements from './home/MiniAnnouncements';
+import RecentMatchesTabs from './home/RecentMatchesTabs';
 
 /**
  * ------------------------------
@@ -127,6 +128,9 @@ async function fetchMatchesWithTeams() {
         match_date,
         team_a_id,
         team_b_id,
+        team_a_score,
+        team_b_score,
+        status,
         teamA:teams!matches_team_a_id_fkey (name, logo),
         teamB:teams!matches_team_b_id_fkey (name, logo)
       `
@@ -165,7 +169,14 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   const startParts = parseIsoPreserveClock(m.match_date);
   const endParts = addMinutesNaive(startParts, 50);
   const endIso = partsToIso(endParts, 'T');
-  return {
+
+  // Extend with DB status + scores so the client pill can render them
+  const teamAScore = (m as any).team_a_score ?? null;
+  const teamBScore = (m as any).team_b_score ?? null;
+  const status = (m as any).status ?? null; // 'scheduled' | 'finished'
+
+  // NOTE: CalendarEvent doesn't know these extra fields, but it's fine to attach them.
+  const ev: CalendarEvent & any = {
     id: String(m.id),
     title: `${a?.name ?? 'Άγνωστο'} vs ${b?.name ?? 'Άγνωστο'}`,
     start: startIso,
@@ -173,7 +184,17 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
     all_day: false,
     teams: [a?.name ?? 'Άγνωστο', b?.name ?? 'Άγνωστο'],
     logos: [a?.logo ?? '/placeholder.png', b?.logo ?? '/placeholder.png'],
+
+    // NEW: match state/score for EventPillShrimp
+    status,
+    home_score: teamAScore,
+    away_score: teamBScore,
+    score: (typeof teamAScore === 'number' && typeof teamBScore === 'number')
+      ? [teamAScore, teamBScore]
+      : undefined,
   };
+
+  return ev;
 }
 
 function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
@@ -207,21 +228,20 @@ export default async function Home() {
       />
 
       {/* Welcome Section (replaces orange bg with Vanta) */}
-<VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-  <div className="container mx-auto px-4 text-center">
-    <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-2 drop-shadow">
-      UltraChamp
-    </h1>
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-2 drop-shadow">
+            UltraChamp
+          </h1>
 
-
-    {/* your styled lead paragraph */}
-    <p className="text-lg sm:text-xl max-w-3xl mx-auto text-white/90 leading-relaxed">
-      Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κοσμο!
-      Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνει εσύ ο Ultrachamp! Αγωνισου
-      σε κλίμα ασφάλειας οργάνωσης και ηθικής!
-    </p>
-  </div>
-</VantaSection>
+          {/* your styled lead paragraph */}
+          <p className="text-lg sm:text-xl max-w-3xl mx-auto text-white/90 leading-relaxed">
+            Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κοσμο!
+            Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνει εσύ ο Ultrachamp! Αγωνισου
+            σε κλίμα ασφάλειας οργάνωσης και ηθικής!
+          </p>
+        </div>
+      </VantaSection>
 
       {/* Calendar Section - use safer full-bleed utility */}
       <section className="full-bleed safe-px safe-pb">
@@ -290,24 +310,43 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Call to Action Section (Dot grid background) */}
-      <GridBgSection className="min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center text-white text-center">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Έτοιμοι για σέντρα;</h2>
-          <p className="text-base sm:text-xl mb-6 sm:mb-8">
-            Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
-          </p>
-          {/* ⬇️ Mini announcements board (instead of the Ξεκινήστε button) */}
-          <div>
-          <MiniAnnouncements
-            limit={4}             // show 3 or 4 non-pinned
-            pinnedPageSize={3}    // 3 pinned per page
-            basePath="/anakoinoseis"
-            allLinkHref="/anakoinoseis"
-          />
-        </div>
-        </div>
-      </GridBgSection>
+{/* Call to Action Section (Dot grid background) */}
+{/* Call to Action Section (Dot grid background) */}
+<GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
+  <div className="w-full max-w-7xl px-4 flex flex-col items-center text-center">
+    <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
+      Έτοιμοι για σέντρα;
+    </h2>
+    <p className="text-base sm:text-xl mb-6 sm:mb-8">
+      Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
+    </p>
+
+    {/* Centered row; only Matches is interactive */}
+    <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 pointer-events-none">
+      {/* Announcements (non-clickable, fixed ideal width) */}
+      <div className="w-full  lg:w-[420px] select-none">
+        <MiniAnnouncements
+          limit={4}
+          pinnedPageSize={3}
+          basePath="/anakoinoseis"
+          allLinkHref="/anakoinoseis"
+        />
+      </div>
+
+      {/* Matches (bigger, transparent, the only interactive area) */}
+      <div className="w-full lg:max-w-[880px] pointer-events-auto">
+        <RecentMatchesTabs
+          className="mt-10 lg:mt-0"
+          pageSize={12}
+          variant="transparent"
+          maxWClass="max-w-none"     // let the parent width control size
+        />
+      </div>
+    </div>
+  </div>
+</GridBgSection>
+
+
 
       {/* Testimonials Section (replaces orange bg with Vanta) */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">

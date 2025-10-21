@@ -49,6 +49,15 @@ remotePatterns.push(
 );
 
 /**
+ * 2b) Public team-logo host served from ultrachamp.gr
+ * (covers both www and apex domains)
+ */
+remotePatterns.push(
+  { protocol: "https", hostname: "www.ultrachamp.gr", pathname: "/api/public/team-logo/**" },
+  { protocol: "https", hostname: "ultrachamp.gr", pathname: "/api/public/team-logo/**" },
+);
+
+/**
  * 3) Player image proxy (private bucket via same-origin API)
  * Add both local and production patterns for /api/player-img/**
  */
@@ -90,6 +99,8 @@ const domains = Array.from(
       "127.0.0.1",
       "lh3.googleusercontent.com",
       "avatars.githubusercontent.com",
+      "www.ultrachamp.gr",
+      "ultrachamp.gr",
     ].filter(Boolean) as string[],
   ),
 );
