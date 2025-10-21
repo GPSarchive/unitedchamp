@@ -320,6 +320,7 @@ export type TournamentState = {
   replaceAllDraftMatches: (next: DraftMatch[]) => void;
   updateMatches: (stageIdx: number, updater: (rows: DraftMatch[]) => DraftMatch[]) => void;
   removeMatch: (row: DraftMatch) => void; // NEW: track deletions
+  moveOverlaySig: (prevSig: string, nextSig: string) => void;
 
   setKOLink: (
     stageIdx: number,
@@ -1124,6 +1125,37 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         dirty: { ...st.dirty, deletedMatchIds: del },
       };
     });
+  },
+
+  moveOverlaySig: (prevSig, nextSig) => {
+    if (!prevSig || !nextSig || prevSig === nextSig) return;
+    const st = get();
+    const prevOverlay = st.dbOverlayBySig[prevSig];
+    const overlay = { ...st.dbOverlayBySig };
+    let overlayChanged = false;
+
+    if (prevOverlay) {
+      const merged = { ...prevOverlay, ...(overlay[nextSig] ?? {}) };
+      delete overlay[prevSig];
+      overlay[nextSig] = merged;
+      overlayChanged = true;
+    } else if (overlay[prevSig]) {
+      delete overlay[prevSig];
+      overlayChanged = true;
+    }
+
+    const dirty = new Set(st.dirty.matches);
+    const hadPrev = dirty.delete(prevSig);
+    const hadNext = dirty.has(nextSig);
+    dirty.add(nextSig);
+    const dirtyChanged = hadPrev || !hadNext;
+
+    if (!overlayChanged && !dirtyChanged) return;
+
+    const partial: Partial<TournamentState> = {};
+    if (overlayChanged) partial.dbOverlayBySig = overlay;
+    if (dirtyChanged) partial.dirty = { ...st.dirty, matches: dirty };
+    set(partial);
   },
 
   setKOLink: (stageIdx, child, side, parent, outcome = "W") => {
