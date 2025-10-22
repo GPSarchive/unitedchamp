@@ -11,6 +11,19 @@ import {
   computeIntakeSlotsPerGroup,
 } from "./functions/groupsIntake";
 
+/** internal: make a unique key per match for de-dupe */
+function matchKey(m: DraftMatch): string {
+  if (m.round != null && m.bracket_pos != null) {
+    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
+  }
+  const g = m.groupIdx ?? -1;
+  const md = m.matchday ?? -1;
+  const a = m.team_a_id ?? 0;
+  const b = m.team_b_id ?? 0;
+  const pair = a < b ? `${a}-${b}` : `${b}-${a}`;
+  return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
+}
+
 /**
  * Generate all draft matches for the whole tournament.
  * - League/groups:
@@ -300,5 +313,14 @@ export function generateDraftMatches({
     }
   });
 
-  return out;
+  // Final de-dupe: prevent exact duplicates across RR or KO
+  const seen = new Set<string>();
+  const deduped: DraftMatch[] = [];
+  for (const m of out) {
+    const k = matchKey(m);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    deduped.push(m);
+  }
+  return deduped;
 }

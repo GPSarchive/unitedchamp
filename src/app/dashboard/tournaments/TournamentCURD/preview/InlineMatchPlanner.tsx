@@ -1,6 +1,7 @@
+// app/dashboard/tournaments/TournamentCURD/MatchPlanner/InlineMatchPlanner.tsx
 "use client";
 
-import { useEffect, useMemo, useState, useDeferredValue } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
@@ -8,7 +9,33 @@ import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD
 import { generateDraftMatches } from "../util/Generators";
 
 /* ---------------- helpers ---------------- */
+// Unordered pair for RR identity
+function rrPairKey(a?: number | null, b?: number | null) {
+  const x = a ?? 0,
+    y = b ?? 0;
+  return x < y ? `${x}-${y}` : `${y}-${x}`;
+}
+
+// Structural key for React rows (non-unique → we’ll suffix)
 function rowSignature(m: DraftMatch) {
+  if (m.round != null && m.bracket_pos != null) {
+    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
+  }
+  const g = m.groupIdx ?? -1;
+  const md = m.matchday ?? 0;
+  const pair = rrPairKey(m.team_a_id, m.team_b_id);
+  return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
+}
+
+// React key: include DB id and structural signature to prevent collisions
+function reactKey(m: DraftMatch, i: number) {
+  const id = (m as any)?.db_id as number | null | undefined;
+  const sig = rowSignature(m);
+  return id != null ? `M#${id}|${sig}` : `${sig}|I${i}`;
+}
+
+// Store’s legacy signature format
+function legacyRowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
     m.groupIdx ?? "",
@@ -21,6 +48,7 @@ function rowSignature(m: DraftMatch) {
   ];
   return parts.join("|");
 }
+
 function isoToLocalInput(iso?: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -37,12 +65,11 @@ function localInputToISO(localStr?: string) {
   const utc = new Date(Date.UTC(+yStr, +moStr - 1, +dStr, +hhStr, +mmStr, 0, 0));
   return utc.toISOString();
 }
-const norm = (s: string) =>
-  s.normalize?.("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 /* ---------------- selectors ---------------- */
 const selDraftMatches = (s: TournamentState) => s.draftMatches as DraftMatch[];
-const selDbOverlayBySig = (s: TournamentState) => s.dbOverlayBySig as Record<string, Partial<DraftMatch>>;
+const selDbOverlayBySig = (s: TournamentState) =>
+  s.dbOverlayBySig as Record<string, Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }>;
 const selStagesById = (s: TournamentState) => s.entities?.stagesById ?? {};
 const selStageIdByIndex = (s: TournamentState) => s.ids?.stageIdByIndex ?? {};
 const selStageIndexById = (s: TournamentState) => s.ids?.stageIndexById ?? {};
@@ -61,6 +88,92 @@ const selSetKORoundPos = (s: TournamentState) =>
     from: { round: number; bracket_pos: number },
     to: { round: number; bracket_pos: number }
   ) => void;
+
+/* ---------------- overlay sync helpers ---------------- */
+function migrateOverlayKey(oldKey: string, newKey: string) {
+  if (!oldKey || !newKey || oldKey === newKey) return;
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<
+    string,
+    Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
+  >;
+  const ov = overlay[oldKey];
+  if (!ov) return;
+  const next = { ...overlay };
+  next[newKey] = { ...ov };
+  delete next[oldKey];
+  useTournamentStore.setState({ dbOverlayBySig: next });
+}
+
+// strip structural fields so overlay cannot override editor state
+function safeOverlay(
+  ov?: Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
+) {
+  if (!ov) return undefined;
+  const {
+    // structural fields to drop
+    match_date,
+    stageIdx,
+    groupIdx,
+    matchday,
+    round,
+    bracket_pos,
+    team_a_id,
+    team_b_id,
+    // keep-only
+    ...rest
+  } = ov as any;
+  return rest as typeof ov;
+}
+
+function ensureOverlayForRow(row: DraftMatch) {
+  const db_id = (row as any).db_id as number | null | undefined;
+  const status = (row as any).status;
+  const team_a_score = (row as any).team_a_score;
+  const team_b_score = (row as any).team_b_score;
+  const winner_team_id = (row as any).winner_team_id;
+  const updated_at = (row as any).updated_at;
+
+  const hasDbBits =
+    db_id != null || status != null || team_a_score != null || team_b_score != null || winner_team_id != null;
+
+  if (!hasDbBits) return;
+
+  const key = legacyRowSignature(row);
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<
+    string,
+    Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
+  >;
+
+  const curr = overlay[key];
+
+  // Whitelist only. Do not spread curr first to avoid reintroducing structural fields.
+  const nextVal = {
+    db_id: db_id ?? curr?.db_id ?? null,
+    updated_at: updated_at ?? curr?.updated_at ?? null,
+    status: status ?? curr?.status ?? "scheduled",
+    team_a_score: team_a_score ?? curr?.team_a_score ?? null,
+    team_b_score: team_b_score ?? curr?.team_b_score ?? null,
+    winner_team_id: winner_team_id ?? curr?.winner_team_id ?? null,
+    home_source_round: row.home_source_round ?? (curr as any)?.home_source_round ?? null,
+    home_source_bracket_pos: row.home_source_bracket_pos ?? (curr as any)?.home_source_bracket_pos ?? null,
+    away_source_round: row.away_source_round ?? (curr as any)?.away_source_round ?? null,
+    away_source_bracket_pos: row.away_source_bracket_pos ?? (curr as any)?.away_source_bracket_pos ?? null,
+  } as const;
+
+  const next = { ...overlay, [key]: nextVal };
+  useTournamentStore.setState({ dbOverlayBySig: next });
+}
+
+function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<
+    string,
+    Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
+  >;
+  const found = Object.entries(overlay).find(([, v]) => v?.db_id === dbId);
+  if (!found) return;
+  const [oldKey] = found;
+  migrateOverlayKey(oldKey, newKey);
+}
 
 /* ---------------- component ---------------- */
 export default function InlineMatchPlanner({
@@ -91,7 +204,6 @@ export default function InlineMatchPlanner({
   const reindexKOPointers = useTournamentStore(selReindexKOPointers);
   const setKORoundPos = useTournamentStore(selSetKORoundPos);
 
-  // DEV: expose store in console
   useEffect(() => {
     (window as any).useTournamentStore = useTournamentStore;
     return () => {
@@ -169,22 +281,24 @@ export default function InlineMatchPlanner({
     return sid ? ((stagesById as any)[sid]?.kind ?? "league") : undefined;
   }, [stageIdByIndex, stagesById, effectiveStageIdx]);
 
-  // rows first (so we can infer groups even if kind hasn't arrived yet)
+  // rows (+ overlay merge with legacy fallback) — overlay sanitized
   const allRowsForStage = useMemo(() => {
     const rows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
     return rows.map((r) => {
-      const sig = rowSignature(r);
-      const ov = dbOverlayBySig[sig];
+      const sigLegacy = legacyRowSignature(r);
+      const ovRaw =
+        dbOverlayBySig[rowSignature(r)] ||
+        dbOverlayBySig[sigLegacy] ||
+        ((r as any).db_id != null
+          ? Object.values(dbOverlayBySig).find((v) => v?.db_id === (r as any).db_id)
+          : undefined);
+      const ov = safeOverlay(ovRaw);
       return ov ? ({ ...r, ...ov } as DraftMatch) : r;
     });
   }, [draftMatches, dbOverlayBySig, effectiveStageIdx]);
 
-  const hasAnyGrouped = useMemo(
-    () => allRowsForStage.some((r) => r.groupIdx != null),
-    [allRowsForStage]
-  );
+  const hasAnyGrouped = useMemo(() => allRowsForStage.some((r) => r.groupIdx != null), [allRowsForStage]);
 
-  // infer "groups" if any row has groupIdx, even when store.kind is undefined yet
   const isGroups = (kindFromStore ?? "league") === "groups" || hasAnyGrouped;
   const isKO = (kindFromStore ?? "league") === "knockout";
 
@@ -201,10 +315,7 @@ export default function InlineMatchPlanner({
     if (!sid && sid !== 0) return [];
     return Object.values(groupsById as any)
       .filter((g: any) => g.stage_id === sid)
-      .sort(
-        (a: any, b: any) =>
-          (a.ordering ?? 0) - (b.ordering ?? 0) || String(a.name).localeCompare(String(b.name))
-      )
+      .sort((a: any, b: any) => (a.ordering ?? 0) - (b.ordering ?? 0) || String(a.name).localeCompare(String(b.name)))
       .map((g: any, i: number) => ({ idx: i, id: g.id, name: g.name ?? `Group ${i + 1}` }));
   }, [groupsById, stageIdByIndex, effectiveStageIdx]);
 
@@ -218,17 +329,14 @@ export default function InlineMatchPlanner({
     return entries;
   }, [normalizedGroupMap, groupsById, fallbackGroups]);
 
-  // current selection; default to "All" (-1) if groups are unmapped
+  // current selection
   const [groupIdx, setGroupIdx] = useState<number>(storeGroups.length ? 0 : -1);
   useEffect(() => {
     if (!isGroups) setGroupIdx(-1);
   }, [isGroups]);
 
-  // If group mapping failed (no groupIdx on rows) or there are no groups in the store,
-  // fail-open: show ALL rows and present an "All groups" option.
   const useAllGroups = isGroups && (!storeGroups.length || groupIdx === -1);
 
-  // filter visible
   const visible = useMemo(() => {
     if (isGroups) {
       if (useAllGroups) return allRowsForStage;
@@ -238,34 +346,28 @@ export default function InlineMatchPlanner({
     return allRowsForStage.filter((r) => r.groupIdx == null);
   }, [allRowsForStage, isGroups, isKO, groupIdx, useAllGroups]);
 
+  /* ---------- Team search filter ---------- */
+  const [teamQuery, setTeamQuery] = useState("");
+  const filteredVisible = useMemo(() => {
+    const q = teamQuery.trim().toLowerCase();
+    if (!q) return visible;
+    const norm = (s: string) => s.toLowerCase();
+    return visible.filter((m) => {
+      const a = norm(nameOf(m.team_a_id ?? null));
+      const b = norm(nameOf(m.team_b_id ?? null));
+      return a.includes(q) || b.includes(q);
+    });
+  }, [visible, teamQuery, nameOf]);
+
   // team options
   const teamOptions = useMemo(() => {
     const effectiveGroupForOptions = groupIdx != null && groupIdx >= 0 ? groupIdx : 0;
-    const ids = isGroups && !useAllGroups
-      ? listGroupTeamIds(effectiveStageIdx, effectiveGroupForOptions)
-      : (miniPayload.tournament_team_ids ?? []);
+    const ids =
+      isGroups && !useAllGroups
+        ? listGroupTeamIds(effectiveStageIdx, effectiveGroupForOptions)
+        : miniPayload.tournament_team_ids ?? [];
     return ids.map((id) => ({ id, label: nameOf(id) }));
   }, [isGroups, useAllGroups, groupIdx, effectiveStageIdx, listGroupTeamIds, nameOf, miniPayload.tournament_team_ids]);
-
-  /* ---------- Team text filter ---------- */
-  const [teamQuery, setTeamQuery] = useState("");
-  const deferredTeamQuery = useDeferredValue(teamQuery);
-
-  const rowTeamHaystack = (m: DraftMatch) => {
-    const aName = nameOf(m.team_a_id ?? null);
-    const bName = nameOf(m.team_b_id ?? null);
-    return `${aName} ${bName} ${m.team_a_id ?? ""} ${m.team_b_id ?? ""}`;
-  };
-
-  const filteredVisible = useMemo(() => {
-    const q = norm(deferredTeamQuery || "").trim();
-    if (!q) return visible;
-    const tokens = q.split(/\s+/).filter(Boolean);
-    return visible.filter((m) => {
-      const hay = norm(rowTeamHaystack(m));
-      return tokens.every((t) => hay.includes(t));
-    });
-  }, [visible, deferredTeamQuery]);
 
   /* ---------- KO helpers ---------- */
   function ensureRowExists(stageIdxArg: number, round: number, bracket_pos: number) {
@@ -297,7 +399,7 @@ export default function InlineMatchPlanner({
   >;
 
   const applyPatch = (target: DraftMatch, patch: Patch) => {
-    const beforeSig = rowSignature(target);
+    const beforeLegacy = legacyRowSignature(target);
 
     if (isKO) {
       const currR = target.round ?? 1;
@@ -307,11 +409,13 @@ export default function InlineMatchPlanner({
 
       if (newR !== currR || newP !== currP) {
         ensureRowExists(effectiveStageIdx, newR, newP);
-        setKORoundPos(
-          effectiveStageIdx,
-          { round: currR, bracket_pos: currP },
-          { round: newR, bracket_pos: newP }
-        );
+
+        const afterLegacyTmp = legacyRowSignature({ ...target, round: newR, bracket_pos: newP });
+        const dbId = (target as any).db_id as number | null | undefined;
+        if (dbId != null) migrateOverlayByDbIdToKey(dbId, afterLegacyTmp);
+        else migrateOverlayKey(beforeLegacy, afterLegacyTmp);
+
+        setKORoundPos(effectiveStageIdx, { round: currR, bracket_pos: currP }, { round: newR, bracket_pos: newP });
         reindexKOPointers(effectiveStageIdx);
 
         const { round: _r, bracket_pos: _p, ...rest } = patch;
@@ -321,7 +425,17 @@ export default function InlineMatchPlanner({
             const i = next.findIndex(
               (r) => r.stageIdx === effectiveStageIdx && r.round === newR && r.bracket_pos === newP
             );
-            if (i >= 0) next[i] = { ...next[i], ...rest };
+            if (i >= 0) {
+              const merged = { ...next[i], ...rest };
+              next[i] = merged;
+              const afterLegacy = legacyRowSignature(merged);
+              if (afterLegacy !== afterLegacyTmp) {
+                const mDbId = (merged as any).db_id as number | null | undefined;
+                if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
+                else migrateOverlayKey(afterLegacyTmp, afterLegacy);
+              }
+              ensureOverlayForRow(merged);
+            }
             return next;
           });
         }
@@ -331,8 +445,17 @@ export default function InlineMatchPlanner({
 
     updateMatches(effectiveStageIdx, (stageRows) => {
       const next = stageRows.slice();
-      const idx = next.findIndex((r) => rowSignature(r) === beforeSig);
+      const idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy);
       const merged: DraftMatch = { ...(idx >= 0 ? next[idx] : target), ...patch };
+      const afterLegacy = legacyRowSignature(merged);
+
+      if (afterLegacy !== beforeLegacy) {
+        const dbId = (merged as any).db_id as number | null | undefined;
+        if (dbId != null) migrateOverlayByDbIdToKey(dbId, afterLegacy);
+        else migrateOverlayKey(beforeLegacy, afterLegacy);
+      }
+
+      ensureOverlayForRow(merged);
       if (idx >= 0) next[idx] = merged;
       else next.push(merged);
       return next;
@@ -343,9 +466,7 @@ export default function InlineMatchPlanner({
     if (isKO) {
       const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
       const round = 1;
-      const used = stageRows
-        .filter((r) => r.round === round && r.bracket_pos != null)
-        .map((r) => r.bracket_pos as number);
+      const used = stageRows.filter((r) => r.round === round && r.bracket_pos != null).map((r) => r.bracket_pos as number);
       const nextPos = used.length ? Math.max(...used) + 1 : 1;
       ensureRowExists(effectiveStageIdx, round, nextPos);
       reindexKOPointers(effectiveStageIdx);
@@ -365,8 +486,16 @@ export default function InlineMatchPlanner({
     }
   };
 
-  const removeRow = (r: DraftMatch) => {
-    removeMatch(r);
+  const removeRow = (m: DraftMatch) => {
+    const currKey = legacyRowSignature(m);
+    const ov = (useTournamentStore.getState().dbOverlayBySig as any)[currKey];
+    const dbId = (m as any).db_id as number | null | undefined;
+
+    if (!ov && dbId != null) {
+      migrateOverlayByDbIdToKey(dbId, currKey);
+    }
+
+    removeMatch(m);
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
@@ -389,25 +518,31 @@ export default function InlineMatchPlanner({
 
     const currentStageRows = allRowsForStage;
     const oldByKey = new Map(currentStageRows.map((m) => [key(m), m]));
+
     const merged = freshHere.map((f) => {
       const old = oldByKey.get(key(f));
-      return old
-        ? {
+      const mergedRow = old
+        ? ({
             ...f,
             db_id: (old as any).db_id ?? null,
             status: (old as any).status ?? null,
             team_a_score: (old as any).team_a_score ?? null,
             team_b_score: (old as any).team_b_score ?? null,
             winner_team_id: (old as any).winner_team_id ?? null,
-          }
+          } as DraftMatch)
         : f;
+
+      ensureOverlayForRow(mergedRow);
+      return mergedRow;
     });
 
     updateMatches(effectiveStageIdx, () => merged);
   };
 
-  // --- tiny debug line so you can see what the planner sees ---
-  const debugLine = `stageIdx=${effectiveStageIdx} | rows=${allRowsForStage.length} | visible=${filteredVisible.length} | isGroups=${isGroups} | storeGroups=${storeGroups.length} | inferredGroupsFromRows=${hasAnyGrouped}`;
+  const debugLine =
+    `stageIdx=${effectiveStageIdx} | rows=${allRowsForStage.length} | visible=${visible.length} | ` +
+    `filtered=${filteredVisible.length} | isGroups=${isGroups} | storeGroups=${storeGroups.length} | ` +
+    `inferredGroupsFromRows=${hasAnyGrouped}`;
 
   return (
     <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
@@ -416,7 +551,9 @@ export default function InlineMatchPlanner({
       <header className="flex flex-wrap items-center gap-2">
         <div className="text-white/80 text-sm">
           <span className="font-medium text-white/90">Fixtures (Stage #{effectiveStageIdx + 1})</span>{" "}
-          <span className="text-white/60">• {(kindFromStore ?? (isKO ? "knockout" : isGroups ? "groups" : "league"))}</span>
+          <span className="text-white/60">
+            • {kindFromStore ?? (isKO ? "knockout" : isGroups ? "groups" : "league")}
+          </span>
 
           {isGroups && (
             <>
@@ -426,7 +563,6 @@ export default function InlineMatchPlanner({
                 value={useAllGroups ? -1 : groupIdx}
                 onChange={(e) => setGroupIdx(Number(e.target.value))}
               >
-                {/* All groups sentinel (shown when groups unmapped or you want all) */}
                 <option value={-1}>All groups</option>
                 {storeGroups.map((g) => (
                   <option key={g.idx} value={g.idx}>
@@ -436,30 +572,30 @@ export default function InlineMatchPlanner({
               </select>
 
               {storeGroups.length === 0 && (
-                <span className="ml-2 text-amber-300/80 text-xs align-middle">
-                  groups not mapped — showing all matches
-                </span>
+                <span className="ml-2 text-amber-300/80 text-xs align-middle">groups not mapped — showing all matches</span>
               )}
             </>
           )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Team search */}
+          {/* Search by team names */}
           <input
             type="text"
-            className="w-56 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white text-sm"
-            placeholder="Filter by team name or ID…"
+            className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-56"
+            placeholder="Search teams…"
             value={teamQuery}
             onChange={(e) => setTeamQuery(e.target.value)}
           />
-          <button
-            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-            onClick={() => setTeamQuery("")}
-            title="Clear team filter"
-          >
-            Clear
-          </button>
+          {teamQuery ? (
+            <button
+              className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
+              onClick={() => setTeamQuery("")}
+              title="Clear search"
+            >
+              Clear
+            </button>
+          ) : null}
 
           <button
             className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
@@ -468,10 +604,7 @@ export default function InlineMatchPlanner({
           >
             Regenerate stage
           </button>
-          <button
-            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-            onClick={addRow}
-          >
+          <button className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs" onClick={addRow}>
             + Add match
           </button>
         </div>
@@ -480,10 +613,9 @@ export default function InlineMatchPlanner({
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
           No matches for this selection.
-          {allRowsForStage.length > 0 && isGroups && (
-            <span className="ml-2 text-white/50">
-              (There are {allRowsForStage.length} matches; try “All groups”.)
-            </span>
+          {visible.length > 0 && teamQuery && <span className="ml-2 text-white/50">(Try clearing the search.)</span>}
+          {allRowsForStage.length > 0 && isGroups && !teamQuery && (
+            <span className="ml-2 text-white/50">(There are {allRowsForStage.length} matches; try “All groups”.)</span>
           )}
         </p>
       ) : (
@@ -508,10 +640,10 @@ export default function InlineMatchPlanner({
               </tr>
             </thead>
             <tbody>
-              {filteredVisible.map((m) => {
-                const sig = rowSignature(m);
+              {filteredVisible.map((m, i) => {
+                const key = reactKey(m, i);
                 return (
-                  <tr key={sig} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">
+                  <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">
                     {isKO ? (
                       <>
                         <td className="px-2 py-1">
@@ -519,9 +651,7 @@ export default function InlineMatchPlanner({
                             type="number"
                             className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
                             value={(m.round as number | null) ?? 1}
-                            onChange={(e) =>
-                              applyPatch(m, { round: Number(e.target.value) || 1, matchday: null })
-                            }
+                            onChange={(e) => applyPatch(m, { round: Number(e.target.value) || 1, matchday: null })}
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -549,9 +679,7 @@ export default function InlineMatchPlanner({
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
                         value={m.team_a_id ?? ""}
-                        onChange={(e) =>
-                          applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })
-                        }
+                        onChange={(e) => applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })}
                       >
                         <option value="">— Team —</option>
                         {teamOptions.map((o) => (
@@ -567,9 +695,7 @@ export default function InlineMatchPlanner({
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
                         value={m.team_b_id ?? ""}
-                        onChange={(e) =>
-                          applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })
-                        }
+                        onChange={(e) => applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })}
                       >
                         <option value="">— Team —</option>
                         {teamOptions.map((o) => (
@@ -585,9 +711,7 @@ export default function InlineMatchPlanner({
                       {(() => {
                         const a = (m as any).team_a_score as number | null;
                         const b = (m as any).team_b_score as number | null;
-                        return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : (
-                          <span className="text-white/50">—</span>
-                        );
+                        return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
                       })()}
                     </td>
 
@@ -619,9 +743,7 @@ export default function InlineMatchPlanner({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           className="px-2 py-1 rounded border border-white/15 hover:bg-white/10 text-xs"
-                          onClick={() =>
-                            applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })
-                          }
+                          onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })}
                           title="Swap teams"
                         >
                           Swap

@@ -120,20 +120,20 @@ export function TeamName({ name, className }: { name: string; className?: string
   const isLongSingleWord = !/\s/.test(name) && name.length > 14;
 
   return (
-    <div className={`w-full max-w-[10rem] min-w-0 px-1 overflow-hidden ${className ?? ''}`}>
+    <div className={`w-full max-w-[9rem] min-w-0 px-1 overflow-hidden ${className ?? ''}`}>
       {isLongSingleWord ? (
         <span
           className="block font-extrabold text-white uppercase tracking-wide text-center opacity-80 group-hover:opacity-100 leading-tight [overflow-wrap:anywhere] [word-break:break-word] [hyphens:auto]"
           title={name}
-          style={{ fontSize: 'clamp(10px, 2.8vw, 12px)' }}
+          style={{ fontSize: 'clamp(9px, 2.6vw, 11px)' }}
         >
           {name}
         </span>
       ) : (
         <AutoFitText
           text={name}
-          maxPx={13}
-          minPx={9}
+          maxPx={11}
+          minPx={8}
           className="font-extrabold text-white uppercase tracking-wide text-center opacity-80 group-hover:opacity-100"
         />
       )}
@@ -141,7 +141,7 @@ export function TeamName({ name, className }: { name: string; className?: string
   );
 }
 
-// ===================== Logo (wrapper size + Image fill, no rings) =====================
+// ===================== Logo (compact on mobile) =====================
 function Logo({
   src,
   alt,
@@ -153,7 +153,7 @@ function Logo({
 }) {
   return (
     <div
-      className={`relative shrink-0 h-20 w-20 md:h-32 md:w-32 -mt-2 md:-mt-5 rounded-full overflow-hidden ${className ?? ''}`}
+      className={`relative shrink-0 h-14 w-14 md:h-28 md:w-28 rounded-full overflow-hidden ${className ?? ''}`}
       aria-hidden={false}
     >
       <Image
@@ -161,7 +161,7 @@ function Logo({
         alt={alt}
         fill
         className="object-contain"
-        sizes="(max-width: 768px) 80px, 128px"
+        sizes="(max-width: 768px) 56px, 112px"
         priority={false}
       />
     </div>
@@ -232,7 +232,7 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
         title={`${a} vs ${b}`}
       >
         <div
-          className={`relative h-full w-full ml-[2.5px] border px-3 py-2.5 md:px-4 md:py-3 flex flex-col items-center justify-between ${BG.single} transition-all duration-200 group-hover:-translate-y-0.5`}
+          className={`relative h-full w-full ml-[2.5px] border px-2 py-2 md:px-4 md:py-3 flex flex-col items-center justify-between ${BG.single} transition-all duration-200 group-hover:-translate-y-0.5 overflow-hidden`}
           style={{
             borderColor: accent.solid,
             boxShadow: `0 0 0 1px ${accent.ring} inset, 0 14px 26px -16px ${accent.glow}`,
@@ -241,43 +241,40 @@ export default function EventPillShrimp({ items }: EventPillShrimpProps) {
           }}
         >
           {/* Top time bar */}
-          <div className="relative z-10 w-full flex items-center justify-center px-2 min-w-0">
+          <div className="relative z-10 w-full flex items-center justify-center px-1 min-w-0">
             <AutoFitText
               text={timeText}
-              maxPx={18}
-              minPx={12}
+              maxPx={16}
+              minPx={11}
               className="font-extrabold leading-tight tracking-wide text-white"
             />
           </div>
 
           {/* Logos + VS/Score */}
-          <div className="relative z-10 mt-1 md:mt-2 grid grid-cols-1 grid-rows-[auto_auto_auto] md:grid-cols-[1fr_auto_1fr] md:grid-rows-1 gap-y-2 px-1.5 md:px-2 w-full max-w-[92%] mx-auto">
+          <div className="relative z-10 mt-1 md:mt-2 grid grid-cols-1 grid-rows-[auto_auto_auto] md:grid-cols-[1fr_auto_1fr] md:grid-rows-1 gap-y-1 md:gap-y-2 px-1 md:px-2 w-full max-w-[92%] mx-auto">
             {/* LEFT TEAM */}
             <div className="relative min-w-0 justify-self-center md:justify-self-end w-full max-w-[10rem]">
-              <div className="relative h-24 md:h-28 w-full">
-                <div className="flex h-full w-full items-center justify-center pt-2 pb-7">
-                  <Logo src={la} alt={a} />
-                </div>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full px-1">
-                  <TeamName name={a} />
-                </div>
+              <div className="flex flex-col items-center justify-center">
+                <Logo src={la} alt={a} />
+                <TeamName name={a} className="mt-1" />
               </div>
             </div>
 
             {/* VS / Score */}
-            <div className="flex items-center justify-center px-3 md:px-4 min-w-0 max-w-[10rem]">
-              <CenterMark text={maybeScore ?? 'VS'} inline maxPx={22} minPx={12} />
+            <div className="flex items-center justify-center px-2 md:px-4 min-w-0 max-w-[10rem]">
+              <CenterMark
+                text={maybeScore ?? 'VS'}
+                inline
+                maxPx={18}   // smaller on mobile
+                minPx={11}
+              />
             </div>
 
             {/* RIGHT TEAM */}
             <div className="relative min-w-0 justify-self-center md:justify-self-start w-full max-w-[10rem]">
-              <div className="relative h-24 md:h-28 w-full">
-                <div className="flex h-full w-full items-center justify-center pt-2 pb-7">
-                  <Logo src={lb} alt={b} />
-                </div>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full px-1">
-                  <TeamName name={b} />
-                </div>
+              <div className="flex flex-col items-center justify-center">
+                <Logo src={lb} alt={b} />
+                <TeamName name={b} className="mt-1" />
               </div>
             </div>
           </div>

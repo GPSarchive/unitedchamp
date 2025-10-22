@@ -279,6 +279,9 @@ export default function ReviewAndSubmit({
     setError(null);
     setWarningsUi([]);
 
+    // Skip no-op saves in edit mode
+    if (mode === "edit" && !anyDirty) return;
+
     // 1) Canonicalize id→idx + validations
     const { canon, warnings } = canonicalizeStageRefsById(payload);
     const orderCheck = validateStageOrderingAndRefs(canon);
@@ -337,12 +340,22 @@ export default function ReviewAndSubmit({
           await loadTournamentIntoStore(newId);
 
           // 3) NOW seed wizard state into the store (marking things dirty)
-          if (seedFromWizard) {
-            seedFromWizard(canon, teams, draftMatches);
+          seedFromWizard?.(canon, teams, draftMatches);
+
+          // 4) Persist via /save-all with one retry on 409
+          try {
+            await saveAll();
+          } catch (e: any) {
+            if (String(e?.message || "").startsWith("409 ")) {
+              await loadTournamentIntoStore(newId);
+              await saveAll();
+            } else {
+              throw e;
+            }
           }
 
-          // 4) Persist via /save-all (server resolves KO ids etc)
-          await saveAll();
+          // 5) Rehydrate after success
+          await loadTournamentIntoStore(newId);
           return;
         }
 
@@ -353,15 +366,22 @@ export default function ReviewAndSubmit({
         }
 
         // 1) Push wizard changes into the store so dirty flags are set
-        if (seedFromWizard) {
-          seedFromWizard(canon, teams, draftMatches);
+        seedFromWizard?.(canon, teams, draftMatches);
+
+        // 2) Persist via /save-all with one retry on 409
+        try {
+          await saveAll();
+        } catch (e: any) {
+          if (String(e?.message || "").startsWith("409 ")) {
+            if (meta?.id) await loadTournamentIntoStore(meta.id);
+            await saveAll();
+          } else {
+            throw e;
+          }
         }
 
-        // 2) Persist via /save-all
-        await saveAll();
-
-        // 3) Optional: refresh from DB so KO pointers / updated_at reflect server truth
-        // if (meta?.id) await loadTournamentIntoStore(meta.id);
+        // 3) Refresh from DB so updated_at reflects server truth
+        if (meta?.id) await loadTournamentIntoStore(meta.id);
 
         return;
       } catch (e: any) {
