@@ -345,7 +345,6 @@ export interface TournamentRow {
   start_date: string | null; // 'YYYY-MM-DD'
   end_date: string | null; // 'YYYY-MM-DD'
   winner_team_id: Id | null;
-  is_dummy?: boolean;
 }
 
 /** Intake mapping (KO → Groups) used by UI config and server progression */
@@ -391,128 +390,6 @@ export type StageConfig = {
   from_knockout_stage_idx?: number;
   groups_intake?: IntakeMapping[];
 };
-
-/**
- * ---------------------------------
- * Tournament Save-All API payloads
- * ---------------------------------
- */
-
-export type TournamentPatch = Partial<
-  Pick<
-    TournamentRow,
-    | "name"
-    | "slug"
-    | "logo"
-    | "season"
-    | "status"
-    | "format"
-    | "start_date"
-    | "end_date"
-    | "winner_team_id"
-  >
->;
-
-export interface TournamentStageUpsert {
-  id?: Id | null;
-  tournament_id?: Id | null;
-  name: string;
-  kind: StageKind;
-  ordering?: number | null;
-  config?: StageConfig | Record<string, unknown> | null;
-  is_dummy?: boolean;
-}
-
-export interface TournamentGroupUpsert {
-  id?: Id | null;
-  stage_id: Id;
-  name: string;
-  ordering?: number | null;
-  is_dummy?: boolean;
-}
-
-export interface TournamentTeamUpsert {
-  id?: Id | null;
-  tournament_id: Id;
-  team_id: Id;
-  stage_id?: Id | null;
-  group_id?: Id | null;
-  seed?: number | null;
-  is_dummy?: boolean;
-}
-
-export type StageSlotSource = "manual" | "intake";
-
-export interface StageSlotUpsert {
-  stage_id: Id;
-  group_id: number;
-  slot_id: number;
-  team_id?: Id | null;
-  source?: StageSlotSource;
-  updated_at?: string | null;
-  is_dummy?: boolean;
-}
-
-export type KnockoutOutcome = "W" | "L";
-
-export interface IntakeMappingUpsert {
-  id?: Id | null;
-  target_stage_id: Id;
-  group_idx: number;
-  slot_idx: number;
-  from_stage_id: Id;
-  round: number;
-  bracket_pos: number;
-  outcome: KnockoutOutcome;
-  is_dummy?: boolean;
-}
-
-export interface MatchUpsertRow {
-  id?: Id | null;
-  tournament_id?: Id | null;
-  stage_id?: Id | null;
-  group_id?: Id | null;
-  team_a_id?: Id | null;
-  team_b_id?: Id | null;
-  team_a_score?: number | null;
-  team_b_score?: number | null;
-  winner_team_id?: Id | null;
-  status?: MatchStatus;
-  match_date?: string | null;
-  matchday?: number | null;
-  round?: number | null;
-  bracket_pos?: number | null;
-  home_source_match_id?: Id | null;
-  home_source_outcome?: KnockoutOutcome | null;
-  home_source_round?: number | null;
-  home_source_bracket_pos?: number | null;
-  away_source_match_id?: Id | null;
-  away_source_outcome?: KnockoutOutcome | null;
-  away_source_round?: number | null;
-  away_source_bracket_pos?: number | null;
-  referee?: string | null;
-  updated_at?: string | null;
-  is_dummy?: boolean;
-}
-
-type SaveAllUpsertSection<T> = {
-  upsert?: T[];
-  deleteIds?: Id[];
-};
-
-export interface SaveAllRequest {
-  tournament?: { patch: TournamentPatch };
-  stages?: SaveAllUpsertSection<TournamentStageUpsert>;
-  groups?: SaveAllUpsertSection<TournamentGroupUpsert>;
-  tournamentTeams?: SaveAllUpsertSection<TournamentTeamUpsert>;
-  stageSlots?: { upsert?: StageSlotUpsert[] };
-  intakeMappings?: { replace?: IntakeMappingUpsert[]; targetStageIds?: Id[] };
-  matches?: SaveAllUpsertSection<MatchUpsertRow>;
-  force?: {
-    matches?: boolean;
-    stageSlots?: boolean;
-  };
-}
 
 /**
  * ---------------------------------

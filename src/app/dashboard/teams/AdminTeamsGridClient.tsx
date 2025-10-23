@@ -345,16 +345,16 @@ export default function AdminTeamsGridClient({
                   </div>
 
                   {/* PlayersPanel */}
-                  <div className="rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4">
-                    <h3 className="text-sm font-semibold text-white/90 mb-3">Παίκτες ομάδας</h3>
-                    <PlayersPanel
-                      teamId={r.id}
-                      associations={assoc}
-                      isLoading={isLoading}
-                      error={err || null}
-                      onOpenPlayer={(playerId: number) => handleOpenPlayer(playerId)}
-                    />
-                  </div>
+                  <div className="rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4 max-h-[300px] overflow-y-scroll">
+                  <h3 className="text-sm font-semibold text-white/90 mb-3">Παίκτες ομάδας</h3>
+                  <PlayersPanel
+                    teamId={r.id}
+                    associations={assoc}
+                    isLoading={isLoading}
+                    error={err || null}
+                    onOpenPlayer={(playerId: number) => handleOpenPlayer(playerId)}
+                  />
+                </div>
 
                   {archived && r.deleted_at ? (
                     <p className="mt-2 text-xs text-white/50">

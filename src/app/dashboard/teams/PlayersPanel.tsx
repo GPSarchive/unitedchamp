@@ -132,7 +132,8 @@ export default function PlayersPanel({
   }
 
   return (
-    <div className="mt-2 rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4">
+    <div>
+      {/* Header with add button */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-white/90">Τρέχον ρόστερ</h3>
         <button
@@ -147,26 +148,30 @@ export default function PlayersPanel({
         </button>
       </div>
 
-      {isLoading ? (
-        <p className="text-white/70">Φόρτωση παικτών…</p>
-      ) : error ? (
-        <p className="text-red-400">Σφάλμα φόρτωσης παικτών: {error}</p>
-      ) : !list || list.length === 0 ? (
-        <p className="text-gray-400">Δεν υπάρχουν παίκτες σε αυτή την ομάδα.</p>
-      ) : (
-        <div className="overflow-y-auto max-h-96"> {/* Added scrolling */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {/* Scrollable players list */}
+      <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+        {isLoading ? (
+          <p className="text-white/70 py-4">Φόρτωση παικτών…</p>
+        ) : error ? (
+          <p className="text-red-400 py-4">Σφάλμα φόρτωσης παικτών: {error}</p>
+        ) : !list || list.length === 0 ? (
+          <p className="text-gray-400 py-4">Δεν υπάρχουν παίκτες σε αυτή την ομάδα.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {list.map((pa) => {
               const p = pa.player;
               const s = (p.player_statistics[0] as PlayerStat | undefined);
               const ageSafe = s?.age ?? null;
 
               return (
-                <div key={p.id} className="group relative text-left w-full p-3 border border-orange-400/20 bg-orange-500/5 shadow-md rounded-md">
+                <div
+                  key={p.id}
+                  className="group relative text-left w-full p-3 border border-orange-400/20 bg-orange-500/5 shadow-md rounded-md hover:border-orange-400/40 transition-all"
+                >
                   <button
                     type="button"
                     onClick={() => removeFromTeam(p.id)}
-                    className="absolute right-2 top-2 hidden group-hover:inline-flex text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50 transition-opacity"
                     title="Αφαίρεση από την ομάδα"
                   >
                     Αφαίρεση
@@ -175,10 +180,12 @@ export default function PlayersPanel({
                   <button
                     type="button"
                     onClick={() => onOpenPlayer(p.id)}
-                    className="w-full text-left hover:shadow-lg hover:border-orange-400/40 transition rounded-md"
+                    className="w-full text-left"
                     title="Επεξεργασία παίκτη"
                   >
-                    <p className="text-white font-semibold">{p.first_name} {p.last_name}</p>
+                    <p className="text-white font-semibold pr-16">
+                      {p.first_name} {p.last_name}
+                    </p>
                     <p className="text-gray-300 text-sm mt-1">Ηλικία: {ageSafe ?? "—"}</p>
 
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
@@ -203,40 +210,65 @@ export default function PlayersPanel({
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Συρτάρι */}
-      <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-        <div className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={() => setOpen(false)} />
-        <div
-          className={`absolute right-0 top-0 h-full w-full sm:w-[520px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform ${
-            open ? "translate-x-0" : "translate-x-full"
+      {/* Side drawer for adding players */}
+      <div 
+        className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+          open ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+        aria-hidden={!open}
+      >
+        {/* Backdrop */}
+        <div 
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            open ? "opacity-100" : "opacity-0"
           }`}
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
+          onClick={() => setOpen(false)}
+        />
+        
+        {/* Side panel */}
+        <div
+  className={`absolute right-0 top-0 h-full w-full sm:w-full bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 ${
+    open ? "translate-x-0" : "translate-x-full"
+  }`}
+>
+          {/* Panel header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/50">
             <div className="flex items-center gap-2">
               <button
-                className={`px-2 py-1 rounded ${tab === "existing" ? "bg-white/10" : ""}`}
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                  tab === "existing" 
+                    ? "bg-emerald-700/30 text-white border border-emerald-400/40" 
+                    : "text-white/70 hover:bg-white/5"
+                }`}
                 onClick={() => setTab("existing")}
               >
                 Προσθήκη υπάρχοντος
               </button>
               <button
-                className={`px-2 py-1 rounded ${tab === "create" ? "bg-white/10" : ""}`}
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                  tab === "create" 
+                    ? "bg-emerald-700/30 text-white border border-emerald-400/40" 
+                    : "text-white/70 hover:bg-white/5"
+                }`}
                 onClick={() => setTab("create")}
               >
                 Δημιουργία νέου
               </button>
             </div>
-            <button onClick={() => setOpen(false)} className="p-2 rounded-lg hover:bg-white/10" title="Κλείσιμο">
+            <button 
+              onClick={() => setOpen(false)} 
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors" 
+              title="Κλείσιμο"
+            >
               <X className="h-5 w-5 text-white/80" />
             </button>
           </div>
 
-          <div className="p-4 space-y-4">
+          {/* Panel content */}
+          <div className="p-6 space-y-4 h-[calc(100vh-5rem)] overflow-y-auto custom-scrollbar">
             {tab === "existing" ? (
               <>
                 <label className="flex items-center gap-2">
@@ -246,38 +278,49 @@ export default function PlayersPanel({
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => (e.key === "Enter" ? (e.preventDefault(), search()) : undefined)}
                     placeholder="Αναζήτηση με όνομα…"
-                    className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+                    className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
                   />
                   <button
                     type="button"
                     disabled={!canSearch || searching}
                     onClick={search}
-                    className="px-3 py-2 rounded-lg border border-white/15 bg-zinc-900 text-white disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/30 text-white hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Αναζήτηση"}
                   </button>
                 </label>
 
-                <div className="mt-3 space-y-2">
+                <div className="mt-4 space-y-2">
                   {results.length === 0 ? (
-                    <p className="text-white/60 text-sm">Δεν υπάρχουν αποτελέσματα ακόμη.</p>
+                    <div className="text-center py-8">
+                      <Search className="h-12 w-12 text-white/20 mx-auto mb-3" />
+                      <p className="text-white/60 text-sm">
+                        {searching ? "Αναζήτηση..." : "Δεν υπάρχουν αποτελέσματα ακόμη."}
+                      </p>
+                      <p className="text-white/40 text-xs mt-1">
+                        Πληκτρολογήστε ένα όνομα και πατήστε αναζήτηση
+                      </p>
+                    </div>
                   ) : (
                     results.map((pa) => {
                       const p = pa.player;
                       return (
                         <div
                           key={p.id}
-                          className="flex items-center justify-between px-3 py-2 rounded border border-white/10 bg-zinc-900"
+                          className="flex items-center justify-between px-4 py-3 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 transition-colors"
                         >
                           <div className="text-white">
-                            {p.first_name} {p.last_name} <span className="text-white/50 text-xs">#{p.id}</span>
+                            <div className="font-medium">
+                              {p.first_name} {p.last_name}
+                            </div>
+                            <div className="text-white/50 text-xs">ID: #{p.id}</div>
                           </div>
                           <button
                             type="button"
                             onClick={() => addExisting(p.id)}
-                            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50"
+                            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 transition-colors"
                           >
-                            <UserPlus className="h-3 w-3" /> Προσθήκη
+                            <UserPlus className="h-4 w-4" /> Προσθήκη
                           </button>
                         </div>
                       );
@@ -287,25 +330,27 @@ export default function PlayersPanel({
               </>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">Όνομα</span>
+                <div className="space-y-4">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-white/80 font-medium">Όνομα *</span>
                     <input
                       value={first}
                       onChange={(e) => setFirst(e.target.value)}
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+                      placeholder="π.χ. Γιάννης"
+                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
                     />
                   </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">Επώνυμο</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-white/80 font-medium">Επώνυμο *</span>
                     <input
                       value={last}
                       onChange={(e) => setLast(e.target.value)}
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+                      placeholder="π.χ. Παπαδόπουλος"
+                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
                     />
                   </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-sm text-white/80">Ηλικία</span>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-white/80 font-medium">Ηλικία</span>
                     <input
                       type="number"
                       min={0}
@@ -314,16 +359,17 @@ export default function PlayersPanel({
                         const v = e.target.value;
                         setAge(v === "" ? "" : Number(v));
                       }}
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+                      placeholder="π.χ. 25"
+                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
                     />
                   </label>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-4">
                   <button
                     type="button"
                     disabled={!validCreate}
                     onClick={createAndAdd}
-                    className="px-3 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Δημιουργία & προσθήκη
                   </button>
@@ -333,6 +379,24 @@ export default function PlayersPanel({
           </div>
         </div>
       </div>
+
+      {/* Custom scrollbar styles */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
     </div>
   );
 }
