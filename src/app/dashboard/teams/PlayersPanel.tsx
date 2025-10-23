@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -155,53 +154,55 @@ export default function PlayersPanel({
       ) : !list || list.length === 0 ? (
         <p className="text-gray-400">Δεν υπάρχουν παίκτες σε αυτή την ομάδα.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {list.map((pa) => {
-            const p = pa.player;
-            const s = (p.player_statistics[0] as PlayerStat | undefined);
-            const ageSafe = s?.age ?? null;
+        <div className="overflow-y-auto max-h-96"> {/* Added scrolling */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {list.map((pa) => {
+              const p = pa.player;
+              const s = (p.player_statistics[0] as PlayerStat | undefined);
+              const ageSafe = s?.age ?? null;
 
-            return (
-              <div key={p.id} className="group relative text-left w-full p-3 border border-orange-400/20 bg-orange-500/5 shadow-md rounded-md">
-                <button
-                  type="button"
-                  onClick={() => removeFromTeam(p.id)}
-                  className="absolute right-2 top-2 hidden group-hover:inline-flex text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
-                  title="Αφαίρεση από την ομάδα"
-                >
-                  Αφαίρεση
-                </button>
+              return (
+                <div key={p.id} className="group relative text-left w-full p-3 border border-orange-400/20 bg-orange-500/5 shadow-md rounded-md">
+                  <button
+                    type="button"
+                    onClick={() => removeFromTeam(p.id)}
+                    className="absolute right-2 top-2 hidden group-hover:inline-flex text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
+                    title="Αφαίρεση από την ομάδα"
+                  >
+                    Αφαίρεση
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => onOpenPlayer(p.id)}
-                  className="w-full text-left hover:shadow-lg hover:border-orange-400/40 transition rounded-md"
-                  title="Επεξεργασία παίκτη"
-                >
-                  <p className="text-white font-semibold">{p.first_name} {p.last_name}</p>
-                  <p className="text-gray-300 text-sm mt-1">Ηλικία: {ageSafe ?? "—"}</p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenPlayer(p.id)}
+                    className="w-full text-left hover:shadow-lg hover:border-orange-400/40 transition rounded-md"
+                    title="Επεξεργασία παίκτη"
+                  >
+                    <p className="text-white font-semibold">{p.first_name} {p.last_name}</p>
+                    <p className="text-gray-300 text-sm mt-1">Ηλικία: {ageSafe ?? "—"}</p>
 
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-                      Γκολ: {num(s?.total_goals)}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-                      Ασίστ: {num(s?.total_assists)}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-300">
-                      Κίτρινες: {num(s?.yellow_cards)}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-red-300">
-                      Κόκκινες: {num(s?.red_cards)}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-300">
-                      Μπλε: {num(s?.blue_cards)}
-                    </span>
-                  </div>
-                </button>
-              </div>
-            );
-          })}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
+                        Γκολ: {num(s?.total_goals)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
+                        Ασίστ: {num(s?.total_assists)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-300">
+                        Κίτρινες: {num(s?.yellow_cards)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-red-500/10 px-2 py-0.5 text-red-300">
+                        Κόκκινες: {num(s?.red_cards)}
+                      </span>
+                      <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-300">
+                        Μπλε: {num(s?.blue_cards)}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -47,10 +47,10 @@ type TournamentTeamRow = {
 type StageSlotRow = {
   stage_id: number;
   group_id: number; // index-based
-  slot_id: number; // 1-based
+  slot_id: number;  // 1-based
   team_id?: number | null;
   source?: "manual" | "intake";
-  updated_at?: string; // for concurrency
+  updated_at?: string; // optimistic lock token
 };
 
 type IntakeMappingRow = {
@@ -82,7 +82,7 @@ type MatchRow = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
-  updated_at?: string | null; // for concurrency
+  updated_at?: string | null; // optimistic lock token
 };
 
 type SaveAllRequest = {
@@ -93,6 +93,11 @@ type SaveAllRequest = {
   stageSlots?: { upsert?: StageSlotRow[] };
   intakeMappings?: { replace?: IntakeMappingRow[]; targetStageIds?: number[] };
   matches?: { upsert?: MatchRow[]; deleteIds?: number[] };
+  // Force overwrites skip optimistic checks for specific sections.
+  force?: {
+    matches?: boolean;
+    stageSlots?: boolean;
+  };
 };
 
 type SaveAllResponse = {
@@ -114,13 +119,50 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<Params> }
 ) {
+  const rid = req.headers.get("x-debug-id") ?? "no-id";
+  const phase = req.headers.get("x-debug-phase") ?? "n/a";
   const { id } = await params;
+
+  let body: SaveAllRequest;
+  try {
+    body = (await req.json()) as SaveAllRequest;
+  } catch {
+    console.error("[save-all][in]", rid, "bad JSON");
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const sum = {
+    tournament: !!body.tournament?.patch,
+    stages: {
+      upsert: body.stages?.upsert?.length ?? 0,
+      deleteIds: body.stages?.deleteIds ?? [],
+    },
+    groups: {
+      upsert: body.groups?.upsert?.length ?? 0,
+      deleteIds: body.groups?.deleteIds ?? [],
+    },
+    tournamentTeams: body.tournamentTeams?.upsert?.length ?? 0,
+    stageSlots: body.stageSlots?.upsert?.length ?? 0,
+    intakeMappings: body.intakeMappings?.replace?.length ?? 0,
+    matches: {
+      upsert: body.matches?.upsert?.length ?? 0,
+      deleteIds: body.matches?.deleteIds ?? [],
+      updateIds: (body.matches?.upsert ?? []).filter((m) => m.id != null).map((m) => m.id),
+      createCount: (body.matches?.upsert ?? []).filter((m) => m.id == null).length,
+    },
+    force: body.force ?? {},
+    phase,
+  };
+  console.log("[save-all][in]", rid, "tid=", id, JSON.stringify(sum));
+
   const tournamentId = Number(id);
   if (!Number.isFinite(tournamentId)) {
     return NextResponse.json({ error: "Invalid tournament id" }, { status: 400 });
   }
 
-  const body = (await req.json()) as SaveAllRequest;
+  const forceMatches = !!body.force?.matches;
+  const forceSlots = !!body.force?.stageSlots;
+
   const out: SaveAllResponse = { ok: true };
 
   try {
@@ -160,29 +202,28 @@ export async function POST(
     /* 4) Stages upsert ----------------------------------------------------- */
     if (body.stages?.upsert?.length) {
       const createRows = body.stages.upsert
-        .filter((r) => r.id == null) // null or undefined → create
+        .filter((r) => r.id == null)
         .map(({ id: _drop, ...r }) => ({ ...r, tournament_id: tournamentId }));
-      const updateRows = body.stages.upsert
-        .filter((r) => r.id != null);
+      const updateRows = body.stages.upsert.filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
       if (createRows.length) {
-        const { data: stgCreateData, error: stgCreateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_stages")
-          .insert(createRows) // id omitted → default sequence
+          .insert(createRows)
           .select();
-        if (stgCreateErr) return NextResponse.json({ error: stgCreateErr.message }, { status: 500 });
-        upserted = upserted.concat(stgCreateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       if (updateRows.length) {
-        const { data: stgUpdateData, error: stgUpdateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_stages")
           .upsert(updateRows, { onConflict: "id" })
           .select();
-        if (stgUpdateErr) return NextResponse.json({ error: stgUpdateErr.message }, { status: 500 });
-        upserted = upserted.concat(stgUpdateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       out.stages = upserted;
@@ -193,27 +234,26 @@ export async function POST(
       const createRows = body.groups.upsert
         .filter((r) => r.id == null)
         .map(({ id: _drop, ...r }) => r);
-      const updateRows = body.groups.upsert
-        .filter((r) => r.id != null);
+      const updateRows = body.groups.upsert.filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
       if (createRows.length) {
-        const { data: grpCreateData, error: grpCreateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_groups")
           .insert(createRows)
           .select();
-        if (grpCreateErr) return NextResponse.json({ error: grpCreateErr.message }, { status: 500 });
-        upserted = upserted.concat(grpCreateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       if (updateRows.length) {
-        const { data: grpUpdateData, error: grpUpdateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_groups")
           .upsert(updateRows, { onConflict: "id" })
           .select();
-        if (grpUpdateErr) return NextResponse.json({ error: grpUpdateErr.message }, { status: 500 });
-        upserted = upserted.concat(grpUpdateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       out.groups = upserted;
@@ -224,41 +264,40 @@ export async function POST(
       const createRows = body.tournamentTeams.upsert
         .filter((r) => r.id == null)
         .map(({ id: _drop, ...r }) => ({ ...r, tournament_id: tournamentId }));
-      const updateRows = body.tournamentTeams.upsert
-        .filter((r) => r.id != null);
+      const updateRows = body.tournamentTeams.upsert.filter((r) => r.id != null);
 
       let upserted: any[] = [];
 
       if (createRows.length) {
-        const { data: ttCreateData, error: ttCreateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_teams")
           .insert(createRows)
           .select();
-        if (ttCreateErr) return NextResponse.json({ error: ttCreateErr.message }, { status: 500 });
-        upserted = upserted.concat(ttCreateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       if (updateRows.length) {
-        const { data: ttUpdateData, error: ttUpdateErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("tournament_teams")
           .upsert(updateRows, { onConflict: "id" })
           .select();
-        if (ttUpdateErr) return NextResponse.json({ error: ttUpdateErr.message }, { status: 500 });
-        upserted = upserted.concat(ttUpdateData ?? []);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
       }
 
       out.tournamentTeams = upserted;
     }
 
-    /* 7) Stage slots upsert (PK: stage_id,group_id,slot_id) + concurrency -- */
+    /* 7) Stage slots upsert (optimistic, with optional force) -------------- */
     if (body.stageSlots?.upsert?.length) {
       const rows = body.stageSlots.upsert;
 
-      const guarded = rows.filter((r) => r.updated_at);
-      const rest = rows.filter((r) => !r.updated_at);
+      const guarded = forceSlots ? [] : rows.filter((r) => r.updated_at);
+      const rest = forceSlots ? rows : rows.filter((r) => !r.updated_at);
 
       for (const r of guarded) {
-        const { data: slotUpdData, error: slotUpdErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("stage_slots")
           .update({ team_id: r.team_id ?? null, source: r.source ?? "manual" })
           .eq("stage_id", r.stage_id)
@@ -267,13 +306,23 @@ export async function POST(
           .eq("updated_at", r.updated_at)
           .select("*");
 
-        if (slotUpdErr) return NextResponse.json({ error: slotUpdErr.message }, { status: 500 });
-        if (!slotUpdData || slotUpdData.length === 0) {
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (!data || data.length === 0) {
+          const { data: cur } = await supabaseAdmin
+            .from("stage_slots")
+            .select("stage_id,group_id,slot_id,updated_at")
+            .eq("stage_id", r.stage_id)
+            .eq("group_id", r.group_id)
+            .eq("slot_id", r.slot_id)
+            .single();
+
           return NextResponse.json(
             {
               error: "Stage slot is stale. Please reload.",
               entity: "stage_slots",
               key: { stage_id: r.stage_id, group_id: r.group_id, slot_id: r.slot_id },
+              sent_updated_at: r.updated_at,
+              db_updated_at: cur?.updated_at ?? null,
             },
             { status: 409 }
           );
@@ -281,20 +330,20 @@ export async function POST(
       }
 
       if (rest.length) {
-        const { error: slotUpsertErr } = await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("stage_slots")
           .upsert(rest, { onConflict: "stage_id,group_id,slot_id" });
-        if (slotUpsertErr) return NextResponse.json({ error: slotUpsertErr.message }, { status: 500 });
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
       const affectedStageIds = Array.from(new Set(rows.map((r) => r.stage_id)));
-      const { data: slotCur, error: slotFetchErr } = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from("stage_slots")
         .select("*")
         .in("stage_id", affectedStageIds);
-      if (slotFetchErr) return NextResponse.json({ error: slotFetchErr.message }, { status: 500 });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-      out.stageSlots = slotCur ?? [];
+      out.stageSlots = data ?? [];
     }
 
     /* 8) Intake mappings replace (delete → insert) ------------------------- */
@@ -304,22 +353,22 @@ export async function POST(
         Array.from(new Set(body.intakeMappings.replace.map((r) => r.target_stage_id)));
 
       if (targetStageIds.length) {
-        const { error: intakeDelErr } = await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("intake_mappings")
           .delete()
           .in("target_stage_id", targetStageIds);
-        if (intakeDelErr) return NextResponse.json({ error: intakeDelErr.message }, { status: 500 });
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
       const createRows = (body.intakeMappings.replace ?? []).map(({ id: _drop, ...r }) => r);
 
       if (createRows.length) {
-        const { data: intakeInsData, error: intakeInsErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("intake_mappings")
-          .insert(createRows) // id omitted
+          .insert(createRows)
           .select();
-        if (intakeInsErr) return NextResponse.json({ error: intakeInsErr.message }, { status: 500 });
-        out.intakeMappings = intakeInsData ?? [];
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        out.intakeMappings = data ?? [];
       } else {
         out.intakeMappings = [];
       }
@@ -346,61 +395,78 @@ export async function POST(
       }
     }
 
-    /* 9) Matches upsert (with concurrency on updated_at) ------------------- */
+    /* 9) Matches upsert (optimistic, with optional force) ------------------ */
     if (body.matches?.upsert?.length) {
       const rows = body.matches.upsert.map((m) => ({ ...m, tournament_id: tournamentId }));
 
       const toUpdate = rows.filter((r) => r.id != null);
       const toCreate = rows
         .filter((r) => r.id == null)
-        .map(({ id: _drop, updated_at: _drop2, ...r }) => r); // strip id & updated_at
+        .map(({ id: _drop, updated_at: _drop2, ...r }) => r);
 
       const updated: any[] = [];
       const created: any[] = [];
 
-      // Concurrency-aware updates
       for (const r of toUpdate) {
-        const q = supabaseAdmin.from("matches").update({
-          stage_id: r.stage_id,
-          tournament_id: tournamentId,
-          group_id: r.group_id ?? null,
-          team_a_id: r.team_a_id ?? null,
-          team_b_id: r.team_b_id ?? null,
-          team_a_score: r.team_a_score ?? null,
-          team_b_score: r.team_b_score ?? null,
-          winner_team_id: r.winner_team_id ?? null,
-          status: r.status ?? "scheduled",
-          match_date: r.match_date ?? null,
-          matchday: r.matchday ?? null,
-          round: r.round ?? null,
-          bracket_pos: r.bracket_pos ?? null,
-          home_source_round: r.home_source_round ?? null,
-          home_source_bracket_pos: r.home_source_bracket_pos ?? null,
-          away_source_round: r.away_source_round ?? null,
-          away_source_bracket_pos: r.away_source_bracket_pos ?? null,
-        });
+        let q = supabaseAdmin
+          .from("matches")
+          .update({
+            stage_id: r.stage_id,
+            tournament_id: tournamentId,
+            group_id: r.group_id ?? null,
+            team_a_id: r.team_a_id ?? null,
+            team_b_id: r.team_b_id ?? null,
+            team_a_score: r.team_a_score ?? null,
+            team_b_score: r.team_b_score ?? null,
+            winner_team_id: r.winner_team_id ?? null,
+            status: r.status ?? "scheduled",
+            match_date: r.match_date ?? null,
+            matchday: r.matchday ?? null,
+            round: r.round ?? null,
+            bracket_pos: r.bracket_pos ?? null,
+            home_source_round: r.home_source_round ?? null,
+            home_source_bracket_pos: r.home_source_bracket_pos ?? null,
+            away_source_round: r.away_source_round ?? null,
+            away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+          })
+          .eq("id", r.id as number);
 
-        if (r.updated_at) q.eq("updated_at", r.updated_at);
+        if (!forceMatches && r.updated_at) {
+          q = q.eq("updated_at", r.updated_at);
+        }
 
-        const { data: updMatchData, error: updMatchErr } = await q.eq("id", r.id as number).select("*");
-        if (updMatchErr) return NextResponse.json({ error: updMatchErr.message }, { status: 500 });
-        if (r.updated_at && (!updMatchData || updMatchData.length === 0)) {
+        const { data, error } = await q.select("*");
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+        if (!forceMatches && r.updated_at && (!data || data.length === 0)) {
+          const { data: cur } = await supabaseAdmin
+            .from("matches")
+            .select("id, updated_at")
+            .eq("id", r.id as number)
+            .single();
+
           return NextResponse.json(
-            { error: "Match is stale. Please reload.", entity: "matches", id: r.id },
+            {
+              error: "Match is stale. Please reload.",
+              entity: "matches",
+              id: r.id,
+              sent_updated_at: r.updated_at,
+              db_updated_at: cur?.updated_at ?? null,
+            },
             { status: 409 }
           );
         }
 
-        updated.push(...(updMatchData ?? []));
+        updated.push(...(data ?? []));
       }
 
       if (toCreate.length) {
-        const { data: createdMatches, error: createMatchErr } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
           .from("matches")
-          .insert(toCreate) // id omitted → default sequence
+          .insert(toCreate)
           .select();
-        if (createMatchErr) return NextResponse.json({ error: createMatchErr.message }, { status: 500 });
-        created.push(...(createdMatches ?? []));
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        created.push(...(data ?? []));
       }
 
       out.matches = [...updated, ...created];
@@ -467,11 +533,11 @@ export async function POST(
         .filter((p) => Object.keys(p).length > 1);
 
       if (pointerPatches.length) {
-        const { error: pointerUpsertErr } = await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("matches")
           .upsert(pointerPatches, { onConflict: "id" });
-        if (pointerUpsertErr) {
-          return NextResponse.json({ error: pointerUpsertErr.message }, { status: 500 });
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 500 });
         }
       }
 

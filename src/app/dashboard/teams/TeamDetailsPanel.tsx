@@ -1,16 +1,23 @@
-// components/DashboardPageComponents/teams/TeamDetailsPanel.tsx
 import React, { useState, useEffect } from 'react';
 import TeamRowEditor from './TeamRowEditor';
 import PlayersPanel from './PlayersPanel';
+import { PlayerAssociation } from "@/app/lib/types"; // Import PlayerAssociation type
 
 type Props = {
   teamId: number;
   open: boolean;
   onClose: () => void;
   onSaved: (team: any) => void;
+  players: PlayerAssociation[]; // Added players prop
 };
 
-export default function TeamDetailsPanel({ teamId, open, onClose, onSaved }: Props) {
+export default function TeamDetailsPanel({
+  teamId,
+  open,
+  onClose,
+  onSaved,
+  players, // Receiving players from parent
+}: Props) {
   const [isPanelExpanded, setIsPanelExpanded] = useState(open);
 
   // Open/close logic
@@ -40,16 +47,20 @@ export default function TeamDetailsPanel({ teamId, open, onClose, onSaved }: Pro
         </div>
 
         <div className="p-4 space-y-4">
+          {/* TeamRowEditor component */}
           <TeamRowEditor
             initial={{ id: teamId }} // Assuming you fetch the team data by ID
             onCancel={onClose}
             onSaved={onSaved}
           />
+          
+          {/* PlayersPanel component */}
           <PlayersPanel
             teamId={teamId}
-            isLoading={false}
-            error={null}
-            onOpenPlayer={(playerId) => {}}
+            isLoading={false} // Adjust according to your loading state
+            error={null} // Handle errors as needed
+            associations={players} // Pass the players here
+            onOpenPlayer={(playerId: number) => {}} // Provide explicit type for playerId
           />
         </div>
       </div>
