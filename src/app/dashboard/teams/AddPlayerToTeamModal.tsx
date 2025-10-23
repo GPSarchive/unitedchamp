@@ -1,4 +1,3 @@
-//components/DashboardPageComponents/teams/AddPlayerToTeamModal.tsx
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -24,6 +23,8 @@ export default function AddPlayerToTeamModal({
   const [loading, setLoading] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const canSearch = open && Number.isFinite(teamId ?? NaN);
+
+  const [teamName, setTeamName] = useState<string>("");
 
   useEffect(() => {
     if (!canSearch) return;
@@ -113,19 +114,30 @@ export default function AddPlayerToTeamModal({
     }
   }
 
+  useEffect(() => {
+    if (teamId) {
+      fetch(`/api/teams/${teamId}`)
+        .then(response => response.json())
+        .then(data => {
+          setTeamName(data.name);
+        })
+        .catch(error => console.error('Error fetching team name:', error));
+    }
+  }, [teamId]);
+
   return (
     <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div className={`absolute left-1/2 top-[10%] -translate-x-1/2 w-[92%] max-w-xl bg-zinc-950 border border-white/10 rounded-2xl shadow-xl transition-transform ${open ? "scale-100" : "scale-95"}`}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <h3 className="text-white font-semibold">Add player to team</h3>
+          <h3 className="text-white font-semibold">Add player to {teamName || 'Team'}</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-white/10"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="px-4 pt-3">
           <div className="inline-flex rounded-lg border border-white/10 overflow-hidden mb-4">
-            <button onClick={() => setTab("existing")} className={`px-3 py-1.5 text-sm ${tab==="existing"?"bg-white/10":""}`}>Add existing</button>
-            <button onClick={() => setTab("create")} className={`px-3 py-1.5 text-sm ${tab==="create"?"bg-white/10":""}`}>Create & add</button>
+            <button onClick={() => setTab("existing")} className={`px-3 py-1.5 text-sm ${tab === "existing" ? "bg-white/10" : ""}`}>Add existing</button>
+            <button onClick={() => setTab("create")} className={`px-3 py-1.5 text-sm ${tab === "create" ? "bg-white/10" : ""}`}>Create & add</button>
           </div>
 
           {tab === "existing" ? (

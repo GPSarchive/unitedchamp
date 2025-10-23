@@ -14,9 +14,6 @@ import ReviewAndSubmit from "./submit/ReviewAndSubmit";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { loadTournamentIntoStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/loadSnapshotClient";
 
-// Align with StageCard’s stricter type for UI rendering
-import type { StageDraft as StageCardDraft } from "./stages/StageCard";
-
 /* =========================================================
    Local types used across the builder
    ========================================================= */
@@ -29,16 +26,9 @@ export type TeamDraft = {
   groupsByStage?: Record<number, number | null>;
 };
 
-type GroupDraft = { name?: string | null } & Record<string, unknown>;
-type StageDraft = {
-  name?: string | null;
-  kind?: "league" | "groups" | "knockout";
-  config?: unknown;
-  groups?: GroupDraft[];
-} & Record<string, unknown>;
-
 /**
- * DraftMatch supports draft-only and DB-backed fields.
+ * DraftMatch now supports BOTH draft-only fields and real DB-backed fields.
+ * (Kept for types used elsewhere.)
  */
 export type DraftMatch = {
   db_id?: number | null;
@@ -59,7 +49,7 @@ export type DraftMatch = {
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
   home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | null;
+  away_source_outcome?: "W" | "L" | "L" | null;
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
@@ -103,7 +93,7 @@ export default function TournamentWizard({
   const [teams, setTeams] = useState<TeamDraft[]>(initialTeams ?? []);
 
   // Keep a ref to previous stages for diffing into the store
-  const prevStagesRef = useRef<StageDraft[]>((payload.stages as unknown as StageDraft[]) ?? []);
+  const prevStagesRef = useRef<Array<any>>(payload.stages ?? []);
 
   // --- store hooks (matches live in the store) ------------------------------
   const storeDraftMatches = useTournamentStore((s) => s.draftMatches);
@@ -116,11 +106,7 @@ export default function TournamentWizard({
   const removeGroup = useTournamentStore((s) => s.removeGroup);
 
   // hydrate the store once from incoming props (payload + initial matches + teams)
-  const seededRef = useRef(false);
   useEffect(() => {
-    if (seededRef.current) return; // StrictMode guard
-    seededRef.current = true;
-
     seedFromWizard(payload, teams, initialDraftMatches ?? []);
     // also mirror payload to the store for any components reading from there
     useTournamentStore.setState({ payload });
@@ -133,26 +119,28 @@ export default function TournamentWizard({
   }, [payload]);
 
   // ---- EDIT MODE: load full snapshot (standings, maps, etc.) into the store
-  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (mode !== "edit" || !meta?.id || hydratedRef.current) return;
-    hydratedRef.current = true;
+    if (mode !== "edit" || !meta?.id) return;
 
     const ctrl = new AbortController();
 
     (async () => {
       try {
         // Fetch + hydrate via helper (includes standings)
-        const snap: unknown = await loadTournamentIntoStore(meta.id, { signal: ctrl.signal });
+        const snap: any = await loadTournamentIntoStore(meta.id, { signal: ctrl.signal });
 
         // Dev-only diagnostics
         if (process.env.NODE_ENV !== "production") {
           console.groupCollapsed(
             `%c[SNAPSHOT] tournament=%c${meta.id}%c hydrated`,
-            "color:#88f",
-            "color:#fff;font-weight:bold",
-            "color:#888"
+            "color:#88f", "color:#fff;font-weight:bold", "color:#888"
           );
+
+          // From body
+          const sCount = Array.isArray(snap?.standings) ? snap.standings.length : 0;
+          const stageIds = Array.isArray(snap?.stages) ? snap.stages.map((s: any) => s.id) : [];
+          console.info("standings.length (body):", sCount);
+          console.info("stage ids (body):", stageIds.join(","));
 
           // From store after hydrate
           const st = useTournamentStore.getState();
@@ -166,7 +154,7 @@ export default function TournamentWizard({
           // Quick peek of first 10 standing rows
           if (storeCount > 0) {
             console.table(
-              st.entities.standings.slice(0, 10).map((r: any) => ({
+              st.entities.standings.slice(0, 10).map((r) => ({
                 stage_id: r.stage_id,
                 group_id: r.group_id,
                 team_id: r.team_id,
@@ -188,10 +176,7 @@ export default function TournamentWizard({
 
   // --- derived: groups context ---------------------------------------------
   const groupStageIndices = useMemo(
-    () =>
-      payload.stages
-        .map((s: any, i: number) => ((s as any).kind === "groups" ? i : -1))
-        .filter((i: number) => i >= 0),
+    () => payload.stages.map((s, i) => (s.kind === "groups" ? i : -1)).filter((i) => i >= 0),
     [payload.stages]
   );
 
@@ -201,7 +186,7 @@ export default function TournamentWizard({
   }, [groupStageIndices]);
 
   // --- validation summary (advisory; does not block saving) ----------------
-  const errors = useMemo<string[]>(() => {
+  const errors = useMemo(() => {
     const out: string[] = [];
     if (!payload.tournament.name || !payload.tournament.name.trim()) {
       out.push("Συμπλήρωσε όνομα διοργάνωσης.");
@@ -212,9 +197,9 @@ export default function TournamentWizard({
     if (payload.stages.length === 0) {
       out.push("Χρειάζεσαι τουλάχιστον 1 στάδιο.");
     }
-    (payload.stages as unknown as StageDraft[]).forEach((s, i) => {
+    payload.stages.forEach((s, i) => {
       if (s.kind === "groups") {
-        const names = (s.groups ?? []).map((g) => String(g.name || "").trim()).filter(Boolean);
+        const names = (s.groups ?? []).map((g: any) => String(g.name || "").trim()).filter(Boolean);
         if (names.length === 0) {
           out.push(`Το στάδιο «${s.name || `#${i + 1}`}» χρειάζεται τουλάχιστον 1 όμιλο.`);
         }
@@ -226,23 +211,18 @@ export default function TournamentWizard({
   // --- helpers --------------------------------------------------------------
 
   // apply Stage & Group changes from the wizard props down into the store (best-effort diff)
-  const syncStagesIntoStore = (prevStages: StageDraft[], nextStages: StageDraft[]) => {
+  const syncStagesIntoStore = (prevStages: any[], nextStages: any[]) => {
     // upsert/update stages in order
     nextStages.forEach((s, i) => {
-      upsertStage(i, {
-        name: s.name ?? undefined, // fix: store expects string | undefined
-        kind: s.kind as any,
-        config: s.config ?? null,
-      });
-
-      const groups: GroupDraft[] = Array.isArray(s.groups) ? s.groups : [];
+      upsertStage(i, { name: s.name, kind: s.kind, config: s.config ?? null });
+      const groups: any[] = Array.isArray(s.groups) ? s.groups : [];
       // upsert/update groups for this stage
       groups.forEach((g, gi) => {
         upsertGroup(i, gi, { name: g?.name ?? `Group ${gi + 1}`, ordering: gi });
       });
 
       // remove any trailing groups that existed before but not now
-      const prevGroupCount = Array.isArray(prevStages[i]?.groups) ? (prevStages[i].groups as GroupDraft[]).length : 0;
+      const prevGroupCount = Array.isArray(prevStages[i]?.groups) ? prevStages[i].groups.length : 0;
       for (let gi = prevGroupCount - 1; gi >= groups.length; gi--) {
         removeGroup(i, gi);
       }
@@ -252,6 +232,27 @@ export default function TournamentWizard({
     for (let si = prevStages.length - 1; si >= nextStages.length; si--) {
       removeStage(si);
     }
+  };
+
+  // Reassign contiguous seeds (1..N) based on current ordering, then persist teams list
+  const handleAutoAssignTeamSeeds = (): number[] => {
+    const seeded = teams
+      .map((t) => ({ ...t, seedNorm: t.seed ?? null }))
+      .sort((a, b) => {
+        const A = a.seedNorm,
+          B = b.seedNorm;
+        if (A != null && B != null) return A - B;
+        if (A != null) return -1;
+        if (B != null) return 1;
+        const an = (a.name ?? "").toLowerCase();
+        const bn = (b.name ?? "").toLowerCase();
+        if (an !== bn) return an < bn ? -1 : 1;
+        return a.id - b.id;
+      });
+
+    const reassigned = seeded.map((t, i) => ({ ...t, seed: i + 1 }));
+    setTeams(reassigned);
+    return reassigned.map((t) => t.id);
   };
 
   // Regenerate fixtures from generators keeping DB/live fields where possible
@@ -271,8 +272,8 @@ export default function TournamentWizard({
         m.away_source_bracket_pos ?? "",
       ].join("|");
 
-    const oldByKey = new Map<string, DraftMatch>(storeDraftMatches.map((m: DraftMatch) => [key(m), m]));
-    const merged: DraftMatch[] = fresh.map((f) => {
+    const oldByKey = new Map(storeDraftMatches.map((m) => [key(m), m]));
+    const merged = fresh.map((f) => {
       const old = oldByKey.get(key(f));
       return old
         ? {
@@ -288,25 +289,6 @@ export default function TournamentWizard({
 
     replaceAllDraftMatches(merged);
   };
-
-  // --- normalize stages for UI (strict StageCardDraft) ----------------------
-  const stagesForUI = useMemo<StageCardDraft[]>(
-    () =>
-      (payload.stages as any[]).map((s, i) => ({
-        id: s?.id,
-        name: s?.name ?? `Stage ${i + 1}`,
-        kind: (s?.kind ?? "league") as "league" | "groups" | "knockout",
-        ordering: (s as any)?.ordering ?? i + 1,
-        config: s?.config ?? {},
-        groups: Array.isArray((s as any)?.groups)
-          ? ((s as any).groups as any[]).map((g: any, gi: number) => ({
-              id: g?.id,
-              name: g?.name ?? `Όμιλος ${gi + 1}`,
-            }))
-          : [],
-      })),
-    [payload.stages]
-  );
 
   // --- UI -------------------------------------------------------------------
   return (
@@ -362,15 +344,15 @@ export default function TournamentWizard({
         {/* Stages (keep local payload for UI; mirror edits to the store immediately) */}
         <div className="space-y-4">
           <StageList
-            stages={stagesForUI}
+            stages={payload.stages}
             onChange={(nextStages) => {
               const prevStages = prevStagesRef.current;
               // 1) update local payload
-              setPayload((p) => ({ ...p, stages: nextStages as unknown as NewTournamentPayload["stages"] }));
+              setPayload((p) => ({ ...p, stages: nextStages }));
               // 2) reflect edits into the store (best-effort diff)
-              syncStagesIntoStore(prevStages, nextStages as unknown as StageDraft[]);
+              syncStagesIntoStore(prevStages, nextStages);
               // 3) remember for next diff
-              prevStagesRef.current = nextStages as unknown as StageDraft[];
+              prevStagesRef.current = nextStages;
             }}
             teams={teams}
           />
@@ -391,7 +373,7 @@ export default function TournamentWizard({
         </div>
       </div>
 
-      {/* 5) Single Save button at the bottom */}
+      {/* 5) Single Save button at the bottom (submit still receives matches; now from the store) */}
       <ReviewAndSubmit
         mode={mode}
         meta={meta ?? undefined}

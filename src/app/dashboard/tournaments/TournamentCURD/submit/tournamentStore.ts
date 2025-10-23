@@ -1,4 +1,3 @@
-
 // app/dashboard/tournaments/TournamentCURD/submit/tournamentStore.ts
 "use client";
 
@@ -33,8 +32,8 @@ type DbTournamentTeam = {
   id: number;
   tournament_id: number;
   team_id: number;
-  stage_id?: number | null;
-  group_id?: number | null;
+  stage_id?: number | null; // DB stage id if assigned to a stage
+  group_id?: number | null; // DB group id if assigned to a group
   seed?: number | null;
 };
 type DbStageSlot = {
@@ -57,7 +56,7 @@ type DbIntakeMapping = {
 };
 type DbStanding = {
   stage_id: number;
-  group_id: number | null;
+  group_id: number | null; // ✅ leagues can have null here
   team_id: number;
   played: number; won: number; drawn: number; lost: number;
   gf: number; ga: number; gd: number; points: number; rank?: number | null;
@@ -77,35 +76,12 @@ type DbMatchRow = {
   matchday?: number | null;
   round?: number | null;
   bracket_pos?: number | null;
+  // KO round/pos pointers
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
-  home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | null;
   updated_at?: string | null; // concurrency (server checks if provided)
-};
-
-/* Adds explicit row type used when merging overlays with draft rows */
-export type MatchRow = {
-  db_id?: number | null;
-  stageIdx: number;
-  groupIdx?: number | null;
-  matchday?: number | null;
-  round?: number | null;
-  bracket_pos?: number | null;
-  match_date?: string | null;
-  team_a_id?: number | null;
-  team_b_id?: number | null;
-  status?: "scheduled" | "finished" | null;
-  team_a_score?: number | null;
-  team_b_score?: number | null;
-  winner_team_id?: number | null;
-  updated_at?: string | null;
-  home_source_round?: number | null;
-  home_source_bracket_pos?: number | null;
-  away_source_round?: number | null;
-  away_source_bracket_pos?: number | null;
 };
 
 /* A “bring everything” snapshot used to hydrate the store in one go */
@@ -135,12 +111,7 @@ type DbOverlay = Pick<
   | "home_source_bracket_pos"
   | "away_source_round"
   | "away_source_bracket_pos"
-> & {
-  db_id?: number | null;
-  updated_at?: string | null;
-  home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | null;
-};
+> & { db_id?: number | null; updated_at?: string | null };
 
 type KOCoord = { round: number; bracket_pos: number };
 type Frame = { x: number; y: number; w: number; h: number };
@@ -151,10 +122,9 @@ type LayoutByKoKey = Record<string, Frame>; // KO|{round}|{bracket_pos}
    ========================================================= */
 
 let __tmpId = -1;
-const nextTempId = (): number => __tmpId--; // negative client-only IDs
+const nextTempId = () => __tmpId--; // negative client-only IDs
 
-// Legacy UI signature (includes date)
-function rowSignature(m: DraftMatch): string {
+function rowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
     m.groupIdx ?? "",
@@ -167,79 +137,13 @@ function rowSignature(m: DraftMatch): string {
   ];
   return parts.join("|");
 }
-
-// Stable key for overlay/dirty (ignores match_date)
-function _pairKey(a?: number | null, b?: number | null): string {
-  const x = a ?? 0, y = b ?? 0;
-  return x < y ? `${x}-${y}` : `${y}-${x}`;
-}
-function rowSignatureStable(m: DraftMatch): string {
-  if (m.round != null && m.bracket_pos != null) {
-    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
-  }
-  const g = m.groupIdx ?? -1;
-  const md = m.matchday ?? 0;
-  const pair = _pairKey(m.team_a_id, m.team_b_id);
-  return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
-}
-
-// Structural prefix (no teams/date). Used to find persisted row id for deletes.
-function rowStructuralPrefix(m: DraftMatch): string {
-  if (m.round != null && m.bracket_pos != null) {
-    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
-  }
-  const g = m.groupIdx ?? -1;
-  const md = m.matchday ?? 0;
-  const pair = _pairKey(m.team_a_id, m.team_b_id);  // Add this!
-  return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
-}
-
-/* ---------- DB-stable signatures (by stage_id/group_id) ---------- */
-function rowSignatureDB(m: DraftMatch, st = useTournamentStore.getState()): string {
-  const stage_id = st.ids.stageIdByIndex[m.stageIdx ?? -1];
-  if (m.round != null && m.bracket_pos != null) {
-    return `KO_DB|S${stage_id}|R${m.round}|B${m.bracket_pos}`;
-  }
-  const group_id =
-    m.groupIdx != null ? st.ids.groupIdByStage[m.stageIdx ?? -1]?.[m.groupIdx] ?? "n" : "n";
-  const md = m.matchday ?? 0;
-  const pair = _pairKey(m.team_a_id, m.team_b_id);
-  return `RR_DB|S${stage_id}|G${group_id}|MD${md}|${pair}`;
-}
-function rowStructuralPrefixDB(m: DraftMatch, st = useTournamentStore.getState()): string {
-  const stage_id = st.ids.stageIdByIndex[m.stageIdx ?? -1];
-  if (m.round != null && m.bracket_pos != null) {
-    return `KO_DB|S${stage_id}|R${m.round}|B${m.bracket_pos}`;
-  }
-  const group_id =
-    m.groupIdx != null ? st.ids.groupIdByStage[m.stageIdx ?? -1]?.[m.groupIdx] ?? "n" : "n";
-  const md = m.matchday ?? 0;
-  return `RR_DB|S${stage_id}|G${group_id}|MD${md}|`;
-}
-function findOverlayByPrefix(overlay: Record<string, any>, prefix: string) {
-  const entry = Object.entries(overlay).find(([k]) => k.startsWith(prefix));
-  return entry?.[1];
-}
-
-// Fallback finder for legacy keys that differ only by match_date
-function findOverlayLoose(overlay: Record<string, any>, legacySig: string) {
-  if (overlay[legacySig]) return overlay[legacySig];
-  const cut = legacySig.lastIndexOf("|");
-  if (cut > 0) {
-    const prefix = legacySig.slice(0, cut + 1);
-    const entry = Object.entries(overlay).find(([k]) => k.startsWith(prefix));
-    if (entry) return entry[1];
-  }
-  return undefined;
-}
-
-function makeKoKey(m: { round?: number | null; bracket_pos?: number | null }): string {
+function makeKoKey(m: { round?: number | null; bracket_pos?: number | null }) {
   return `KO|${m.round ?? 0}|${m.bracket_pos ?? 0}`;
 }
-function sortKO(a: DraftMatch, b: DraftMatch): number {
+function sortKO(a: DraftMatch, b: DraftMatch) {
   return (a.round ?? 0) - (b.round ?? 0) || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0);
 }
-function wireKnockoutSourcesLocal(rows: DraftMatch[], stageIdx: number): DraftMatch[] {
+function wireKnockoutSourcesLocal(rows: DraftMatch[], stageIdx: number) {
   const same = rows
     .filter((m) => m.stageIdx === stageIdx && m.round != null && m.bracket_pos != null)
     .slice()
@@ -247,9 +151,9 @@ function wireKnockoutSourcesLocal(rows: DraftMatch[], stageIdx: number): DraftMa
 
   const key = (r?: number | null, p?: number | null) => (r && p ? `${r}:${p}` : "");
   const idxOf = new Map<string, number>();
-  same.forEach((m: DraftMatch, i: number) => idxOf.set(key(m.round ?? null, m.bracket_pos ?? null), i));
+  same.forEach((m, i) => idxOf.set(key(m.round ?? null, m.bracket_pos ?? null), i));
 
-  same.forEach((m: DraftMatch) => {
+  same.forEach((m) => {
     const hk = key(m.home_source_round ?? null, m.home_source_bracket_pos ?? null);
     const ak = key(m.away_source_round ?? null, m.away_source_bracket_pos ?? null);
     const hIdx = hk ? idxOf.get(hk) : undefined;
@@ -264,10 +168,10 @@ function wireKnockoutSourcesLocal(rows: DraftMatch[], stageIdx: number): DraftMa
 }
 
 /* helpers to read/write stage/group order arrays */
-function stageOrderArray(map: Record<number, number | undefined>): number[] {
+function stageOrderArray(map: Record<number, number | undefined>) {
   return Object.keys(map)
     .map((k) => Number(k))
-    .sort((a: number, b: number) => a - b)
+    .sort((a, b) => a - b)
     .map((idx) => map[idx]!)
     .filter((id) => id != null);
 }
@@ -282,6 +186,7 @@ function buildGroupIndexFallbackFromMatches(
   const groupIdByStage: Record<number, Record<number, number>> = {};
   const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
 
+  // Per stage_id, collect distinct group_ids in first-seen order
   const seen: Record<number, Map<number, number>> = {};
   for (const m of dbMatches) {
     const sid = m.stage_id ?? undefined;
@@ -291,7 +196,7 @@ function buildGroupIndexFallbackFromMatches(
     if (!sMap.has(gid)) sMap.set(gid, sMap.size);
   }
 
-  Object.entries(seen).forEach(([stageIdStr, map]: [string, Map<number, number>]) => {
+  Object.entries(seen).forEach(([stageIdStr, map]) => {
     const stageId = Number(stageIdStr);
     const sIdx = stageIndexById[stageId];
     if (typeof sIdx !== "number") return;
@@ -310,64 +215,73 @@ function buildGroupIndexFallbackFromMatches(
    Store shape
    ========================================================= */
 export type TournamentState = {
+  /* ---------- Entities/cache (everything available in the store) ---------- */
   entities: {
     tournament: DbTournament | null;
     stagesById: Record<number, DbStage>;
     groupsById: Record<number, DbGroup>;
     teamsById: Record<number, DbTeam>;
-    tournamentTeams: DbTournamentTeam[];
-    stageSlots: DbStageSlot[];
-    intakeMappings: DbIntakeMapping[];
-    standings: DbStanding[];
+    tournamentTeams: DbTournamentTeam[]; // keep as array to preserve seed ordering
+    stageSlots: DbStageSlot[];          // raw
+    intakeMappings: DbIntakeMapping[];  // raw
+    standings: DbStanding[];            // raw
   };
 
-  payload: NewTournamentPayload | null;
-  draftMatches: DraftMatch[];
+  /* ---------- Legacy/Editor working sets (kept for compatibility) ---------- */
+  payload: NewTournamentPayload | null; // optional helper for builders
+  draftMatches: DraftMatch[];           // editor truth
   dbOverlayBySig: Record<string, DbOverlay>;
 
+  /* ---------- UI-only ---------- */
   ui: { knockoutLayout: Record<number, LayoutByKoKey> };
 
+  /* ---------- ID maps & hydration helpers ---------- */
   ids: {
     tournamentId?: number;
     stageIdByIndex: Record<number, number | undefined>;
-    groupIdByStage: Record<number, Record<number, number | undefined>>;
-    stageIndexById: Record<number, number | undefined>;
-    groupIndexByStageAndId: Record<number, Record<number, number | undefined>>;
+    groupIdByStage: Record<number, Record<number, number | undefined>>;// groupIdx → DB id
+    stageIndexById: Record<number, number | undefined>; // reverse map
+    groupIndexByStageAndId: Record<number, Record<number, number | undefined>>; // stageId -> (groupId -> idx)
   };
 
+  /* ---------- Dirty tracking ---------- */
   dirty: {
     tournament: boolean;
     stages: boolean;
     groups: boolean;
     tournamentTeams: boolean;
-    matches: Set<string>;
-    stageSlots: Set<string>;
-    intakeMappings: boolean;
+    matches: Set<string>; // rowSignature of changed rows
+    stageSlots: Set<string>; // `${stageId}|${groupIdx}|${slotId}`
+    intakeMappings: boolean; // simple ‘something changed’ flag
     deletedStageIds: Set<number>;
     deletedGroupIds: Set<number>;
-    deletedMatchIds: Set<number>;
+    deletedMatchIds: Set<number>; // NEW: DB ids to delete
   };
 
   busy: boolean;
 
+  /* ---------- Snapshot cache (for reset) ---------- */
   lastSnapshot?: FullTournamentSnapshot;
 
+  /* -------------------- Selectors -------------------- */
   selectStageRows: (stageIdx: number) => DraftMatch[];
-  selectStageRowsMerged: (stageIdx: number) => (DraftMatch & Partial<MatchRow> & DbOverlay)[];
+  selectStageRowsMerged: (stageIdx: number) => (DraftMatch & DbOverlay & { db_id?: number | null })[];
 
+  // Entity/utility selectors
   getStageId: (stageIdx: number) => number | undefined;
   getGroupId: (stageIdx: number, groupIdx: number | null) => number | null | undefined;
   getStageKind: (stageIdx: number) => "league" | "groups" | "knockout" | undefined;
   getTeamName: (id?: number | null) => string;
   listGroupsForStageIdx: (stageIdx: number) => DbGroup[];
   listTournamentTeams: () => DbTournamentTeam[];
-  listParticipants: () => number[];
-  listGroupTeamIds: (stageIdx: number, groupIdx: number) => number[];
+  listParticipants: () => number[]; // distinct team ids in this tournament
+  listGroupTeamIds: (stageIdx: number, groupIdx: number) => number[]; // resilient (tournamentTeams → slots fallback)
   listStageSlots: (stageIdx: number, groupIdx: number) => DbStageSlot[];
   listIntakeMappingsForTargetStageIdx: (stageIdx: number) => DbIntakeMapping[];
 
-  hydrateFromSnapshot: (snap: FullTournamentSnapshot) => void;
-  hydrateFromServer: (payload: NewTournamentPayload, dbMatches: DbMatchRow[]) => void;
+  /* -------------------- Actions -------------------- */
+  hydrateFromSnapshot: (snap: FullTournamentSnapshot) => void; // preferred full import
+  hydrateFromServer: (payload: NewTournamentPayload, dbMatches: DbMatchRow[]) => void; // legacy/compat
   resetUnsavedChanges: () => void;
   setStageSlotByIndex: (
     stageIdx: number,
@@ -376,9 +290,11 @@ export type TournamentState = {
     teamId: number | null,
     source?: "manual" | "intake"
   ) => void;
-
+  
+  // Wizard seeding helper  
   seedFromWizard: (canon: NewTournamentPayload, teams: TeamDraft[], drafts: DraftMatch[]) => void;
 
+  // entity mutators + dirties
   updateTournament: (patch: Partial<Pick<DbTournament, "name" | "slug" | "format" | "season">>) => void;
 
   upsertStage: (
@@ -403,7 +319,7 @@ export type TournamentState = {
 
   replaceAllDraftMatches: (next: DraftMatch[]) => void;
   updateMatches: (stageIdx: number, updater: (rows: DraftMatch[]) => DraftMatch[]) => void;
-  removeMatch: (row: DraftMatch) => void;
+  removeMatch: (row: DraftMatch) => void; // NEW: track deletions
 
   setKOLink: (
     stageIdx: number,
@@ -422,16 +338,13 @@ export type TournamentState = {
   upsertIntakeMapping: (m: DbIntakeMapping) => void;
   removeIntakeMapping: (predicate: (m: DbIntakeMapping) => boolean) => void;
 
+  // Persist everything dirty via /save-all
   saveAll: () => Promise<void>;
 };
 
 /* =========================================================
    Store implementation
    ========================================================= */
-
-const DEBUG_SAVEALL = true;
-const makeRid = (): string => `S4-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 6)}`;
-
 export const useTournamentStore = create<TournamentState>((set, get) => ({
   entities: {
     tournament: null,
@@ -468,150 +381,148 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     intakeMappings: false,
     deletedStageIds: new Set<number>(),
     deletedGroupIds: new Set<number>(),
-    deletedMatchIds: new Set<number>(),
+    deletedMatchIds: new Set<number>(), // NEW
   },
 
   busy: false,
 
   /* -------------------- Selectors -------------------- */
 
-  selectStageRows: (stageIdx: number): DraftMatch[] => {
-    const rows = get().draftMatches.filter((m: DraftMatch) => m.stageIdx === stageIdx);
+  selectStageRows: (stageIdx) => {
+    const rows = get().draftMatches.filter((m) => m.stageIdx === stageIdx);
     const kind = get().getStageKind(stageIdx);
     const isKO = kind === "knockout";
     return rows
       .slice()
-      .sort((a: DraftMatch, b: DraftMatch) =>
+      .sort((a, b) =>
         isKO ? sortKO(a, b) : (a.matchday ?? 0) - (b.matchday ?? 0) || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0)
       );
   },
 
-  selectStageRowsMerged: (stageIdx: number): (DraftMatch & Partial<MatchRow> & DbOverlay)[] => {
+  selectStageRowsMerged: (stageIdx) => {
     const rows = get().selectStageRows(stageIdx);
     const overlay = get().dbOverlayBySig;
-    return rows.map((r: DraftMatch): DraftMatch & Partial<MatchRow> & DbOverlay => {
-      const ov =
-        (overlay[rowSignatureStable(r)] as Partial<MatchRow> | undefined) ||
-        (overlay[rowSignatureDB(r)] as Partial<MatchRow> | undefined) ||
-        (overlay[rowSignature(r)] as Partial<MatchRow> | undefined) ||
-        (findOverlayLoose(overlay as any, rowSignature(r)) as Partial<MatchRow> | undefined);
-      return ov ? ({ ...r, ...ov } as DraftMatch & Partial<MatchRow> & DbOverlay) : (r as DraftMatch & Partial<MatchRow>);
+    return rows.map((r) => {
+      const ov = overlay[rowSignature(r)];
+      if (!ov) return r as any;
+      // Only carry DB/result fields
+      const { db_id, updated_at, status, team_a_score, team_b_score, winner_team_id } = ov as any;
+      return { ...r, db_id, updated_at, status, team_a_score, team_b_score, winner_team_id } as any;
     });
   },
 
-  getStageId: (stageIdx: number) => get().ids.stageIdByIndex[stageIdx],
-  getGroupId: (stageIdx: number, groupIdx: number | null) =>
+  getStageId: (stageIdx) => get().ids.stageIdByIndex[stageIdx],
+  getGroupId: (stageIdx, groupIdx) =>
     groupIdx == null ? null : get().ids.groupIdByStage[stageIdx]?.[groupIdx],
-  getStageKind: (stageIdx: number) => {
+  getStageKind: (stageIdx) => {
     const stageId = get().ids.stageIdByIndex[stageIdx];
     if (!stageId) return undefined;
     return get().entities.stagesById[stageId]?.kind;
   },
-  getTeamName: (id?: number | null) => {
+  getTeamName: (id) => {
     if (!id) return "TBD";
     const t = get().entities.teamsById[id];
     return t?.name ?? `Team #${id}`;
   },
-  listGroupsForStageIdx: (stageIdx: number) => {
+  listGroupsForStageIdx: (stageIdx) => {
     const stageId = get().ids.stageIdByIndex[stageIdx];
     if (!stageId) return [];
-    const groups = Object.values(get().entities.groupsById).filter((g: DbGroup) => g.stage_id === stageId);
-    return groups.sort(
-      (a: DbGroup, b: DbGroup) =>
-        (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name)
-    );
+    const groups = Object.values(get().entities.groupsById).filter((g) => g.stage_id === stageId);
+    return groups.sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name));
   },
   listTournamentTeams: () => get().entities.tournamentTeams.slice(),
   listParticipants: () => {
     const ids = new Set<number>();
-    get().entities.tournamentTeams.forEach((tt: DbTournamentTeam) => ids.add(tt.team_id));
+    get().entities.tournamentTeams.forEach((tt) => ids.add(tt.team_id));
     if (ids.size > 0) return Array.from(ids);
-    get().entities.stageSlots.forEach((s: DbStageSlot) => { if (s.team_id) ids.add(s.team_id); });
+    get().entities.stageSlots.forEach((s) => { if (s.team_id) ids.add(s.team_id); });
     if (ids.size > 0) return Array.from(ids);
-    get().draftMatches.forEach((m: DraftMatch) => {
+    get().draftMatches.forEach((m) => {
       if (m.team_a_id) ids.add(m.team_a_id);
       if (m.team_b_id) ids.add(m.team_b_id);
     });
     return Array.from(ids);
   },
-  listGroupTeamIds: (stageIdx: number, groupIdx: number) => {
-    const stageId = get().ids.stageIdByIndex[stageIdx];
-    if (!stageId && stageId !== 0) return [];
-    const dbGroupId = get().ids.groupIdByStage[stageIdx]?.[groupIdx];
-
-    const fromTT = get().entities.tournamentTeams
-      .filter((tt: DbTournamentTeam) => tt.stage_id === stageId && (dbGroupId ? tt.group_id === dbGroupId : tt.group_id == null))
-      .map((tt: DbTournamentTeam) => tt.team_id);
-    if (fromTT.length > 0) return Array.from(new Set(fromTT));
-
-    const fromSlots = get().entities.stageSlots
-      .filter((s: DbStageSlot) => s.stage_id === stageId && s.group_id === groupIdx && s.team_id != null)
-      .map((s: DbStageSlot) => s.team_id!) as number[];
-    if (fromSlots.length > 0) return Array.from(new Set(fromSlots));
-
-    return get().listParticipants();
-  },
-  listStageSlots: (stageIdx: number, groupIdx: number) => {
+  listGroupTeamIds: (stageIdx, groupIdx) => {
+        const stageId = get().ids.stageIdByIndex[stageIdx];
+        if (!stageId && stageId !== 0) return [];
+        const dbGroupId = get().ids.groupIdByStage[stageIdx]?.[groupIdx];
+    
+        const fromTT = get().entities.tournamentTeams
+          .filter(tt => tt.stage_id === stageId && (dbGroupId ? tt.group_id === dbGroupId : tt.group_id == null))
+          .map(tt => tt.team_id);
+        if (fromTT.length > 0) return Array.from(new Set(fromTT));
+    
+        const fromSlots = get().entities.stageSlots
+          .filter(s => s.stage_id === stageId && s.group_id === groupIdx && s.team_id != null)
+          .map(s => s.team_id!) as number[];
+        if (fromSlots.length > 0) return Array.from(new Set(fromSlots));
+    
+        return get().listParticipants();
+      },
+  listStageSlots: (stageIdx, groupIdx) => {
     const stageId = get().ids.stageIdByIndex[stageIdx];
     if (!stageId) return [];
     return get()
       .entities
       .stageSlots
-      .filter((s: DbStageSlot) => s.stage_id === stageId && s.group_id === groupIdx)
+      .filter((s) => s.stage_id === stageId && s.group_id === groupIdx)
       .slice()
-      .sort((a: DbStageSlot, b: DbStageSlot) => a.slot_id - b.slot_id);
+      .sort((a, b) => a.slot_id - b.slot_id);
   },
-  listIntakeMappingsForTargetStageIdx: (stageIdx: number) => {
+  listIntakeMappingsForTargetStageIdx: (stageIdx) => {
     const stageId = get().ids.stageIdByIndex[stageIdx];
     if (!stageId) return [];
-    return get().entities.intakeMappings.filter((m: DbIntakeMapping) => m.target_stage_id === stageId);
+    return get().entities.intakeMappings.filter((m) => m.target_stage_id === stageId);
   },
 
   /* -------------------- Hydration -------------------- */
 
-  hydrateFromSnapshot: (snap: FullTournamentSnapshot) => {
+  hydrateFromSnapshot: (snap) => {
+    // Build index maps
     const stageIdByIndex: Record<number, number> = {};
     const stageIndexById: Record<number, number> = {};
     let groupIdByStage: Record<number, Record<number, number>> = {};
     let groupIndexByStageAndId: Record<number, Record<number, number>> = {};
 
-    const sortedStages = snap.stages.slice().sort((a: DbStage, b: DbStage) => (a.ordering ?? 0) - (b.ordering ?? 0));
-    sortedStages.forEach((s: DbStage, i: number) => {
+    const sortedStages = snap.stages.slice().sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
+    sortedStages.forEach((s, i) => {
       stageIdByIndex[i] = s.id;
       stageIndexById[s.id] = i;
     });
 
     const groupsByStageId: Record<number, DbGroup[]> = {};
-    snap.groups.forEach((g: DbGroup) => {
+    snap.groups.forEach((g) => {
       (groupsByStageId[g.stage_id] ??= []).push(g);
     });
-    Object.entries(groupsByStageId).forEach(([sid, arr]: [string, DbGroup[]]) => {
-      (arr as DbGroup[]).sort((a: DbGroup, b: DbGroup) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name));
+    Object.entries(groupsByStageId).forEach(([sid, arr]) => {
+      arr.sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name));
       const sIdx = stageIndexById[Number(sid)] ?? -1;
       groupIdByStage[sIdx] = {};
       groupIndexByStageAndId[Number(sid)] = {};
-      (arr as DbGroup[]).forEach((g: DbGroup, gi: number) => {
+      arr.forEach((g, gi) => {
         groupIdByStage[sIdx][gi] = g.id;
         groupIndexByStageAndId[Number(sid)][g.id] = gi;
       });
     });
 
+    // Fallback: if no groups present in snapshot (or incomplete), derive from matches
     const built = buildGroupIndexFallbackFromMatches(
       snap.matches ?? [],
       stageIndexById as Record<number, number>
     );
-    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]: [string, Record<number, number>]) => {
+    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]) => {
       const sIdx = Number(sIdxStr);
       const dst = (groupIdByStage[sIdx] ??= {});
-      Object.entries(m).forEach(([giStr, gid]: [string, number]) => {
+      Object.entries(m).forEach(([giStr, gid]) => {
         const gi = Number(giStr);
         if (dst[gi] == null) dst[gi] = gid;
       });
     });
-    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]: [string, Record<number, number>]) => {
+    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]) => {
       const sid = Number(sidStr);
       const dst = (groupIndexByStageAndId[sid] ??= {});
-      Object.entries(m).forEach(([gidStr, gi]: [string, number]) => {
+      Object.entries(m).forEach(([gidStr, gi]) => {
         const gid = Number(gidStr);
         if (dst[gid] == null) dst[gid] = gi;
       });
@@ -620,10 +531,11 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const stagesById: Record<number, DbStage> = {};
     const groupsById: Record<number, DbGroup> = {};
     const teamsById: Record<number, DbTeam> = {};
-    snap.stages.forEach((s: DbStage) => (stagesById[s.id] = s));
-    snap.groups.forEach((g: DbGroup) => (groupsById[g.id] = g));
-    snap.teams.forEach((t: DbTeam) => (teamsById[t.id] = t));
+    snap.stages.forEach((s) => (stagesById[s.id] = s));
+    snap.groups.forEach((g) => (groupsById[g.id] = g));
+    snap.teams.forEach((t) => (teamsById[t.id] = t));
 
+    // Convert DB matches → DraftMatch + overlay (keep updated_at)
     const draftMatches: DraftMatch[] = [];
     const overlay: Record<string, DbOverlay> = {};
     for (const m of snap.matches) {
@@ -649,7 +561,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
       };
-      const base: DbOverlay = {
+      const sig = rowSignature(uiRow);
+      overlay[sig] = {
         db_id: m.id ?? null,
         updated_at: m.updated_at ?? null,
         status: (m.status as any) ?? null,
@@ -660,13 +573,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         home_source_bracket_pos: m.home_source_bracket_pos ?? null,
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-        home_source_outcome: m.home_source_outcome ?? null,
-        away_source_outcome: m.away_source_outcome ?? null,
       };
-      overlay[rowSignatureStable(uiRow)] = base;
-      overlay[rowSignatureDB(uiRow)] = base;
-      overlay[rowSignature(uiRow)] = base;
-
       draftMatches.push(uiRow);
     }
 
@@ -707,13 +614,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     });
   },
 
-  hydrateFromServer: (payload: NewTournamentPayload, dbMatches: DbMatchRow[]) => {
+  // Backward-compat hydration (payload + matches)
+  hydrateFromServer: (payload, dbMatches) => {
     const stageIdByIndex: Record<number, number | undefined> = {};
     const groupIdByStage: Record<number, Record<number, number | undefined>> = {};
     const stageIndexById: Record<number, number | undefined> = {};
     const groupIndexByStageAndId: Record<number, Record<number, number | undefined>> = {};
 
-    (payload.stages ?? []).forEach((s: any, i: number) => {
+    // --- Build stage map from payload
+    (payload.stages as any)?.forEach((s: any, i: number) => {
       if (typeof s?.id === "number") {
         stageIdByIndex[i] = s.id;
         stageIndexById[s.id] = i;
@@ -730,32 +639,34 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
     });
 
+    // --- NEW: derive fallback group maps from actual DB matches and merge
     const built = buildGroupIndexFallbackFromMatches(
       dbMatches ?? [],
       stageIndexById as Record<number, number>
     );
 
-    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]: [string, Record<number, number>]) => {
+    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]) => {
       const sIdx = Number(sIdxStr);
       const dst = (groupIdByStage[sIdx] ??= {});
-      Object.entries(m).forEach(([giStr, gid]: [string, number]) => {
+      Object.entries(m).forEach(([giStr, gid]) => {
         const gi = Number(giStr);
         if (dst[gi] == null) dst[gi] = gid;
       });
     });
 
-    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]: [string, Record<number, number>]) => {
+    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]) => {
       const sid = Number(sidStr);
       const dst = (groupIndexByStageAndId[sid] ??= {});
-      Object.entries(m).forEach(([gidStr, gi]: [string, number]) => {
+      Object.entries(m).forEach(([gidStr, gi]) => {
         const gid = Number(gidStr);
         if (dst[gid] == null) dst[gid] = gi;
       });
     });
 
+    // Convert DB matches → DraftMatch + overlay
     const draftMatches: DraftMatch[] = [];
     const overlay: Record<string, DbOverlay> = {};
-    (dbMatches ?? []).forEach((m: DbMatchRow) => {
+    (dbMatches ?? []).forEach((m) => {
       const sIdx = stageIndexById[m.stage_id ?? -1];
       if (!Number.isFinite(sIdx)) return;
 
@@ -779,7 +690,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
       };
-      const base: DbOverlay = {
+      const sig = rowSignature(uiRow);
+      overlay[sig] = {
         db_id: m.id ?? null,
         updated_at: (m as any).updated_at ?? null,
         status: (m.status as any) ?? null,
@@ -790,13 +702,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         home_source_bracket_pos: m.home_source_bracket_pos ?? null,
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-        home_source_outcome: m.home_source_outcome ?? null,
-        away_source_outcome: m.away_source_outcome ?? null,
       };
-      overlay[rowSignatureStable(uiRow)] = base;
-      overlay[rowSignatureDB(uiRow)] = base;
-      overlay[rowSignature(uiRow)] = base;
-
       draftMatches.push(uiRow);
     });
 
@@ -835,9 +741,10 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   /* -------------------- Wizard seeding -------------------- */
 
-  seedFromWizard: (canon: NewTournamentPayload, teams: TeamDraft[], drafts: DraftMatch[]) => {
+  seedFromWizard: (canon, teams, drafts) => {
     const st = get();
 
+    // 1) teams → entities
     const teamsById = { ...st.entities.teamsById };
     for (const t of teams ?? []) {
       if (t.id != null && !teamsById[t.id]) {
@@ -845,31 +752,27 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
     }
 
+    // 2) draft matches
     const nextDrafts = drafts.slice();
-    const dirtyMatches = new Set<string>(st.dirty.matches);
+    const dirtyMatches = new Set<string>();
     const overlay = { ...st.dbOverlayBySig };
 
-    nextDrafts.forEach((m: DraftMatch) => {
-      const kStable = rowSignatureStable(m);
-      const kLegacy = rowSignature(m);
-      dirtyMatches.add(kStable);
-      const prev = overlay[kStable] ?? overlay[kLegacy] ?? {};
-      const merged: DbOverlay = {
-        db_id: (prev as any).db_id ?? null,
-        updated_at: (prev as any).updated_at ?? null,
-        status: (prev as any).status ?? "scheduled",
-        team_a_score: (prev as any).team_a_score ?? null,
-        team_b_score: (prev as any).team_b_score ?? null,
-        winner_team_id: (prev as any).winner_team_id ?? null,
-        home_source_round: m.home_source_round ?? (prev as any).home_source_round ?? null,
-        home_source_bracket_pos: m.home_source_bracket_pos ?? (prev as any).home_source_bracket_pos ?? null,
-        away_source_round: m.away_source_round ?? (prev as any).away_source_round ?? null,
-        away_source_bracket_pos: m.away_source_bracket_pos ?? (prev as any).away_source_bracket_pos ?? null,
-        home_source_outcome: (m as any).home_source_outcome ?? (prev as any).home_source_outcome ?? null,
-        away_source_outcome: (m as any).away_source_outcome ?? (prev as any).away_source_outcome ?? null,
+    nextDrafts.forEach((m) => {
+      const sig = rowSignature(m);
+      dirtyMatches.add(sig);
+      const prev = overlay[sig] ?? {};
+      overlay[sig] = {
+        db_id: prev.db_id ?? null,
+        updated_at: prev.updated_at ?? null,
+        status: prev.status ?? "scheduled",
+        team_a_score: prev.team_a_score ?? null,
+        team_b_score: prev.team_b_score ?? null,
+        winner_team_id: prev.winner_team_id ?? null,
+        home_source_round: m.home_source_round ?? prev.home_source_round ?? null,
+        home_source_bracket_pos: m.home_source_bracket_pos ?? prev.home_source_bracket_pos ?? null,
+        away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
+        away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
       };
-      overlay[kStable] = merged;
-      overlay[kLegacy] = merged;
     });
 
     set({
@@ -896,21 +799,24 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const tournament_id = st.ids.tournamentId!;
     if (stageIdx == null || stageIdx < 0 || stageIdx > order.length) stageIdx = order.length;
 
+    // existing?
     const existingId = st.ids.stageIdByIndex[stageIdx];
     if (existingId != null) {
+      // patch existing
       const prev = st.entities.stagesById[existingId];
       const next: DbStage = {
         ...prev,
         name: patch.name ?? prev.name,
         kind: (patch.kind as any) ?? prev.kind,
         config: patch.config ?? prev.config,
-        ordering: prev.ordering,
+        ordering: prev.ordering, // will be reindexed below
       };
       set((curr) => ({
         entities: { ...curr.entities, stagesById: { ...curr.entities.stagesById, [existingId]: next } },
         dirty: { ...curr.dirty, stages: true },
       }));
     } else {
+      // create new with temp id
       const id = nextTempId();
       const next: DbStage = {
         id,
@@ -921,13 +827,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         ordering: stageIdx,
       };
 
+      // insert into order
       const newOrder = order.slice();
       newOrder.splice(stageIdx, 0, id);
 
+      // rebuild maps + ordering on each stage
       const stagesById = { ...st.entities.stagesById, [id]: next };
       const stageIdByIndex: Record<number, number> = {};
       const stageIndexById: Record<number, number> = {};
-      newOrder.forEach((sid: number, i: number) => {
+      newOrder.forEach((sid, i) => {
         stageIdByIndex[i] = sid;
         stageIndexById[sid] = i;
         stagesById[sid] = { ...stagesById[sid], ordering: i };
@@ -948,50 +856,50 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const removeId = st.ids.stageIdByIndex[stageIdx]!;
     const isPersisted = removeId > 0;
 
+    // drop stage
     const stagesById = { ...st.entities.stagesById };
     delete stagesById[removeId];
 
+    // drop groups under that stage
     const groupsById = { ...st.entities.groupsById };
     const removedGroupIds: number[] = [];
-    Object.values(groupsById).forEach((g: DbGroup) => {
+    Object.values(groupsById).forEach((g) => {
       if (g.stage_id === removeId) removedGroupIds.push(g.id);
     });
     removedGroupIds.forEach((gid) => delete groupsById[gid]);
 
+    // rebuild stage order maps
     const newOrder = order.slice();
     newOrder.splice(stageIdx, 1);
     const stageIdByIndex: Record<number, number> = {};
     const stageIndexById: Record<number, number> = {};
-    newOrder.forEach((sid: number, i: number) => {
+    newOrder.forEach((sid, i) => {
       stageIdByIndex[i] = sid;
       stageIndexById[sid] = i;
       stagesById[sid] = { ...stagesById[sid], ordering: i };
     });
 
+    // rebuild group maps for indices
     const groupIdByStage = { ...st.ids.groupIdByStage };
     delete groupIdByStage[stageIdx];
+    // shift subsequent indices down by 1
     const shifted: Record<number, Record<number, number | undefined>> = {};
-    Object.keys(groupIdByStage).forEach((k: string) => {
+    Object.keys(groupIdByStage).forEach((k) => {
       const idx = Number(k);
       if (idx < stageIdx) shifted[idx] = groupIdByStage[idx];
       else if (idx > stageIdx) shifted[idx - 1] = groupIdByStage[idx];
     });
 
-    const draftMatches = st.draftMatches.filter((m: DraftMatch) => m.stageIdx !== stageIdx).map((m: DraftMatch) => ({
+    // scrub matches/overlays for this stage
+    const draftMatches = st.draftMatches.filter((m) => m.stageIdx !== stageIdx).map((m) => ({
       ...m,
       stageIdx: m.stageIdx! > stageIdx ? (m.stageIdx! - 1) : m.stageIdx,
     }));
     const overlay: Record<string, DbOverlay> = {};
-    draftMatches.forEach((m: DraftMatch) => {
-      const base =
-        st.dbOverlayBySig[rowSignatureStable(m)] ||
-        st.dbOverlayBySig[rowSignatureDB(m)] ||
-        st.dbOverlayBySig[rowSignature(m)];
-      if (base) {
-        overlay[rowSignatureStable(m)] = base;
-        overlay[rowSignatureDB(m)] = base;
-        overlay[rowSignature(m)] = base;
-      }
+    draftMatches.forEach((m) => {
+      const sig = rowSignature(m);
+      const prev = st.dbOverlayBySig[sig];
+      if (prev) overlay[sig] = prev;
     });
 
     set((curr) => ({
@@ -1028,9 +936,10 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     if (stageId == null) return;
 
     const groupsForStage = Object.values(st.entities.groupsById)
-      .filter((g: DbGroup) => g.stage_id === stageId)
-      .sort((a: DbGroup, b: DbGroup) => (a.ordering ?? 0) - (b.ordering ?? 0));
+      .filter((g) => g.stage_id === stageId)
+      .sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
 
+    // existing?
     if (groupIdx != null && groupIdx >= 0 && groupIdx < groupsForStage.length) {
       const gid = groupsForStage[groupIdx].id;
       const prev = st.entities.groupsById[gid];
@@ -1046,6 +955,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       return;
     }
 
+    // create
     const id = nextTempId();
     const next: DbGroup = {
       id,
@@ -1056,21 +966,22 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
     const groupsById = { ...st.entities.groupsById, [id]: next };
 
+    // update index maps for this stage
     const groupMap = { ...(st.ids.groupIdByStage[stageIdx] ?? {}) };
     const insertAt = groupIdx ?? Object.keys(groupMap).length;
     const arr = Object.keys(groupMap)
-      .map((k: string) => Number(k))
-      .sort((a: number, b: number) => a - b)
-      .map((i) => groupMap[i]!)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b)
+      .map((i) => groupMap[i]!);
     arr.splice(insertAt, 0, id);
 
     const newMap: Record<number, number> = {};
-    arr.forEach((gid2: number, i: number) => (newMap[i] = gid2));
+    arr.forEach((gid2, i) => (newMap[i] = gid2));
 
     const groupIdByStage = { ...st.ids.groupIdByStage, [stageIdx]: newMap };
     const groupIndexByStageAndId = { ...st.ids.groupIndexByStageAndId };
     groupIndexByStageAndId[stageId] = groupIndexByStageAndId[stageId] ?? {};
-    arr.forEach((gid2: number, i: number) => (groupIndexByStageAndId[stageId][gid2] = i));
+    arr.forEach((gid2, i) => (groupIndexByStageAndId[stageId][gid2] = i));
 
     set({
       entities: { ...st.entities, groupsById },
@@ -1089,46 +1000,44 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     if (gid == null) return;
     const isPersisted = gid > 0;
 
+    // remove group entity
     const groupsById = { ...st.entities.groupsById };
     delete groupsById[gid];
 
+    // rebuild map
     const arr = Object.keys(groupMap)
-      .map((k: string) => Number(k))
-      .sort((a: number, b: number) => a - b)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b)
       .map((i) => groupMap[i]!)
-      .filter((x: number, i: number) => i !== groupIdx);
+      .filter((x, i) => i !== groupIdx);
 
     const newMap: Record<number, number> = {};
-    arr.forEach((id: number, i: number) => (newMap[i] = id));
+    arr.forEach((id, i) => (newMap[i] = id));
 
     const groupIdByStage = { ...st.ids.groupIdByStage, [stageIdx]: newMap };
 
+    // rebuild reverse
     const groupIndexByStageAndId = { ...st.ids.groupIndexByStageAndId };
     groupIndexByStageAndId[stageId] = groupIndexByStageAndId[stageId] ?? {};
-    Object.keys(groupIndexByStageAndId[stageId]).forEach((k: string) => {
+    Object.keys(groupIndexByStageAndId[stageId]).forEach((k) => {
       if (Number(k) === gid) delete groupIndexByStageAndId[stageId][gid];
     });
-    arr.forEach((id: number, i: number) => (groupIndexByStageAndId[stageId][id] = i));
+    arr.forEach((id, i) => (groupIndexByStageAndId[stageId][id] = i));
 
+    // remove matches for this group
     const draftMatches = st.draftMatches.filter(
-      (m: DraftMatch) => !(m.stageIdx === stageIdx && m.groupIdx === groupIdx)
-    ).map((m: DraftMatch) =>
+      (m) => !(m.stageIdx === stageIdx && m.groupIdx === groupIdx)
+    ).map((m) =>
       m.stageIdx === stageIdx && typeof m.groupIdx === "number" && m.groupIdx > groupIdx
         ? { ...m, groupIdx: (m.groupIdx as number) - 1 }
         : m
     );
 
     const overlay: Record<string, DbOverlay> = {};
-    draftMatches.forEach((m: DraftMatch) => {
-      const base =
-        st.dbOverlayBySig[rowSignatureStable(m)] ||
-        st.dbOverlayBySig[rowSignatureDB(m)] ||
-        st.dbOverlayBySig[rowSignature(m)];
-      if (base) {
-        overlay[rowSignatureStable(m)] = base;
-        overlay[rowSignatureDB(m)] = base;
-        overlay[rowSignature(m)] = base;
-      }
+    draftMatches.forEach((m) => {
+      const sig = rowSignature(m);
+      const prev = st.dbOverlayBySig[sig];
+      if (prev) overlay[sig] = prev;
     });
 
     set((curr) => ({
@@ -1151,7 +1060,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const tid = st.ids.tournamentId!;
       const arr = st.entities.tournamentTeams.slice();
-      const idx = arr.findIndex((tt: DbTournamentTeam) => tt.tournament_id === tid && tt.team_id === teamId);
+      const idx = arr.findIndex((tt) => tt.tournament_id === tid && tt.team_id === teamId);
       if (idx >= 0) arr[idx] = { ...arr[idx], seed };
       else arr.push({ id: nextTempId(), tournament_id: tid, team_id: teamId, seed: seed ?? null });
       return { entities: { ...st.entities, tournamentTeams: arr }, dirty: { ...st.dirty, tournamentTeams: true } };
@@ -1162,7 +1071,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const tid = st.ids.tournamentId!;
       const arr = st.entities.tournamentTeams.slice();
-      const idx = arr.findIndex((tt: DbTournamentTeam) => tt.tournament_id === tid && tt.team_id === teamId);
+      const idx = arr.findIndex((tt) => tt.tournament_id === tid && tt.team_id === teamId);
       if (idx >= 0) arr[idx] = { ...arr[idx], stage_id: stageId, group_id: groupId };
       else arr.push({ id: nextTempId(), tournament_id: tid, team_id: teamId, stage_id: stageId, group_id: groupId });
       return { entities: { ...st.entities, tournamentTeams: arr }, dirty: { ...st.dirty, tournamentTeams: true } };
@@ -1175,110 +1084,54 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const nextArr = next.slice();
       const dirty = new Set(st.dirty.matches);
-      nextArr.forEach((m: DraftMatch) => dirty.add(rowSignatureStable(m)));
+      nextArr.forEach((m) => dirty.add(rowSignature(m)));
       return { draftMatches: nextArr, dirty: { ...st.dirty, matches: dirty } };
     });
   },
 
   updateMatches: (stageIdx, updater) => {
     set((st) => {
-      const beforeAll = st.draftMatches;
-      const sameStage = beforeAll.filter((m: DraftMatch) => m.stageIdx === stageIdx);
-      const others = beforeAll.filter((m: DraftMatch) => m.stageIdx !== stageIdx);
+      const before = st.draftMatches;
+      const sameStage = before.filter((m) => m.stageIdx === stageIdx);
+      const others = before.filter((m) => m.stageIdx !== stageIdx);
 
-      const beforeByStable = new Map(sameStage.map((r: DraftMatch) => [rowSignatureStable(r), r]));
       const updated = updater(sameStage.slice());
       wireKnockoutSourcesLocal(updated, stageIdx);
 
       const dirty = new Set(st.dirty.matches);
-      for (const u of updated) {
-        const k = rowSignatureStable(u);
-        const p = beforeByStable.get(k);
-        const pHomeOutcome = (p as any)?.home_source_outcome;
-        const pAwayOutcome = (p as any)?.away_source_outcome;
-        const uHomeOutcome = (u as any)?.home_source_outcome;
-        const uAwayOutcome = (u as any)?.away_source_outcome;
-
-        if (
-          !p ||
-          p.matchday !== u.matchday ||
-          p.round !== u.round ||
-          p.bracket_pos !== u.bracket_pos ||
-          p.groupIdx !== u.groupIdx ||
-          p.team_a_id !== u.team_a_id ||
-          p.team_b_id !== u.team_b_id ||
-          p.match_date !== u.match_date ||
-          p.home_source_round !== u.home_source_round ||
-          p.home_source_bracket_pos !== u.home_source_bracket_pos ||
-          p.away_source_round !== u.away_source_round ||
-          p.away_source_bracket_pos !== u.away_source_bracket_pos ||
-          pHomeOutcome !== uHomeOutcome ||
-          pAwayOutcome !== uAwayOutcome
-        ) {
-          dirty.add(k);
-        }
-      }
+      updated.forEach((m) => dirty.add(rowSignature(m)));
 
       return { draftMatches: [...others, ...updated], dirty: { ...st.dirty, matches: dirty } };
     });
   },
 
+  // NEW: remove a single match (track deletion by DB id if present)
   removeMatch: (row) => {
     set((st) => {
-      const kStable = rowSignatureStable(row);  // Unique key for match signature
-      const kLegacy = rowSignature(row);
-      const kDBStable = rowSignatureDB(row);
+      const sig = rowSignature(row);
+      const next = st.draftMatches.filter((r) => rowSignature(r) !== sig);
   
-      // Remove the match from draft matches
-      const nextDraft = st.draftMatches.filter((r: DraftMatch) => rowSignatureStable(r) !== kStable);
+      // If the match has a db_id (exists in the DB), mark it for deletion
+      const del = new Set(st.dirty.deletedMatchIds);
+      const ov = st.dbOverlayBySig[sig];
+      if (ov?.db_id) del.add(ov.db_id); // Add db_id of the deleted match
   
-      // Find DB ID to delete
-      const del = new Set(st.dirty.deletedMatchIds); // Existing deleted match IDs
-      let foundId: number | undefined;
-  
-      const fromRow = (row as any)?.db_id;
-      if (typeof fromRow === "number" && fromRow > 0) foundId = fromRow;
-  
-      if (!foundId) {
-        const ovExact =
-          st.dbOverlayBySig[kStable] ||
-          st.dbOverlayBySig[kDBStable] ||
-          st.dbOverlayBySig[kLegacy];
-        if (ovExact?.db_id && ovExact.db_id > 0) foundId = ovExact.db_id;
-      }
-  
-      if (typeof foundId === "number" && foundId > 0) del.add(foundId);  // Add to deleted match IDs set
-  
-      // Drop overlay entries for this match
       const nextOverlay = { ...st.dbOverlayBySig };
-      delete nextOverlay[kStable];
-      delete nextOverlay[kLegacy];
-      delete nextOverlay[kDBStable];
-  
-      // Also remove from dirty matches set
-      const nextDirty = new Set(st.dirty.matches);
-      nextDirty.delete(kStable);  // Mark this match as no longer dirty
+      delete nextOverlay[sig]; // Remove overlay for the deleted match
   
       return {
-        draftMatches: nextDraft,  // Remove from draft matches
-        dbOverlayBySig: nextOverlay,  // Remove overlay for match
-        dirty: { ...st.dirty, deletedMatchIds: del, matches: nextDirty },  // Update the dirty state
+        draftMatches: next,
+        dbOverlayBySig: nextOverlay,
+        dirty: { ...st.dirty, deletedMatchIds: del }, // Update deletedMatchIds set
       };
     });
   },
-  
 
-  setKOLink: (
-    stageIdx: number,
-    child: KOCoord,
-    side: "home" | "away",
-    parent: KOCoord | null,
-    outcome = "W"
-  ) => {
-    get().updateMatches(stageIdx, (rows: DraftMatch[]) => {
+  setKOLink: (stageIdx, child, side, parent, outcome = "W") => {
+    get().updateMatches(stageIdx, (rows) => {
       const next = rows.slice();
       const idx = next.findIndex(
-        (r: DraftMatch) => r.round === child.round && r.bracket_pos === child.bracket_pos
+        (r) => r.round === child.round && r.bracket_pos === child.bracket_pos
       );
       if (idx < 0) return next;
       const row = { ...next[idx] };
@@ -1310,11 +1163,11 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     });
   },
 
-  setKOTeams: (stageIdx: number, where: KOCoord, teamAId: number | null, teamBId: number | null) => {
-    get().updateMatches(stageIdx, (rows: DraftMatch[]) => {
+  setKOTeams: (stageIdx, where, teamAId, teamBId) => {
+    get().updateMatches(stageIdx, (rows) => {
       const next = rows.slice();
       const idx = next.findIndex(
-        (r: DraftMatch) => r.round === where.round && r.bracket_pos === where.bracket_pos
+        (r) => r.round === where.round && r.bracket_pos === where.bracket_pos
       );
       if (idx < 0) return next;
       const row = { ...next[idx] };
@@ -1330,12 +1183,12 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     });
   },
 
-  setKORoundPos: (stageIdx: number, from: KOCoord, to: KOCoord) => {
-    get().updateMatches(stageIdx, (rows: DraftMatch[]) => {
+  setKORoundPos: (stageIdx, from, to) => {
+    get().updateMatches(stageIdx, (rows) => {
       const next = rows.slice();
-      const i = next.findIndex((r: DraftMatch) => r.round === from.round && r.bracket_pos === from.bracket_pos);
+      const i = next.findIndex((r) => r.round === from.round && r.bracket_pos === from.bracket_pos);
       if (i < 0) return next;
-      const j = next.findIndex((r: DraftMatch) => r.round === to.round && r.bracket_pos === to.bracket_pos);
+      const j = next.findIndex((r) => r.round === to.round && r.bracket_pos === to.bracket_pos);
       if (j >= 0) {
         const a = { ...next[i] };
         const b = { ...next[j] };
@@ -1356,7 +1209,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => ({ draftMatches: wireKnockoutSourcesLocal(st.draftMatches.slice(), stageIdx) }));
   },
 
-  setUIKnockoutLayout: (stageIdx: number, koKey: string, frame: Frame) => {
+  setUIKnockoutLayout: (stageIdx, koKey, frame) => {
     set((st) => ({
       ui: {
         ...st.ui,
@@ -1386,7 +1239,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const slots = st.entities.stageSlots.slice();
       const idx = slots.findIndex(
-        (s: DbStageSlot) => s.stage_id === stage_id && s.group_id === groupIdx && s.slot_id === slotId
+        (s) => s.stage_id === stage_id && s.group_id === groupIdx && s.slot_id === slotId
       );
 
       const prevUpdatedAt = idx >= 0 ? slots[idx].updated_at : undefined;
@@ -1396,8 +1249,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         group_id: groupIdx,
         slot_id: slotId,
         team_id: teamId ?? null,
-        source,
-        updated_at: prevUpdatedAt,
+        source,                    // <- correctly typed "manual" | "intake"
+        updated_at: prevUpdatedAt, // keep timestamp for guarded update
       };
 
       if (idx >= 0) slots[idx] = nextRow;
@@ -1418,7 +1271,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const arr = st.entities.intakeMappings.slice();
       const idx = arr.findIndex(
-        (x: DbIntakeMapping) =>
+        (x) =>
           x.target_stage_id === m.target_stage_id &&
           x.group_idx === m.group_idx &&
           x.slot_idx === m.slot_idx
@@ -1431,113 +1284,51 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   removeIntakeMapping: (predicate) => {
     set((st) => ({
-      entities: { ...st.entities, intakeMappings: st.entities.intakeMappings.filter((m: DbIntakeMapping) => !predicate(m)) },
+      entities: { ...st.entities, intakeMappings: st.entities.intakeMappings.filter((m) => !predicate(m)) },
       dirty: { ...st.dirty, intakeMappings: true },
     }));
   },
 
-  /* -------------------- Persist -------------------- */
+  /* -------------------- Persist (now with tournament/stages/groups/TT) -------------------- */
 
   saveAll: async () => {
-    const rid = makeRid();  // Generate a unique request ID
+    const doPost = async (tid: number, payload: any) => {
+      const res = await fetch(`/api/tournaments/${tid}/save-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify(payload),
+      });
   
-    // Function to log the payload being sent to the server
-    const logPayload = (payload: any) => {
-      console.log("[save-all] - Payload being sent:", JSON.stringify(payload, null, 2));
-    };
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Some items are stale (409). Reload or force overwrite.");
+      }
   
-    // Function to send the data to the server
-    const doPost = async (tid: number, payload: any, phase: string) => {
-      if (DEBUG_SAVEALL) {
-        console.debug("[save-all][out]", rid, phase, JSON.stringify({
-          t: !!payload.tournament,
-          st_upsert: payload.stages?.upsert?.length ?? 0,
-          st_del: payload.stages?.deleteIds ?? [],
-          g_upsert: payload.groups?.upsert?.length ?? 0,
-          g_del: payload.groups?.deleteIds ?? [],
-          tt_upsert: payload.tournamentTeams?.upsert?.length ?? 0,
-          slots_upsert: payload.stageSlots?.upsert?.length ?? 0,
-          intake_replace: payload.intakeMappings?.replace?.length ?? 0,
-          m_upsert: payload.matches?.upsert?.length ?? 0,
-          m_del: payload.matches?.deleteIds ?? [],
-          force: payload.force ?? {},
-        }));
-      }
-    
-      const send = async (body: any) => {
-        // Log the request payload before sending it to the backend
-        logPayload(body);
-    
-        return fetch(`/api/tournaments/${tid}/save-all`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "x-debug-id": rid,
-            "x-debug-phase": phase,
-          },
-          credentials: "include",
-          cache: "no-store", // No caching to ensure fresh data
-          body: JSON.stringify(body),
-        });
-      };
-    
-      let res = await send(payload); // First attempt to send
-    
-      // Check for 409 Conflict, handle if it occurs
-      if (res.status === 409) {
-        console.log("[save-all] - 409 Conflict detected, reloading tournament state...");
-    
-        try {
-          // Reload the latest state from the server
-          const mod = await import("./loadSnapshotClient");
-          await mod.loadTournamentIntoStore(tid);
-          console.log("[save-all] - Tournament state reloaded successfully");
-        } catch (e) {
-          console.error("[save-all] - Error while reloading tournament state:", e);
-        }
-    
-        // Force save to override the server's state with the client’s changes
-        const forced = {
-          ...payload,
-          force: { ...(payload.force || {}), matches: true, stageSlots: true },
-        };
-    
-        console.log("[save-all] - Attempting to force save with modified data...");
-        res = await send(forced); // Try again with the force flag
-      }
-    
-      // Clone the response to allow multiple reads if needed (e.g., for json and text)
-      const clonedRes = res.clone();
-    
-      // If we get a 409 conflict again, log the details and throw an error
-      if (res.status === 409) {
-        const body = await clonedRes.json().catch(() => ({}));
-        const conflictError = body?.db_updated_at
-          ? `409 ${body.entity}#${body.id}\nsent=${body.sent_updated_at}\ndb=${body.db_updated_at}`
-          : body?.error || "Some items are stale (409). Reload or force overwrite.";
-    
-        console.error("[save-all] - Conflict not resolved, error:", conflictError);
-        throw new Error(conflictError);
-      }
-    
-      // If the response is not OK, log the response text and throw an error
       if (!res.ok) {
-        const txt = await clonedRes.text().catch(() => "");
-        console.error("[save-all] - Save failed with status:", res.status, txt);
+        const txt = await res.text().catch(() => "");
         throw new Error(txt || `Save failed (${res.status})`);
-      }      
-        
-      const data = await res.json();
-      console.log("[save-all] - Data saved successfully:", data);
-      return data;
+      }
+  
+      return (await res.json()) as {
+        tournament?: DbTournament;
+        stages?: DbStage[];
+        deletedStageIds?: number[];
+        groups?: DbGroup[];
+        deletedGroupIds?: number[];
+        tournamentTeams?: DbTournamentTeam[];
+        stageSlots?: DbStageSlot[];
+        intakeMappings?: DbIntakeMapping[];
+        matches?: (DbMatchRow & { updated_at?: string | null })[];
+      };
     };
   
     const st0 = get();
     const tid = st0.ids.tournamentId;
     if (!tid) return;
   
-    // Check if there are any dirty states that need saving
+    // Fast exit if nothing is dirty at all
     const nothingPhase1 =
       !st0.dirty.tournament && !st0.dirty.stages && st0.dirty.deletedStageIds.size === 0;
     const nothingPhase2 =
@@ -1547,21 +1338,16 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       st0.dirty.matches.size === 0 &&
       st0.dirty.stageSlots.size === 0 &&
       !st0.dirty.intakeMappings &&
-      st0.dirty.deletedMatchIds.size === 0;
+      st0.dirty.deletedMatchIds.size === 0; // include deletions
   
-    if (nothingPhase1 && nothingPhase2 && nothingPhase3 && nothingPhase4) {
-      console.log("[save-all] - No changes detected, skipping save.");
-      return;
-    }
+    if (nothingPhase1 && nothingPhase2 && nothingPhase3 && nothingPhase4) return;
   
     set({ busy: true });
     try {
-      /* -------- PHASE 1: tournament + stages -------- */
+      /* -------- PHASE 1: tournament + stages (and stage deletions) -------- */
+      const before_stageIndexById = { ...(get().ids.stageIndexById as any) } as Record<number, number | undefined>;
       let payload1: any = {};
       const st1 = get();
-  
-      // Log the state before making changes
-      console.log("[save-all] - Preparing PHASE 1: tournament and stages.");
   
       if (st1.dirty.tournament) {
         const t = st1.entities.tournament!;
@@ -1577,7 +1363,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   
       if (st1.dirty.stages || st1.dirty.deletedStageIds.size) {
         const order = stageOrderArray(st1.ids.stageIdByIndex);
-        const upsert = order.map((sid: number, i: number) => {
+        const upsert = order.map((sid, i) => {
           const s = st1.entities.stagesById[sid];
           const row: any = {
             ...(sid > 0 ? { id: sid } : {}),
@@ -1590,7 +1376,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         });
         const deleteIds =
           st1.dirty.deletedStageIds.size > 0
-            ? Array.from(st1.dirty.deletedStageIds).filter((x: number) => x > 0)
+            ? Array.from(st1.dirty.deletedStageIds).filter((x) => x > 0)
             : [];
   
         payload1 = {
@@ -1601,23 +1387,23 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         };
       }
   
-      // Send data to backend for Phase 1
       if (payload1.tournament || payload1.stages) {
-        console.log("[save-all] - Sending Phase 1 data...");
-        const resp1 = await doPost(tid, payload1, "phase1");
+        const resp1 = await doPost(tid, payload1);
   
+        // reconcile tournament
         if (resp1.tournament) {
           set((curr) => ({
             entities: { ...curr.entities, tournament: resp1.tournament! },
           }));
         }
   
+        // reconcile stages + index maps
         if (resp1.stages) {
-          const stagesArr = resp1.stages.slice().sort((a: DbStage, b: DbStage) => (a.ordering ?? 0) - (b.ordering ?? 0));
+          const stagesArr = resp1.stages.slice().sort((a, b) => (a.ordering ?? 0) - (b.ordering ?? 0));
           const stagesById: Record<number, DbStage> = {};
           const stageIdByIndex: Record<number, number> = {};
           const stageIndexById: Record<number, number> = {};
-          stagesArr.forEach((s: DbStage, i: number) => {
+          stagesArr.forEach((s, i) => {
             stagesById[s.id] = s;
             stageIdByIndex[i] = s.id;
             stageIndexById[s.id] = i;
@@ -1628,267 +1414,357 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             ids: { ...curr.ids, stageIdByIndex, stageIndexById },
             dirty: { ...curr.dirty, tournament: false, stages: false, deletedStageIds: new Set() },
           }));
+  
+          // After stage IDs change, translate temp stage IDs used anywhere (e.g. tournamentTeams)
+          // Build stage temp→db map from BEFORE indices → AFTER ordered ids
+          const after_stageIdByIndex = get().ids.stageIdByIndex as Record<number, number>;
+          const stageIdMap: Record<number, number> = {};
+          Object.entries(before_stageIndexById).forEach(([oldIdStr, idx]) => {
+            const oldId = Number(oldIdStr);
+            if (typeof idx === "number") {
+              const newId = after_stageIdByIndex[idx];
+              if (newId) stageIdMap[oldId] = newId;
+            }
+          });
+  
+          // Rewrite tournamentTeams.stage_id for any negative (temp) ids
+          set((curr) => {
+            const tt = curr.entities.tournamentTeams.slice().map((row) => {
+              const sid = row.stage_id ?? null;
+              if (sid != null && stageIdMap[sid!]) {
+                return { ...row, stage_id: stageIdMap[sid!] };
+              }
+              return row;
+            });
+            return { entities: { ...curr.entities, tournamentTeams: tt } };
+          });
         }
       }
-
-      /* -------- PHASE 2: groups -------- */
+  
+      /* -------- PHASE 2: groups (and group deletions) -------- */
+      const before_groupIndexByStageAndId = JSON.parse(
+        JSON.stringify(get().ids.groupIndexByStageAndId)
+      ) as Record<number, Record<number, number | undefined>>;
+  
       let payload2: any = {};
       const st2 = get();
-
-      console.log("[save-all] - Preparing PHASE 2: groups.");
-
+  
       if (st2.dirty.groups || st2.dirty.deletedGroupIds.size) {
+        // Build upsert from current group maps (index → id)
         const upsert: any[] = [];
-        Object.entries(st2.ids.groupIdByStage).forEach(([sIdxStr, groupMap]: [string, Record<number, number | undefined>]) => {
-          const sIdx = Number(sIdxStr);
-          const stageId = st2.ids.stageIdByIndex[sIdx];
-          if (!stageId) return;
-          const order = Object.keys(groupMap)
-            .map(Number)
-            .sort((a: number, b: number) => a - b)
-            .map((i) => groupMap[i]!);
-          order.forEach((gid: number, i: number) => {
-            const g = st2.entities.groupsById[gid];
-            const row: any = {
-              ...(gid > 0 ? { id: gid } : {}),
-              stage_id: stageId,
-              name: g.name,
-              ordering: i,
-            };
-            upsert.push(row);
-          });
-        });
-        const deleteIds = Array.from(st2.dirty.deletedGroupIds).filter((x: number) => x > 0);
-        payload2 = {
-          ...(upsert.length || deleteIds.length
-            ? { groups: { ...(upsert.length ? { upsert } : {}), ...(deleteIds.length ? { deleteIds } : {}) } }
-            : {}),
-        };
-      }
-
-      if (Object.keys(payload2).length) {
-        console.log("[save-all] - Sending Phase 2 data...");
-        const resp2 = await doPost(tid, payload2, "phase2");
-
-        if (resp2.groups) {
-          const groupsById: Record<number, DbGroup> = { ...get().entities.groupsById };
-          resp2.groups.forEach((g: DbGroup) => (groupsById[g.id] = g));
-
-          const groupsByStage: Record<number, DbGroup[]> = {};
-          resp2.groups.forEach((g: DbGroup) => {
-            (groupsByStage[g.stage_id] ??= []).push(g);
-          });
-
-          const groupIdByStage: Record<number, Record<number, number | undefined>> = {};
-          const groupIndexByStageAndId: Record<number, Record<number, number | undefined>> = {};
-          Object.entries(groupsByStage).forEach(([stageIdStr, arr]: [string, DbGroup[]]) => {
-            const stageId = Number(stageIdStr);
-            const sIdx = st2.ids.stageIndexById[stageId];
-            if (sIdx == null) return;
-            arr.sort((a: DbGroup, b: DbGroup) => (a.ordering ?? 0) - (b.ordering ?? 0));
-            groupIdByStage[sIdx] = {};
-            groupIndexByStageAndId[stageId] = {};
-            arr.forEach((g: DbGroup, gi: number) => {
-              groupIdByStage[sIdx][gi] = g.id;
-              groupIndexByStageAndId[stageId][g.id] = gi;
+        const deleteIds =
+          st2.dirty.deletedGroupIds.size > 0
+            ? Array.from(st2.dirty.deletedGroupIds).filter((x) => x > 0)
+            : [];
+  
+        Object.keys(st2.ids.groupIdByStage)
+          .map((k) => Number(k))
+          .sort((a, b) => a - b)
+          .forEach((stageIdx) => {
+            const stageId = st2.ids.stageIdByIndex[stageIdx]!;
+            const groupMap = st2.ids.groupIdByStage[stageIdx] ?? {};
+            const orderedGroupIds = Object.keys(groupMap)
+              .map((k) => Number(k))
+              .sort((a, b) => a - b)
+              .map((gi) => groupMap[gi]!);
+  
+            orderedGroupIds.forEach((gid, i) => {
+              const g = st2.entities.groupsById[gid];
+              if (!g) return;
+              const row: any = {
+                ...(gid > 0 ? { id: gid } : {}),
+                stage_id: stageId,
+                name: g.name,
+                ordering: i,
+              };
+              upsert.push(row);
             });
           });
-
+  
+        if (upsert.length || deleteIds.length) {
+          payload2.groups = {
+            ...(upsert.length ? { upsert } : {}),
+            ...(deleteIds.length ? { deleteIds } : {}),
+          };
+        }
+      }
+  
+      if (payload2.groups) {
+        const resp2 = await doPost(tid, payload2);
+  
+        if (resp2.groups) {
+          // Rebuild groupsById and index maps from authoritative groups
+          const groupsById: Record<number, DbGroup> = {};
+          (resp2.groups as DbGroup[]).forEach((g: DbGroup) => {
+            groupsById[g.id] = g;
+          });
+  
+          const stageIndexByIdAfter = get().ids.stageIndexById as Record<number, number>;
+          const groupIdByStage: Record<number, Record<number, number>> = {};
+          const groupIndexByStageAndId: Record<number, Record<number, number>> = {};
+  
+          // group rows grouped by stage, sorted by ordering
+          const byStage: Record<number, DbGroup[]> = {};
+          Object.values(groupsById).forEach((g: DbGroup) => {
+            (byStage[g.stage_id] ??= []).push(g);
+          });
+  
+          Object.entries(byStage).forEach(([stageIdStr, arr]) => {
+            const stageId = Number(stageIdStr);
+            arr.sort(
+              (a, b) => (a.ordering ?? 0) - (b.ordering ?? 0) || a.name.localeCompare(b.name)
+            );
+            const sIdx = stageIndexByIdAfter[stageId] ?? -1;
+            const mapIdxToId: Record<number, number> = {};
+            const rev: Record<number, number> = {};
+            arr.forEach((g, gi) => {
+              mapIdxToId[gi] = g.id;
+              rev[g.id] = gi;
+            });
+            if (sIdx >= 0) groupIdByStage[sIdx] = mapIdxToId;
+            groupIndexByStageAndId[stageId] = rev;
+          });
+  
           set((curr) => ({
             entities: { ...curr.entities, groupsById },
             ids: { ...curr.ids, groupIdByStage, groupIndexByStageAndId },
             dirty: { ...curr.dirty, groups: false, deletedGroupIds: new Set() },
           }));
+  
+          // Build mapping oldGroupId -> newGroupId per stage using BEFORE indices → AFTER ids
+          const after_groupIdByStage = get().ids.groupIdByStage as Record<number, Record<number, number>>;
+          const stageIndexByIdBefore = before_stageIndexById; // still available
+  
+          const groupIdMapByOldStage: Record<number, Record<number, number>> = {};
+          Object.entries(before_groupIndexByStageAndId).forEach(([stageOldIdStr, groupOldMap]) => {
+            const stageOldId = Number(stageOldIdStr);
+            const idx = stageIndexByIdBefore[stageOldId];
+            if (typeof idx !== "number") return;
+            const newGroupIdsForIdx = after_groupIdByStage[idx] ?? {};
+            const inner: Record<number, number> = {};
+            Object.entries(groupOldMap).forEach(([groupOldIdStr, groupIdx]) => {
+              const oldGid = Number(groupOldIdStr);
+              if (typeof groupIdx === "number") {
+                const newGid = newGroupIdsForIdx[groupIdx];
+                if (newGid) inner[oldGid] = newGid;
+              }
+            });
+            groupIdMapByOldStage[stageOldId] = inner;
+          });
+  
+          // Translate tournamentTeams.group_id for any negative (temp) ids, using old-stage id to resolve index
+          set((curr) => {
+            const tt = curr.entities.tournamentTeams.slice().map((row) => {
+              let { stage_id, group_id } = row;
+  
+              if (group_id != null && group_id < 0) {
+                const mapA = groupIdMapByOldStage[stage_id as number];
+                if (mapA && mapA[group_id]) {
+                  group_id = mapA[group_id];
+                } else if (stage_id && stage_id > 0) {
+                  const giBefore = before_groupIndexByStageAndId[stage_id]?.[group_id];
+                  if (typeof giBefore === "number") {
+                    const sIdx = (get().ids.stageIndexById as any)[stage_id];
+                    const newId = sIdx != null ? (get().ids.groupIdByStage as any)[sIdx]?.[giBefore] : undefined;
+                    if (newId) group_id = newId;
+                  }
+                }
+              }
+              return { ...row, stage_id, group_id };
+            });
+            return { entities: { ...curr.entities, tournamentTeams: tt } };
+          });
         }
       }
-
-      /* -------- PHASE 3: tournament teams -------- */
-      let payload3: any = {};
+  
+      /* -------- PHASE 3: tournamentTeams -------- */
       const st3 = get();
-
-      console.log("[save-all] - Preparing PHASE 3: tournament teams.");
-
       if (st3.dirty.tournamentTeams) {
-        const upsert = st3.entities.tournamentTeams.map((tt: DbTournamentTeam) => ({
-          ...(tt.id > 0 ? { id: tt.id } : {}),
-          tournament_id: tt.tournament_id,
-          team_id: tt.team_id,
-          stage_id: tt.stage_id ?? null,
-          group_id: tt.group_id ?? null,
-          seed: tt.seed ?? null,
-        }));
-        payload3 = { tournamentTeams: { upsert, deleteIds: [] } }; // Assuming no deletes for tournamentTeams
-      }
-
-      if (Object.keys(payload3).length) {
-        console.log("[save-all] - Sending Phase 3 data...");
-        const resp3 = await doPost(tid, payload3, "phase3");
-
+        const upsert = st3.entities.tournamentTeams.map((tt) => {
+          const row: any = {
+            ...(tt.id > 0 ? { id: tt.id } : {}),
+            tournament_id: st3.ids.tournamentId,
+            team_id: tt.team_id,
+            stage_id: tt.stage_id ?? null,
+            group_id: tt.group_id ?? null,
+            seed: tt.seed ?? null,
+          };
+          return row;
+        });
+  
+        const resp3 = await doPost(tid, { tournamentTeams: { upsert } });
+  
         if (resp3.tournamentTeams) {
           set((curr) => ({
-            entities: { ...curr.entities, tournamentTeams: resp3.tournamentTeams },
+            entities: { ...curr.entities, tournamentTeams: resp3.tournamentTeams! },
             dirty: { ...curr.dirty, tournamentTeams: false },
           }));
         }
       }
-
-      /* -------- PHASE 4: matches + stage slots + intake mappings -------- */
-      let payload4: any = {};
+  
+      /* -------- PHASE 4: matches / stageSlots / intakeMappings -------- */
       const st4 = get();
-
-      console.log("[save-all] - Preparing PHASE 4: matches, stage slots, and intake mappings.");
-
-      if (st4.dirty.intakeMappings) {
-        const replace = st4.entities.intakeMappings.map((m: DbIntakeMapping) => ({
-          ...(m.id ? { id: m.id } : {}),
-          target_stage_id: m.target_stage_id,
-          group_idx: m.group_idx,
-          slot_idx: m.slot_idx,
-          from_stage_id: m.from_stage_id,
-          round: m.round,
-          bracket_pos: m.bracket_pos,
-          outcome: m.outcome,
-        }));
-        payload4.intakeMappings = { replace };
-      }
-
+      const payload4: any = {};
+  
+      // stage slots
       if (st4.dirty.stageSlots.size) {
-        const upsert: any[] = [];
-        st4.entities.stageSlots.forEach((s: DbStageSlot) => {
-          const key = `${s.stage_id}|${s.group_id}|${s.slot_id}`;
-          if (st4.dirty.stageSlots.has(key)) {
-            upsert.push({
-              stage_id: s.stage_id,
-              group_id: s.group_id,
-              slot_id: s.slot_id,
-              team_id: s.team_id,
-              source: s.source,
-              updated_at: s.updated_at,
-            });
-          }
-        });
-        payload4.stageSlots = { upsert };
+        const changedKeys = new Set(st4.dirty.stageSlots);
+        const rows = st4.entities.stageSlots.filter((s) =>
+          changedKeys.has(`${s.stage_id}|${s.group_id}|${s.slot_id}`)
+        );
+        payload4.stageSlots = {
+          upsert: rows.map((r) => ({
+            stage_id: r.stage_id,
+            group_id: r.group_id,
+            slot_id: r.slot_id,
+            team_id: r.team_id ?? null,
+            source: r.source ?? "manual",
+            updated_at: r.updated_at,
+          })),
+        };
       }
-
-      if (st4.dirty.matches.size || st4.dirty.deletedMatchIds.size) {
-        const upsert: any[] = [];
-        st4.draftMatches.forEach((m: DraftMatch) => {
-          const kStable = rowSignatureStable(m);
-          if (!st4.dirty.matches.has(kStable)) return;
-          const stage_id = st4.ids.stageIdByIndex[m.stageIdx ?? -1]!;
-          const group_id = m.groupIdx != null ? st4.ids.groupIdByStage[m.stageIdx ?? -1]?.[m.groupIdx] ?? null : null;
-          const ov = st4.dbOverlayBySig[kStable] || st4.dbOverlayBySig[rowSignatureDB(m)] || st4.dbOverlayBySig[rowSignature(m)];
-          const row = {
-            ...(ov && ov.db_id != null && ov.db_id > 0 ? { id: ov.db_id } : {}),
-            stage_id,
-            group_id,
-            team_a_id: m.team_a_id ?? null,
-            team_b_id: m.team_b_id ?? null,
-            team_a_score: ov?.team_a_score ?? null,
-            team_b_score: ov?.team_b_score ?? null,
-            winner_team_id: ov?.winner_team_id ?? null,
-            status: ov?.status ?? "scheduled",
-            match_date: m.match_date ?? null,
-            matchday: m.matchday ?? null,
-            round: m.round ?? null,
-            bracket_pos: m.bracket_pos ?? null,
-            home_source_round: m.home_source_round ?? null,
-            home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-            away_source_round: m.away_source_round ?? null,
-            away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-            home_source_outcome: ov?.home_source_outcome ?? null,
-            away_source_outcome: ov?.away_source_outcome ?? null,
-            updated_at: ov?.updated_at ?? null,
-          };
-          upsert.push(row);
-        });
-        const deleteIds = Array.from(st4.dirty.deletedMatchIds).filter((x: number) => x > 0);
-        payload4.matches = { upsert, deleteIds };
+  
+      // intake mappings
+      if (st4.dirty.intakeMappings) {
+        payload4.intakeMappings = {
+          replace: st4.entities.intakeMappings.slice(),
+        };
       }
-
-      if (Object.keys(payload4).length) {
-        console.log("[save-all] - Sending Phase 4 data...");
-        const resp4 = await doPost(tid, payload4, "phase4");
-
-        if (resp4.intakeMappings) {
-          set((curr) => ({
-            entities: { ...curr.entities, intakeMappings: resp4.intakeMappings },
-            dirty: { ...curr.dirty, intakeMappings: false },
-          }));
-        }
-
-        if (resp4.stageSlots) {
-          const nextSlots = [...get().entities.stageSlots];
-          resp4.stageSlots.forEach((newS: DbStageSlot) => {
-            const idx = nextSlots.findIndex((old: DbStageSlot) => old.stage_id === newS.stage_id && old.group_id === newS.group_id && old.slot_id === newS.slot_id);
-            if (idx >= 0) nextSlots[idx] = newS;
-            else nextSlots.push(newS);
+  
+      // matches deletions (ALWAYS include if present)
+      const delIds = Array.from(st4.dirty.deletedMatchIds ?? []);
+      if (delIds.length) {
+        payload4.matches = { ...(payload4.matches || {}), deleteIds: delIds };
+      }
+  
+      // matches upserts (only dirty signatures)
+      if (st4.dirty.matches.size) {
+        const upserts: DbMatchRow[] = [];
+        const dirtySigs = new Set(st4.dirty.matches);
+  
+        for (const r of st4.draftMatches) {
+          const sig = rowSignature(r);
+          if (!dirtySigs.has(sig)) continue;
+  
+          const ov = st4.dbOverlayBySig[sig] || {};
+          const stageId = st4.ids.stageIdByIndex[r.stageIdx ?? -1];
+          if (typeof stageId !== "number") continue;
+  
+          const groupId =
+            r.groupIdx != null
+              ? st4.ids.groupIdByStage[r.stageIdx ?? -1]?.[r.groupIdx] ?? null
+              : null;
+  
+          upserts.push({
+            id: (ov as any).db_id ?? null,
+            stage_id: stageId,
+            group_id: groupId ?? null,
+            team_a_id: r.team_a_id ?? null,
+            team_b_id: r.team_b_id ?? null,
+            team_a_score: (ov as any).team_a_score ?? null,
+            team_b_score: (ov as any).team_b_score ?? null,
+            winner_team_id: (ov as any).winner_team_id ?? null,
+            status: (ov as any).status ?? "scheduled",
+            match_date: r.match_date ?? null,
+            matchday: r.matchday ?? null,
+            round: r.round ?? null,
+            bracket_pos: r.bracket_pos ?? null,
+            home_source_round: r.home_source_round ?? null,
+            home_source_bracket_pos: r.home_source_bracket_pos ?? null,
+            away_source_round: r.away_source_round ?? null,
+            away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+            updated_at: (ov as any).updated_at ?? null,
           });
-          set((curr) => ({
-            entities: { ...curr.entities, stageSlots: nextSlots },
-            dirty: { ...curr.dirty, stageSlots: new Set() },
-          }));
         }
-
-        if (resp4.matches) {
-          const nextOverlay: Record<string, DbOverlay> = { ...get().dbOverlayBySig };
-          resp4.matches.forEach((newM: DbMatchRow) => {
-            const sIdx = get().ids.stageIndexById[newM.stage_id];
-            const groupIdx = newM.group_id ? get().ids.groupIndexByStageAndId[newM.stage_id]?.[newM.group_id] : null;
-            const uiRow: DraftMatch = {
-              stageIdx: sIdx!,
-              groupIdx,
-              matchday: newM.matchday ?? null,
-              round: newM.round ?? null,
-              bracket_pos: newM.bracket_pos ?? null,
-              match_date: newM.match_date ?? null,
-              team_a_id: newM.team_a_id ?? null,
-              team_b_id: newM.team_b_id ?? null,
-              home_source_round: newM.home_source_round ?? null,
-              home_source_bracket_pos: newM.home_source_bracket_pos ?? null,
-              away_source_round: newM.away_source_round ?? null,
-              away_source_bracket_pos: newM.away_source_bracket_pos ?? null,
-            };
-            const base: DbOverlay = {
-              db_id: newM.id ?? null,
-              updated_at: newM.updated_at ?? null,
-              status: newM.status ?? null,
-              team_a_score: newM.team_a_score ?? null,
-              team_b_score: newM.team_b_score ?? null,
-              winner_team_id: newM.winner_team_id ?? null,
-              home_source_round: newM.home_source_round ?? null,
-              home_source_bracket_pos: newM.home_source_bracket_pos ?? null,
-              away_source_round: newM.away_source_round ?? null,
-              away_source_bracket_pos: newM.away_source_bracket_pos ?? null,
-              home_source_outcome: newM.home_source_outcome ?? null,
-              away_source_outcome: newM.away_source_outcome ?? null,
-            };
-            const sigStable = rowSignatureStable(uiRow);
-            const sigDB = rowSignatureDB(uiRow);
-            const sigLegacy = rowSignature(uiRow);
-            nextOverlay[sigStable] = base;
-            nextOverlay[sigDB] = base;
-            nextOverlay[sigLegacy] = base;
-          });
-          set((curr) => ({
-            dbOverlayBySig: nextOverlay,
-            dirty: { ...curr.dirty, matches: new Set(), deletedMatchIds: new Set() },
-          }));
-        } else if (payload4.matches) {
-          set((curr) => ({
-            dirty: { ...curr.dirty, matches: new Set(), deletedMatchIds: new Set() },
-          }));
+  
+        if (upserts.length) {
+          payload4.matches = { ...(payload4.matches || {}), upsert: upserts };
         }
       }
   
+      if (payload4.stageSlots || payload4.intakeMappings || payload4.matches) {
+        const resp4 = await doPost(tid, payload4);
+  
+        // StageSlots reconcile
+        if (resp4.stageSlots) {
+          const affectedStages = new Set(resp4.stageSlots.map((s) => s.stage_id));
+          set((curr) => {
+            const kept = curr.entities.stageSlots.filter((s) => !affectedStages.has(s.stage_id));
+            return {
+              entities: { ...curr.entities, stageSlots: [...kept, ...resp4.stageSlots!] },
+            };
+          });
+        }
+  
+        // IntakeMappings reconcile
+        if (resp4.intakeMappings) {
+          set((curr) => ({
+            entities: { ...curr.entities, intakeMappings: resp4.intakeMappings! },
+          }));
+        }
+  
+        // Matches reconcile (overlay)
+        if (resp4.matches) {
+          const st2 = get();
+          const overlay = { ...st2.dbOverlayBySig };
+          for (const m of resp4.matches) {
+            const stageIdx = (st2.ids.stageIndexById as any)[m.stage_id] ?? -1;
+            const groupIdx =
+              m.group_id != null
+                ? (st2.ids.groupIndexByStageAndId as any)[m.stage_id]?.[m.group_id] ?? null
+                : null;
+  
+            const uiSig = rowSignature({
+              stageIdx,
+              groupIdx,
+              round: m.round ?? null,
+              bracket_pos: m.bracket_pos ?? null,
+              matchday: m.matchday ?? null,
+              match_date: m.match_date ?? null,
+              team_a_id: m.team_a_id ?? null,
+              team_b_id: m.team_b_id ?? null,
+              home_source_round: m.home_source_round ?? null,
+              home_source_bracket_pos: m.home_source_bracket_pos ?? null,
+              away_source_round: m.away_source_round ?? null,
+              away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+            } as DraftMatch);
+  
+            const prev = overlay[uiSig] ?? {};
+            overlay[uiSig] = {
+              ...prev,
+              db_id: m.id ?? null,
+              updated_at: m.updated_at ?? null,
+              status: (m.status as any) ?? prev.status,
+              team_a_score: m.team_a_score ?? prev.team_a_score ?? null,
+              team_b_score: m.team_b_score ?? prev.team_b_score ?? null,
+              winner_team_id: m.winner_team_id ?? prev.winner_team_id ?? null,
+              home_source_round: m.home_source_round ?? prev.home_source_round ?? null,
+              home_source_bracket_pos: m.home_source_bracket_pos ?? prev.home_source_bracket_pos ?? null,
+              away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
+              away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
+            };
+          }
+          set({ dbOverlayBySig: overlay });
+        }
+  
+        // clear phase-4 dirties
+        set((curr) => ({
+          dirty: {
+            ...curr.dirty,
+            matches: new Set(),
+            stageSlots: new Set(),
+            intakeMappings: false,
+            deletedMatchIds: new Set(), // clear deletions after success
+          },
+        }));
+      }
     } finally {
       set({ busy: false });
     }
-  }  
-}));
-
+  }}));
+    
 /* =========================================================
-   Convenience hooks
+   Convenience hooks (unchanged in API surface; fixed KO check)
    ========================================================= */
 export function useStageKO(stageIdx: number) {
   const rows = useTournamentStore((s) => s.selectStageRows(stageIdx));
@@ -1902,17 +1778,12 @@ export function useStageKO(stageIdx: number) {
 
 export function useKOLayout(stageIdx: number, where: KOCoord) {
   const key = makeKoKey(where);
-  const frame = useTournamentStore((s) => s.ui.knockoutLayout[stageIdx]?.[key]); 
+  const frame = useTournamentStore((s) => s.ui.knockoutLayout[stageIdx]?.[key]);
   const setFrame = (f: Frame) => useTournamentStore.getState().setUIKnockoutLayout(stageIdx, key, f);
   return [frame, setFrame] as const;
 }
 
 export function mergeOverlay(row: DraftMatch) {
-  const st = useTournamentStore.getState();
-  const ov =
-    st.dbOverlayBySig[rowSignatureStable(row)] ||
-    st.dbOverlayBySig[rowSignatureDB(row)] ||
-    st.dbOverlayBySig[rowSignature(row)] ||
-    findOverlayLoose(st.dbOverlayBySig as any, rowSignature(row));
+  const ov = useTournamentStore.getState().dbOverlayBySig[rowSignature(row)];
   return ov ? ({ ...row, ...ov } as DraftMatch & DbOverlay) : row;
 }

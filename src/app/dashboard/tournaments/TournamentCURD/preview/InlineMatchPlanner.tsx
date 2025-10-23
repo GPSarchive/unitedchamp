@@ -9,13 +9,15 @@ import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD
 import { generateDraftMatches } from "../util/Generators";
 
 /* ---------------- helpers ---------------- */
-function rrPairKey(a?: number | null, b?: number | null): string {
+// Unordered pair for RR identity
+function rrPairKey(a?: number | null, b?: number | null) {
   const x = a ?? 0,
     y = b ?? 0;
   return x < y ? `${x}-${y}` : `${y}-${x}`;
 }
 
-function rowSignature(m: DraftMatch): string {
+// Structural key for React rows (non-unique → we’ll suffix)
+function rowSignature(m: DraftMatch) {
   if (m.round != null && m.bracket_pos != null) {
     return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
   }
@@ -25,13 +27,15 @@ function rowSignature(m: DraftMatch): string {
   return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
 }
 
-function reactKey(m: DraftMatch, i: number): string {
+// React key: include DB id and structural signature to prevent collisions
+function reactKey(m: DraftMatch, i: number) {
   const id = (m as any)?.db_id as number | null | undefined;
   const sig = rowSignature(m);
   return id != null ? `M#${id}|${sig}` : `${sig}|I${i}`;
 }
 
-function legacyRowSignature(m: DraftMatch): string {
+// Store’s legacy signature format
+function legacyRowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
     m.groupIdx ?? "",
@@ -45,7 +49,7 @@ function legacyRowSignature(m: DraftMatch): string {
   return parts.join("|");
 }
 
-function isoToLocalInput(iso?: string | null): string {
+function isoToLocalInput(iso?: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -53,7 +57,7 @@ function isoToLocalInput(iso?: string | null): string {
     d.getUTCHours()
   )}:${pad(d.getUTCMinutes())}`;
 }
-function localInputToISO(localStr?: string): string | null {
+function localInputToISO(localStr?: string) {
   if (!localStr) return null;
   const m = localStr.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
   if (!m) return null;
@@ -100,6 +104,7 @@ function migrateOverlayKey(oldKey: string, newKey: string) {
   useTournamentStore.setState({ dbOverlayBySig: next });
 }
 
+// strip structural fields so overlay cannot override editor state
 function safeOverlay(
   ov?: Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
 ) {
@@ -142,10 +147,10 @@ function ensureOverlayForRow(row: DraftMatch) {
   const nextVal = {
     db_id: db_id ?? curr?.db_id ?? null,
     updated_at: updated_at ?? curr?.updated_at ?? null,
-    status: (status ?? curr?.status ?? "scheduled") as DraftMatch["status"],
-    team_a_score: (team_a_score ?? curr?.team_a_score ?? null) as number | null,
-    team_b_score: (team_b_score ?? curr?.team_b_score ?? null) as number | null,
-    winner_team_id: (winner_team_id ?? curr?.winner_team_id ?? null) as number | null,
+    status: status ?? curr?.status ?? "scheduled",
+    team_a_score: team_a_score ?? curr?.team_a_score ?? null,
+    team_b_score: team_b_score ?? curr?.team_b_score ?? null,
+    winner_team_id: winner_team_id ?? curr?.winner_team_id ?? null,
     home_source_round: row.home_source_round ?? (curr as any)?.home_source_round ?? null,
     home_source_bracket_pos: row.home_source_bracket_pos ?? (curr as any)?.home_source_bracket_pos ?? null,
     away_source_round: row.away_source_round ?? (curr as any)?.away_source_round ?? null,
@@ -177,16 +182,18 @@ export default function InlineMatchPlanner({
   teams: TeamDraft[];
   forceStageIdx: number;
 }) {
+  // store slices
   const draftMatches = useTournamentStore(selDraftMatches);
   const dbOverlayBySig = useTournamentStore(selDbOverlayBySig);
 
-  const stagesById = useTournamentStore(selStagesById) as Record<number, any>;
-  const stageIdByIndex = useTournamentStore(selStageIdByIndex) as Record<number, number>;
-  const stageIndexById = useTournamentStore(selStageIndexById) as Record<number, number>;
+  const stagesById = useTournamentStore(selStagesById);
+  const stageIdByIndex = useTournamentStore(selStageIdByIndex);
+  const stageIndexById = useTournamentStore(selStageIndexById);
 
   const groupIdByStage = useTournamentStore(selGroupIdByStage);
-  const groupsById = useTournamentStore(selGroupsById) as Record<number, any>;
+  const groupsById = useTournamentStore(selGroupsById);
 
+  // actions
   const updateMatches = useTournamentStore(selUpdateMatches);
   const listGroupTeamIds = useTournamentStore(selListGroupTeamIds);
   const getTeamName = useTournamentStore(selGetTeamName);
@@ -201,9 +208,10 @@ export default function InlineMatchPlanner({
     };
   }, []);
 
+  // name resolver
   const nameOf = useMemo(() => {
     const local = new Map<number, string>();
-    (teams ?? []).forEach((t: TeamDraft) => {
+    (teams ?? []).forEach((t) => {
       if (t && typeof t.id === "number") local.set(t.id, (t as any).name ?? `Team #${t.id}`);
     });
     return (id: number | string | null) => {
@@ -219,7 +227,7 @@ export default function InlineMatchPlanner({
   /* ---------- Robust stage index ---------- */
   const propStageId = (miniPayload?.stages as any)?.[forceStageIdx]?.id as number | undefined;
 
-  const stageIdxFromId = useMemo<number | undefined>(() => {
+  const stageIdxFromId = useMemo(() => {
     if (propStageId && typeof stageIndexById[propStageId] === "number") {
       return stageIndexById[propStageId]!;
     }
@@ -228,7 +236,7 @@ export default function InlineMatchPlanner({
 
   const matchesPerIdx = useMemo(() => {
     const map = new Map<number, number>();
-    draftMatches.forEach((m: DraftMatch) => {
+    draftMatches.forEach((m) => {
       const idx = (m.stageIdx ?? -1) as number;
       if (idx >= 0) map.set(idx, (map.get(idx) ?? 0) + 1);
     });
@@ -241,8 +249,8 @@ export default function InlineMatchPlanner({
     if ((matchesPerIdx.get(forceStageIdx) ?? 0) > 0) return forceStageIdx;
 
     const kindAt = (idx: number) => {
-      const sid = stageIdByIndex[idx];
-      return sid ? stagesById[sid]?.kind : undefined;
+      const sid = (stageIdByIndex as any)[idx];
+      return sid ? (stagesById as any)[sid]?.kind : undefined;
     };
     const wantKind = kindAt(stageIdxFromId ?? forceStageIdx);
 
@@ -265,65 +273,60 @@ export default function InlineMatchPlanner({
   }, [stageIdxFromId, forceStageIdx, matchesPerIdx, stageIdByIndex, stagesById]);
 
   /* ---------- Kind & groups ---------- */
-  const kindFromStore = useMemo<"league" | "groups" | "knockout" | undefined>(() => {
-    const sid = stageIdByIndex?.[effectiveStageIdx];
-    return sid ? (stagesById?.[sid]?.kind ?? "league") : undefined;
+  const kindFromStore = useMemo(() => {
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    return sid ? ((stagesById as any)[sid]?.kind ?? "league") : undefined;
   }, [stageIdByIndex, stagesById, effectiveStageIdx]);
 
+  // rows (+ overlay merge with legacy fallback) — overlay sanitized
   const allRowsForStage = useMemo(() => {
-    const rows = draftMatches.filter((r: DraftMatch) => r.stageIdx === effectiveStageIdx);
-    return rows.map((r: DraftMatch) => {
+    const rows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
+    return rows.map((r) => {
       const sigLegacy = legacyRowSignature(r);
       const ovRaw =
         dbOverlayBySig[rowSignature(r)] ||
         dbOverlayBySig[sigLegacy] ||
         ((r as any).db_id != null
-          ? Object.values(
-              dbOverlayBySig as Record<string, Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }>
-            ).find((v) => v?.db_id === (r as any).db_id)
+          ? Object.values(dbOverlayBySig).find((v) => v?.db_id === (r as any).db_id)
           : undefined);
       const ov = safeOverlay(ovRaw);
       return ov ? ({ ...r, ...ov } as DraftMatch) : r;
     });
   }, [draftMatches, dbOverlayBySig, effectiveStageIdx]);
 
-  const hasAnyGrouped = useMemo(() => allRowsForStage.some((r: DraftMatch) => r.groupIdx != null), [allRowsForStage]);
+  const hasAnyGrouped = useMemo(() => allRowsForStage.some((r) => r.groupIdx != null), [allRowsForStage]);
 
   const isGroups = (kindFromStore ?? "league") === "groups" || hasAnyGrouped;
   const isKO = (kindFromStore ?? "league") === "knockout";
 
-  const rawGroupMap = (groupIdByStage as Record<number, number | Record<number, number> | undefined>)?.[
-    effectiveStageIdx
-  ];
-
+  // groups from STORE (normalize)
+  const rawGroupMap = (groupIdByStage as Record<number, any>)?.[effectiveStageIdx];
   const normalizedGroupMap: Record<number, number> = useMemo(() => {
     if (!rawGroupMap) return {};
     if (typeof rawGroupMap === "number") return { 0: rawGroupMap };
     return rawGroupMap as Record<number, number>;
   }, [rawGroupMap]);
 
-  const fallbackGroups = useMemo(
-    () =>
-      Object.values(groupsById)
-        .filter((g: any) => g.stage_id === stageIdByIndex?.[effectiveStageIdx])
-        .sort(
-          (a: any, b: any) =>
-            (a.ordering ?? 0) - (b.ordering ?? 0) || String(a.name).localeCompare(String(b.name))
-        )
-        .map((g: any, i: number) => ({ idx: i, id: g.id, name: g.name ?? `Group ${i + 1}` })),
-    [groupsById, stageIdByIndex, effectiveStageIdx]
-  );
+  const fallbackGroups = useMemo(() => {
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    if (!sid && sid !== 0) return [];
+    return Object.values(groupsById as any)
+      .filter((g: any) => g.stage_id === sid)
+      .sort((a: any, b: any) => (a.ordering ?? 0) - (b.ordering ?? 0) || String(a.name).localeCompare(String(b.name)))
+      .map((g: any, i: number) => ({ idx: i, id: g.id, name: g.name ?? `Group ${i + 1}` }));
+  }, [groupsById, stageIdByIndex, effectiveStageIdx]);
 
   const storeGroups = useMemo(() => {
     const entries = Object.keys(normalizedGroupMap).length
       ? Object.keys(normalizedGroupMap)
-          .map((idxStr: string) => ({ idx: Number(idxStr), id: normalizedGroupMap[Number(idxStr)] }))
+          .map((idxStr) => ({ idx: Number(idxStr), id: normalizedGroupMap[Number(idxStr)] }))
           .sort((a, b) => a.idx - b.idx)
           .map(({ idx, id }) => ({ idx, id, name: (groupsById as any)?.[id]?.name ?? `Group ${idx + 1}` }))
       : fallbackGroups;
     return entries;
   }, [normalizedGroupMap, groupsById, fallbackGroups]);
 
+  // current selection
   const [groupIdx, setGroupIdx] = useState<number>(storeGroups.length ? 0 : -1);
   useEffect(() => {
     if (!isGroups) setGroupIdx(-1);
@@ -334,10 +337,10 @@ export default function InlineMatchPlanner({
   const visible = useMemo(() => {
     if (isGroups) {
       if (useAllGroups) return allRowsForStage;
-      return allRowsForStage.filter((r: DraftMatch) => r.groupIdx === (groupIdx ?? 0));
+      return allRowsForStage.filter((r) => r.groupIdx === (groupIdx ?? 0));
     }
     if (isKO) return allRowsForStage;
-    return allRowsForStage.filter((r: DraftMatch) => r.groupIdx == null);
+    return allRowsForStage.filter((r) => r.groupIdx == null);
   }, [allRowsForStage, isGroups, isKO, groupIdx, useAllGroups]);
 
   /* ---------- Team search filter ---------- */
@@ -346,27 +349,28 @@ export default function InlineMatchPlanner({
     const q = teamQuery.trim().toLowerCase();
     if (!q) return visible;
     const norm = (s: string) => s.toLowerCase();
-    return visible.filter((m: DraftMatch) => {
+    return visible.filter((m) => {
       const a = norm(nameOf(m.team_a_id ?? null));
       const b = norm(nameOf(m.team_b_id ?? null));
       return a.includes(q) || b.includes(q);
     });
   }, [visible, teamQuery, nameOf]);
 
+  // team options
   const teamOptions = useMemo(() => {
     const effectiveGroupForOptions = groupIdx != null && groupIdx >= 0 ? groupIdx : 0;
-    const ids: number[] =
+    const ids =
       isGroups && !useAllGroups
         ? listGroupTeamIds(effectiveStageIdx, effectiveGroupForOptions)
-        : (miniPayload.tournament_team_ids as number[]) ?? [];
-    return ids.map((id: number) => ({ id, label: nameOf(id) }));
+        : miniPayload.tournament_team_ids ?? [];
+    return ids.map((id) => ({ id, label: nameOf(id) }));
   }, [isGroups, useAllGroups, groupIdx, effectiveStageIdx, listGroupTeamIds, nameOf, miniPayload.tournament_team_ids]);
 
   /* ---------- KO helpers ---------- */
   function ensureRowExists(stageIdxArg: number, round: number, bracket_pos: number) {
-    updateMatches(stageIdxArg, (stageRows: DraftMatch[]) => {
+    updateMatches(stageIdxArg, (stageRows) => {
       const exists = stageRows.some(
-        (r: DraftMatch) => r.stageIdx === stageIdxArg && r.round === round && r.bracket_pos === bracket_pos
+        (r) => r.stageIdx === stageIdxArg && r.round === round && r.bracket_pos === bracket_pos
       );
       if (exists) return stageRows;
       const newRow: DraftMatch = {
@@ -413,13 +417,13 @@ export default function InlineMatchPlanner({
 
         const { round: _r, bracket_pos: _p, ...rest } = patch;
         if (Object.keys(rest).length > 0) {
-          updateMatches(effectiveStageIdx, (stageRows: DraftMatch[]) => {
+          updateMatches(effectiveStageIdx, (stageRows) => {
             const next = stageRows.slice();
             const i = next.findIndex(
-              (r: DraftMatch) => r.stageIdx === effectiveStageIdx && r.round === newR && r.bracket_pos === newP
+              (r) => r.stageIdx === effectiveStageIdx && r.round === newR && r.bracket_pos === newP
             );
             if (i >= 0) {
-              const merged = { ...next[i], ...rest } as DraftMatch;
+              const merged = { ...next[i], ...rest };
               next[i] = merged;
               const afterLegacy = legacyRowSignature(merged);
               if (afterLegacy !== afterLegacyTmp) {
@@ -436,9 +440,9 @@ export default function InlineMatchPlanner({
       }
     }
 
-    updateMatches(effectiveStageIdx, (stageRows: DraftMatch[]) => {
+    updateMatches(effectiveStageIdx, (stageRows) => {
       const next = stageRows.slice();
-      const idx = next.findIndex((r: DraftMatch) => legacyRowSignature(r) === beforeLegacy);
+      const idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy);
       const merged: DraftMatch = { ...(idx >= 0 ? next[idx] : target), ...patch };
       const afterLegacy = legacyRowSignature(merged);
 
@@ -457,11 +461,9 @@ export default function InlineMatchPlanner({
 
   const addRow = () => {
     if (isKO) {
-      const stageRows = draftMatches.filter((r: DraftMatch) => r.stageIdx === effectiveStageIdx);
+      const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
       const round = 1;
-      const used = stageRows
-        .filter((r: DraftMatch) => r.round === round && r.bracket_pos != null)
-        .map((r: DraftMatch) => r.bracket_pos as number);
+      const used = stageRows.filter((r) => r.round === round && r.bracket_pos != null).map((r) => r.bracket_pos as number);
       const nextPos = used.length ? Math.max(...used) + 1 : 1;
       ensureRowExists(effectiveStageIdx, round, nextPos);
       reindexKOPointers(effectiveStageIdx);
@@ -477,14 +479,13 @@ export default function InlineMatchPlanner({
         team_b_id: null,
         match_date: null,
       };
-      updateMatches(effectiveStageIdx, (rows: DraftMatch[]) => [...rows, newRow]);
+      updateMatches(effectiveStageIdx, (rows) => [...rows, newRow]);
     }
   };
 
   const removeRow = (m: DraftMatch) => {
-    const dbId = ((m as any).db_id as number | null | undefined) ??
-                 ((m as any).id as number | null | undefined) ?? null;
-  
+    const dbId = (m as any).db_id as number | null | undefined;
+    // help store find by ensuring overlay is present for this row signature
     if (dbId != null) {
       const key = legacyRowSignature(m);
       const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
@@ -493,21 +494,22 @@ export default function InlineMatchPlanner({
         useTournamentStore.setState({ dbOverlayBySig: { ...overlay, [key]: { ...(curr ?? {}), db_id: dbId } } });
       }
     }
-  
+
+    // debug
     // eslint-disable-next-line no-console
-    console.debug("[planner.delete]", { db_id: dbId ?? 0, key: legacyRowSignature(m) });
+    console.debug("[planner.delete]", {
+      db_id: dbId ?? null,
+      key: legacyRowSignature(m),
+    });
 
-    // Ensure deleteIds[] is populated for /save-all
-    removeMatch({ ...(m as any), db_id: dbId ?? 0, id: dbId ?? undefined } as any);
-
-    
-
+    removeMatch(m);
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
+  // do NOT reindex after regeneration; it can wipe bye teams
   const regenerateStage = () => {
     const fresh = generateDraftMatches({ payload: miniPayload, teams });
-    const freshHere = fresh.filter((m: DraftMatch) => m.stageIdx === effectiveStageIdx);
+    const freshHere = fresh.filter((m) => m.stageIdx === effectiveStageIdx);
 
     const key = (m: DraftMatch) =>
       [
@@ -522,9 +524,9 @@ export default function InlineMatchPlanner({
       ].join("|");
 
     const currentStageRows = allRowsForStage;
-    const oldByKey = new Map<string, DraftMatch>(currentStageRows.map((m: DraftMatch) => [key(m), m]));
+    const oldByKey = new Map(currentStageRows.map((m) => [key(m), m]));
 
-    const merged = freshHere.map((f: DraftMatch) => {
+    const merged = freshHere.map((f) => {
       const old = oldByKey.get(key(f));
       const mergedRow = old
         ? ({
@@ -584,6 +586,7 @@ export default function InlineMatchPlanner({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Search by team names */}
           <input
             type="text"
             className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-56"
@@ -644,7 +647,7 @@ export default function InlineMatchPlanner({
               </tr>
             </thead>
             <tbody>
-              {filteredVisible.map((m: DraftMatch, i: number) => {
+              {filteredVisible.map((m, i) => {
                 const key = reactKey(m, i);
                 return (
                   <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">
@@ -678,6 +681,7 @@ export default function InlineMatchPlanner({
                       </td>
                     )}
 
+                    {/* Team A */}
                     <td className="px-2 py-1">
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
@@ -693,6 +697,7 @@ export default function InlineMatchPlanner({
                       </select>
                     </td>
 
+                    {/* Team B */}
                     <td className="px-2 py-1">
                       <select
                         className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
@@ -708,6 +713,7 @@ export default function InlineMatchPlanner({
                       </select>
                     </td>
 
+                    {/* Score */}
                     <td className="px-2 py-1">
                       {(() => {
                         const a = (m as any).team_a_score as number | null;
@@ -716,6 +722,7 @@ export default function InlineMatchPlanner({
                       })()}
                     </td>
 
+                    {/* Status */}
                     <td className="px-2 py-1">
                       <span
                         className={[
@@ -729,6 +736,7 @@ export default function InlineMatchPlanner({
                       </span>
                     </td>
 
+                    {/* Date */}
                     <td className="px-2 py-1">
                       <input
                         type="datetime-local"

@@ -1,4 +1,3 @@
-// app/api/tournaments/[id]/save-all/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
@@ -93,7 +92,6 @@ type SaveAllRequest = {
   stageSlots?: { upsert?: StageSlotRow[] };
   intakeMappings?: { replace?: IntakeMappingRow[]; targetStageIds?: number[] };
   matches?: { upsert?: MatchRow[]; deleteIds?: number[] };
-  // Force overwrites skip optimistic checks for specific sections.
   force?: {
     matches?: boolean;
     stageSlots?: boolean;
@@ -125,7 +123,12 @@ export async function POST(
 
   let body: SaveAllRequest;
   try {
+    // Parse the body as SaveAllRequest
     body = (await req.json()) as SaveAllRequest;
+
+    // Log the received body to inspect what the server is receiving
+    console.log("[save-all][in] Received request body:", JSON.stringify(body, null, 2));
+
   } catch {
     console.error("[save-all][in]", rid, "bad JSON");
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
@@ -166,6 +169,7 @@ export async function POST(
   const out: SaveAllResponse = { ok: true };
 
   try {
+
     /* 1) Tournament basics (PATCH) ---------------------------------------- */
     if (body.tournament?.patch) {
       const { patch } = body.tournament;
@@ -181,25 +185,52 @@ export async function POST(
 
     /* 2) Groups — deletions first ----------------------------------------- */
     if (body.groups?.deleteIds?.length) {
+      console.log("[save-all][delete-groups] Deleting group IDs:", body.groups.deleteIds);
       const { error: grpDelErr } = await supabaseAdmin
         .from("tournament_groups")
         .delete()
         .in("id", body.groups.deleteIds);
       if (grpDelErr) return NextResponse.json({ error: grpDelErr.message }, { status: 500 });
       out.deletedGroupIds = body.groups.deleteIds;
+      console.log("[save-all][delete-groups] Successfully deleted group IDs:", out.deletedGroupIds);
     }
 
     /* 3) Stages — deletions next (after groups) --------------------------- */
     if (body.stages?.deleteIds?.length) {
+      console.log("[save-all][delete-stages] Deleting stage IDs:", body.stages.deleteIds);
       const { error: stgDelErr } = await supabaseAdmin
         .from("tournament_stages")
         .delete()
         .in("id", body.stages.deleteIds);
       if (stgDelErr) return NextResponse.json({ error: stgDelErr.message }, { status: 500 });
       out.deletedStageIds = body.stages.deleteIds;
+      console.log("[save-all][delete-stages] Successfully deleted stage IDs:", out.deletedStageIds);
     }
 
-    /* 4) Stages upsert ----------------------------------------------------- */
+    /* 4) Matches deletions (before upserts) ------------------------------ */
+    let matchDeleteStageIds: number[] = [];
+    if (body.matches?.deleteIds?.length) {
+      console.log("[save-all][delete-matches] Deleting match IDs:", body.matches.deleteIds);
+      const { data: delRows, error: delFetchErr } = await supabaseAdmin
+        .from("matches")
+        .select("id,stage_id")
+        .in("id", body.matches.deleteIds);
+      if (delFetchErr) {
+        return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
+      }
+      matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
+
+      const { error: delErr } = await supabaseAdmin
+        .from("matches")
+        .delete()
+        .in("id", body.matches.deleteIds);
+      if (delErr) {
+        return NextResponse.json({ error: delErr.message }, { status: 500 });
+      }
+      console.log("[save-all][delete-matches] Successfully deleted match IDs:", body.matches.deleteIds);
+    }
+
+    /* 5) Stages upsert ----------------------------------------------------- */
     if (body.stages?.upsert?.length) {
       const createRows = body.stages.upsert
         .filter((r) => r.id == null)
@@ -227,36 +258,6 @@ export async function POST(
       }
 
       out.stages = upserted;
-    }
-
-    /* 5) Groups upsert ----------------------------------------------------- */
-    if (body.groups?.upsert?.length) {
-      const createRows = body.groups.upsert
-        .filter((r) => r.id == null)
-        .map(({ id: _drop, ...r }) => r);
-      const updateRows = body.groups.upsert.filter((r) => r.id != null);
-
-      let upserted: any[] = [];
-
-      if (createRows.length) {
-        const { data, error } = await supabaseAdmin
-          .from("tournament_groups")
-          .insert(createRows)
-          .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        upserted = upserted.concat(data ?? []);
-      }
-
-      if (updateRows.length) {
-        const { data, error } = await supabaseAdmin
-          .from("tournament_groups")
-          .upsert(updateRows, { onConflict: "id" })
-          .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        upserted = upserted.concat(data ?? []);
-      }
-
-      out.groups = upserted;
     }
 
     /* 6) Tournament teams upsert ------------------------------------------ */
@@ -349,8 +350,7 @@ export async function POST(
     /* 8) Intake mappings replace (delete → insert) ------------------------- */
     if (body.intakeMappings?.replace) {
       const targetStageIds =
-        body.intakeMappings.targetStageIds ??
-        Array.from(new Set(body.intakeMappings.replace.map((r) => r.target_stage_id)));
+        body.intakeMappings.targetStageIds ?? Array.from(new Set(body.intakeMappings.replace.map((r) => r.target_stage_id)));
 
       if (targetStageIds.length) {
         const { error } = await supabaseAdmin
@@ -375,8 +375,9 @@ export async function POST(
     }
 
     /* 8.5) Matches deletions (before upserts) ------------------------------ */
-    let matchDeleteStageIds: number[] = [];
+
     if (body.matches?.deleteIds?.length) {
+      console.log("[save-all][delete-matches] Deleting match IDs:", body.matches.deleteIds);
       const { data: delRows, error: delFetchErr } = await supabaseAdmin
         .from("matches")
         .select("id,stage_id")
@@ -393,6 +394,7 @@ export async function POST(
       if (delErr) {
         return NextResponse.json({ error: delErr.message }, { status: 500 });
       }
+      console.log("[save-all][delete-matches] Successfully deleted match IDs:", body.matches.deleteIds);
     }
 
     /* 9) Matches upsert (optimistic, with optional force) ------------------ */
@@ -470,6 +472,7 @@ export async function POST(
       }
 
       out.matches = [...updated, ...created];
+      
     }
 
     // ===== KO ID RESOLUTION (no RPC) ======================================
@@ -553,9 +556,10 @@ export async function POST(
       out.matches = resolvedMatches ?? out.matches;
     }
     // ======================================================================
-
+    console.log("[save-all][out] Final output:", JSON.stringify(out, null, 2));
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {
+    console.error("[save-all] Error:", e?.message ?? "Unknown error");
     return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
   }
 }
