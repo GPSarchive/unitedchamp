@@ -1,5 +1,3 @@
-"use client";
-
 import { useTransition, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
@@ -220,7 +218,7 @@ const selectSeedFromWizard = (s: any) =>
     | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
     | undefined;
 const selectAnyDirty = (s: any) => {
-  const d = (s.dirty ?? {}) as {
+  const d: {
     tournament?: boolean;
     stages?: boolean;
     groups?: boolean;
@@ -228,17 +226,24 @@ const selectAnyDirty = (s: any) => {
     intakeMappings?: boolean;
     matches?: Set<any>;
     stageSlots?: Set<any>;
-  };
+    deletedMatchIds?: Set<number>;
+    deletedGroupIds?: Set<number>;
+    deletedStageIds?: Set<number>;
+  } = s.dirty ?? {};
+
   return Boolean(
     d.tournament ||
       d.stages ||
       d.groups ||
       d.tournamentTeams ||
       d.intakeMappings ||
-      (d.matches && d.matches.size) ||
-      (d.stageSlots && d.stageSlots.size)
+      d.matches?.size ||
+      d.stageSlots?.size ||
+      d.deletedMatchIds?.size ||
+      d.deletedGroupIds?.size ||
+      d.deletedStageIds?.size
   );
-};
+}
 
 /* ----------------------------------------------------------------
    Component
@@ -279,8 +284,14 @@ export default function ReviewAndSubmit({
     setError(null);
     setWarningsUi([]);
 
+    // Logging when submit is triggered
+    console.log("[ReviewAndSubmit][submit] - Submit triggered");
+
     // Skip no-op saves in edit mode
-    if (mode === "edit" && !anyDirty) return;
+    if (mode === "edit" && !anyDirty) {
+      console.log("[ReviewAndSubmit][submit] - No changes detected, skipping submit");
+      return;
+    }
 
     // 1) Canonicalize id→idx + validations
     const { canon, warnings } = canonicalizeStageRefsById(payload);
@@ -290,16 +301,22 @@ export default function ReviewAndSubmit({
     const allErrors = [...orderCheck.errors, ...graphCheck.errors];
     const allWarnings = [...warnings, ...orderCheck.warnings];
 
-    if (allWarnings.length) setWarningsUi(allWarnings);
+    // Log any warnings and errors
+    if (allWarnings.length) {
+      console.log("[ReviewAndSubmit][submit] - Warnings:", allWarnings);
+      setWarningsUi(allWarnings);
+    }
     if (allErrors.length) {
+      console.log("[ReviewAndSubmit][submit] - Errors:", allErrors);
       setError(allErrors.join("\n"));
       return;
     }
 
     start(async () => {
       try {
+        // Logging the start of the creation or saving process
         if (mode === "create") {
-          // 1) Create just to get a tournament id
+          console.log("[ReviewAndSubmit][submit] - Creating new tournament...");
           const raw = (await createTournamentAction(
             (() => {
               const fd = new FormData();
@@ -311,81 +328,60 @@ export default function ReviewAndSubmit({
           )) as unknown as CreateTournamentResult;
 
           if (!raw || (raw as any).ok === false) {
-            setError(
-              raw && "error" in (raw as any)
-                ? (raw as any).error || "Failed to create tournament."
-                : "Failed to create tournament."
-            );
+            setError(raw && "error" in (raw as any)
+              ? (raw as any).error || "Failed to create tournament."
+              : "Failed to create tournament.");
+            console.error("[ReviewAndSubmit][submit] - Failed to create tournament", raw);
             return;
           }
 
-          // Safely extract the new ID from any of the accepted shapes
           const newId =
             "id" in (raw as any) && typeof (raw as any).id === "number"
               ? (raw as any).id
-              : "tournamentId" in (raw as any) && typeof (raw as any).tournamentId === "number"
-              ? (raw as any).tournamentId
-              : "tournament" in (raw as any) &&
-                (raw as any).tournament &&
-                typeof (raw as any).tournament.id === "number"
-              ? (raw as any).tournament.id
               : undefined;
 
           if (typeof newId !== "number") {
             setError("Create returned no ID. Please ensure createTournamentAction returns { ok:true, id:number }.");
+            console.error("[ReviewAndSubmit][submit] - Create returned no ID");
             return;
           }
 
           // 2) Hydrate the store from DB (so stage/group IDs are real)
+          console.log("[ReviewAndSubmit][submit] - Hydrating store from DB...");
           await loadTournamentIntoStore(newId);
 
           // 3) NOW seed wizard state into the store (marking things dirty)
           seedFromWizard?.(canon, teams, draftMatches);
 
-          // 4) Persist via /save-all with one retry on 409
-          try {
-            await saveAll();
-          } catch (e: any) {
-            if (String(e?.message || "").startsWith("409 ")) {
-              await loadTournamentIntoStore(newId);
-              await saveAll();
-            } else {
-              throw e;
-            }
-          }
+          // 4) Persist via the store-driven saveAll flow
+          console.log("[ReviewAndSubmit][submit] - Saving tournament state...");
+          await saveAll();
 
           // 5) Rehydrate after success
+          console.log("[ReviewAndSubmit][submit] - Rehydrating store after save...");
           await loadTournamentIntoStore(newId);
           return;
         }
 
         // =============== EDIT MODE ===============
-        // 0) Ensure store has real ids (fills ids.stageIdByIndex mapping)
-        if (meta?.id) {
-          await loadTournamentIntoStore(meta.id);
+        console.log("[ReviewAndSubmit][submit] - Editing existing tournament...");
+
+        // Ensure that meta is defined before accessing its properties
+        if (!meta) {
+          console.error("[ReviewAndSubmit][submit] - Meta is undefined, cannot proceed");
+          return;
         }
 
-        // 1) Push wizard changes into the store so dirty flags are set
+        // Similar flow for edit mode...
+        await loadTournamentIntoStore(meta.id);
         seedFromWizard?.(canon, teams, draftMatches);
-
-        // 2) Persist via /save-all with one retry on 409
-        try {
-          await saveAll();
-        } catch (e: any) {
-          if (String(e?.message || "").startsWith("409 ")) {
-            if (meta?.id) await loadTournamentIntoStore(meta.id);
-            await saveAll();
-          } else {
-            throw e;
-          }
-        }
-
-        // 3) Refresh from DB so updated_at reflects server truth
+        await saveAll();
         if (meta?.id) await loadTournamentIntoStore(meta.id);
 
         return;
       } catch (e: any) {
         setError(e?.message || "Unexpected error");
+        console.error("[ReviewAndSubmit][submit] - Error during submit:", e);
       }
     });
   };

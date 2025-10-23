@@ -1,8 +1,7 @@
 // app/dashboard/tournaments/TournamentCURD/submit/loadSnapshotClient.ts
 "use client";
 import { useTournamentStore } from "./tournamentStore";
-// If you export this from the store, import it; otherwise keep 'any'.
-// import type { FullTournamentSnapshot } from "./tournamentStore";
+import type { FullTournamentSnapshot } from "./tournamentStore";
 
 export async function loadTournamentIntoStore(
   tournamentId: number,
@@ -23,7 +22,7 @@ export async function loadTournamentIntoStore(
   }
 
   // 2) Parse & hydrate the store
-  const snap /* : FullTournamentSnapshot */ = await res.json();
+  const snap: FullTournamentSnapshot = await res.json();
   useTournamentStore.getState().hydrateFromSnapshot(snap);
 
   return snap; // handy to inspect from callers if needed

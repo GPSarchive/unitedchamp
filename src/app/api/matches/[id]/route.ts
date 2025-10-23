@@ -442,135 +442,138 @@ export async function PATCH(
 /* ======================================
    DELETE /api/matches/:id  (admin)
    ====================================== */
-export async function DELETE(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
-  try {
-    ensureSameOrigin(req);
-
-    const { id: idParam } = await ctx.params;
-    const id = parsePositiveInt(idParam);
-    if (!id) return jsonError(400, "Invalid id");
-
-    const supa = await createSupabaseRouteClient();
-
-    // Auth + admin role
-    const {
-      data: { user },
-      error: userErr,
-    } = await supa.auth.getUser();
-    if (userErr || !user) return jsonError(401, "Unauthorized", userErr);
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return jsonError(403, "Forbidden");
-
-    // Load current match with stage + wiring anchors
-    const { data: current, error: curErr } = await supa
-      .from("matches")
-      .select("id, tournament_id, stage_id, round, bracket_pos")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (curErr) {
-      console.error("DELETE current fetch error", curErr);
-      return jsonError(400, "Failed to load the match.", curErr);
-    }
-    if (!current) return jsonError(404, "Not found");
-
-    // 🚫 Hard-stop if part of a tournament
-    if (current.tournament_id != null) {
-      return jsonError(
-        409,
-        "This match is part of a tournament and cannot be deleted. Edit it in the tournament editor instead."
-      );
-    }
-
-    // Extra safety: block if any matches depend on it (KO sources by FK)
-    const { data: depHome, error: depHomeErr } = await supa
-      .from("matches")
-      .select("id")
-      .eq("home_source_match_id", id)
-      .limit(1);
-
-    const { data: depAway, error: depAwayErr } = await supa
-      .from("matches")
-      .select("id")
-      .eq("away_source_match_id", id)
-      .limit(1);
-
-    if (depHomeErr || depAwayErr) {
-      console.error("DELETE dependency check failed", depHomeErr ?? depAwayErr);
-      return jsonError(400, "Failed to check match dependencies.", depHomeErr ?? depAwayErr);
-    }
-
-    // Only check stable-pointer children for KO stages
-    let hasStableChild = false;
-    if (current.stage_id && current.round != null && current.bracket_pos != null) {
-      // Find kind
-      const { data: stg } = await supa
-        .from("tournament_stages")
-        .select("kind")
-        .eq("id", current.stage_id)
+   export async function DELETE(
+    req: Request,
+    ctx: { params: Promise<{ id: string }> }
+  ) {
+    try {
+      ensureSameOrigin(req);
+  
+      const { id: idParam } = await ctx.params;
+      const id = parsePositiveInt(idParam);
+      if (!id) return jsonError(400, "Invalid id");
+  
+      const supa = await createSupabaseRouteClient();
+  
+      // Auth + admin role
+      const {
+        data: { user },
+        error: userErr,
+      } = await supa.auth.getUser();
+      if (userErr || !user) return jsonError(401, "Unauthorized", userErr);
+      const roles = Array.isArray(user.app_metadata?.roles)
+        ? (user.app_metadata!.roles as string[])
+        : [];
+      if (!roles.includes("admin")) return jsonError(403, "Forbidden");
+  
+      // Load current match with stage + wiring anchors
+      const { data: current, error: curErr } = await supa
+        .from("matches")
+        .select("id, tournament_id, stage_id, round, bracket_pos")
+        .eq("id", id)
         .maybeSingle();
-      const stageKind = (stg?.kind as any) ?? null;
-
-      if (stageKind === "knockout") {
-        const { data: stageMatches, error: stErr } = await supa
-          .from("matches")
-          .select("id,round,home_source_round,home_source_bracket_pos,away_source_round,away_source_bracket_pos")
-          .eq("stage_id", current.stage_id);
-
-        if (stErr) {
-          console.error("DELETE stable-pointer dependency check failed", stErr);
-          return jsonError(400, "Failed to check match dependencies.", stErr);
-        }
-
-        hasStableChild = (stageMatches ?? []).some((m: any) => {
-          if (m.id === id) return false;
-          const laterRound =
-            m.round != null && current.round != null && m.round > current.round;
-          if (!laterRound) return false;
-
-          const homeHit =
-            m.home_source_round != null &&
-            m.home_source_bracket_pos != null &&
-            m.home_source_round === current.round &&
-            m.home_source_bracket_pos === current.bracket_pos;
-
-          const awayHit =
-            m.away_source_round != null &&
-            m.away_source_bracket_pos != null &&
-            m.away_source_round === current.round &&
-            m.away_source_bracket_pos === current.bracket_pos;
-
-          return homeHit || awayHit;
-        });
+  
+      if (curErr) {
+        console.error("DELETE current fetch error", curErr);
+        return jsonError(400, "Failed to load the match.", curErr);
       }
+      if (!current) return jsonError(404, "Not found");
+  
+      // Remove the tournament_id check to allow deletion without restrictions
+      // if (current.tournament_id != null) {
+      //   return jsonError(
+      //     409,
+      //     "This match is part of a tournament and cannot be deleted. Edit it in the tournament editor instead."
+      //   );
+      // }
+  
+      // Extra safety: block if any matches depend on it (KO sources by FK)
+      const { data: depHome, error: depHomeErr } = await supa
+        .from("matches")
+        .select("id")
+        .eq("home_source_match_id", id)
+        .limit(1);
+  
+      const { data: depAway, error: depAwayErr } = await supa
+        .from("matches")
+        .select("id")
+        .eq("away_source_match_id", id)
+        .limit(1);
+  
+      if (depHomeErr || depAwayErr) {
+        console.error("DELETE dependency check failed", depHomeErr ?? depAwayErr);
+        return jsonError(400, "Failed to check match dependencies.", depHomeErr ?? depAwayErr);
+      }
+  
+      // Only check stable-pointer children for KO stages
+      let hasStableChild = false;
+      if (current.stage_id && current.round != null && current.bracket_pos != null) {
+        // Find kind
+        const { data: stg } = await supa
+          .from("tournament_stages")
+          .select("kind")
+          .eq("id", current.stage_id)
+          .maybeSingle();
+        const stageKind = (stg?.kind as any) ?? null;
+  
+        if (stageKind === "knockout") {
+          const { data: stageMatches, error: stErr } = await supa
+            .from("matches")
+            .select("id,round,home_source_round,home_source_bracket_pos,away_source_round,away_source_bracket_pos")
+            .eq("stage_id", current.stage_id);
+  
+          if (stErr) {
+            console.error("DELETE stable-pointer dependency check failed", stErr);
+            return jsonError(400, "Failed to check match dependencies.", stErr);
+          }
+  
+          hasStableChild = (stageMatches ?? []).some((m: any) => {
+            if (m.id === id) return false;
+            const laterRound =
+              m.round != null && current.round != null && m.round > current.round;
+            if (!laterRound) return false;
+  
+            const homeHit =
+              m.home_source_round != null &&
+              m.home_source_bracket_pos != null &&
+              m.home_source_round === current.round &&
+              m.home_source_bracket_pos === current.bracket_pos;
+  
+            const awayHit =
+              m.away_source_round != null &&
+              m.away_source_bracket_pos != null &&
+              m.away_source_round === current.round &&
+              m.away_source_bracket_pos === current.bracket_pos;
+  
+            return homeHit || awayHit;
+          });
+        }
+      }
+  
+      if ((depHome?.length ?? 0) > 0 || (depAway?.length ?? 0) > 0 || hasStableChild) {
+        return jsonError(409, "This match feeds other matches and cannot be deleted.");
+      }
+  
+      const { data, error } = await supa
+        .from("matches")
+        .delete()
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+  
+      if (error) {
+        console.error("DELETE /matches delete failed", error);
+        const mapped = mapDbError(error);
+        return jsonError(mapped.status, mapped.msg, error);
+      }
+      if (!data) return jsonError(404, "Not found");
+  
+      return NextResponse.json({ ok: true });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg === "bad-origin") return jsonError(403, "Forbidden");
+      console.error("DELETE /matches/:id failed", e);
+      return jsonError(500, "Server error", e);
     }
-
-    if ((depHome?.length ?? 0) > 0 || (depAway?.length ?? 0) > 0 || hasStableChild) {
-      return jsonError(409, "This match feeds other matches and cannot be deleted.");
-    }
-
-    const { data, error } = await supa
-      .from("matches")
-      .delete()
-      .eq("id", id)
-      .select("id")
-      .maybeSingle();
-
-    if (error) {
-      console.error("DELETE /matches delete failed", error);
-      const mapped = mapDbError(error);
-      return jsonError(mapped.status, mapped.msg, error);
-    }
-    if (!data) return jsonError(404, "Not found");
-
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    const msg = String(e?.message ?? "");
-    if (msg === "bad-origin") return jsonError(403, "Forbidden");
-    console.error("DELETE /matches/:id failed", e);
-    return jsonError(500, "Server error", e);
   }
-}
+  

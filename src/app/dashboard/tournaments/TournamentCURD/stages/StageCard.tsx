@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { NewTournamentPayload } from "@/app/lib/types";
-import type { TeamDraft } from "../TournamentWizard";
+import type { NewTournamentPayload, StageConfig } from "@/app/lib/types";
+import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 
 import GroupsBoard from "./groups/GroupsBoard";
 import KnockoutBoard from "./KnockoutTree/newknockout/KnockoutBoard";
@@ -12,13 +12,26 @@ import KnockoutConfigFromGroups from "./KnockoutTree/newknockout/KnockoutConfigF
 import InlineMatchPlanner from "../preview/InlineMatchPlanner";
 import StageStandingsMini from "./StageStandingsMini";
 
-import type { StageConfig } from "@/app/lib/types";
 import { computeGroupsSignature } from "@/app/dashboard/tournaments/TournamentCURD/util/groupsSignature";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
-// ----------------- Helpers -----------------
+/* ----------------- Exported types ----------------- */
+export type StageDraft = {
+  id?: number;
+  name: string;
+  kind: "league" | "groups" | "knockout";
+  ordering?: number;
+  groups?: Array<{ id?: number; name: string }>;
+  config?: StageConfig;
+};
+
+/* ----------------- Local draft types (narrow) ----------------- */
+type GroupDraft = { id?: number; name: string };
+
+type CatalogRow = { id: number; name: string; logo?: string | null };
+
+/* ----------------- Helpers ----------------- */
 const asCfg = (x: unknown): StageConfig => (x ?? {}) as StageConfig;
-type UiGroup = { id?: number; name: string };
 
 function setCfgMirror(cfg: StageConfig, patch: Partial<StageConfig>): StageConfig {
   const next: StageConfig = { ...cfg, ...patch };
@@ -41,19 +54,12 @@ async function safeJson(res: Response) {
   return null;
 }
 
-type CatalogRow = { id: number; name: string; logo?: string | null };
-
-// ----------------- Local style helpers (black & white only) -----------------
+/* ----------------- Local style helpers (monochrome) ----------------- */
 const fieldBase =
-  "w-full rounded-lg bg-black border border-gray-700 px-3 py-2 text-white placeholder-gray-400 " +
-  "focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40";
-
+  "w-full rounded-lg bg-black border border-gray-700 px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40";
 const selectBase = fieldBase;
-
 const btnGhost =
-  "px-2.5 py-1.5 rounded-lg text-sm text-white/90 hover:text-white hover:bg-white/10 " +
-  "border border-gray-700 focus:outline-none focus:ring-2 focus:ring-white/30";
-
+  "px-2.5 py-1.5 rounded-lg text-sm text-white/90 hover:text-white hover:bg-white/10 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-white/30";
 const helperText = "mt-1 text-xs text-gray-400";
 
 export default function StageCard({
@@ -66,37 +72,33 @@ export default function StageCard({
   allStages,
   teams,
 }: {
-  value: NewTournamentPayload["stages"][number];
+  value: StageDraft;
   index: number;
-  onChange: (patch: Partial<NewTournamentPayload["stages"][number]>) => void;
+  onChange: (patch: Partial<StageDraft>) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
-  allStages: NewTournamentPayload["stages"];
+  allStages: StageDraft[];
   teams: TeamDraft[];
 }) {
   const draftMatches = useTournamentStore((s) => s.draftMatches);
-  const replaceAllDraftMatches = useTournamentStore((s) => s.replaceAllDraftMatches);
   const stageIdByIndex = useTournamentStore((s) => s.ids.stageIdByIndex);
   const stageIndexById = useTournamentStore((s) => s.ids.stageIndexById);
   const stagesById = useTournamentStore((s) => s.entities.stagesById);
 
-  const onDraftChange = (next: any[]) => replaceAllDraftMatches(next as any);
-
-  const stage = value as any;
+  const stage = value;
   const cfg = asCfg(stage.config);
-  const setCfg = (patch: Partial<StageConfig>) =>
-    onChange({ config: setCfgMirror(cfg, patch) } as any);
+  const setCfg = (patch: Partial<StageConfig>) => onChange({ config: setCfgMirror(cfg, patch) });
 
   const isKnockout = stage.kind === "knockout";
   const isGroups = stage.kind === "groups";
   const isLeague = stage.kind === "league";
 
-  const payloadStageId = (allStages as any)?.[index]?.id as number | undefined;
+  const payloadStageId = allStages?.[index]?.id as number | undefined;
 
   const matchesPerIdx = useMemo(() => {
     const map = new Map<number, number>();
-    draftMatches.forEach((m) => {
+    draftMatches.forEach((m: DraftMatch) => {
       const si = (m.stageIdx ?? -1) as number;
       if (si >= 0) map.set(si, (map.get(si) ?? 0) + 1);
     });
@@ -114,7 +116,7 @@ export default function StageCard({
 
     const kindAt = (idx: number) => {
       const sid = stageIdByIndex[idx];
-      return sid ? (stagesById as any)[sid]?.kind : undefined;
+      return sid ? stagesById[sid]?.kind : undefined;
     };
     const wantKind = kindAt(typeof preferred === "number" ? preferred : index);
 
@@ -130,8 +132,8 @@ export default function StageCard({
     });
     if (best != null) return best;
 
-    for (const [idx, count] of matchesPerIdx.entries()) {
-      if (count > 0) return idx;
+    for (const [idx2, count] of matchesPerIdx.entries()) {
+      if (count > 0) return idx2;
     }
     return typeof preferred === "number" ? preferred : index;
   }, [payloadStageId, stageIndexById, stageIdByIndex, stagesById, index, matchesPerIdx]);
@@ -142,10 +144,10 @@ export default function StageCard({
 
   const idsNeeded = useMemo(() => {
     const ids = new Set<number>();
-    teams.forEach((t) => ids.add(t.id));
+    teams.forEach((t: TeamDraft) => ids.add(t.id));
     draftMatches
-      .filter((m) => m.stageIdx === effectiveStageIdx)
-      .forEach((m) => {
+      .filter((m: DraftMatch) => m.stageIdx === effectiveStageIdx)
+      .forEach((m: DraftMatch) => {
         if (m.team_a_id != null) ids.add(m.team_a_id as number);
         if (m.team_b_id != null) ids.add(m.team_b_id as number);
       });
@@ -164,10 +166,10 @@ export default function StageCard({
       const res = await fetch(url.toString(), { credentials: "include" });
       const body = await safeJson(res);
       if (!res.ok) {
-        console.warn("StageCard: team fetch failed", body?.error || res.statusText);
+        console.warn("StageCard: team fetch failed", (body as any)?.error || res.statusText);
         return;
       }
-      const rows: CatalogRow[] = (body?.teams ?? []).map((t: any) => ({
+      const rows: CatalogRow[] = ((body as any)?.teams ?? []).map((t: any) => ({
         id: Number(t.id),
         name: t.name,
         logo: t.logo ?? null,
@@ -180,37 +182,35 @@ export default function StageCard({
     };
   }, [idsNeeded.join(",")]);
 
-  const teamsMap: Record<
-    number | string,
-    { name: string; seed?: number | null; logo?: string | null }
-  > = useMemo(() => {
-    const base = new Map<number, { name: string; logo?: string | null; seed?: number | null }>();
-    teams.forEach((t) => {
-      base.set(t.id, {
-        name: (t as any)?.name ?? `Team #${t.id}`,
-        logo: (t as any)?.logo ?? null,
-        seed: t.seed ?? null,
+  const teamsMap: Record<number | string, { name: string; seed?: number | null; logo?: string | null }> =
+    useMemo(() => {
+      const base = new Map<number, { name: string; logo?: string | null; seed?: number | null }>();
+      teams.forEach((t: TeamDraft) => {
+        base.set(t.id, {
+          name: t?.name ?? `Team #${t.id}`,
+          logo: t?.logo ?? null,
+          seed: t.seed ?? null,
+        });
       });
-    });
-    Object.values(catalog).forEach((r) => {
-      base.set(r.id, { name: r.name, logo: r.logo ?? null, seed: base.get(r.id)?.seed ?? null });
-    });
+      Object.values(catalog).forEach((r: CatalogRow) => {
+        base.set(r.id, { name: r.name, logo: r.logo ?? null, seed: base.get(r.id)?.seed ?? null });
+      });
 
-    const out: Record<number | string, { name: string; logo?: string | null; seed?: number | null }> = {};
-    for (const [id, rec] of base.entries()) {
-      out[id] = rec;
-      out[String(id)] = rec;
-    }
-    return out;
-  }, [teams, catalog]);
+      const out: Record<number | string, { name: string; logo?: string | null; seed?: number | null }> = {};
+      for (const [id, rec] of base.entries()) {
+        out[id] = rec;
+        out[String(id)] = rec;
+      }
+      return out;
+    }, [teams, catalog]);
 
-  const groupsArr: UiGroup[] = (isGroups ? stage.groups ?? [] : []) as UiGroup[];
+  const groupsArr: GroupDraft[] = (isGroups ? stage.groups ?? [] : []) as GroupDraft[];
   const groupsOccupancy: Record<number, TeamDraft[]> = {};
   if (isGroups) {
-    groupsArr.forEach((_, gi) => (groupsOccupancy[gi] = []));
+    groupsArr.forEach((_, gi: number) => (groupsOccupancy[gi] = []));
     if (!intakeEnabled) {
-      teams.forEach((t) => {
-        const gi = (t as any).groupsByStage?.[index];
+      teams.forEach((t: TeamDraft) => {
+        const gi = t.groupsByStage?.[index];
         if (gi != null && gi >= 0 && gi in groupsOccupancy) groupsOccupancy[gi].push(t);
       });
     }
@@ -218,7 +218,7 @@ export default function StageCard({
 
   useEffect(() => {
     if (!isGroups) return;
-    const sig = computeGroupsSignature(groupsArr as Array<{ name: string }>);
+    const sig = computeGroupsSignature(groupsArr.map((g) => ({ name: g.name })));
     if ((cfg as any).groups_signature !== sig) {
       setCfg({ groups_signature: sig });
     }
@@ -227,34 +227,38 @@ export default function StageCard({
   const koSrcIdx = Number.isFinite((cfg as any)?.from_knockout_stage_idx as any)
     ? Number((cfg as any).from_knockout_stage_idx)
     : null;
-  const koMatchesLite =
+
+  const koMatchesLite: Array<{ round: number; bracket_pos: number }> =
     koSrcIdx != null
       ? draftMatches
-          .filter((m) => m.stageIdx === koSrcIdx)
-          .map((m) => ({ round: m.round ?? 0, bracket_pos: m.bracket_pos ?? 0 }))
-          .sort((a, b) => a.round - b.round || a.bracket_pos - b.bracket_pos)
+          .filter((m: DraftMatch) => m.stageIdx === koSrcIdx)
+          .map((m: DraftMatch) => ({ round: m.round ?? 0, bracket_pos: m.bracket_pos ?? 0 }))
+          .sort(
+            (
+              a: { round: number; bracket_pos: number },
+              b: { round: number; bracket_pos: number }
+            ) => a.round - b.round || a.bracket_pos - b.bracket_pos
+          )
       : [];
 
   const addGroup = () => {
     const gs = stage.groups ?? [];
-    onChange({ groups: [...gs, { id: undefined, name: `Όμιλος ${gs.length + 1}` }] } as any);
+    onChange({ groups: [...gs, { id: undefined, name: `Όμιλος ${gs.length + 1}` }] });
   };
   const setGroupName = (gi: number, name: string) =>
     onChange({
-      groups: (groupsArr as any).map((g: any, i: number) => (i === gi ? { id: g?.id, name } : g)),
-    } as any);
+      groups: groupsArr.map((g, i) => (i === gi ? { id: g?.id, name } : g)),
+    });
   const removeGroup = (gi: number) =>
     onChange({
-      groups: (groupsArr as any).filter((_: any, i: number) => i !== gi),
-    } as any);
+      groups: groupsArr.filter((_, i) => i !== gi),
+    });
   const setGroupCount = (n: number) =>
     onChange({
       groups: Array.from({ length: Math.max(1, n) }, (_, i) =>
-        groupsArr[i]
-          ? { id: (groupsArr as any)[i]?.id, name: (groupsArr as any)[i]?.name }
-          : { id: undefined, name: `Όμιλος ${i + 1}` }
+        groupsArr[i] ? { id: groupsArr[i]?.id, name: groupsArr[i]?.name } : { id: undefined, name: `Όμιλος ${i + 1}` }
       ),
-    } as any);
+    });
 
   const miniPayload: NewTournamentPayload = {
     tournament: {
@@ -268,14 +272,14 @@ export default function StageCard({
       end_date: null,
       winner_team_id: null,
     },
-    stages: allStages as any,
+    stages: allStages as unknown as NewTournamentPayload["stages"],
     tournament_team_ids: teams.map((t) => t.id),
   };
 
   const srcIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
     ? Number((cfg as any).from_stage_idx)
     : null;
-  const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
+  const srcStage = srcIdx != null ? (allStages[srcIdx] as StageDraft | null) : null;
 
   return (
     <div className="rounded-xl border border-gray-800 bg-gradient-to-br from-black to-neutral-900 p-4 sm:p-5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] backdrop-blur">
@@ -289,9 +293,7 @@ export default function StageCard({
           <button onClick={onMoveDown} className={btnGhost} title="Move down" aria-label="Move down">↓</button>
           <button
             onClick={() => {
-              if (confirm("Διαγραφή αυτού του σταδίου; Αυτό δεν μπορεί να αναιρεθεί.")) {
-                onRemove();
-              }
+              if (confirm("Διαγραφή αυτού του σταδίου; Αυτό δεν μπορεί να αναιρεθεί.")) onRemove();
             }}
             className="px-2.5 py-1.5 rounded-lg text-sm border border-gray-700 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
             title="Delete stage"
@@ -309,7 +311,7 @@ export default function StageCard({
             className={fieldBase}
             placeholder="Όνομα Σταδίου"
             value={stage.name}
-            onChange={(e) => onChange({ name: e.target.value } as any)}
+            onChange={(e) => onChange({ name: e.target.value })}
           />
           <p className={helperText}>Δώστε το όνομα του σταδίου (π.χ. «Κανονική Περίοδος»).</p>
         </div>
@@ -318,16 +320,16 @@ export default function StageCard({
             className={selectBase}
             value={stage.kind}
             onChange={(e) => {
-              const nextKind = e.target.value as "league" | "groups" | "knockout";
+              const nextKind = e.target.value as StageDraft["kind"];
               const cfgPatch =
                 nextKind === "knockout"
                   ? setCfgMirror(cfg, { allow_draws: false })
                   : setCfgMirror(cfg, { allow_draws: (cfg as any).allow_draws ?? true });
               onChange({
-                kind: nextKind as any,
-                ...(nextKind !== "groups" ? { groups: [] } : {}),
+                kind: nextKind,
+                ...(nextKind !== "groups" ? { groups: [] as GroupDraft[] } : {}),
                 config: cfgPatch,
-              } as any);
+              });
             }}
           >
             <option value="league">Πρωτάθλημα (League)</option>
@@ -342,7 +344,7 @@ export default function StageCard({
             className={fieldBase}
             placeholder="Σειρά"
             value={stage.ordering ?? index + 1}
-            onChange={(e) => onChange({ ordering: Number(e.target.value) } as any)}
+            onChange={(e) => onChange({ ordering: Number(e.target.value) })}
           />
           <p className={helperText}>Σειρά εμφάνισης του σταδίου στη διοργάνωση.</p>
         </div>
@@ -417,7 +419,7 @@ export default function StageCard({
             setCfg={(p: Partial<StageConfig>) => setCfg(p)}
             groupsArr={groupsArr}
             koMatchesLite={koMatchesLite}
-            allStages={allStages}
+            allStages={allStages as unknown as NewTournamentPayload["stages"]}
             stageIndex={index}
           />
         </div>
@@ -434,22 +436,22 @@ export default function StageCard({
       {isKnockout && (
         <div className="mt-4">
           {(() => {
-            const srcIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
+            const fromIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
               ? Number((cfg as any).from_stage_idx)
               : null;
-            const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
-            return srcStage?.kind === "groups" ? (
+            const fromStage = fromIdx != null ? (allStages[fromIdx] as StageDraft | null) : null;
+            return fromStage?.kind === "groups" ? (
               <KnockoutConfigFromGroups
                 cfg={cfg}
                 setCfg={(p: Partial<StageConfig>) => setCfg(p)}
-                allStages={allStages}
+                allStages={allStages as unknown as NewTournamentPayload["stages"]}
                 stageIndex={index}
               />
             ) : (
               <KnockoutConfigFromLeague
                 cfg={cfg}
                 setCfg={(p: Partial<StageConfig>) => setCfg(p)}
-                allStages={allStages}
+                allStages={allStages as unknown as NewTournamentPayload["stages"]}
                 stageIndex={index}
               />
             );
@@ -461,7 +463,7 @@ export default function StageCard({
 }
 
 function newMiniPayload(
-  allStages: NewTournamentPayload["stages"],
+  allStages: StageDraft[],
   teams: TeamDraft[]
 ): NewTournamentPayload {
   return {
@@ -476,7 +478,7 @@ function newMiniPayload(
       end_date: null,
       winner_team_id: null,
     },
-    stages: allStages as any,
+    stages: allStages as unknown as NewTournamentPayload["stages"],
     tournament_team_ids: teams.map((t) => t.id),
   };
 }
@@ -532,7 +534,7 @@ function LeagueConfig({
           </label>
         </div>
 
-        <div className="flex items-end">
+        <div className="flex items/end">
           <label className="inline-flex items-center gap-2 text-white text-sm">
             <input
               type="checkbox"
@@ -563,7 +565,6 @@ function LeagueConfig({
           <p className={helperText}>Αν οριστεί, κόβει το πρόγραμμα στις πρώτες Ν αγωνιστικές.</p>
         </div>
 
-        {/* Allow draws */}
         <div className="sm:col-span-3">
           <label className="inline-flex items-center gap-2 text-white text-sm">
             <input
@@ -629,17 +630,17 @@ function KnockoutConfigFromLeague({
           }}
         >
           <option value="">Αυτόνομο (μόνο seeds)</option>
-          {allStages.map((s, i) =>
-            (s as any)?.kind === "league" && i < stageIndex ? (
+          {(allStages as unknown as StageDraft[]).map((s: StageDraft, i) =>
+            s.kind === "league" && i < stageIndex ? (
               <option key={i} value={i}>
-                #{i} — {(s as any)?.name || "Πρωτάθλημα"}
+                #{i} — {s.name || "Πρωτάθλημα"}
               </option>
             ) : null
           )}
-          {allStages.map((s, i) =>
-            (s as any)?.kind === "groups" && i < stageIndex ? (
+          {(allStages as unknown as StageDraft[]).map((s: StageDraft, i) =>
+            s.kind === "groups" && i < stageIndex ? (
               <option key={`g-${i}`} value={i}>
-                #{i} — {(s as any)?.name || "Όμιλοι"}
+                #{i} — {s.name || "Όμιλοι"}
               </option>
             ) : null
           )}
@@ -657,7 +658,7 @@ function KnockoutConfigFromLeague({
             <input
               type="number"
               min={2}
-              className="w-36 rounded-lg bg-black border border-gray-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40"
+              className="w-36 rounded-lg bg-black border border-gray-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/30"
               value={advancersCount}
               onChange={(e) =>
                 setCfg({
