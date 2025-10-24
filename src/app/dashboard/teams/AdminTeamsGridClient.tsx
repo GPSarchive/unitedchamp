@@ -345,7 +345,7 @@ export default function AdminTeamsGridClient({
                   </div>
 
                   {/* PlayersPanel */}
-                  <div className="rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4 max-h-[300px] overflow-y-scroll">
+                  <div className="rounded-xl border border-orange-400/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4 flex-1 overflow-y-auto">
                   <h3 className="text-sm font-semibold text-white/90 mb-3">Παίκτες ομάδας</h3>
                   <PlayersPanel
                     teamId={r.id}

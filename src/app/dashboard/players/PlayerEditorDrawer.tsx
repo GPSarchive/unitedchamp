@@ -240,7 +240,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Κεφαλίδα */}
+        {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="font-semibold text-white">
             {isEdit ? "Επεξεργασία παίκτη" : "Δημιουργία παίκτη"}
@@ -253,8 +253,8 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
           </button>
         </div>
 
-        {/* Σώμα */}
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Σώμα (Scrollable part) */}
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto max-h-[80vh]">
           {/* Ονόματα */}
           <label className="flex flex-col gap-1">
             <span className="text-sm text-white/80">Όνομα</span>
