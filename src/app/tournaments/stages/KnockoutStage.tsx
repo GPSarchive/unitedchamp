@@ -3,7 +3,7 @@
 
 import React from "react";
 import type { Stage } from "../useTournamentData";
-import KOStageDisplay from "../koStage/KOStageDisplay";
+import KOStageDisplay from "./koStage/KOStageDisplay";
 
 const KnockoutStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   return (
