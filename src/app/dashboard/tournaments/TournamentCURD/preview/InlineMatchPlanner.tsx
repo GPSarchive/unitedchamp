@@ -355,7 +355,22 @@ export default function InlineMatchPlanner({
       return a.includes(q) || b.includes(q);
     });
   }, [visible, teamQuery, nameOf]);
+  // after `const filteredVisible = useMemo(...);`
+const displayRows = useMemo(() => {
+  if (isKO) return filteredVisible; // leave KO order unchanged
+  return [...filteredVisible].sort((a, b) => {
+    const am = a.matchday == null ? Number.MAX_SAFE_INTEGER : (a.matchday as number);
+    const bm = b.matchday == null ? Number.MAX_SAFE_INTEGER : (b.matchday as number);
+    if (am !== bm) return am - bm;
 
+    // optional tiebreakers
+    const ag = a.groupIdx == null ? Number.MAX_SAFE_INTEGER : (a.groupIdx as number);
+    const bg = b.groupIdx == null ? Number.MAX_SAFE_INTEGER : (b.groupIdx as number);
+    if (ag !== bg) return ag - bg;
+
+    return String(a.match_date ?? "").localeCompare(String(b.match_date ?? ""));
+  });
+}, [filteredVisible, isKO]);
   // team options
   const teamOptions = useMemo(() => {
     const effectiveGroupForOptions = groupIdx != null && groupIdx >= 0 ? groupIdx : 0;
@@ -647,9 +662,9 @@ export default function InlineMatchPlanner({
               </tr>
             </thead>
             <tbody>
-              {filteredVisible.map((m, i) => {
-                const key = reactKey(m, i);
-                return (
+            {displayRows.map((m, i) => {
+              const key = reactKey(m, i);
+              return (
                   <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">
                     {isKO ? (
                       <>
