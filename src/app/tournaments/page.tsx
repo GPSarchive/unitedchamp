@@ -1,6 +1,6 @@
 // app/tournaments/page.tsx
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import TournamentsClient from "./TournamentsClient";
+import TournamentsClients from "./TournamentsClient";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 
 export default async function TournamentsPage() {
@@ -17,7 +17,7 @@ export default async function TournamentsPage() {
 
     const tournaments: Tournament[] = tournamentsData;
 
-    return <TournamentsClient initialTournaments={tournaments} />;
+    return <TournamentsClients initialTournaments={tournaments} />;
   } catch (error) {
     console.error("Error loading tournaments:", error);
     return <div>Error loading tournaments: {(error as Error).message}</div>;

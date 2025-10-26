@@ -434,9 +434,11 @@ export default function ReviewAndSubmit({
         <button
           onClick={submit}
           disabled={pending || busy}
+
           aria-busy={pending || busy}
+
           className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-          title={!anyDirty && mode === "edit" ? "No changes to save" : undefined}
+          title={pending || busy ? "Working…" : undefined}
         >
           {pending || busy
             ? mode === "edit"

@@ -113,6 +113,20 @@ type SaveAllResponse = {
 
 type Params = { id: string };
 
+/* ------------ Helpers ------------ */
+
+function matchNaturalKey(r: {
+  stage_id: number;
+  group_id?: number | null;
+  matchday?: number | null;
+  round?: number | null;
+  bracket_pos?: number | null;
+}) {
+  const isKO = r.round != null && r.bracket_pos != null;
+  if (isKO) return `KO|${r.stage_id}|${r.round}|${r.bracket_pos}`;
+  return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}`;
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<Params> }
@@ -123,40 +137,12 @@ export async function POST(
 
   let body: SaveAllRequest;
   try {
-    // Parse the body as SaveAllRequest
     body = (await req.json()) as SaveAllRequest;
-
-    // Log the received body to inspect what the server is receiving
-    console.log("[save-all][in] Received request body:", JSON.stringify(body, null, 2));
-
+    console.log("[save-all][in] body:", JSON.stringify(body, null, 2));
   } catch {
     console.error("[save-all][in]", rid, "bad JSON");
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-
-  const sum = {
-    tournament: !!body.tournament?.patch,
-    stages: {
-      upsert: body.stages?.upsert?.length ?? 0,
-      deleteIds: body.stages?.deleteIds ?? [],
-    },
-    groups: {
-      upsert: body.groups?.upsert?.length ?? 0,
-      deleteIds: body.groups?.deleteIds ?? [],
-    },
-    tournamentTeams: body.tournamentTeams?.upsert?.length ?? 0,
-    stageSlots: body.stageSlots?.upsert?.length ?? 0,
-    intakeMappings: body.intakeMappings?.replace?.length ?? 0,
-    matches: {
-      upsert: body.matches?.upsert?.length ?? 0,
-      deleteIds: body.matches?.deleteIds ?? [],
-      updateIds: (body.matches?.upsert ?? []).filter((m) => m.id != null).map((m) => m.id),
-      createCount: (body.matches?.upsert ?? []).filter((m) => m.id == null).length,
-    },
-    force: body.force ?? {},
-    phase,
-  };
-  console.log("[save-all][in]", rid, "tid=", id, JSON.stringify(sum));
 
   const tournamentId = Number(id);
   if (!Number.isFinite(tournamentId)) {
@@ -169,7 +155,6 @@ export async function POST(
   const out: SaveAllResponse = { ok: true };
 
   try {
-
     /* 1) Tournament basics (PATCH) ---------------------------------------- */
     if (body.tournament?.patch) {
       const { patch } = body.tournament;
@@ -185,50 +170,60 @@ export async function POST(
 
     /* 2) Groups — deletions first ----------------------------------------- */
     if (body.groups?.deleteIds?.length) {
-      console.log("[save-all][delete-groups] Deleting group IDs:", body.groups.deleteIds);
+      console.log("[save-all][delete-groups]", body.groups.deleteIds);
       const { error: grpDelErr } = await supabaseAdmin
         .from("tournament_groups")
         .delete()
         .in("id", body.groups.deleteIds);
       if (grpDelErr) return NextResponse.json({ error: grpDelErr.message }, { status: 500 });
       out.deletedGroupIds = body.groups.deleteIds;
-      console.log("[save-all][delete-groups] Successfully deleted group IDs:", out.deletedGroupIds);
     }
 
     /* 3) Stages — deletions next (after groups) --------------------------- */
     if (body.stages?.deleteIds?.length) {
-      console.log("[save-all][delete-stages] Deleting stage IDs:", body.stages.deleteIds);
+      console.log("[save-all][delete-stages]", body.stages.deleteIds);
       const { error: stgDelErr } = await supabaseAdmin
         .from("tournament_stages")
         .delete()
         .in("id", body.stages.deleteIds);
       if (stgDelErr) return NextResponse.json({ error: stgDelErr.message }, { status: 500 });
       out.deletedStageIds = body.stages.deleteIds;
-      console.log("[save-all][delete-stages] Successfully deleted stage IDs:", out.deletedStageIds);
     }
 
-    /* 4) Matches deletions (before upserts) ------------------------------ */
-    let matchDeleteStageIds: number[] = [];
-    if (body.matches?.deleteIds?.length) {
-      console.log("[save-all][delete-matches] Deleting match IDs:", body.matches.deleteIds);
-      const { data: delRows, error: delFetchErr } = await supabaseAdmin
-        .from("matches")
-        .select("id,stage_id")
-        .in("id", body.matches.deleteIds);
-      if (delFetchErr) {
-        return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
-      }
-      matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
+   /* Matches deletions (before upserts) */
+let matchDeleteStageIds: number[] = [];
+if (body.matches?.deleteIds?.length) {
+  const deleteIds = body.matches.deleteIds.filter((n) => typeof n === "number" && n > 0);
+  if (!deleteIds.length) {
+    return NextResponse.json({ error: "No valid match ids to delete" }, { status: 400 });
+  }
 
-      const { error: delErr } = await supabaseAdmin
-        .from("matches")
-        .delete()
-        .in("id", body.matches.deleteIds);
-      if (delErr) {
-        return NextResponse.json({ error: delErr.message }, { status: 500 });
-      }
-      console.log("[save-all][delete-matches] Successfully deleted match IDs:", body.matches.deleteIds);
-    }
+  // optional: clear KO pointers first
+  const idList = deleteIds.join(",");
+  await supabaseAdmin.from("matches").update({ home_source_match_id: null }).or(`home_source_match_id.in.(${idList})`);
+  await supabaseAdmin.from("matches").update({ away_source_match_id: null }).or(`away_source_match_id.in.(${idList})`);
+
+  // fetch stages for KO resolution
+  const { data: delRows, error: delFetchErr } = await supabaseAdmin
+    .from("matches").select("id,stage_id").in("id", deleteIds);
+  if (delFetchErr) return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
+  matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
+
+  // delete and verify
+  const { data: deleted, error: delErr } = await supabaseAdmin
+    .from("matches").delete().in("id", deleteIds).select("id");
+  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+
+  const deletedIds = new Set((deleted ?? []).map((r: any) => r.id));
+  const missing = deleteIds.filter((id) => !deletedIds.has(id));
+  if (missing.length) {
+    return NextResponse.json(
+      { error: "Some matches were not deleted", missing, tried: deleteIds },
+      { status: 409 }
+    );
+  }
+}
+
 
     /* 5) Stages upsert ----------------------------------------------------- */
     if (body.stages?.upsert?.length) {
@@ -350,7 +345,8 @@ export async function POST(
     /* 8) Intake mappings replace (delete → insert) ------------------------- */
     if (body.intakeMappings?.replace) {
       const targetStageIds =
-        body.intakeMappings.targetStageIds ?? Array.from(new Set(body.intakeMappings.replace.map((r) => r.target_stage_id)));
+        body.intakeMappings.targetStageIds ??
+        Array.from(new Set(body.intakeMappings.replace.map((r) => r.target_stage_id)));
 
       if (targetStageIds.length) {
         const { error } = await supabaseAdmin
@@ -374,113 +370,112 @@ export async function POST(
       }
     }
 
-    /* 8.5) Matches deletions (before upserts) ------------------------------ */
+    /* 9) Matches upsert with slot fill + duplicate guard + onConflict */
+if (body.matches?.upsert?.length) {
+  const rows = body.matches.upsert.map(m => ({ ...m, tournament_id: tournamentId }));
 
-    if (body.matches?.deleteIds?.length) {
-      console.log("[save-all][delete-matches] Deleting match IDs:", body.matches.deleteIds);
-      const { data: delRows, error: delFetchErr } = await supabaseAdmin
-        .from("matches")
-        .select("id,stage_id")
-        .in("id", body.matches.deleteIds);
-      if (delFetchErr) {
-        return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
-      }
-      matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
+  // Split by type
+  const koRowsAll = rows.filter(r => r.round != null && r.bracket_pos != null);
+  const lgRowsAll = rows.filter(r => r.round == null);
 
-      const { error: delErr } = await supabaseAdmin
-        .from("matches")
-        .delete()
-        .in("id", body.matches.deleteIds);
-      if (delErr) {
-        return NextResponse.json({ error: delErr.message }, { status: 500 });
-      }
-      console.log("[save-all][delete-matches] Successfully deleted match IDs:", body.matches.deleteIds);
+  // Fill missing bracket_pos per (stage, group, matchday)
+  const buckets = new Map<string, any[]>();
+  for (const r of lgRowsAll) {
+    const k = `${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}`;
+    (buckets.get(k) ?? (buckets.set(k, []), buckets.get(k)!)).push(r);
+  }
+  for (const arr of buckets.values()) {
+    arr.sort((a,b) => (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0) || (a.id ?? 0) - (b.id ?? 0));
+    let pos = 1;
+    for (const r of arr) if (r.bracket_pos == null) r.bracket_pos = pos++;
+  }
+
+  // Guard: duplicates inside this payload
+  const dup: string[] = [];
+  const seen = new Set<string>();
+  for (const r of lgRowsAll) {
+    const k = `${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}`;
+    if (seen.has(k)) dup.push(k); else seen.add(k);
+  }
+  if (dup.length) {
+    return NextResponse.json({ error: "duplicate league keys in payload", dup }, { status: 409 });
+  }
+
+  // Updates (respect optimistic updated_at unless forced)
+  const toUpdate = rows.filter(r => r.id != null);
+  const updated: any[] = [];
+  for (const r of toUpdate) {
+    let q = supabaseAdmin.from("matches").update({
+      stage_id: r.stage_id,
+      tournament_id: tournamentId,
+      group_id: r.group_id ?? null,
+      team_a_id: r.team_a_id ?? null,
+      team_b_id: r.team_b_id ?? null,
+      team_a_score: r.team_a_score ?? null,
+      team_b_score: r.team_b_score ?? null,
+      winner_team_id: r.winner_team_id ?? null,
+      status: r.status ?? "scheduled",
+      match_date: r.match_date ?? null,
+      matchday: r.matchday ?? null,
+      round: r.round ?? null,
+      bracket_pos: r.bracket_pos ?? null,
+      home_source_round: r.home_source_round ?? null,
+      home_source_bracket_pos: r.home_source_bracket_pos ?? null,
+      away_source_round: r.away_source_round ?? null,
+      away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+    }).eq("id", r.id as number);
+
+    if (!forceMatches && r.updated_at) q = q.eq("updated_at", r.updated_at);
+
+    const { data, error } = await q.select("*");
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (!forceMatches && r.updated_at && (!data || data.length === 0)) {
+      const { data: cur } = await supabaseAdmin
+        .from("matches").select("id,updated_at").eq("id", r.id as number).single();
+      return NextResponse.json(
+        { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
+          sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
+        { status: 409 }
+      );
     }
+    updated.push(...(data ?? []));
+  }
 
-    /* 9) Matches upsert (optimistic, with optional force) ------------------ */
-    if (body.matches?.upsert?.length) {
-      const rows = body.matches.upsert.map((m) => ({ ...m, tournament_id: tournamentId }));
+  // Creates via upsert on natural keys to avoid duplicates
+  const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
+  const created: any[] = [];
 
-      const toUpdate = rows.filter((r) => r.id != null);
-      const toCreate = rows
-        .filter((r) => r.id == null)
-        .map(({ id: _drop, updated_at: _drop2, ...r }) => r);
+  if (koRowsAll.some(r => r.id == null)) {
+    const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
+    const { data, error } = await supabaseAdmin
+      .from("matches")
+      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
+      .select();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    created.push(...(data ?? []));
+  }
 
-      const updated: any[] = [];
-      const created: any[] = [];
+  if (lgRowsAll.some(r => r.id == null)) {
+    const toCreateLG = lgRowsAll.filter(r => r.id == null).map(strip);
+    const { data, error } = await supabaseAdmin
+      .from("matches")
+      .upsert(toCreateLG, { onConflict: "stage_id,group_id,matchday,bracket_pos" })
+      .select();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    created.push(...(data ?? []));
+  }
 
-      for (const r of toUpdate) {
-        let q = supabaseAdmin
-          .from("matches")
-          .update({
-            stage_id: r.stage_id,
-            tournament_id: tournamentId,
-            group_id: r.group_id ?? null,
-            team_a_id: r.team_a_id ?? null,
-            team_b_id: r.team_b_id ?? null,
-            team_a_score: r.team_a_score ?? null,
-            team_b_score: r.team_b_score ?? null,
-            winner_team_id: r.winner_team_id ?? null,
-            status: r.status ?? "scheduled",
-            match_date: r.match_date ?? null,
-            matchday: r.matchday ?? null,
-            round: r.round ?? null,
-            bracket_pos: r.bracket_pos ?? null,
-            home_source_round: r.home_source_round ?? null,
-            home_source_bracket_pos: r.home_source_bracket_pos ?? null,
-            away_source_round: r.away_source_round ?? null,
-            away_source_bracket_pos: r.away_source_bracket_pos ?? null,
-          })
-          .eq("id", r.id as number);
-
-        if (!forceMatches && r.updated_at) {
-          q = q.eq("updated_at", r.updated_at);
-        }
-
-        const { data, error } = await q.select("*");
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-        if (!forceMatches && r.updated_at && (!data || data.length === 0)) {
-          const { data: cur } = await supabaseAdmin
-            .from("matches")
-            .select("id, updated_at")
-            .eq("id", r.id as number)
-            .single();
-
-          return NextResponse.json(
-            {
-              error: "Match is stale. Please reload.",
-              entity: "matches",
-              id: r.id,
-              sent_updated_at: r.updated_at,
-              db_updated_at: cur?.updated_at ?? null,
-            },
-            { status: 409 }
-          );
-        }
-
-        updated.push(...(data ?? []));
-      }
-
-      if (toCreate.length) {
-        const { data, error } = await supabaseAdmin
-          .from("matches")
-          .insert(toCreate)
-          .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        created.push(...(data ?? []));
-      }
-
-      out.matches = [...updated, ...created];
-      
-    }
-
+  out.matches = [...updated, ...created];
+}
     // ===== KO ID RESOLUTION (no RPC) ======================================
     const upsertStageIds = Array.from(
       new Set((body.matches?.upsert ?? []).map((r) => r.stage_id).filter(Boolean))
     ) as number[];
 
-    const touchedStageIds = Array.from(new Set([...upsertStageIds, ...matchDeleteStageIds])) as number[];
+    const touchedStageIds = Array.from(
+      new Set([...(upsertStageIds ?? []), ...(matchDeleteStageIds ?? [])])
+    ) as number[];
 
     if (touchedStageIds.length) {
       const { data: allStageMatches, error: stageSelErr } = await supabaseAdmin
@@ -501,9 +496,7 @@ export async function POST(
         )
         .in("stage_id", touchedStageIds);
 
-      if (stageSelErr) {
-        return NextResponse.json({ error: stageSelErr.message }, { status: 500 });
-      }
+      if (stageSelErr) return NextResponse.json({ error: stageSelErr.message }, { status: 500 });
 
       type Key = string;
       const keyOf = (s: number, r: number | null | undefined, p: number | null | undefined): Key =>
@@ -539,9 +532,7 @@ export async function POST(
         const { error } = await supabaseAdmin
           .from("matches")
           .upsert(pointerPatches, { onConflict: "id" });
-        if (error) {
-          return NextResponse.json({ error: error.message }, { status: 500 });
-        }
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
       const { data: resolvedMatches, error: resolvedFetchErr } = await supabaseAdmin
@@ -549,14 +540,13 @@ export async function POST(
         .select("*")
         .in("stage_id", touchedStageIds);
 
-      if (resolvedFetchErr) {
-        return NextResponse.json({ error: resolvedFetchErr.message }, { status: 500 });
-      }
+      if (resolvedFetchErr) return NextResponse.json({ error: resolvedFetchErr.message }, { status: 500 });
 
       out.matches = resolvedMatches ?? out.matches;
     }
     // ======================================================================
-    console.log("[save-all][out] Final output:", JSON.stringify(out, null, 2));
+
+    console.log("[save-all][out] Final:", JSON.stringify(out, null, 2));
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {
     console.error("[save-all] Error:", e?.message ?? "Unknown error");

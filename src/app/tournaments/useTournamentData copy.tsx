@@ -1,4 +1,4 @@
-// useTournamentData.ts (unchanged, provided for completeness if needed in actual app; not used in standalone test versions)
+// stores/useTournamentData.ts (updated with computed IDs and selectors)
 
 "use client";
 

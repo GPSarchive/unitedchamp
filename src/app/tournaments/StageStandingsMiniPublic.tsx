@@ -1,7 +1,9 @@
+// app/tournaments/StageStandingsMiniPublic.tsx (updated to support single-group override)
+
 "use client";
 
 import * as React from "react";
-import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { useTournamentData } from "./useTournamentData"; // Adjust path to your store
 
 type Kind = "league" | "groups";
 
@@ -20,35 +22,40 @@ type StandingRow = {
   rank?: number | null;
 };
 
-export default function StageStandingsMini({
+export default function StageStandingsMiniPublic({
   stageIdx,
   kind,
   showLogos = true,
+  stageIdOverride, // ← NEW
+  groupIdxOverride, // NEW: Optional group index to filter to a single group
 }: {
   stageIdx: number;
   kind: Kind;
   /** if your store can resolve team logos, leave true; otherwise set false where you use it */
   showLogos?: boolean;
+  /** Explicit DB stage id to use (preferred if provided) */
+  stageIdOverride?: number;
+  /** Explicit group index to filter to (if kind="groups", renders single group table) */
+  groupIdxOverride?: number;
 }) {
-  // store slices
-  const standings = useTournamentStore((s) => s.entities.standings) as StandingRow[] | undefined;
-  const stageIdByIndex = useTournamentStore((s) => s.ids.stageIdByIndex);
-  const groupIdByStage = useTournamentStore((s) => s.ids.groupIdByStage);
-  const getTeamName = useTournamentStore((s) => s.getTeamName);
+  // store slices (adapted from useTournamentStore to useTournamentData)
+  const standings = useTournamentData((s) => s.standings) as StandingRow[] | undefined;
+  const stageIdByIndex = useTournamentData((s) => s.ids.stageIdByIndex);
+  const groupIdByStage = useTournamentData((s) => s.ids.groupIdByStage);
+  const getTeamName = useTournamentData((s) => s.getTeamName);
   // optional: some stores expose a logo getter; fall back gracefully
-  const getTeamLogo =
-    useTournamentStore((s: any) => (s.getTeamLogo as ((id: number) => string | null) | undefined)) ??
-    (() => null);
+  const getTeamLogo = useTournamentData((s) => s.getTeamLogo) ?? (() => null);
 
-  const stageId = stageIdByIndex[stageIdx];
-  const hasStage = Number.isFinite(stageId);
+  // Prefer the explicit DB id when provided
+  const stageId = stageIdOverride ?? stageIdByIndex?.[stageIdx];
+  const hasStage = typeof stageId === "number" && Number.isFinite(stageId);
 
-  // 🔧 Sanitize to satisfy Record<number, number>
+  
   const groupMap: Record<number, number> = React.useMemo(() => {
     if (!hasStage) return {};
-    const raw = groupIdByStage[stageIdx] ?? {};
+    const raw = groupIdByStage?.[stageIdx] ?? {};
     const out: Record<number, number> = {};
-    for (const k in raw as Record<number, number | undefined>) {
+    for (const k in (raw as Record<number, number | undefined>)) {
       const v = (raw as Record<string, number | undefined>)[k];
       if (typeof v === "number") out[Number(k)] = v;
     }
@@ -142,14 +149,14 @@ export default function StageStandingsMini({
             <tr className="[&>th]:px-2 [&>th]:py-1 border-b border-white/10">
               <th className="w-10 text-right">#</th>
               <th className="text-left">Ομάδα</th>
-              <th className="w-10 text-right" title="Αγώνες">Α</th>
-              <th className="w-10 text-right" title="Νίκες">Ν</th>
-              <th className="w-10 text-right" title="Ισοπαλίες">Ι</th>
-              <th className="w-10 text-right" title="Ήττες">Η</th>
-              <th className="w-12 text-right" title="Γκολ Υπέρ">GF</th>
-              <th className="w-12 text-right" title="Γκολ Κατά">GA</th>
+              <th className="w-10 text-right" title="Αγώνες">Αγώνες</th>
+              <th className="w-10 text-right" title="Νίκες">Νίκες</th>
+              <th className="w-10 text-right" title="Ισοπαλίες">Ισοπαλίες</th>
+              <th className="w-10 text-right" title="Ήττες">Ήττες</th>
+              <th className="w-12 text-right" title="Γκολ Υπέρ">Γκολ Υπέρ</th>
+              <th className="w-12 text-right" title="Γκολ Κατά">Γκολ Κατά</th>
               <th className="w-12 text-right" title="Διαφορά τερμάτων">GD</th>
-              <th className="w-12 text-right" title="Βαθμοί">Β</th>
+              <th className="w-12 text-right" title="Βαθμοί">Βαθμοί</th>
             </tr>
           </thead>
           <tbody>
@@ -193,20 +200,52 @@ export default function StageStandingsMini({
   }
 
   // groups
+  // If groupIdxOverride provided, render single group
+  if (typeof groupIdxOverride === 'number') {
+    const dbGroupId = groupMap[groupIdxOverride];
+    const rows = dbGroupId != null ? byGroup.get(dbGroupId) ?? [] : [];
+    const label = `Βαθμολογία Ομίλου ${groupIdxOverride + 1}`; // Or fetch group name if available
+    return (
+      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
+        <header className="text-sm text-white/80 font-medium">{label}</header>
+        <Table rows={rows} />
+      </section>
+    );
+  }
+
+  // Prefer configured UI group order (groupMap). If missing, fall back to the
+  // actual group_ids we found in standings, labeling them 1..N by order.
+  const groupsForRender =
+    groupIdxs.length > 0
+      ? groupIdxs
+          .map((gi) => {
+            const dbGroupId = groupMap[gi];
+            return {
+              label: `Όμιλος ${gi + 1}`,
+              key: `ui-${gi}`,
+              rows: dbGroupId != null ? byGroup.get(dbGroupId) ?? [] : [],
+            };
+          })
+          .filter((g) => g.rows.length > 0)
+      : Array.from(byGroup.entries())
+          .filter(([gId]) => gId >= 0)
+          .sort(([a], [b]) => a - b)
+          .map(([_, rows], i) => ({
+            label: `Όμιλος ${i + 1}`,
+            key: `auto-${i}`,
+            rows,
+          }));
+
   return (
     <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
       <header className="text-sm text-white/80 font-medium">Βαθμολογίες Ομίλων</header>
       <div className="grid gap-3 md:grid-cols-2">
-        {groupIdxs.map((gi) => {
-          const dbGroupId = groupMap[gi];
-          const rows = dbGroupId != null ? (byGroup.get(dbGroupId) ?? []) : [];
-          return (
-            <div key={gi} className="rounded-md border border-white/10 bg-white/5 p-2">
-              <div className="text-xs text-white/70 mb-2">Όμιλος {gi + 1}</div>
-              <Table rows={rows} />
-            </div>
-          );
-        })}
+        {groupsForRender.map((g) => (
+          <div key={g.key} className="rounded-md border border-white/10 bg-white/5 p-2">
+            <div className="text-xs text-white/70 mb-2">{g.label}</div>
+            <Table rows={g.rows} />
+          </div>
+        ))}
       </div>
     </section>
   );

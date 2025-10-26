@@ -22,8 +22,8 @@
     );
 
     // Filter players for the stage (players who participated in matches of this stage)
-    const stageMatches = matches?.filter((match) => match.stage_id === stageId);
-    const stagePlayerIds = new Set(
+    const stageMatches = matches?.filter((match) => match.stageIdx === stageId);
+       const stagePlayerIds = new Set(
       stageMatches?.flatMap((match) =>
         // Assuming match_participants or similar links players to matches
         players?.filter((player) => player.teamId === match.team_a_id || player.teamId === match.team_b_id)
