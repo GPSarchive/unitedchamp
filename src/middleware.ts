@@ -31,7 +31,7 @@ export async function middleware(req: NextRequest) {
   const isStatic =
     path.startsWith('/_next') ||
     path.startsWith('/static') ||
-    path === '/favicon.ico' ||
+    path === '/favicon.png' ||
     path === '/robots.txt' ||
     path === '/sitemap.xml' ||
     /\.(?:png|jpg|jpeg|gif|svg|webp|ico|txt|css|js|map)$/.test(path)
