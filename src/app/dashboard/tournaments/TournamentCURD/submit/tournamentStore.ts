@@ -125,14 +125,18 @@ let __tmpId = -1;
 const nextTempId = () => __tmpId--; // negative client-only IDs
 
 function rowSignature(m: DraftMatch) {
-  const st = useTournamentStore.getState();
-  const stageId = st.ids.stageIdByIndex[m.stageIdx ?? -1];
-  const groupId = m.groupIdx != null ? st.ids.groupIdByStage[m.stageIdx ?? -1]?.[m.groupIdx] : null;
-  const isKO = m.round != null && m.bracket_pos != null;
-  if (isKO) return `S${stageId}|R${m.round}|B${m.bracket_pos}`;
-  return `S${stageId}|G${groupId ?? "n"}|MD${m.matchday ?? "n"}|BP${m.bracket_pos ?? "n"}`;
+  const parts = [
+    m.stageIdx ?? "",
+    m.groupIdx ?? "",
+    m.matchday ?? "",
+    m.round ?? "",
+    m.bracket_pos ?? "",
+    m.team_a_id ?? "",
+    m.team_b_id ?? "",
+    m.match_date ?? "",
+  ];
+  return parts.join("|");
 }
-  
 function makeKoKey(m: { round?: number | null; bracket_pos?: number | null }) {
   return `KO|${m.round ?? 0}|${m.bracket_pos ?? 0}`;
 }
@@ -1084,62 +1088,50 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       return { draftMatches: nextArr, dirty: { ...st.dirty, matches: dirty } };
     });
   },
-updateMatches: (stageIdx, recipe) => set((curr) => {
-  const kept = curr.draftMatches.filter(m => m.stageIdx !== stageIdx);
-  const oldStage = curr.draftMatches.filter(m => m.stageIdx === stageIdx);
-  const nextStage = recipe(oldStage);
-  wireKnockoutSourcesLocal(nextStage, stageIdx);
 
-  // NEW: Detect removed matches and schedule DB deletion + cleanup
-  const oldSigs = new Set(oldStage.map(rowSignature));
-  const nextSigs = new Set(nextStage.map(rowSignature));
-  const removedSigs = new Set([...oldSigs].filter(sig => !nextSigs.has(sig)));
+  updateMatches: (stageIdx, updater) => {
+    set((st) => {
+      const before = st.draftMatches;
+      const sameStage = before.filter((m) => m.stageIdx === stageIdx);
+      const others = before.filter((m) => m.stageIdx !== stageIdx);
 
-  const nextDeleted = new Set([...(curr.dirty.deletedMatchIds ?? [])]);
-  const nextOverlay = { ...curr.dbOverlayBySig };
-  const nextDirtyMatches = new Set(curr.dirty.matches);
+      const updated = updater(sameStage.slice());
+      wireKnockoutSourcesLocal(updated, stageIdx);
 
-  removedSigs.forEach((sig) => {
-    const ov = nextOverlay[sig];
-    const dbId = ov?.db_id ?? null;
-    if (typeof dbId === 'number' && dbId > 0) {
-      nextDeleted.add(dbId);
-    }
-    delete nextOverlay[sig];
-    nextDirtyMatches.delete(sig);
-  });
+      const dirty = new Set(st.dirty.matches);
+      updated.forEach((m) => dirty.add(rowSignature(m)));
 
-  // Add new/modified sigs to dirty
-  nextSigs.forEach((sig) => nextDirtyMatches.add(sig));
-
-  return {
-    draftMatches: [...kept, ...nextStage],
-    dbOverlayBySig: nextOverlay,
-    dirty: {
-      ...curr.dirty,
-      matches: nextDirtyMatches,
-      deletedMatchIds: nextDeleted,
-    },
-  };
-}),
+      return { draftMatches: [...others, ...updated], dirty: { ...st.dirty, matches: dirty } };
+    });
+  },
 
   // NEW: remove a single match (track deletion by DB id if present)
   removeMatch: (row) => set((curr) => {
     const sig = rowSignature(row);
     const ov = curr.dbOverlayBySig[sig];
-    const dbId = (row as any).db_id ?? ov?.db_id ?? null; // <— use merged row or overlay
+    const dbId = ov?.db_id ?? null;
+    console.log('[delete-debug] Removing match:', { sig, dbId, row }); // Log before removal
   
     const nextMatches = curr.draftMatches.filter(m => rowSignature(m) !== sig);
     const nextOverlay = { ...curr.dbOverlayBySig };
     delete nextOverlay[sig];
+    const nextDirty = new Set(curr.dirty.matches);
+    nextDirty.delete(sig);
   
     const nextDeleted = new Set([...(curr.dirty.deletedMatchIds ?? [])]);
-    if (typeof dbId === "number" && dbId > 0) nextDeleted.add(dbId); // only real ids
+    if (typeof dbId === 'number' && dbId > 0) {
+      nextDeleted.add(dbId);
+      console.log('[delete-debug] Added to deletedMatchIds:', dbId); // Confirm addition
+    }
   
     return {
       draftMatches: nextMatches,
       dbOverlayBySig: nextOverlay,
-      dirty: { ...curr.dirty, deletedMatchIds: nextDeleted },
+      dirty: {
+        ...curr.dirty,
+        matches: nextDirty,
+        deletedMatchIds: nextDeleted,
+      },
     };
   }),
 
@@ -1700,7 +1692,7 @@ updateMatches: (stageIdx, recipe) => set((curr) => {
   
       if (payload4.stageSlots || payload4.intakeMappings || payload4.matches) {
         const resp4 = await doPost(tid, payload4);
-  
+        console.log('[save-debug] Sending payload4 to server:', JSON.stringify(payload4, null, 2));
         // StageSlots reconcile
         if (resp4.stageSlots) {
           const affectedStages = new Set(resp4.stageSlots.map((s) => s.stage_id));

@@ -31,29 +31,28 @@ export type TeamDraft = {
  * (Kept for types used elsewhere.)
  */
 export type DraftMatch = {
-  db_id?: number | null;
-  stageIdx: number;
-  groupIdx?: number | null;
-  bracket_pos?: number | null;
-  matchday?: number | null;
-  match_date?: string | null;
-  team_a_id?: number | null;
-  team_b_id?: number | null;
-  round?: number | null;
-
-  status?: "scheduled" | "finished" | null;
-  team_a_score?: number | null;
-  team_b_score?: number | null;
-  winner_team_id?: number | null;
-
-  home_source_match_idx?: number | null;
-  away_source_match_idx?: number | null;
-  home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | "L" | null;
-  home_source_round?: number | null;
-  home_source_bracket_pos?: number | null;
-  away_source_round?: number | null;
-  away_source_bracket_pos?: number | null;
+db_id?: number | null;
+updated_at?: string | null;  // Add this to resolve the type error
+stageIdx: number;
+groupIdx?: number | null;
+bracket_pos?: number | null;
+matchday?: number | null;
+match_date?: string | null;
+team_a_id?: number | null;
+team_b_id?: number | null;
+round?: number | null;
+status?: "scheduled" | "finished" | null;
+team_a_score?: number | null;
+team_b_score?: number | null;
+winner_team_id?: number | null;
+home_source_match_idx?: number | null;
+away_source_match_idx?: number | null;
+home_source_outcome?: "W" | "L" | null;
+away_source_outcome?: "W" | "L" | "L" | null;
+home_source_round?: number | null;
+home_source_bracket_pos?: number | null;
+away_source_round?: number | null;
+away_source_bracket_pos?: number | null;
 };
 
 export type WizardMode = "create" | "edit";
@@ -270,6 +269,8 @@ export default function TournamentWizard({
         m.home_source_bracket_pos ?? "",
         m.away_source_round ?? "",
         m.away_source_bracket_pos ?? "",
+        Math.min(m.team_a_id ?? 0, m.team_b_id ?? 0),  // NEW
+        Math.max(m.team_a_id ?? 0, m.team_b_id ?? 0),  // NEW
       ].join("|");
 
     const oldByKey = new Map(storeDraftMatches.map((m) => [key(m), m]));
@@ -287,7 +288,27 @@ export default function TournamentWizard({
         : f;
     });
 
+    // Detect deletions: old matches not in new set
+    const newKeys = new Set(merged.map(key));
+    const deletions: number[] = [];
+    storeDraftMatches.forEach((oldMatch) => {
+      const oldKey = key(oldMatch);
+      if (!newKeys.has(oldKey) && oldMatch.db_id && oldMatch.db_id > 0) {
+        deletions.push(oldMatch.db_id);
+      }
+    });
+
     replaceAllDraftMatches(merged);
+
+    // Queue deletions if any (accumulate)
+    if (deletions.length > 0) {
+      useTournamentStore.setState((curr) => ({
+        dirty: {
+          ...curr.dirty,
+          deletedMatchIds: new Set([...curr.dirty.deletedMatchIds, ...deletions]),
+        },
+      }));
+    }
   };
 
   // --- UI -------------------------------------------------------------------

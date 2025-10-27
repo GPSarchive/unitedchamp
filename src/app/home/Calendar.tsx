@@ -27,14 +27,13 @@
         all_day?: boolean;
         teams?: [string, string];
         logos?: [string, string];
-        // Optional state/score coming from server (conform to EventPillShrimp)
-        status?: string;                 // normalized to string | undefined
-        home_score?: number;             // number | undefined
-        away_score?: number;             // number | undefined
-        score?: [number, number];        // tuple | undefined
-        minute?: number | string;        // optional
-        team_a_score?: number;           // alternative naming from DB
-        team_b_score?: number;           // alternative naming from DB
+        status?: string;
+        home_score?: number;
+        away_score?: number;
+        score?: [number, number];
+        minute?: number | string;
+        team_a_score?: number;
+        team_b_score?: number;
       }>;
       fetchFromDb?: boolean;
     };
@@ -290,6 +289,7 @@
       className,
       initialEvents = [],
       fetchFromDb = false,
+                             
     }: Props) {
       const startOfCurrentWeek = useMemo(() => {
         const now = new Date();
@@ -617,31 +617,7 @@
             </div>
           </div>
     
-          {/* SCOPED FIX: keep day headers on top & fully opaque (with mobile tuning) */}
-          <style jsx global>{`
-            .fc-scope .fc .fc-col-header,
-            .fc-scope .fc .fc-col-header-cell,
-            .fc-scope .fc .fc-scrollgrid-section-header {
-              position: sticky;
-              top: 0;
-              background-color: #ffffff !important;
-              backdrop-filter: none !important;
-              z-index: 60 !important;
-            }
-            .fc-scope .fc .fc-col-header-cell-cushion {
-              color: #111827;
-              font-weight: 800;
-              letter-spacing: 0.02em;
-            }
-            @supports (-webkit-touch-callout: none) {
-              .fc-scope .fc .fc-col-header,
-              .fc-scope .fc .fc-scrollgrid-section-header {
-                transform: translateZ(0);
-                -webkit-transform: translateZ(0);
-                will-change: transform;
-              }
-            }
-          `}</style>
+          
         </div>
       );
     }

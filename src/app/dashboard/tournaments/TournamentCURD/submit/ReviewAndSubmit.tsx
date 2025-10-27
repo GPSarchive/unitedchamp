@@ -350,17 +350,8 @@ export default function ReviewAndSubmit({
           // 3) NOW seed wizard state into the store (marking things dirty)
           seedFromWizard?.(canon, teams, draftMatches);
 
-          // 4) Persist via /save-all with one retry on 409
-          try {
-            await saveAll();
-          } catch (e: any) {
-            if (String(e?.message || "").startsWith("409 ")) {
-              await loadTournamentIntoStore(newId);
-              await saveAll();
-            } else {
-              throw e;
-            }
-          }
+          // 4) Persist via /save-all
+          await saveAll();
 
           // 5) Rehydrate after success
           await loadTournamentIntoStore(newId);
@@ -368,27 +359,10 @@ export default function ReviewAndSubmit({
         }
 
         // =============== EDIT MODE ===============
-        // 0) Ensure store has real ids (fills ids.stageIdByIndex mapping)
-        if (meta?.id) {
-          await loadTournamentIntoStore(meta.id);
-        }
+        // Simplified: Directly call saveAll without load/seed/retry
+        await saveAll();
 
-        // 1) Push wizard changes into the store so dirty flags are set
-        seedFromWizard?.(canon, teams, draftMatches);
-
-        // 2) Persist via /save-all with one retry on 409
-        try {
-          await saveAll();
-        } catch (e: any) {
-          if (String(e?.message || "").startsWith("409 ")) {
-            if (meta?.id) await loadTournamentIntoStore(meta.id);
-            await saveAll();
-          } else {
-            throw e;
-          }
-        }
-
-        // 3) Refresh from DB so updated_at reflects server truth
+        // Refresh from DB after save
         if (meta?.id) await loadTournamentIntoStore(meta.id);
 
         return;
@@ -434,11 +408,9 @@ export default function ReviewAndSubmit({
         <button
           onClick={submit}
           disabled={pending || busy}
-
           aria-busy={pending || busy}
-
           className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
-          title={pending || busy ? "Working…" : undefined}
+          title={!anyDirty && mode === "edit" ? "No changes to save" : undefined}
         >
           {pending || busy
             ? mode === "edit"

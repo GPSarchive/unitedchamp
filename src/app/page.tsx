@@ -1,6 +1,7 @@
 // app/page.tsx
 import Image from 'next/image';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
+import { headers } from 'next/headers';                   
 import { Trophy, Users, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import HomeHero from '@/app/home/HomeHero';
@@ -212,6 +213,8 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
  * ------------------------------
  */
 export default async function Home() {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
+
   const [{ user }, { rawMatches }] = await Promise.all([fetchSingleUser(), fetchMatchesWithTeams()]);
   const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
 
@@ -227,14 +230,12 @@ export default async function Home() {
         ]}
       />
 
-      {/* Welcome Section (replaces orange bg with Vanta) */}
+      {/* Welcome Section */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-2 drop-shadow">
             UltraChamp
           </h1>
-
-          {/* your styled lead paragraph */}
           <p className="text-lg sm:text-xl max-w-3xl mx-auto text-white/90 leading-relaxed">
             Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κοσμο!
             Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνει εσύ ο Ultrachamp! Αγωνισου
@@ -243,12 +244,17 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Calendar Section - use safer full-bleed utility */}
+      {/* Calendar Section */}
       <section className="full-bleed safe-px safe-pb">
-        <EventCalendar className="w-full" initialEvents={eventsToPass} fetchFromDb={false} />
+        <EventCalendar
+                                   
+          className="w-full"
+          initialEvents={eventsToPass}
+          fetchFromDb={false}
+        />
       </section>
 
-      {/* Features Section (Dot grid background) */}
+      {/* Features Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center">Η ομάδα σε περιμένει</h2>
@@ -286,69 +292,39 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      {/* About Us Section (replaces orange bg with Vanta) */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-        <div className="container mx-auto px-4 grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
-          <div>
-            <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">Σχετικά με εμάς</h2>
-            <p className="text-base sm:text-lg mb-3 sm:mb-4">
-              Στο Ultra Champ, είμαστε αφοσιωμένοι στη δημιουργία μιας κοινότητας φίλων του ποδοσφαίρου. Η πλατφόρμα μας οργανώνει αγώνες και τουρνουά σε διάφορα επίπεδα, προσφέροντας ευκαιρίες στους παίκτες να δείξουν τις ικανότητές τους, να κάνουν νέους φίλους και να απολαύσουν το όμορφο παιχνίδι.
-            </p>
-            <p className="text-base sm:text-lg">
-              Με σύγχρονες εγκαταστάσεις, κανόνες fair play και πάθος για το ποδόσφαιρο, διασφαλίζουμε ότι κάθε event είναι αξέχαστο και συναρπαστικό.
-            </p>
-          </div>
-          <div className="relative h-56 sm:h-64 md:h-96">
-            <Image
-              src="/pexels-omar2.jpg"
-              alt="Ποδοσφαιριστές σε δράση"
-              fill
-              className="object-cover rounded-lg shadow-lg"
-              priority
-            />
+      {/* Call to Action */}
+      <GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
+        <div className="w-full max-w-7xl px-4 flex flex-col items-center text-center">
+          <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
+            Έτοιμοι για σέντρα;
+          </h2>
+          <p className="text-base sm:text-xl mb-6 sm:mb-8">
+            Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
+          </p>
+
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 pointer-events-none">
+            <div className="w-full  lg:w-[420px] select-none">
+              <MiniAnnouncements
+                limit={4}
+                pinnedPageSize={3}
+                basePath="/anakoinoseis"
+                allLinkHref="/anakoinoseis"
+              />
+            </div>
+
+            <div className="w-full lg:max-w-[880px] pointer-events-auto">
+              <RecentMatchesTabs
+                className="mt-10 lg:mt-0"
+                pageSize={12}
+                variant="transparent"
+                maxWClass="max-w-none"
+              />
+            </div>
           </div>
         </div>
-      </VantaSection>
+      </GridBgSection>
 
-{/* Call to Action Section (Dot grid background) */}
-{/* Call to Action Section (Dot grid background) */}
-<GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
-  <div className="w-full max-w-7xl px-4 flex flex-col items-center text-center">
-    <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
-      Έτοιμοι για σέντρα;
-    </h2>
-    <p className="text-base sm:text-xl mb-6 sm:mb-8">
-      Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
-    </p>
-
-    {/* Centered row; only Matches is interactive */}
-    <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 pointer-events-none">
-      {/* Announcements (non-clickable, fixed ideal width) */}
-      <div className="w-full  lg:w-[420px] select-none">
-        <MiniAnnouncements
-          limit={4}
-          pinnedPageSize={3}
-          basePath="/anakoinoseis"
-          allLinkHref="/anakoinoseis"
-        />
-      </div>
-
-      {/* Matches (bigger, transparent, the only interactive area) */}
-      <div className="w-full lg:max-w-[880px] pointer-events-auto">
-        <RecentMatchesTabs
-          className="mt-10 lg:mt-0"
-          pageSize={12}
-          variant="transparent"
-          maxWClass="max-w-none"     // let the parent width control size
-        />
-      </div>
-    </div>
-  </div>
-</GridBgSection>
-
-
-
-      {/* Testimonials Section (replaces orange bg with Vanta) */}
+      {/* Testimonials */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>

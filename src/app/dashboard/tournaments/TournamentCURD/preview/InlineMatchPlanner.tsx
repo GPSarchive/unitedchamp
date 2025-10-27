@@ -172,6 +172,35 @@ function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
   migrateOverlayKey(oldKey, newKey);
 }
 
+/* ---------------- auto matchday ---------------- */
+// Re-sequence matchday for all non-KO rows in the stage.
+// Order is stable by current array order, grouped by groupIdx.
+function resequenceMatchdays(stageIdxArg: number) {
+  const state = useTournamentStore.getState();
+  const draft = (state.draftMatches as DraftMatch[]).filter((r) => r.stageIdx === stageIdxArg);
+  const isKOStage = draft.some((r) => r.round != null && r.bracket_pos != null);
+
+  if (isKOStage) return; // KO uses round/bracket_pos, no matchday
+
+  useTournamentStore.getState().updateMatches(stageIdxArg, (rows) => {
+    const next = rows.slice();
+    // Build counters per group
+    const counters = new Map<number, number>();
+    for (let i = 0; i < next.length; i++) {
+      const r = next[i];
+      if (r.stageIdx !== stageIdxArg) continue;
+      if (r.round != null && r.bracket_pos != null) continue; // KO row
+      const g = (r.groupIdx ?? -1) as number;
+      const n = (counters.get(g) ?? 0) + 1;
+      counters.set(g, n);
+      if (r.matchday !== n) {
+        next[i] = { ...r, matchday: n };
+      }
+    }
+    return next;
+  });
+}
+
 /* ---------------- component ---------------- */
 export default function InlineMatchPlanner({
   miniPayload,
@@ -355,22 +384,7 @@ export default function InlineMatchPlanner({
       return a.includes(q) || b.includes(q);
     });
   }, [visible, teamQuery, nameOf]);
-  // after `const filteredVisible = useMemo(...);`
-const displayRows = useMemo(() => {
-  if (isKO) return filteredVisible; // leave KO order unchanged
-  return [...filteredVisible].sort((a, b) => {
-    const am = a.matchday == null ? Number.MAX_SAFE_INTEGER : (a.matchday as number);
-    const bm = b.matchday == null ? Number.MAX_SAFE_INTEGER : (b.matchday as number);
-    if (am !== bm) return am - bm;
 
-    // optional tiebreakers
-    const ag = a.groupIdx == null ? Number.MAX_SAFE_INTEGER : (a.groupIdx as number);
-    const bg = b.groupIdx == null ? Number.MAX_SAFE_INTEGER : (b.groupIdx as number);
-    if (ag !== bg) return ag - bg;
-
-    return String(a.match_date ?? "").localeCompare(String(b.match_date ?? ""));
-  });
-}, [filteredVisible, isKO]);
   // team options
   const teamOptions = useMemo(() => {
     const effectiveGroupForOptions = groupIdx != null && groupIdx >= 0 ? groupIdx : 0;
@@ -455,23 +469,45 @@ const displayRows = useMemo(() => {
       }
     }
 
+    // Non-KO: robust lookup to avoid duplicates
     updateMatches(effectiveStageIdx, (stageRows) => {
       const next = stageRows.slice();
-      const idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy);
-      const merged: DraftMatch = { ...(idx >= 0 ? next[idx] : target), ...patch };
-      const afterLegacy = legacyRowSignature(merged);
 
+      const dbId = (target as any).db_id as number | null | undefined;
+      const beforeStruct = rowSignature(target);
+
+      let idx = -1;
+      if (dbId != null) idx = next.findIndex((r) => (r as any).db_id === dbId);
+      if (idx < 0) idx = next.findIndex((r) => rowSignature(r) === beforeStruct);
+      if (idx < 0) idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy); // last resort
+
+      const base = idx >= 0 ? next[idx] : target;
+      const merged: DraftMatch = { ...base, ...patch, matchday: base.matchday ?? null }; // matchday is auto-managed
+
+      // migrate overlay key to new legacy signature if structural bits changed
+      const afterLegacy = legacyRowSignature(merged);
       if (afterLegacy !== beforeLegacy) {
-        const dbId = (merged as any).db_id as number | null | undefined;
-        if (dbId != null) migrateOverlayByDbIdToKey(dbId, afterLegacy);
+        const mDbId = (merged as any).db_id as number | null | undefined;
+        if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
         else migrateOverlayKey(beforeLegacy, afterLegacy);
       }
 
       ensureOverlayForRow(merged);
-      if (idx >= 0) next[idx] = merged;
-      else next.push(merged);
+
+      if (idx >= 0) {
+        next[idx] = merged;
+      } else {
+        // prevent duplicates if a row already occupies the new structural slot
+        const afterStruct = rowSignature(merged);
+        const j = next.findIndex((r) => rowSignature(r) === afterStruct);
+        if (j >= 0) next[j] = merged;
+        else next.push(merged);
+      }
       return next;
     });
+
+    // After any non-KO edit, resequence matchdays.
+    resequenceMatchdays(effectiveStageIdx);
   };
 
   const addRow = () => {
@@ -483,11 +519,10 @@ const displayRows = useMemo(() => {
       ensureRowExists(effectiveStageIdx, round, nextPos);
       reindexKOPointers(effectiveStageIdx);
     } else {
-      const md = ((visible[visible.length - 1]?.matchday as number | null) ?? 0) + 1;
       const newRow: DraftMatch = {
         stageIdx: effectiveStageIdx,
         groupIdx: isGroups && !useAllGroups ? (groupIdx ?? 0) : null,
-        matchday: md,
+        matchday: null, // will be auto-sequenced
         round: null,
         bracket_pos: null,
         team_a_id: null,
@@ -495,12 +530,12 @@ const displayRows = useMemo(() => {
         match_date: null,
       };
       updateMatches(effectiveStageIdx, (rows) => [...rows, newRow]);
+      resequenceMatchdays(effectiveStageIdx);
     }
   };
 
   const removeRow = (m: DraftMatch) => {
     const dbId = (m as any).db_id as number | null | undefined;
-    // help store find by ensuring overlay is present for this row signature
     if (dbId != null) {
       const key = legacyRowSignature(m);
       const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
@@ -510,7 +545,6 @@ const displayRows = useMemo(() => {
       }
     }
 
-    // debug
     // eslint-disable-next-line no-console
     console.debug("[planner.delete]", {
       db_id: dbId ?? null,
@@ -518,7 +552,11 @@ const displayRows = useMemo(() => {
     });
 
     removeMatch(m);
-    if (isKO) reindexKOPointers(effectiveStageIdx);
+    if (isKO) {
+      reindexKOPointers(effectiveStageIdx);
+    } else {
+      resequenceMatchdays(effectiveStageIdx);
+    }
   };
 
   // do NOT reindex after regeneration; it can wipe bye teams
@@ -526,17 +564,14 @@ const displayRows = useMemo(() => {
     const fresh = generateDraftMatches({ payload: miniPayload, teams });
     const freshHere = fresh.filter((m) => m.stageIdx === effectiveStageIdx);
 
-    const key = (m: DraftMatch) =>
-      [
-        m.groupIdx ?? "",
-        m.round ?? "",
-        m.bracket_pos ?? "",
-        m.matchday ?? "",
-        m.home_source_round ?? "",
-        m.home_source_bracket_pos ?? "",
-        m.away_source_round ?? "",
-        m.away_source_bracket_pos ?? "",
-      ].join("|");
+    // key now includes pairing for RR so removed teams do not collide
+    const key = (m: DraftMatch) => {
+      if (m.round != null && m.bracket_pos != null) {
+        return `KO|R${m.round}|B${m.bracket_pos}`;
+      }
+      const pair = rrPairKey(m.team_a_id, m.team_b_id);
+      return `RR|G${m.groupIdx ?? -1}|MD${m.matchday ?? 0}|${pair}`;
+    };
 
     const currentStageRows = allRowsForStage;
     const oldByKey = new Map(currentStageRows.map((m) => [key(m), m]));
@@ -559,6 +594,7 @@ const displayRows = useMemo(() => {
     });
 
     updateMatches(effectiveStageIdx, () => merged);
+    resequenceMatchdays(effectiveStageIdx);
   };
 
   const debugLine =
@@ -609,15 +645,6 @@ const displayRows = useMemo(() => {
             value={teamQuery}
             onChange={(e) => setTeamQuery(e.target.value)}
           />
-          {teamQuery ? (
-            <button
-              className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-              onClick={() => setTeamQuery("")}
-              title="Clear search"
-            >
-              Clear
-            </button>
-          ) : null}
 
           <button
             className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
@@ -662,9 +689,9 @@ const displayRows = useMemo(() => {
               </tr>
             </thead>
             <tbody>
-            {displayRows.map((m, i) => {
-              const key = reactKey(m, i);
-              return (
+              {filteredVisible.map((m, i) => {
+                const key = reactKey(m, i);
+                return (
                   <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40">
                     {isKO ? (
                       <>
@@ -687,12 +714,9 @@ const displayRows = useMemo(() => {
                       </>
                     ) : (
                       <td className="px-2 py-1">
-                        <input
-                          type="number"
-                          className="w-16 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                          value={(m.matchday as number | null) ?? 1}
-                          onChange={(e) => applyPatch(m, { matchday: Number(e.target.value) || 1 })}
-                        />
+                        <span className="inline-block min-w-[3rem] text-white/80">
+                          {(m.matchday as number | null) ?? "—"}
+                        </span>
                       </td>
                     )}
 

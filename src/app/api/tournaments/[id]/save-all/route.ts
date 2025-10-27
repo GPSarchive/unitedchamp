@@ -143,7 +143,7 @@ export async function POST(
     console.error("[save-all][in]", rid, "bad JSON");
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-
+  console.log('[save-all-debug] Received body:', JSON.stringify(body, null, 2));
   const tournamentId = Number(id);
   if (!Number.isFinite(tournamentId)) {
     return NextResponse.json({ error: "Invalid tournament id" }, { status: 400 });
