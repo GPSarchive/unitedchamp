@@ -324,7 +324,8 @@ export default async function Page({
               στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
             </p>
 
-            <form action={saveAllStatsAction}>
+            <form id="stats-form" action={saveAllStatsAction}>
+
               <input type="hidden" name="match_id" value={String(match.id)} />
               <div className="grid grid-cols-1 gap-6">
                 <StatsEditor

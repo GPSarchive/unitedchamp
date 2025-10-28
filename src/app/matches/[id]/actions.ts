@@ -2,6 +2,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
 
@@ -273,12 +274,14 @@ export async function saveAllStatsAction(formData: FormData) {
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when finished (non-tie) — fire-and-forget to avoid blocking the UI
+  // Run progression only when finished (non-tie) — fire-and-forget
   if (!isTie) {
     progressAfterMatch(match_id).catch(console.error);
   }
 
-  // Intentionally not calling revalidatePath here; the route is dynamic (revalidate = 0).
+  // Refresh page and show success flag
+  revalidatePath(`/matches/${match_id}`);
+  redirect(`/matches/${match_id}?saved=1`);
 }
 
 /** -------------------------------
