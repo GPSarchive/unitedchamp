@@ -23,9 +23,9 @@ const NAV_LINKS = [
   { href: "/agones",                    label: "ΑΓΩΝΕΣ",                  img: "/αγωνες.jpg" },
   { href: "/geniki-katataxi",           label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",         img: "/γενικη-καταταξη.jpg" },
   { href: "/kanonismos",                label: "ΚΑΝΟΝΙΣΜΟΣ",              img: "/κανονισμος.jpg" },
-  { href: "/gallery",                   label: "GALLERY",                 img: "/gallery.jpg" },
-  { href: "/meikti-omada-ultrachamp",   label: "ΜΕΙΚΤΗ ΟΜΑΔΑ ULTRACHAMP", img: "/μεικτη-ομαδα.jpg" },
-  { href: "/elliniki-omada-f7",         label: "ΕΛΛΗΝΙΚΗ ΟΜΑΔΑ F7",       img: "/ελλινικη-ομαδα.jpg" },
+  //{ href: "/gallery",                   label: "GALLERY",                 img: "/gallery.jpg" },
+  //{ href: "/meikti-omada-ultrachamp",   label: "ΜΕΙΚΤΗ ΟΜΑΔΑ ULTRACHAMP", img: "/μεικτη-ομαδα.jpg" },
+  //{ href: "/elliniki-omada-f7",         label: "ΕΛΛΗΝΙΚΗ ΟΜΑΔΑ F7",       img: "/ελλινικη-ομαδα.jpg" },
 ] as const;
 
 /* ===================== Styles ===================== */

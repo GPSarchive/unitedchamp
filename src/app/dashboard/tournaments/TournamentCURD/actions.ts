@@ -26,7 +26,7 @@ type DraftMatchServer = {
   matchday?: number | null;
   team_a_id?: number | null;
   team_b_id?: number | null;
-
+  is_ko?: boolean | null;
   // DB identity if it already exists (filled in GET for edit)
   db_id?: number | null;
 

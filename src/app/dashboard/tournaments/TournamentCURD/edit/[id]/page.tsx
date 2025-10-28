@@ -37,6 +37,7 @@ export default async function EditTournamentPage({
     team_a_id: m.team_a_id ?? null,
     team_b_id: m.team_b_id ?? null,
     round: m.round ?? null,
+    is_ko: m.is_ko?? null,
     home_source_match_idx: m.home_source_match_idx ?? null,
     away_source_match_idx: m.away_source_match_idx ?? null,
     home_source_outcome: m.home_source_outcome ?? undefined,

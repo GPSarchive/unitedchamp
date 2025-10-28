@@ -109,6 +109,7 @@ export const useKnockoutDesigner = create<Store>((set, get) => ({
       team_a_id: null,
       team_b_id: null,
       matchday: null,
+      is_ko: true,
       match_date: null,
       ...init,
     };
