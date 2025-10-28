@@ -137,11 +137,11 @@ export default function StatsEditor({
 
               {/* Per-match stats */}
               <div className="grid grid-cols-5 gap-2 text-sm">
-                <NumInput name={`${baseStats}[goals]`} def={goalsDefault} disabled={!playedOn || readOnly} label="G" />
-                <NumInput name={`${baseStats}[assists]`} def={assistsDefault} disabled={!playedOn || readOnly} label="A" />
-                <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} disabled={!playedOn || readOnly} label="Y" />
-                <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} disabled={!playedOn || readOnly} label="R" />
-                <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} disabled={!playedOn || readOnly} label="B" />
+              <input type="hidden" name={`${baseStats}[goals]`} value="0" />
+              <input type="hidden" name={`${baseStats}[assists]`} value="0" />
+              <input type="hidden" name={`${baseStats}[yellow_cards]`} value="0" />
+              <input type="hidden" name={`${baseStats}[red_cards]`} value="0" />
+              <input type="hidden" name={`${baseStats}[blue_cards]`} value="0" />
               </div>
 
               {/* Awards and Clear (added for mobile) */}
