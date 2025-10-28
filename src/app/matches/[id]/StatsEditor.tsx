@@ -136,7 +136,7 @@ export default function StatsEditor({
               </div>
 
               {/* Per-match stats */}
-              <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="grid grid-cols-5 gap-2 text-sm">
                 <NumInput name={`${baseStats}[goals]`} def={goalsDefault} disabled={!playedOn || readOnly} label="G" />
                 <NumInput name={`${baseStats}[assists]`} def={assistsDefault} disabled={!playedOn || readOnly} label="A" />
                 <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} disabled={!playedOn || readOnly} label="Y" />
@@ -144,9 +144,10 @@ export default function StatsEditor({
                 <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} disabled={!playedOn || readOnly} label="B" />
               </div>
 
-              {/* Awards + Clear */}
-              <div className="mt-3 flex items-center gap-4">
-                <label className="inline-flex items-center gap-1 text-xs">
+              {/* Awards and Clear (added for mobile) */}
+              <div className="mt-4 grid grid-cols-3 gap-2 text-sm border-t border-gray-300 pt-4">
+                <label className="flex items-center gap-2">
+                  MVP
                   <input
                     type="radio"
                     name="mvp_player_id"
@@ -155,9 +156,9 @@ export default function StatsEditor({
                     aria-label="MVP"
                     disabled={readOnly || !playedOn}
                   />
-                  MVP
                 </label>
-                <label className="inline-flex items-center gap-1 text-xs">
+                <label className="flex items-center gap-2">
+                  Best GK
                   <input
                     type="radio"
                     name="best_gk_player_id"
@@ -166,23 +167,20 @@ export default function StatsEditor({
                     aria-label="Best Goalkeeper"
                     disabled={readOnly || !playedOn}
                   />
-                  Best GK
                 </label>
-
                 {!readOnly && (
-                  <>
+                  <label className="flex items-center gap-2">
+                    Clear
                     <input type="hidden" name={`${baseStats}[_delete]`} defaultValue="false" />
-                    <label className="ml-auto inline-flex items-center gap-1 text-xs">
-                      <input
-                        type="checkbox"
-                        name={`${baseStats}[_delete]`}
-                        value="true"
-                        defaultChecked={false}
-                        aria-label="Clear row"
-                      />
-                      Clear
-                    </label>
-                  </>
+                    <input
+                      type="checkbox"
+                      name={`${baseStats}[_delete]`}
+                      value="true"
+                      defaultChecked={false}
+                      aria-label="Clear row"
+                      disabled={!playedOn}
+                    />
+                  </label>
                 )}
               </div>
             </div>
@@ -191,27 +189,26 @@ export default function StatsEditor({
       </div>
 
       {/* Desktop layout: table */}
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-sm">
-          <thead className="text-gray-500">
-            <tr className="text-left">
-              <th className="py-1 pr-2">Συμ.</th>
-              <th className="py-1 pr-2">Player</th>
-              <th className="py-1 pr-2">Pos</th>
-              <th className="py-1 pr-2">Cap</th>
-              <th className="py-1 pr-2">GK</th>
-              <th className="py-1 pr-2">G</th>
-              <th className="py-1 pr-2">A</th>
-              <th className="py-1 pr-2">Y</th>
-              <th className="py-1 pr-2">R</th>
-              <th className="py-1 pr-2">B</th>
-              <th className="py-1 pr-2">MVP (1/match)</th>
-              <th className="py-1 pr-2">Best GK (1/match)</th>
-              <th className="py-1 pr-2">Clear</th>
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full table-auto border-collapse text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2 pr-2 text-left">Played</th>
+              <th className="py-2 pr-2 text-left">Player</th>
+              <th className="py-2 pr-2 text-left">Pos</th>
+              <th className="py-2 pr-2 text-left">Cap</th>
+              <th className="py-2 pr-2 text-left">GK</th>
+              <th className="py-2 pr-2 text-left">G</th>
+              <th className="py-2 pr-2 text-left">A</th>
+              <th className="py-2 pr-2 text-left">Y</th>
+              <th className="py-2 pr-2 text-left">R</th>
+              <th className="py-2 pr-2 text-left">B</th>
+              <th className="py-2 pr-2 text-left">MVP</th>
+              <th className="py-2 pr-2 text-left">Best GK</th>
+              <th className="py-2 pr-2 text-left">Clear</th>
             </tr>
           </thead>
-
-          <tbody className="divide-y">
+          <tbody>
             {associations.map((assoc) => {
               const p: any = assoc.player;
               const stats = existing.get(p.id);
