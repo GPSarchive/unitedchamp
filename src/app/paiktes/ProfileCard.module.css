@@ -1,4 +1,4 @@
-/* All defaults live on the wrapper so they cascade into children */
+
 .pc-card-wrapper {
   /* moved here from :root */
   --pointer-x: 50%;
@@ -13,7 +13,7 @@
   --background-y: 50%;
   --grain: none;
   --icon: none;
-  --behind-gradient: none;
+  --behind-gradient: conic-gradient(from 124deg at 50% 50%, #8B5CF6 0%, #3B82F6 40%, #3B82F6 60%, #8B5CF6 100%);
   --inner-gradient: none;
   --sunpillar-1: hsl(2, 100%, 73%);
   --sunpillar-2: hsl(53, 100%, 69%);
@@ -129,7 +129,13 @@
   animation: holo-bg 18s linear infinite;
   mix-blend-mode: color-dodge;
 }
-
+.pc-stats-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 1rem; /* Adjust as needed */
+}
 .pc-shine,
 .pc-shine::after {
   --space: 5%;
@@ -287,13 +293,12 @@
   right: 20px;
   z-index: 2;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column; /* Stack elements vertically for better flow */
+  gap: 12px; /* Add space between details, button, and stats */
+  padding: 16px; /* Increase padding slightly for stats room */
   background: rgba(255, 255, 255, 0.1);
- 
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 15px;
-  padding: 12px 14px;
   pointer-events: auto;
 }
 
@@ -462,4 +467,153 @@
   .pc-handle { font-size: 11px; }
   .pc-status { font-size: 8px; }
   .pc-contact-btn { padding: 4px 8px; font-size: 9px; border-radius: 50px; }
+}
+
+.pc-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px; /* Smaller for fit in panel */
+  text-align: left; /* Align with user text */
+}
+
+.pc-stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pc-stat-label {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.pc-team-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pc-team-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.pc-team-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pc-stat-badges {
+  display: flex;
+  flex-wrap: wrap; /* Wrap badges gracefully */
+  gap: 6px; /* Tight spacing */
+  justify-content: flex-start; /* Align left in panel */
+}
+
+.pc-stat-badge {
+  padding: 3px 8px; /* Compact size */
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Category-based badge colors */
+.pc-stat-badge:nth-child(1) { /* Goals */
+  background: rgba(34, 197, 94, 0.15); /* Greenish */
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.pc-stat-badge:nth-child(2) { /* Assists */
+  background: rgba(34, 197, 94, 0.15); /* Greenish */
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.pc-stat-badge:nth-child(3) { /* MVP */
+  background: rgba(250, 204, 21, 0.15); /* Gold */
+  border-color: rgba(250, 204, 21, 0.3);
+}
+
+.pc-stat-badge:nth-child(4) { /* Best GK */
+  background: rgba(250, 204, 21, 0.15); /* Gold */
+  border-color: rgba(250, 204, 21, 0.3);
+}
+
+.pc-stat-badge:nth-child(5) { /* Matches */
+  background: rgba(59, 130, 246, 0.15); /* Blue */
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Hover effects for badges */
+.pc-stat-badge:hover {
+  filter: brightness(1.1);
+}
+
+/* Responsive: Stack badges vertically on small screens */
+@media (max-width: 480px) {
+  .pc-user-info {
+    padding: 12px;
+    gap: 8px;
+  }
+  .pc-stat-badges {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* New vertical stats layout */
+.pc-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.pc-stat-field {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF; /* White for top info */
+  position: relative;
+  padding-bottom: 4px; /* Space for underline */
+}
+
+.pc-stat-field::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px; /* Underline thickness */
+  background: linear-gradient(to right, #8B5CF6, #3B82F6); /* Coloured gradient underline (violet-blue) */
+  border-radius: 1px;
+}
+
+.pc-stat-value {
+  font-size: 12px;
+  font-weight: 400;
+  font-style: italic; /* Slick/italic text for values */
+  color: rgba(255, 255, 255, 0.85); /* Slightly muted white */
+  letter-spacing: 0.5px; /* For a sleek look */
+}
+
+/* Player name integration (as first stat-like item) */
+.pc-player-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin-bottom: 8px; /* Space before stats */
+  text-align: center; /* Center if needed */
+  background-image: linear-gradient(to bottom, #fff, #6f6fbe); /* Existing gradient style */
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
 }

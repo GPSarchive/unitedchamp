@@ -102,7 +102,7 @@ export default function SignedImg({
       loading="lazy"
       decoding="async"
       onLoad={() => setLoaded(true)}
-      initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 6, filter: "blur(6px)" }}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 6,  }}
       animate={
         reduceMotion
           ? { opacity: 1 }

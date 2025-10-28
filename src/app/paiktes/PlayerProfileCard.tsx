@@ -31,12 +31,7 @@ export default function PlayerProfileCard({ player }: { player: PlayerLite }) {
       mobileTiltSensitivity={5}
 
       // action
-      contactText="View profile"
-      onContactClick={() => {
-        // hook this to router if you want
-        // e.g., router.push(`/players/${player.id}`)
-        console.log("clicked profile for", player.id);
-      }}
+
     />
   );
 }

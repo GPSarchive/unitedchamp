@@ -13,7 +13,7 @@ import styles from "./ProfileCard.module.css";
 
 /** ====== Visual defaults (you can tweak freely) ====== */
 const DEFAULT_BEHIND_GRADIENT =
-  "radial-gradient(farthest-side circle at var(--pointer-x) var(--pointer-y),hsla(266,100%,90%,var(--card-opacity)) 4%,hsla(266,50%,80%,calc(var(--card-opacity)*0.75)) 10%,hsla(266,25%,70%,calc(var(--card-opacity)*0.5)) 50%,hsla(266,0%,60%,0) 100%),radial-gradient(35% 52% at 55% 20%,#00ffaac4 0%,#073aff00 100%),radial-gradient(100% 100% at 50% 50%,#00c1ffff 1%,#073aff00 76%),conic-gradient(from 124deg at 50% 50%,#c137ffff 0%,#07c6ffff 40%,#07c6ffff 60%,#c137ffff 100%)";
+  "conic-gradient(from 124deg at 50% 50%, #8B5CF6 0%, #3B82F6 40%, #3B82F6 60%, #8B5CF6 100%)"; // Updated to violet-blue mix for softened holo effect
 
 const DEFAULT_INNER_GRADIENT =
   "linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)";
@@ -84,6 +84,17 @@ export type ProfileCardProps = {
   showUserInfo?: boolean;
 
   onContactClick?: () => void;
+
+  /** New stats props */
+  teams?: { id: number; name: string; logo?: string | null }[]; // Array for multiple teams
+  totalGoals?: number;
+  totalAssists?: number;
+  mvpAwards?: number;
+  bestGkAwards?: number;
+  matchesPlayed?: number;
+
+  /** Toggle to show stats section */
+  showStats?: boolean; // Default true if stats provided
 };
 
 function ProfileCardComponent({
@@ -105,6 +116,13 @@ function ProfileCardComponent({
   contactText = "Contact",
   showUserInfo = true,
   onContactClick,
+  teams = [],
+  totalGoals = 0,
+  totalAssists = 0,
+  mvpAwards = 0,
+  bestGkAwards = 0,
+  matchesPlayed = 0,
+  showStats = true,
 }: ProfileCardProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
@@ -187,78 +205,85 @@ function ProfileCardComponent({
       updateCardTransform,
       createSmoothAnimation,
       cancelAnimation: () => {
-        if (rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        }
+        if (rafId) cancelAnimationFrame(rafId);
       },
     };
   }, [enableTilt]);
 
-  const handlePointerMove = useCallback(
-    (event: PointerEvent) => {
-      const card = cardRef.current;
-      const wrap = wrapRef.current;
-      if (!card || !wrap || !animationHandlers) return;
+  const handlePointerEnter = useCallback(
+    (e: PointerEvent) => {
+      if (!enableTilt || !animationHandlers) return;
 
-      const rect = card.getBoundingClientRect();
-      animationHandlers.updateCardTransform(
-        event.clientX - rect.left,
-        event.clientY - rect.top,
-        card,
-        wrap
-      );
-    },
-    [animationHandlers]
-  );
+      const card = cardRef.current!;
+      const wrap = wrapRef.current!;
+      card.classList.add(activeClass);
 
-  const handlePointerEnter = useCallback(() => {
-    const card = cardRef.current;
-    const wrap = wrapRef.current;
-    if (!card || !wrap || !animationHandlers) return;
+      wrap.style.setProperty("--card-opacity", "1");
 
-    animationHandlers.cancelAnimation();
-    wrap.classList.add(activeClass);
-    card.classList.add(activeClass);
-  }, [animationHandlers, activeClass]);
-
-  const handlePointerLeave = useCallback(
-    (event: PointerEvent & { offsetX: number; offsetY: number }) => {
-      const card = cardRef.current;
-      const wrap = wrapRef.current;
-      if (!card || !wrap || !animationHandlers) return;
+      const { clientX, clientY } = e;
+      const bounds = card.getBoundingClientRect();
+      const offsetX = clientX - bounds.left;
+      const offsetY = clientY - bounds.top;
 
       animationHandlers.createSmoothAnimation(
         ANIMATION_CONFIG.SMOOTH_DURATION,
-        event.offsetX,
-        event.offsetY,
+        offsetX,
+        offsetY,
         card,
         wrap
       );
-      wrap.classList.remove(activeClass);
-      card.classList.remove(activeClass);
     },
-    [animationHandlers, activeClass]
+    [enableTilt, animationHandlers, activeClass]
   );
 
-  const handleDeviceOrientation = useCallback(
-    (event: DeviceOrientationEvent) => {
-      const card = cardRef.current as unknown as HTMLElement | null;
-      const wrap = wrapRef.current as unknown as HTMLElement | null;
-      if (!card || !wrap || !animationHandlers) return;
+  const handlePointerMove = useCallback(
+    (e: PointerEvent) => {
+      if (!enableTilt || !animationHandlers) return;
 
-      const { beta, gamma } = event;
+      const card = cardRef.current!;
+      const wrap = wrapRef.current!;
+      const { clientX, clientY } = e;
+      const bounds = card.getBoundingClientRect();
+      const offsetX = clientX - bounds.left;
+      const offsetY = clientY - bounds.top;
+
+      animationHandlers.updateCardTransform(offsetX, offsetY, card, wrap);
+    },
+    [enableTilt, animationHandlers]
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    if (!enableTilt || !animationHandlers) return;
+
+    const card = cardRef.current!;
+    const wrap = wrapRef.current!;
+    card.classList.remove(activeClass);
+
+    wrap.style.setProperty("--card-opacity", "0");
+
+    animationHandlers.cancelAnimation();
+  }, [enableTilt, animationHandlers, activeClass]);
+
+  const handleDeviceOrientation = useCallback(
+    (e: DeviceOrientationEvent) => {
+      if (!enableTilt || !animationHandlers) return;
+
+      const card = cardRef.current!;
+      const wrap = wrapRef.current!;
+
+      const { beta, gamma } = e;
+
       if (beta == null || gamma == null) return;
 
-      animationHandlers.updateCardTransform(
-        card.clientHeight / 2 + gamma * mobileTiltSensitivity,
-        card.clientWidth / 2 +
-          (beta - ANIMATION_CONFIG.DEVICE_BETA_OFFSET) * mobileTiltSensitivity,
-        card,
-        wrap
-      );
+      const x = clamp(gamma + ANIMATION_CONFIG.DEVICE_BETA_OFFSET, -90, 90);
+      const y = clamp(beta + ANIMATION_CONFIG.DEVICE_BETA_OFFSET, -90, 90);
+
+      const offsetX = adjust(x, -90, 90, 0, card.clientWidth);
+      const offsetY = adjust(y, -90, 90, 0, card.clientHeight);
+
+      animationHandlers.updateCardTransform(offsetX, offsetY, card, wrap);
     },
-    [animationHandlers, mobileTiltSensitivity]
+    [enableTilt, animationHandlers]
   );
 
   useEffect(() => {
@@ -376,7 +401,7 @@ function ProfileCardComponent({
               disableIfOpaque
             />
 
-            {/* Floating user panel */}
+                        {/* Floating user panel */}
             {showUserInfo && (
               <div className={styles["pc-user-info"]}>
                 <div className={styles["pc-user-details"]}>
@@ -387,19 +412,64 @@ function ProfileCardComponent({
                     />
                   </div>
                   <div className={styles["pc-user-text"]}>
-                    <div className={styles["pc-handle"]}>@{handle}</div>
+                    
                     <div className={styles["pc-status"]}>{status}</div>
                   </div>
                 </div>
-                <button
-                  className={styles["pc-contact-btn"]}
-                  onClick={handleContactClick}
-                  style={{ pointerEvents: "auto" }}
-                  type="button"
-                  aria-label={`Contact ${name || "user"}`}
-                >
-                  {contactText}
-                </button>
+                
+                {showStats && (
+                <div className={styles["pc-stats"]}>
+                  {/* Player name as first item */}
+                  <div className={styles["pc-player-name"]}>
+                    {name}
+                  </div>
+
+                  {/* Stats container with flex row */}
+                  <div className={`${styles["pc-stats-container"]} flex flex-row flex-wrap justify-start gap-4`}>
+                    {/* Teams */}
+                    {teams.length > 0 && (
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Teams</span>
+                        <span className={styles["pc-stat-value"]}>
+                          {teams.map((team) => team.name).join(', ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Goals */}
+                    <div className={styles["pc-stat-item"]}>
+                      <span className={styles["pc-stat-field"]}>Goals</span>
+                      <span className={styles["pc-stat-value"]}>{totalGoals}</span>
+                    </div>
+
+                    {/* Assists */}
+                    <div className={styles["pc-stat-item"]}>
+                      <span className={styles["pc-stat-field"]}>Assists</span>
+                      <span className={styles["pc-stat-value"]}>{totalAssists}</span>
+                    </div>
+
+                    {/* MVP */}
+                    <div className={styles["pc-stat-item"]}>
+                      <span className={styles["pc-stat-field"]}>MVP</span>
+                      <span className={styles["pc-stat-value"]}>{mvpAwards}</span>
+                    </div>
+
+                    {/* Best GK (if >=1) */}
+                    {bestGkAwards >= 1 && (
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Best GK</span>
+                        <span className={styles["pc-stat-value"]}>{bestGkAwards}</span>
+                      </div>
+                    )}
+
+                    {/* Matches */}
+                    <div className={styles["pc-stat-item"]}>
+                      <span className={styles["pc-stat-field"]}>Matches</span>
+                      <span className={styles["pc-stat-value"]}>{matchesPlayed}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               </div>
             )}
           </div>
@@ -407,7 +477,6 @@ function ProfileCardComponent({
           {/* === TEXT LAYER === */}
           <div className={styles["pc-content"]}>
             <div className={styles["pc-details"]}>
-              <h3>{name}</h3>
               <p>{title}</p>
             </div>
           </div>

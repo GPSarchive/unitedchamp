@@ -223,10 +223,13 @@ export default async function Home() {
       {/* Hero Carousel Section */}
       <HomeHero
         images={[
-          "/pexels-omar.jpg",
-          "/pexels-omar2.jpg",
-          "/pexels-omar3.jpg",
-          "/pexels-omar4.jpg",
+          "/carousel5.jpg",
+          "/carousel8.jpg",
+          "/carousel0.jpg",
+          "/carousel1.jpg",
+          "/Carousel6.jpg",
+          "/carousel0.jpg",
+
         ]}
       />
 
