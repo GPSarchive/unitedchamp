@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
@@ -84,6 +84,40 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
   const [active, setActive] = useState<number | null>(null);
   const router = useRouter();
   const isMobile = useIsMobile();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMobile || !containerRef.current) return;
+
+    const el = containerRef.current;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      startY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const endY = e.changedTouches[0].clientY;
+      const delta = endY - startY;
+      const threshold = 50;
+
+      if (Math.abs(delta) < threshold) return;
+
+      setActive((prev) => {
+        if (prev == null) return delta > 0 ? 0 : items.length - 1;
+        if (delta > 0) return (prev + 1) % items.length; // swipe down: next
+        return (prev - 1 + items.length) % items.length; // swipe up: prev
+      });
+    };
+
+    el.addEventListener('touchstart', handleTouchStart);
+    el.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isMobile, items.length]);
 
   return (
     <div
@@ -91,7 +125,7 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
       onMouseLeave={() => setActive(null)}
       style={{ filter: 'drop-shadow(0 6px 14px rgba(0,0,0,.5))' }}
     >
-      <div className="flex flex-col gap-1 h-full">
+      <div ref={containerRef} className="flex flex-col gap-1 h-full touch-pan-y">
         {items.map((item, i) => {
           const a = item.teams?.[0] ?? 'Team A';
           const b = item.teams?.[1] ?? 'Team B';
@@ -273,9 +307,9 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
                       transition={{ duration: 0.18 }}
                       className="relative z-10 h-full"
                     >
-                      <div className="absolute top-1 left-1">
+                      <div className="absolute top-2 left-2">
                         <button
-                          className="bg-black/60 p-1 text-white/90 hover:bg-black/70 text-xs"
+                          className="bg-black/60 p-3 text-white/90 hover:bg-black/70"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActive(null);
@@ -283,20 +317,20 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
                           aria-label="Back"
                           style={{ borderRadius: 0 }}
                         >
-                          <ChevronLeft className="h-4 w-4" />
+                          <ChevronLeft className="h-6 w-6" />
                         </button>
                       </div>
 
                       
                       {isMobile && (
-                        <div className="absolute bottom-1 left-0 right-0 flex justify-center">
+                        <div className="absolute bottom-2 left-0 right-0 flex justify-center">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               goToMatch();
                             }}
-                            className="px-3 py-1 text-[13px] uppercase tracking-wide bg-white/10 hover:bg-white/15 text-white"
+                            className="px-4 py-2 text-sm uppercase tracking-wide bg-white/10 hover:bg-white/15 text-white"
                             style={{ borderRadius: 0 }}
                             aria-label="προβολη ματσ"
                           >

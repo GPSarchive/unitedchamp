@@ -570,7 +570,7 @@
             </AnimatePresence>
     
             <div className="h-[60vh] sm:h-[68vh] md:h-[74vh] lg:h-[80vh] xl:h-[86vh]">
-              <div className="overflow-x-auto sm:overflow-x-visible h-full">
+              <div className="overflow-x-auto  h-full">
                 <div className="min-w-[900px] sm:min-w-0 h-full">
                   <FullCalendar
                     ref={calendarRef}
