@@ -143,34 +143,13 @@ export function TeamName({ name, className }: { name: string; className?: string
 
 // ===================== Logo (compact on mobile) =====================
 function Logo({ src, alt, className }: { src: string; alt: string; className?: string }) {
-  const ref = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const img = ref.current;
-    const container = containerRef.current;
-    if (!img || !container) return;
-
-    const handleLoad = () => {
-      const containerSize = container.clientWidth;
-      const scaleFactor = Math.min(1, containerSize / Math.max(img.naturalWidth, img.naturalHeight)); // Shrink if image exceeds container
-      img.style.transform = `scale(${Math.max(0.8, scaleFactor)})`; // Min scale 80% to avoid over-shrink
-    };
-
-    if (img.complete) handleLoad();
-    else img.addEventListener('load', handleLoad);
-
-    return () => img.removeEventListener('load', handleLoad);
-  }, [src]);
-
   return (
-    <div ref={containerRef} className={`relative shrink-0 h-14 w-14 md:h-28 md:w-28 rounded-full overflow-hidden ${className ?? ''}`}>
+    <div className={`relative shrink-0 h-14 w-14 md:h-28 md:w-28 rounded-full overflow-hidden p-1 ${className ?? ''}`}> {/* Add p-1 or p-2 for auto-padding */}
       <Image
-        ref={ref}
         src={src}
         alt={alt}
         fill
-        className="object-contain transition-transform duration-200"
+        className="object-contain scale-[0.9] origin-center" // Static shrink + center origin for balance
         sizes="(max-width: 768px) 56px, 112px"
         priority={false}
       />

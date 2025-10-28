@@ -26,3 +26,12 @@
       transform: translateX(0);
     }
   }
+
+  /* In your global CSS or component styles */
+.logo-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.1), transparent); /* Subtle fill for small images */
+  border-radius: 9999px;
+}
