@@ -82,7 +82,9 @@ type MatchRow = {
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
   updated_at?: string | null; // optimistic lock token
+  is_ko?: boolean; // Add this line to include 'is_ko' property
 };
+
 
 type SaveAllRequest = {
   tournament?: { patch: PatchTournament };
@@ -371,26 +373,15 @@ if (body.matches?.deleteIds?.length) {
     }
 
     /* 9) Matches upsert with slot fill + duplicate guard + onConflict */
+/* Matches upsert with slot fill + duplicate guard + onConflict */
 if (body.matches?.upsert?.length) {
   const rows = body.matches.upsert.map(m => ({ ...m, tournament_id: tournamentId }));
 
-  // Split by type
-  const koRowsAll = rows.filter(r => r.round != null && r.bracket_pos != null);
-  const lgRowsAll = rows.filter(r => r.round == null);
+  // Split by type based on is_ko column
+  const koRowsAll = rows.filter(r => r.is_ko);  // KO matches where is_ko = true
+  const lgRowsAll = rows.filter(r => !r.is_ko); // Non-KO matches where is_ko = false
 
-  // Fill missing bracket_pos per (stage, group, matchday)
-  const buckets = new Map<string, any[]>();
-  for (const r of lgRowsAll) {
-    const k = `${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}`;
-    (buckets.get(k) ?? (buckets.set(k, []), buckets.get(k)!)).push(r);
-  }
-  for (const arr of buckets.values()) {
-    arr.sort((a,b) => (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0) || (a.id ?? 0) - (b.id ?? 0));
-    let pos = 1;
-    for (const r of arr) if (r.bracket_pos == null) r.bracket_pos = pos++;
-  }
-
-  // Guard: duplicates inside this payload
+  // Guard: Check for duplicates inside this payload
   const dup: string[] = [];
   const seen = new Set<string>();
   for (const r of lgRowsAll) {
@@ -423,6 +414,7 @@ if (body.matches?.upsert?.length) {
       home_source_bracket_pos: r.home_source_bracket_pos ?? null,
       away_source_round: r.away_source_round ?? null,
       away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+      is_ko: r.is_ko ?? false,  // Update the is_ko flag during the update
     }).eq("id", r.id as number);
 
     if (!forceMatches && r.updated_at) q = q.eq("updated_at", r.updated_at);
@@ -446,6 +438,7 @@ if (body.matches?.upsert?.length) {
   const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
   const created: any[] = [];
 
+  // KO Matches - Use (stage_id, round, bracket_pos) as natural keys
   if (koRowsAll.some(r => r.id == null)) {
     const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
     const { data, error } = await supabaseAdmin
@@ -456,6 +449,7 @@ if (body.matches?.upsert?.length) {
     created.push(...(data ?? []));
   }
 
+  // Non-KO Matches - Use (stage_id, group_id, matchday, bracket_pos) as natural keys
   if (lgRowsAll.some(r => r.id == null)) {
     const toCreateLG = lgRowsAll.filter(r => r.id == null).map(strip);
     const { data, error } = await supabaseAdmin
@@ -468,6 +462,7 @@ if (body.matches?.upsert?.length) {
 
   out.matches = [...updated, ...created];
 }
+
     // ===== KO ID RESOLUTION (no RPC) ======================================
     const upsertStageIds = Array.from(
       new Set((body.matches?.upsert ?? []).map((r) => r.stage_id).filter(Boolean))

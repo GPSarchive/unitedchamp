@@ -1,10 +1,9 @@
-// app/dashboard/tournaments/TournamentCURD/stages/StageCard.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft } from "../TournamentWizard";
-
+import  KnockoutConfigFromLeague from "./leauge/KnockoutConfigFromLeague";
 import GroupsBoard from "./groups/GroupsBoard";
 import KnockoutBoard from "./KnockoutTree/newknockout/KnockoutBoard";
 import GroupsConfigKOIntake from "./groups/GroupsConfigKOIntake";
@@ -327,6 +326,7 @@ export default function StageCard({
                 kind: nextKind as any,
                 ...(nextKind !== "groups" ? { groups: [] } : {}),
                 config: cfgPatch,
+                is_ko: nextKind === "knockout",  // Ensure is_ko is set when changing to knockout
               } as any);
             }}
           >
@@ -426,7 +426,7 @@ export default function StageCard({
       {/* Config: League */}
       {isLeague && (
         <div className="mt-4">
-          <LeagueConfig cfg={cfg} setCfg={(p) => setCfg(p)} />
+          {/*<LeagueConfig cfg={cfg} setCfg={(p) => setCfg(p)} />*/}
         </div>
       )}
 
@@ -462,7 +462,7 @@ export default function StageCard({
 
 function newMiniPayload(
   allStages: NewTournamentPayload["stages"],
-  teams: TeamDraft[]
+  teams: TeamDraft[] 
 ): NewTournamentPayload {
   return {
     tournament: {
@@ -479,234 +479,4 @@ function newMiniPayload(
     stages: allStages as any,
     tournament_team_ids: teams.map((t) => t.id),
   };
-}
-
-/* -------------------------------------------------------
-   League config (rounds per opponent, double round, shuffle)
-   ------------------------------------------------------- */
-function LeagueConfig({
-  cfg,
-  setCfg,
-}: {
-  cfg: StageConfig;
-  setCfg: (patch: Partial<StageConfig>) => void;
-}) {
-  const repeats =
-    (cfg as any).rounds_per_opponent ??
-    (cfg as any)["αγώνες_ανά_αντίπαλο"] ??
-    ((cfg as any).double_round || (cfg as any)["διπλός_γύρος"] ? 2 : 1);
-
-  const doubleRound = !!((cfg as any).double_round ?? (cfg as any)["διπλός_γύρος"]);
-  const shuffle = !!((cfg as any).shuffle ?? (cfg as any)["τυχαία_σειρά"]);
-  const limitMds = (cfg as any).limit_matchdays ?? (cfg as any)["μέγιστες_αγωνιστικές"] ?? "";
-  const allowDraws = (cfg as any).allow_draws ?? true;
-
-  return (
-    <fieldset className="rounded-lg border border-gray-800 bg-black p-4 space-y-3">
-      <legend className="px-1 text-white/90 text-sm">Ρυθμίσεις Πρωταθλήματος</legend>
-
-      <div className="grid sm:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-white text-sm mb-1">Αγώνες ανά αντίπαλο</label>
-          <input
-            type="number"
-            min={1}
-            className="w-28 rounded-lg bg-black border border-gray-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40"
-            value={repeats}
-            onChange={(e) =>
-              setCfg({ rounds_per_opponent: Math.max(1, Number(e.target.value) || 1) })
-            }
-          />
-          <p className={helperText}>1 = μονός γύρος, 2 = διπλός, κ.ο.κ.</p>
-        </div>
-
-        <div className="flex items-end">
-          <label className="inline-flex items-center gap-2 text-white text-sm">
-            <input
-              type="checkbox"
-              className="accent-white"
-              checked={doubleRound}
-              onChange={(e) => setCfg({ double_round: e.target.checked })}
-            />
-            Διπλός γύρος (συντόμευση)
-          </label>
-        </div>
-
-        <div className="flex items-end">
-          <label className="inline-flex items-center gap-2 text-white text-sm">
-            <input
-              type="checkbox"
-              className="accent-white"
-              checked={shuffle}
-              onChange={(e) => setCfg({ shuffle: e.target.checked })}
-            />
-            Τυχαία σειρά
-          </label>
-        </div>
-
-        <div className="sm:col-span-3">
-          <label className="block text-white text-sm mb-1">
-            Μέγιστες αγωνιστικές (προαιρετικό)
-          </label>
-          <input
-            type="number"
-            min={1}
-            className="w-36 rounded-lg bg-black border border-gray-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40"
-            value={limitMds}
-            onChange={(e) =>
-              setCfg({
-                limit_matchdays:
-                  e.target.value === "" ? undefined : Math.max(1, Number(e.target.value) || 1),
-              })
-            }
-          />
-          <p className={helperText}>Αν οριστεί, κόβει το πρόγραμμα στις πρώτες Ν αγωνιστικές.</p>
-        </div>
-
-        {/* Allow draws */}
-        <div className="sm:col-span-3">
-          <label className="inline-flex items-center gap-2 text-white text-sm">
-            <input
-              type="checkbox"
-              className="accent-white"
-              checked={allowDraws}
-              onChange={(e) => setCfg({ allow_draws: e.target.checked })}
-            />
-            Επιτρέπονται ισοπαλίες
-          </label>
-        </div>
-      </div>
-    </fieldset>
-  );
-}
-
-/* -------------------------------------------------------
-   Inline KO-from-League (and Standalone) config
-   ------------------------------------------------------- */
-function KnockoutConfigFromLeague({
-  cfg,
-  setCfg,
-  allStages,
-  stageIndex,
-}: {
-  cfg: StageConfig;
-  setCfg: (patch: Partial<StageConfig>) => void;
-  allStages: NewTournamentPayload["stages"];
-  stageIndex: number;
-}) {
-  const koSourceSelectValue = Number.isFinite((cfg as any).from_stage_idx as any)
-    ? String((cfg as any).from_stage_idx)
-    : "";
-
-  const srcKind =
-    Number.isFinite((cfg as any).from_stage_idx as any)
-      ? (allStages[Number((cfg as any).from_stage_idx)] as any)?.kind
-      : null;
-
-  const isFromLeague = srcKind === "league";
-
-  const advancersCount = (cfg as any).advancers_total ?? 4;
-  const standaloneSize = (cfg as any).standalone_bracket_size ?? "";
-
-  return (
-    <fieldset className="rounded-lg border border-gray-800 bg-black p-4 space-y-4">
-      <legend className="px-1 text-white/90 text-sm">
-        Knockout — Προέλευση (Πρωτάθλημα ή Αυτόνομο)
-      </legend>
-
-      <div>
-        <label className="block text-white text-sm mb-1">Προέλευση</label>
-        <select
-          className={selectBase}
-          value={koSourceSelectValue}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (!v) {
-              setCfg({ from_stage_idx: undefined });
-            } else {
-              setCfg({ from_stage_idx: Math.max(0, Number(v) || 0) });
-            }
-          }}
-        >
-          <option value="">Αυτόνομο (μόνο seeds)</option>
-          {allStages.map((s, i) =>
-            (s as any)?.kind === "league" && i < stageIndex ? (
-              <option key={i} value={i}>
-                #{i} — {(s as any)?.name || "Πρωτάθλημα"}
-              </option>
-            ) : null
-          )}
-          {allStages.map((s, i) =>
-            (s as any)?.kind === "groups" && i < stageIndex ? (
-              <option key={`g-${i}`} value={i}>
-                #{i} — {(s as any)?.name || "Όμιλοι"}
-              </option>
-            ) : null
-          )}
-        </select>
-        <p className={helperText}>
-          Επιλέξτε προηγούμενο στάδιο Πρωταθλήματος (League) ή αφήστε «Αυτόνομο» για bracket μόνο από
-          seeds.
-        </p>
-      </div>
-
-      {isFromLeague ? (
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-white text-sm mb-1">Σύνολο Προκρινόμενων</label>
-            <input
-              type="number"
-              min={2}
-              className="w-36 rounded-lg bg-black border border-gray-700 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40"
-              value={advancersCount}
-              onChange={(e) =>
-                setCfg({
-                  advancers_total: Math.max(2, Number(e.target.value) || 2),
-                })
-              }
-            />
-            <p className={helperText}>
-              Π.χ. 4, 8, 16… Οι ομάδες προκύπτουν από την <strong>τελική βαθμολογία</strong>.
-            </p>
-          </div>
-          <div className="rounded-md border border-gray-800 bg-black p-3 sm:col-span-2">
-            <p className="text-xs text-gray-200">
-              Η επιλογή γίνεται με βάση την <strong>κατάταξη</strong> του πρωταθλήματος (όχι seed).
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-white text-sm mb-1">Μέγεθος Πλέι-οφ</label>
-            <select
-              className={selectBase}
-              value={standaloneSize}
-              onChange={(e) =>
-                setCfg({
-                  standalone_bracket_size: e.target.value
-                    ? Math.max(2, Number(e.target.value) || 0)
-                    : undefined,
-                })
-              }
-            >
-              <option value="">Αυτόματο (όλες οι ομάδες)</option>
-              <option value={4}>4</option>
-              <option value={8}>8</option>
-              <option value={16}>16</option>
-              <option value={32}>32</option>
-            </select>
-            <p className={helperText}>
-              Αν δεν είναι δύναμη του 2, δημιουργούνται byes με βάση τα seeds.
-            </p>
-          </div>
-          <div className="rounded-md border border-gray-800 bg-black p-3 sm:col-span-2">
-            <p className="text-xs text-gray-200">
-              Το αυτόνομο νοκ-άουτ γεμίζει με τις κορυφαίες ομάδες κατά <strong>seed</strong>.
-            </p>
-          </div>
-        </div>
-      )}
-    </fieldset>
-  );
 }

@@ -242,6 +242,7 @@ export function generateDraftMatches({
               bracket_pos: i + 1,
               team_a_id: pair[0] ?? null,
               team_b_id: pair[1] ?? null,
+              is_ko: true, // Add KO marker
             });
           });
 
@@ -256,6 +257,7 @@ export function generateDraftMatches({
             away_source_round: 1,
             away_source_bracket_pos: 2,
             away_source_outcome: "W",
+            is_ko: true, // Add KO marker
           });
 
           return;

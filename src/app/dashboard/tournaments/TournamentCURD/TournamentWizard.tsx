@@ -1,8 +1,6 @@
-// app/dashboard/tournaments/TournamentCURD/TournamentWizard.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { generateDraftMatches } from "./util/Generators";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import TournamentBasicsForm from "./basics/TournamentBasicsForm";
 import ValidationSummary from "./shared/ValidationSummary";
@@ -31,28 +29,29 @@ export type TeamDraft = {
  * (Kept for types used elsewhere.)
  */
 export type DraftMatch = {
-db_id?: number | null;
-updated_at?: string | null;  // Add this to resolve the type error
-stageIdx: number;
-groupIdx?: number | null;
-bracket_pos?: number | null;
-matchday?: number | null;
-match_date?: string | null;
-team_a_id?: number | null;
-team_b_id?: number | null;
-round?: number | null;
-status?: "scheduled" | "finished" | null;
-team_a_score?: number | null;
-team_b_score?: number | null;
-winner_team_id?: number | null;
-home_source_match_idx?: number | null;
-away_source_match_idx?: number | null;
-home_source_outcome?: "W" | "L" | null;
-away_source_outcome?: "W" | "L" | "L" | null;
-home_source_round?: number | null;
-home_source_bracket_pos?: number | null;
-away_source_round?: number | null;
-away_source_bracket_pos?: number | null;
+  db_id?: number | null;
+  updated_at?: string | null;  // Add this to resolve the type error
+  stageIdx: number;
+  groupIdx?: number | null;
+  bracket_pos?: number | null;
+  matchday?: number | null;
+  match_date?: string | null;
+  team_a_id?: number | null;
+  team_b_id?: number | null;
+  round?: number | null;
+  status?: "scheduled" | "finished" | null;
+  is_ko: boolean | null;  
+  team_a_score?: number | null;
+  team_b_score?: number | null;
+  winner_team_id?: number | null;
+  home_source_match_idx?: number | null;
+  away_source_match_idx?: number | null;
+  home_source_outcome?: "W" | "L" | null;
+  away_source_outcome?: "W" | "L" | "L" | null;
+  home_source_round?: number | null;
+  home_source_bracket_pos?: number | null;
+  away_source_round?: number | null;
+  away_source_bracket_pos?: number | null;
 };
 
 export type WizardMode = "create" | "edit";
@@ -211,103 +210,21 @@ export default function TournamentWizard({
 
   // apply Stage & Group changes from the wizard props down into the store (best-effort diff)
   const syncStagesIntoStore = (prevStages: any[], nextStages: any[]) => {
-    // upsert/update stages in order
     nextStages.forEach((s, i) => {
       upsertStage(i, { name: s.name, kind: s.kind, config: s.config ?? null });
       const groups: any[] = Array.isArray(s.groups) ? s.groups : [];
-      // upsert/update groups for this stage
       groups.forEach((g, gi) => {
         upsertGroup(i, gi, { name: g?.name ?? `Group ${gi + 1}`, ordering: gi });
       });
 
-      // remove any trailing groups that existed before but not now
       const prevGroupCount = Array.isArray(prevStages[i]?.groups) ? prevStages[i].groups.length : 0;
       for (let gi = prevGroupCount - 1; gi >= groups.length; gi--) {
         removeGroup(i, gi);
       }
     });
 
-    // remove trailing stages that no longer exist
     for (let si = prevStages.length - 1; si >= nextStages.length; si--) {
       removeStage(si);
-    }
-  };
-
-  // Reassign contiguous seeds (1..N) based on current ordering, then persist teams list
-  const handleAutoAssignTeamSeeds = (): number[] => {
-    const seeded = teams
-      .map((t) => ({ ...t, seedNorm: t.seed ?? null }))
-      .sort((a, b) => {
-        const A = a.seedNorm,
-          B = b.seedNorm;
-        if (A != null && B != null) return A - B;
-        if (A != null) return -1;
-        if (B != null) return 1;
-        const an = (a.name ?? "").toLowerCase();
-        const bn = (b.name ?? "").toLowerCase();
-        if (an !== bn) return an < bn ? -1 : 1;
-        return a.id - b.id;
-      });
-
-    const reassigned = seeded.map((t, i) => ({ ...t, seed: i + 1 }));
-    setTeams(reassigned);
-    return reassigned.map((t) => t.id);
-  };
-
-  // Regenerate fixtures from generators keeping DB/live fields where possible
-  const regenerateKeepingDB = () => {
-    const fresh = generateDraftMatches({ payload, teams });
-
-    const key = (m: DraftMatch) =>
-      [
-        m.stageIdx,
-        m.groupIdx ?? "",
-        m.round ?? "",
-        m.bracket_pos ?? "",
-        m.matchday ?? "",
-        m.home_source_round ?? "",
-        m.home_source_bracket_pos ?? "",
-        m.away_source_round ?? "",
-        m.away_source_bracket_pos ?? "",
-        Math.min(m.team_a_id ?? 0, m.team_b_id ?? 0),  // NEW
-        Math.max(m.team_a_id ?? 0, m.team_b_id ?? 0),  // NEW
-      ].join("|");
-
-    const oldByKey = new Map(storeDraftMatches.map((m) => [key(m), m]));
-    const merged = fresh.map((f) => {
-      const old = oldByKey.get(key(f));
-      return old
-        ? {
-            ...f,
-            db_id: old.db_id ?? null,
-            status: old.status ?? null,
-            team_a_score: old.team_a_score ?? null,
-            team_b_score: old.team_b_score ?? null,
-            winner_team_id: old.winner_team_id ?? null,
-          }
-        : f;
-    });
-
-    // Detect deletions: old matches not in new set
-    const newKeys = new Set(merged.map(key));
-    const deletions: number[] = [];
-    storeDraftMatches.forEach((oldMatch) => {
-      const oldKey = key(oldMatch);
-      if (!newKeys.has(oldKey) && oldMatch.db_id && oldMatch.db_id > 0) {
-        deletions.push(oldMatch.db_id);
-      }
-    });
-
-    replaceAllDraftMatches(merged);
-
-    // Queue deletions if any (accumulate)
-    if (deletions.length > 0) {
-      useTournamentStore.setState((curr) => ({
-        dirty: {
-          ...curr.dirty,
-          deletedMatchIds: new Set([...curr.dirty.deletedMatchIds, ...deletions]),
-        },
-      }));
     }
   };
 
@@ -368,11 +285,8 @@ export default function TournamentWizard({
             stages={payload.stages}
             onChange={(nextStages) => {
               const prevStages = prevStagesRef.current;
-              // 1) update local payload
               setPayload((p) => ({ ...p, stages: nextStages }));
-              // 2) reflect edits into the store (best-effort diff)
               syncStagesIntoStore(prevStages, nextStages);
-              // 3) remember for next diff
               prevStagesRef.current = nextStages;
             }}
             teams={teams}
@@ -380,17 +294,11 @@ export default function TournamentWizard({
         </div>
       </div>
 
-      {/* 4) Regenerate & Save */}
+      {/* 4) Save */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <h3 className="text-cyan-200 font-semibold">Fixtures</h3>
-          <button
-            type="button"
-            onClick={regenerateKeepingDB}
-            className="ml-auto px-3 py-2 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          >
-            Regenerate fixtures
-          </button>
+          {/* Removed the Regenerate Fixtures Button */}
         </div>
       </div>
 

@@ -1,4 +1,3 @@
-// app/dashboard/tournaments/TournamentCURD/stages/StageList.tsx
 "use client";
 
 import StageCard from "./StageCard";
@@ -26,41 +25,50 @@ export default function StageList({
   const add = () => {
     const nextStage = {
       name: `Stage ${stages.length + 1}`,
-      kind: "league",
+      kind: "league", // default to "league"
       ordering: stages.length + 1,
-      // sensible league defaults so multi-round RR works out of the box
+      is_ko: false,  // default to false (not KO)
       config: {
         interval_days: 7,
         rounds_per_opponent: 1,
         double_round: false,
         shuffle: false,
       },
-      // keep groups empty by default; StageCard handles creating groups when switching to "groups"
-      groups: [],
+      groups: [],  // keep groups empty by default
     } as any;
-
+  
+    // Automatically set is_ko based on kind
+    nextStage.is_ko = nextStage.kind === "knockout";
+  
     // Persist in store (source of truth)
     storeUpsertStage(stages.length, {
       name: nextStage.name,
       kind: nextStage.kind as any,
+      is_ko: nextStage.is_ko, // pass is_ko property
       config: nextStage.config,
     });
-
+  
     // Mirror to local wizard payload for UI
     onChange([...stages, nextStage]);
   };
+  
 
   const update = (idx: number, patch: Partial<(typeof stages)[number]>) => {
     // Persist in store first
-    const { name, kind, config } = patch as any;
-    if (name != null || kind != null || config != null) {
+    const { name, kind, is_ko, config } = patch as any;
+  
+    // Automatically set is_ko based on kind if not provided
+    const updatedIsKo = kind === "knockout" ? true : is_ko ?? false;
+  
+    if (name != null || kind != null || updatedIsKo != null || config != null) {
       storeUpsertStage(idx, {
         ...(name != null ? { name } : {}),
         ...(kind != null ? { kind: kind as any } : {}),
+        ...(updatedIsKo != null ? { is_ko: updatedIsKo } : {}),
         ...(config != null ? { config } : {}),
       });
     }
-
+  
     // If switching away from "groups", remove groups in the STORE as well
     if ((patch as any).kind && (patch as any).kind !== "groups") {
       const existing = storeListGroupsForStageIdx(idx);
@@ -69,19 +77,19 @@ export default function StageList({
         storeRemoveGroup(idx, gi);
       }
     }
-
+  
     // Mirror to local wizard payload for UI
     const next = stages.slice();
-    // preserve existing id
     next[idx] = { id: (stages as any)[idx]?.id, ...next[idx], ...patch } as any;
-
+  
     // when switching away from groups, clear groups in local payload
     if ((patch as any).kind && (patch as any).kind !== "groups") {
       (next[idx] as any).groups = [];
     }
-
+  
     onChange(next);
   };
+  
 
   const remove = (idx: number) => {
     // Persist in store

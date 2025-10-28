@@ -1,4 +1,3 @@
-//app/dashboard/tournaments/TournamentCURD/util/functions/roundRobin.ts
 import type { DraftMatch } from "../../TournamentWizard";
 
 /** Standard round-robin (circle method), with N repeats and optional BYE handling. */
@@ -9,8 +8,9 @@ export function genRoundRobin(opts: {
   repeats: number;           // 1 = single, 2 = double, 3+ = multi
   startDate: Date | null;    // not used for generation here
   intervalDays: number;      // not used for generation here
+  isKO?: boolean;            // added support for KO stages
 }): DraftMatch[] {
-  const { stageIdx, groupIdx } = opts;
+  const { stageIdx, groupIdx, isKO } = opts;
   const repeats = Math.max(1, Math.floor(opts.repeats || 1));
 
   const ids = opts.teamIds.slice();
@@ -48,21 +48,39 @@ export function genRoundRobin(opts: {
   // Ensure md increments across repeats
   const out: DraftMatch[] = [];
   let globalMd = 1;  // NEW: Global matchday counter across all repeats
+
   for (let rep = 1; rep <= repeats; rep++) {
     const flip = rep % 2 === 0; // even repeats flip home/away
 
     for (let r = 0; r < rounds; r++) {
       for (const [A, B] of basePairs[r]) {
-        out.push({
-          stageIdx,
-          groupIdx,
-          matchday: globalMd,  // NEW: Use global counter
-          team_a_id: flip ? B : A,
-          team_b_id: flip ? A : B,
-          match_date: null,
-          round: null,
-          bracket_pos: null,
-        });
+        if (isKO) {
+          // Handle KO match generation with bracket positions and rounds
+          out.push({
+            stageIdx,
+            groupIdx,
+            matchday: globalMd,  // NEW: Use global counter
+            team_a_id: flip ? B : A,
+            team_b_id: flip ? A : B,
+            match_date: null,
+            round: r + 1,  // Example: First round, second round, etc.
+            bracket_pos: (r + 1) * 2,  // Example: Bracket positions start from 2
+            is_ko: true, // KO mark
+          });
+        } else {
+          // Handle normal round-robin matches
+          out.push({
+            stageIdx,
+            groupIdx,
+            matchday: globalMd,  // NEW: Use global counter
+            team_a_id: flip ? B : A,
+            team_b_id: flip ? A : B,
+            match_date: null,
+            round: null,
+            bracket_pos: null,
+            is_ko: false,  // Mark as not a KO match
+          });
+        }
       }
       globalMd++;  // Increment after each round (matchday)
     }

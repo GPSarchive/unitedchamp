@@ -97,35 +97,44 @@ export default async function PaiktesPage({
   const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
+  // Updated: Fetch all player_teams, not just for current. Order by updated_at DESC for recency.
   const { data: ptRows, error: ptErr } = await supabaseAdmin
     .from("player_teams")
     .select("player_id, team_id, created_at, updated_at")
+    .in("player_id", playerIds) // Filter to relevant players
     .order("player_id", { ascending: true })
     .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (ptErr) console.error("[paiktes] player_teams query error:", ptErr.message);
 
-  const currentTeamIdByPlayer = new Map<number, number>();
-  for (const r of (ptRows ?? []) as PlayerTeamRow[]) {
-    if (!currentTeamIdByPlayer.has(r.player_id) && r.team_id != null) {
-      currentTeamIdByPlayer.set(r.player_id, r.team_id);
-    }
-  }
+  // Updated: Collect all unique team_ids across all player_teams
+  const allTeamIdsSet = new Set((ptRows ?? []).map((r: PlayerTeamRow) => r.team_id).filter(Boolean));
+  const allTeamIds = Array.from(allTeamIdsSet);
 
-  const teamIds = Array.from(new Set(Array.from(currentTeamIdByPlayer.values())));
-  const { data: teams } = teamIds.length
-    ? await supabaseAdmin.from("teams").select("id, name, logo").in("id", teamIds)
+  // Updated: Fetch all relevant teams (for multi-teams)
+  const { data: teams } = allTeamIds.length
+    ? await supabaseAdmin.from("teams").select("id, name, logo").in("id", allTeamIds)
     : { data: [] as TeamRow[] };
 
   const teamEntries = await Promise.all(
     (teams ?? []).map(async (t) => {
       const signedLogo = await signIfStoragePath(t.logo ?? null);
-      return [t.id, { name: t.name ?? "", logo: signedLogo }] as const;
+      return [t.id, { id: t.id, name: t.name ?? "", logo: signedLogo }] as const;
     })
   );
-  const teamMap: Record<number, { name: string; logo: string | null }> =
+  const teamMap: Record<number, { id: number; name: string; logo: string | null }> =
     Object.fromEntries(teamEntries);
+
+  // Updated: Group teams by player_id (all teams, not just latest)
+  const teamsByPlayer = new Map<number, { id: number; name: string; logo: string | null }[]>();
+  for (const r of (ptRows ?? []) as PlayerTeamRow[]) {
+    if (r.team_id != null) {
+      if (!teamsByPlayer.has(r.player_id)) teamsByPlayer.set(r.player_id, []);
+      const teamData = teamMap[r.team_id];
+      if (teamData) teamsByPlayer.get(r.player_id)!.push(teamData);
+    }
+  }
 
   const { data: statsRows } = playerIds.length
     ? await supabaseAdmin
@@ -191,8 +200,8 @@ export default async function PaiktesPage({
           )
         : null;
 
-      const team_id = currentTeamIdByPlayer.get(pl.id) ?? null;
-      const team = team_id ? teamMap[team_id] ?? null : null;
+      // Updated: Use all teams for this player (array, sorted by recency if needed)
+      const playerTeams = teamsByPlayer.get(pl.id) ?? [];
 
       const totals = totalsByPlayer.get(pl.id);
       const matches = matchesByPlayer.get(pl.id)?.size ?? 0;
@@ -212,7 +221,8 @@ export default async function PaiktesPage({
         height_cm: pl.height_cm ?? null,
         birth_date: pl.birth_date ?? null,
         age,
-        team: team ? { id: team_id!, name: team.name, logo: team.logo } : null,
+        teams: playerTeams, // New: Array of all teams
+        team: playerTeams[0] ?? null, // Fallback to first (latest) for singular if needed
         matches,
         goals: totals?.total_goals ?? 0,
         assists: totals?.total_assists ?? 0,

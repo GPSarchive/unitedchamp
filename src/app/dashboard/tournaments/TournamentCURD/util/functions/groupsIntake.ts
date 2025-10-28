@@ -113,6 +113,7 @@ export function computeIntakeSlotsPerGroup(
   return buckets.map((arr) => arr.length);
 }
 
+
 /**
  * Generate a SKELETON round-robin for a group with N slots (unknown teams).
  * team_a_id/team_b_id are left null; only matchday/round-robin shape is produced.
@@ -152,6 +153,7 @@ export function genGroupSkeletonRoundRobin(opts: {
         team_a_id: null, // unknown until KO finishes
         team_b_id: null, // unknown until KO finishes
         match_date: null,
+        is_ko: false,
       });
     }
   };
@@ -179,7 +181,7 @@ export function genGroupSkeletonRoundRobin(opts: {
           matchday: md,
           team_a_id: null,
           team_b_id: null,
-          match_date: null,
+          match_date: null,is_ko:true
         });
       }
     }
@@ -187,6 +189,7 @@ export function genGroupSkeletonRoundRobin(opts: {
 
   return out;
 }
+
 
 /* ----------------------------- helpers ----------------------------- */
 

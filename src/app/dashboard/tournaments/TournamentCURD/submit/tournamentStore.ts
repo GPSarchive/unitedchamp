@@ -560,6 +560,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         home_source_bracket_pos: m.home_source_bracket_pos ?? null,
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+        is_ko: m.round != null && m.bracket_pos != null, // Set based on KO logic
+
       };
       const sig = rowSignature(uiRow);
       overlay[sig] = {
@@ -689,6 +691,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         home_source_bracket_pos: m.home_source_bracket_pos ?? null,
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+        is_ko: m.round != null && m.bracket_pos != null, // Set based on KO logic
       };
       const sig = rowSignature(uiRow);
       overlay[sig] = {

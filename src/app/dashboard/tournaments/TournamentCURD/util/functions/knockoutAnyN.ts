@@ -1,4 +1,3 @@
-// app/dashboard/tournaments/TournamentCURD/util/functions/knockoutAnyN.ts
 import type { DraftMatch } from "../../TournamentWizard";
 
 /**
@@ -87,6 +86,7 @@ export function genKnockoutAnyN(
         team_a_id: a.teamId,
         team_b_id: b.teamId,
         match_date: null,
+        is_ko: true, // Mark as knockout match
       });
       entries[2][pos - 1] = { from: { round: 1, pos } };
     } else {
@@ -117,6 +117,7 @@ export function genKnockoutAnyN(
         team_a_id: null,
         team_b_id: null,
         match_date: null,
+        is_ko: true, // Mark as knockout match
       };
 
       const L_from = left?.from;

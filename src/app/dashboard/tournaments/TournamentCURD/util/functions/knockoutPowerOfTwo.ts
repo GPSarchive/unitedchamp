@@ -1,4 +1,3 @@
-//app/dashboard/tournaments/TournamentCURD/util/functions/knockoutPowerOfTwo.ts
 import type { DraftMatch } from "../../TournamentWizard";
 import { buildSeedPositions, pairArray, wireKnockoutSources } from "./common";
 
@@ -26,7 +25,8 @@ export function genKnockoutPowerOfTwo(teamIds: number[], stageIdx: number): Draf
 
     pairs.forEach((pair, i) => {
       const [A, B] = pair;
-      const match: DraftMatch = { stageIdx, round, bracket_pos: i + 1 };
+      const match: DraftMatch = { stageIdx, round, bracket_pos: i + 1, is_ko: true }; // KO match
+
       if (A != null) match.team_a_id = A;
       if (B != null) match.team_b_id = B;
 
