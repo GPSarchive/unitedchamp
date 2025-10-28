@@ -16,6 +16,7 @@ function paletteIndexFromString(str: string) {
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
   return h % PALETTE.length;
 }
+
 function accentFor(key: string) {
   const sw = PALETTE[paletteIndexFromString(key)];
   return {
@@ -52,6 +53,7 @@ function hhmm(naiveIso: string) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):/.exec(naiveIso);
   return m ? `${m[4]}:${m[5]}` : '';
 }
+
 function scoreText(item: ClusterItem) {
   if (item.status === 'finished' && item.score && item.score.length === 2) {
     const [a, b] = item.score;
@@ -59,6 +61,7 @@ function scoreText(item: ClusterItem) {
   }
   return null;
 }
+
 function paneHeight(index: number, total: number, active: number | null) {
   const EXPANDED_PCT = 75;
   const REST_PCT = 100 - EXPANDED_PCT;
@@ -91,30 +94,42 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
 
     const el = containerRef.current;
     let startY = 0;
+    let isSwiping = false;
 
     const handleTouchStart = (e: TouchEvent) => {
       startY = e.touches[0].clientY;
+      isSwiping = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const moveY = e.touches[0].clientY;
+      const delta = Math.abs(moveY - startY);
+      // If the user moves enough (e.g., more than 50px), consider it a swipe
+      if (delta > 50) {
+        isSwiping = true;
+      }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
       const endY = e.changedTouches[0].clientY;
       const delta = endY - startY;
-      const threshold = 50;
 
-      if (Math.abs(delta) < threshold) return;
+      if (!isSwiping) return; // Don't handle if it's not a swipe.
 
+      // If the swipe was large enough, handle navigation
       setActive((prev) => {
         if (prev == null) return delta > 0 ? 0 : items.length - 1;
-        if (delta > 0) return (prev + 1) % items.length; // swipe down: next
-        return (prev - 1 + items.length) % items.length; // swipe up: prev
+        return delta > 0 ? (prev + 1) % items.length : (prev - 1 + items.length) % items.length;
       });
     };
 
     el.addEventListener('touchstart', handleTouchStart);
+    el.addEventListener('touchmove', handleTouchMove);
     el.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
       el.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isMobile, items.length]);
@@ -220,7 +235,6 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
                     )}
                   </AnimatePresence>
 
-
                   {/* Expanded placement: centered grid in full card */}
                   <AnimatePresence initial={false} mode="wait">
                     {expanded && (
@@ -321,7 +335,6 @@ const MultiMatchCluster = ({ items }: MultiMatchClusterProps) => {
                         </button>
                       </div>
 
-                      
                       {isMobile && (
                         <div className="absolute bottom-2 left-0 right-0 flex justify-center">
                           <button

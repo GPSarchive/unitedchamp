@@ -418,57 +418,57 @@ function ProfileCardComponent({
                 </div>
                 
                 {showStats && (
-                <div className={styles["pc-stats"]}>
-                  {/* Player name as first item */}
-                  <div className={styles["pc-player-name"]}>
-                    {name}
+              <div className={`${styles["pc-stats"]} mt-auto`}>
+                {/* Player name as first item */}
+                <div className={`${styles["pc-player-name"]} text-3xl font-bold mb-6`}>
+                  {name}
+                </div>
+
+                {/* Stats container with grid */}
+                <div className={`${styles["pc-stats-container"]} grid grid-cols-3 gap-8`}>
+                  {/* Teams */}
+                  {teams.length > 0 && (
+                    <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                      <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Teams</span>
+                      <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>
+                        {teams.map((team) => team.name).join(', ')}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Goals */}
+                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Goals</span>
+                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{totalGoals}</span>
                   </div>
 
-                  {/* Stats container with flex row */}
-                  <div className={`${styles["pc-stats-container"]} flex flex-row flex-wrap justify-start gap-4`}>
-                    {/* Teams */}
-                    {teams.length > 0 && (
-                      <div className={styles["pc-stat-item"]}>
-                        <span className={styles["pc-stat-field"]}>Teams</span>
-                        <span className={styles["pc-stat-value"]}>
-                          {teams.map((team) => team.name).join(', ')}
-                        </span>
-                      </div>
-                    )}
+                  {/* Assists */}
+                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Assists</span>
+                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{totalAssists}</span>
+                  </div>
 
-                    {/* Goals */}
-                    <div className={styles["pc-stat-item"]}>
-                      <span className={styles["pc-stat-field"]}>Goals</span>
-                      <span className={styles["pc-stat-value"]}>{totalGoals}</span>
+                  {/* MVP */}
+                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>MVP</span>
+                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{mvpAwards}</span>
+                  </div>
+
+                  {/* Best GK (if >=1) */}
+                  {bestGkAwards >= 1 && (
+                    <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                      <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Best GK</span>
+                      <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{bestGkAwards}</span>
                     </div>
+                  )}
 
-                    {/* Assists */}
-                    <div className={styles["pc-stat-item"]}>
-                      <span className={styles["pc-stat-field"]}>Assists</span>
-                      <span className={styles["pc-stat-value"]}>{totalAssists}</span>
-                    </div>
-
-                    {/* MVP */}
-                    <div className={styles["pc-stat-item"]}>
-                      <span className={styles["pc-stat-field"]}>MVP</span>
-                      <span className={styles["pc-stat-value"]}>{mvpAwards}</span>
-                    </div>
-
-                    {/* Best GK (if >=1) */}
-                    {bestGkAwards >= 1 && (
-                      <div className={styles["pc-stat-item"]}>
-                        <span className={styles["pc-stat-field"]}>Best GK</span>
-                        <span className={styles["pc-stat-value"]}>{bestGkAwards}</span>
-                      </div>
-                    )}
-
-                    {/* Matches */}
-                    <div className={styles["pc-stat-item"]}>
-                      <span className={styles["pc-stat-field"]}>Matches</span>
-                      <span className={styles["pc-stat-value"]}>{matchesPlayed}</span>
-                    </div>
+                  {/* Matches */}
+                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
+                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Matches</span>
+                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{matchesPlayed}</span>
                   </div>
                 </div>
+              </div>
               )}
               </div>
             )}
