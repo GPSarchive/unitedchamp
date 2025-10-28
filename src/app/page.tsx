@@ -315,7 +315,7 @@ export default async function Home() {
               />
             </div>*/}
 
-            <div className="w-full sm:max-w-[640px] lg:max-w-[880px] pointer-events-auto">
+            <div className="w-full sm:max-w-[440px] md:max-w-[440px] lg:max-w-[880px] pointer-events-auto">
               <RecentMatchesTabs
                 className="mt-10 lg:mt-0"
                 pageSize={12}
