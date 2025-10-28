@@ -3,14 +3,8 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import type { Match } from "@/app/lib/types";
 import { FaCalendarAlt, FaTrophy, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-
-interface MatchesTimelineProps {
-  matches: Match[] | null;
-  teamId: number;
-  errorMessage?: string | null;
-}
+import { Match } from "@/app/lib/types";
 
 const dtf = new Intl.DateTimeFormat("el-GR", {
   dateStyle: "medium",
@@ -23,18 +17,23 @@ function formatDate(iso: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? "—" : dtf.format(d);
 }
 
-// Safe time extractor: invalid or missing dates go to the bottom
 function timeValue(iso: string | null | undefined) {
   if (!iso) return -Infinity;
   const t = new Date(iso).getTime();
   return Number.isNaN(t) ? -Infinity : t;
 }
 
-export default function MatchesTimeline({
+interface TeamMatchesTimelineProps {
+  matches: Match[] | null;
+  teamId: number;
+  errorMessage?: string | null;
+}
+
+export default function TeamMatchesTimeline({
   matches,
   teamId,
   errorMessage,
-}: MatchesTimelineProps) {
+}: TeamMatchesTimelineProps) {
   if (errorMessage) return <p className="text-red-400">Error loading matches: {errorMessage}</p>;
   if (!matches || matches.length === 0) return <p className="text-slate-400">No matches recorded.</p>;
 
@@ -134,54 +133,51 @@ export default function MatchesTimeline({
               href={`/matches/${match.id}`}
               className="block p-4 rounded-xl bg-stone-950/70 border border-amber-600/30 hover:border-amber-400/50 transition-shadow hover:shadow-md hover:shadow-orange-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
             >
-              {/* Card layout: teams (fill) | date+status (auto) */}
-              <div className="grid grid-cols-[1fr_auto] items-center gap-4">
-                {/* Teams row — 5 columns: name | logo | center | logo | name */}
-                <div className="grid w-full grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-2 sm:gap-3">
-                  {/* Left name (outside) */}
-                  <p className="truncate max-w-[18ch] font-semibold text-white text-right min-w-0 justify-self-end">
-                    {myTeam?.name ?? "—"}
-                  </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative w-full py-1">
+                  <div className="flex items-center w-full">
+                    <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2 pr-3 sm:pr-6">
+                      <Image
+                        src={myTeam?.logo ?? "/logo.jpg"}
+                        alt={`${myTeam?.name ?? "My Team"} logo`}
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                      <p className="truncate max-w-[12ch] font-semibold text-white">
+                        {myTeam?.name ?? "—"}
+                      </p>
+                    </div>
 
-                  {/* Left logo (hugs center) */}
-                  <Image
-                    src={myTeam?.logo ?? "/logo.jpg"}
-                    alt={`${myTeam?.name ?? "My Team"} logo`}
-                    width={32}
-                    height={32}
-                    className="rounded-full justify-self-end flex-none"
-                  />
+                    <div className="flex-none w-0" aria-hidden />
 
-                  {/* Center: score or VS (true middle, stable width) */}
-                  <div className="px-2 text-base font-extrabold leading-none tracking-tight text-white text-center tabular-nums min-w-[4.75rem]">
-                    {match.status === "finished" ? (
-                      <>
-                        {myScore ?? "—"} <span className=" text-slate-500">-</span> {oppScore ?? "—"}
-                        
-                      </>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-1 text-xs uppercase rounded-full bg-white/5 ring-1 ring-white/10 text-slate-300">
-                        VS
-                      </span>
-                    )}
+                    <div className="flex-1 flex items-center justify-start gap-1 sm:gap-2 pl-3 sm:pl-6">
+                      <p className="truncate max-w-[12ch] text-slate-200 text-right">
+                        {opponent?.name ?? "—"}
+                      </p>
+                      <Image
+                        src={opponent?.logo ?? "/logo.jpg"}
+                        alt={`${opponent?.name ?? "Opponent"} logo`}
+                        width={32}
+                        height={32}
+                        className="rounded-full"
+                      />
+                    </div>
                   </div>
 
-                  {/* Right logo (hugs center) */}
-                  <Image
-                    src={opponent?.logo ?? "/logo.jpg"}
-                    alt={`${opponent?.name ?? "Opponent"} logo`}
-                    width={32}
-                    height={32}
-                    className="rounded-full justify-self-start flex-none"
-                  />
-
-                  {/* Right name (outside) */}
-                  <p className="truncate max-w-[18ch] text-slate-200 min-w-0 justify-self-start">
-                    {opponent?.name ?? "—"}
-                  </p>
+                  <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center">
+                    <p className="px-2 text-base font-extrabold leading-none tracking-tight text-white">
+                      {match.status === "finished" ? (
+                        <>
+                          {myScore ?? "—"} <span className="text-slate-500">-</span> {oppScore ?? "—"}
+                        </>
+                      ) : (
+                        <span className="text-slate-300">VS</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Date + status */}
                 <div className="text-right">
                   <p className="text-sm text-slate-400 flex items-center gap-1 justify-end">
                     <FaCalendarAlt /> {formatDate(match.match_date)}

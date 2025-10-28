@@ -45,25 +45,27 @@ export function genRoundRobin(opts: {
   }
 
   // Emit repeats: repeat #1 = base orientation, #2 flips home/away, #3 same as #1, etc.
-  // Ensure md increments across repeats
+  // Ensure matchday increments across repeats, but each round gets a separate matchday
   const out: DraftMatch[] = [];
-  let globalMd = 1;  // NEW: Global matchday counter across all repeats
+  let globalMd = 1;  // Matchday counter starts from 1
 
   for (let rep = 1; rep <= repeats; rep++) {
     const flip = rep % 2 === 0; // even repeats flip home/away
 
     for (let r = 0; r < rounds; r++) {
+      const roundMatchday = globalMd++;  // Increment for each round
+
       for (const [A, B] of basePairs[r]) {
         if (isKO) {
           // Handle KO match generation with bracket positions and rounds
           out.push({
             stageIdx,
             groupIdx,
-            matchday: globalMd,  // NEW: Use global counter
+            matchday: roundMatchday,  // Use matchday for this round
             team_a_id: flip ? B : A,
             team_b_id: flip ? A : B,
             match_date: null,
-            round: r + 1,  // Example: First round, second round, etc.
+            round: r + 1,  // Round number
             bracket_pos: (r + 1) * 2,  // Example: Bracket positions start from 2
             is_ko: true, // KO mark
           });
@@ -72,7 +74,7 @@ export function genRoundRobin(opts: {
           out.push({
             stageIdx,
             groupIdx,
-            matchday: globalMd,  // NEW: Use global counter
+            matchday: roundMatchday,  // Use matchday for this round
             team_a_id: flip ? B : A,
             team_b_id: flip ? A : B,
             match_date: null,
@@ -82,7 +84,6 @@ export function genRoundRobin(opts: {
           });
         }
       }
-      globalMd++;  // Increment after each round (matchday)
     }
   }
 

@@ -153,32 +153,6 @@ function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
   const [oldKey] = found;
   migrateOverlayKey(oldKey, newKey);
 }
-/* ---------------- auto matchday ---------------- */
-// Re-sequence matchday for all non-KO rows in the stage.
-// Order is stable by current array order, grouped by groupIdx.
-function resequenceMatchdays(stageIdxArg: number) {
-  const state = useTournamentStore.getState();
-  const draft = (state.draftMatches as DraftMatch[]).filter((r) => r.stageIdx === stageIdxArg);
-  const isKOStage = draft.some((r) => r.round != null && r.bracket_pos != null);
-  if (isKOStage) return; // KO uses round/bracket_pos, no matchday
-  useTournamentStore.getState().updateMatches(stageIdxArg, (rows) => {
-    const next = rows.slice();
-    // Build counters per group
-    const counters = new Map<number, number>();
-    for (let i = 0; i < next.length; i++) {
-      const r = next[i];
-      if (r.stageIdx !== stageIdxArg) continue;
-      if (r.round != null && r.bracket_pos != null) continue; // KO row
-      const g = (r.groupIdx ?? -1) as number;
-      const n = (counters.get(g) ?? 0) + 1;
-      counters.set(g, n);
-      if (r.matchday !== n) {
-        next[i] = { ...r, matchday: n };
-      }
-    }
-    return next;
-  });
-}
 /* ---------------- component ---------------- */
 export default function InlineMatchPlanner({
   miniPayload,
@@ -452,33 +426,61 @@ const applyPatch = (target: DraftMatch, patch: Patch) => {
     }
     return next;
   });
-  // After any non-KO edit, resequence matchdays.
-  resequenceMatchdays(effectiveStageIdx);
 };
-  const addRow = () => {
-    if (isKO) {
-      const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
-      const round = 1;
-      const used = stageRows.filter((r) => r.round === round && r.bracket_pos != null).map((r) => r.bracket_pos as number);
-      const nextPos = used.length ? Math.max(...used) + 1 : 1;
-      ensureRowExists(effectiveStageIdx, round, nextPos);
-      reindexKOPointers(effectiveStageIdx);
-    } else {
-      const newRow: DraftMatch = {
-        stageIdx: effectiveStageIdx,
-        groupIdx: isGroups && !useAllGroups ? (groupIdx ?? 0) : null,
-        matchday: null, // will be auto-sequenced
-        round: null,
-        bracket_pos: null,
-        team_a_id: null,
-        team_b_id: null,
-        match_date: null,
-        is_ko: false, // Add this field for non-knockout matches
-      };
-      updateMatches(effectiveStageIdx, (rows) => [...rows, newRow]);
-      resequenceMatchdays(effectiveStageIdx);
+const addRow = () => {
+  if (isKO) {
+    const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
+    const round = 1;
+    const used = stageRows.filter((r) => r.round === round && r.bracket_pos != null).map((r) => r.bracket_pos as number);
+    const nextPos = used.length ? Math.max(...used) + 1 : 1;
+    ensureRowExists(effectiveStageIdx, round, nextPos);
+    reindexKOPointers(effectiveStageIdx);
+  } else {
+    const effectiveGroup = isGroups && !useAllGroups ? (groupIdx ?? 0) : null;
+    const teamIds = effectiveGroup !== null 
+      ? listGroupTeamIds(effectiveStageIdx, effectiveGroup) 
+      : miniPayload.tournament_team_ids ?? [];
+    const teamCount = teamIds.length;
+    const matchesPerDay = Math.floor(teamCount / 2);
+
+    let stageRows = allRowsForStage;
+    if (effectiveGroup !== null) {
+      stageRows = stageRows.filter(r => r.groupIdx === effectiveGroup);
     }
-  };
+
+    const matchdayCounts = stageRows.reduce((acc: Record<number, number>, r) => {
+      const md = r.matchday ?? 0;
+      acc[md] = (acc[md] || 0) + 1;
+      return acc;
+    }, {});
+
+    const sortedMds = Object.keys(matchdayCounts).map(Number).sort((a, b) => a - b);
+    const lastMd = sortedMds[sortedMds.length - 1] ?? 0;
+    let targetMd: number;
+
+    if (sortedMds.length === 0) {
+      targetMd = 1;
+    } else if (matchdayCounts[lastMd] < matchesPerDay) {
+      targetMd = lastMd;
+    } else {
+      targetMd = lastMd + 1;
+    }
+
+    const newRow: DraftMatch = {
+      stageIdx: effectiveStageIdx,
+      groupIdx: effectiveGroup,
+      matchday: targetMd,
+      round: null,
+      bracket_pos: null,
+      team_a_id: null,
+      team_b_id: null,
+      match_date: null,
+      is_ko: false, // Add this field for non-knockout matches
+    };
+    updateMatches(effectiveStageIdx, (rows) => [...rows, newRow]);
+    // Removed resequenceMatchdays call to preserve generated matchday groupings
+  }
+};
  
   const removeRow = (m: DraftMatch) => {
     const dbId = (m as any).db_id as number | null | undefined;
@@ -498,8 +500,6 @@ const applyPatch = (target: DraftMatch, patch: Patch) => {
     removeMatch(m);
     if (isKO) {
       reindexKOPointers(effectiveStageIdx);
-    } else {
-      resequenceMatchdays(effectiveStageIdx);
     }
   };
   // do NOT reindex after regeneration; it can wipe bye teams
@@ -530,9 +530,8 @@ const applyPatch = (target: DraftMatch, patch: Patch) => {
         : f;
       ensureOverlayForRow(mergedRow);
       return mergedRow;
-    });
+    }).sort((a, b) => (a.matchday ?? 0) - (b.matchday ?? 0));
     updateMatches(effectiveStageIdx, () => merged);
-    resequenceMatchdays(effectiveStageIdx);
   };
   const debugLine =
     `stageIdx=${effectiveStageIdx} | rows=${allRowsForStage.length} | visible=${visible.length} | ` +
@@ -767,7 +766,17 @@ const applyPatch = (target: DraftMatch, patch: Patch) => {
                       <>
                         <tr className="bg-zinc-800/50">
                           <td colSpan={6} className="px-4 py-2 font-bold underline text-white text-center">
-                            Matchday {md}
+                            Matchday&nbsp;
+                            <input
+                              type="number"
+                              className="w-16 bg-transparent border-b border-white/50 text-white text-center font-bold focus:outline-none focus:border-white"
+                              value={md}
+                              min={1}
+                              onChange={(e) => {
+                                const newMd = Number(e.target.value) || md;
+                                ms.forEach((m) => applyPatch(m, { matchday: newMd }));
+                              }}
+                            />
                           </td>
                         </tr>
                         {ms.map((m, i) => {
@@ -885,4 +894,4 @@ const applyPatch = (target: DraftMatch, patch: Patch) => {
         )}
       </section>
     );
-}
+} 

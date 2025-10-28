@@ -81,28 +81,16 @@ export interface PlayerTeamsRow {
 export type MatchStatus = "scheduled" | "finished";
 
 /** Base match row (nullable date for drafts, two-state status) */
-type MatchRow = {
-  id?: number | null;
-  stage_id: number;
-  group_id?: number | null;
-  team_a_id?: number | null;
-  team_b_id?: number | null;
-  team_a_score?: number | null;
-  team_b_score?: number | null;
-  winner_team_id?: number | null;
-  status?: "scheduled" | "finished";
-  match_date?: string | null;
-  matchday?: number | null;
-  round?: number | null;
-  bracket_pos?: number | null;
-  home_source_round?: number | null;
-  home_source_bracket_pos?: number | null;
-  away_source_round?: number | null;
-  away_source_bracket_pos?: number | null;
-  is_ko: boolean;  // Add this line
-  updated_at?: string | null; // optimistic lock token
-};
-
+export interface MatchRow {
+  id: Id;
+  match_date: string | null; // timestamptz ISO (UTC) or null
+  status: MatchStatus;
+  team_a_score: number;
+  team_b_score: number;
+  winner_team_id: Id | null;
+  team_a_id: Id;
+  team_b_id: Id;
+}
 
 /**
  * ---------------------------------
@@ -466,7 +454,6 @@ export function toBracketMatch(
     team_a_score: row.status === "finished" ? row.team_a_score : null,
     team_b_score: row.status === "finished" ? row.team_b_score : null,
     status: row.status,
-    is_ko: false,
     // all pointer shapes
     home_source_match_id: src.home_source_match_id ?? null,
     away_source_match_id: src.away_source_match_id ?? null,

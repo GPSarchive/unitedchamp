@@ -34,15 +34,22 @@ function startOfTodayISO() {
 
 function formatLocal(iso: string | null) {
   if (!iso) return '';
-  const d = new Date(iso);
+  const d = new Date(iso); // Create Date object from the ISO string
+
+  // Use toLocaleString to show the date and time in UTC
   return d.toLocaleString('el-GR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    weekday: 'long', // Full name of the weekday
+    year: 'numeric', // Full year
+    month: 'long', // Full month name
+    day: '2-digit', // Day with leading zero if necessary
+    hour: '2-digit', // Hour in 2-digit format
+    minute: '2-digit', // Minute in 2-digit format
+    second: '2-digit', // Optional, can be removed
+    hour12: false, // Use 24-hour format
+    timeZone: 'UTC', // Explicitly display the date in UTC time zone
   });
 }
+
 
 type TabKey = 'upcoming' | 'finished';
 
@@ -231,7 +238,7 @@ export default function RecentMatchesTabs({
                               VS
                             </div>
                           )}
-                          <div className="mt-2 text-[13px] text-white/60 leading-none line-clamp-1">
+                          <div className="mt-2 text-[13px] text-white/60 leading-none whitespace-nowrap">
                             {formatLocal(m.match_date)}
                           </div>
                         </div>

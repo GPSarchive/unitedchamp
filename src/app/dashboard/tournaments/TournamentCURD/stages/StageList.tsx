@@ -44,7 +44,7 @@ export default function StageList({
     storeUpsertStage(stages.length, {
       name: nextStage.name,
       kind: nextStage.kind as any,
-      is_ko: nextStage.is_ko, // pass is_ko property
+
       config: nextStage.config,
     });
   

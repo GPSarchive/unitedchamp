@@ -1,7 +1,7 @@
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-side Supabase client
 import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
-import MatchesTimeline from "./MatchesTimeline";
+import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
 import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
@@ -43,12 +43,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const { data: tournamentMembership, error: membershipErr } = await supabaseAdmin
     .from("tournament_teams")
     .select(
-      `
-      id,
-      tournament:tournament_id (
-        id, name, season, status, winner_team_id
-      )
-    `
+      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
     )
     .eq("team_id", teamId)
     .order("tournament_id", { ascending: false });
@@ -71,28 +66,9 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .from("player_teams")
     .select(
       `
-      id,
-      player:player_id (
         id,
-        first_name,
-        last_name,
-        photo,
-        height_cm,
-        position,
-        birth_date,
-        player_statistics (
-          id,
-          age,
-          total_goals,
-          total_assists,
-          yellow_cards,
-          red_cards,
-          blue_cards,
-          created_at,
-          updated_at
-        )
-      )
-    `
+        player:player_id (id, first_name, last_name, photo, height_cm, position, birth_date, player_statistics (id, age, total_goals, total_assists, yellow_cards, red_cards, blue_cards, created_at, updated_at))
+      `
     )
     .eq("team_id", teamId)
     .order("player_id", { ascending: true })
@@ -109,18 +85,18 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .from("player_season_stats")
     .select(
       `
-      player_id,
-      season,
-      matches,
-      goals,
-      assists,
-      yellow_cards,
-      red_cards,
-      blue_cards,
-      mvp,
-      best_gk,
-      updated_at
-    `
+        player_id,
+        season,
+        matches,
+        goals,
+        assists,
+        yellow_cards,
+        red_cards,
+        blue_cards,
+        mvp,
+        best_gk,
+        updated_at
+      `
     )
     .eq("team_id", teamId)
     .order("season", { ascending: false });
@@ -134,26 +110,25 @@ export default async function TeamPage({ params }: TeamPageProps) {
     {}
   );
 
-  // ── Matches (now includes tournament for the timeline) ─────────────────────────
+  // ── Matches ─────────────────────────
   const { data: matchesData, error: matchesError } = await supabaseAdmin
     .from("matches")
     .select(
       `
-      id,
-      match_date,
-      status,
-      team_a_score,
-      team_b_score,
-      winner_team_id,
-      team_a:teams!matches_team_a_id_fkey (id, name, logo),
-      team_b:teams!matches_team_b_id_fkey (id, name, logo),
-      tournament:tournament_id (id, name, season, slug)
-    `
+        id,
+        match_date,
+        status,
+        team_a_score,
+        team_b_score,
+        winner_team_id,
+        team_a:teams!matches_team_a_id_fkey (id, name, logo),
+        team_b:teams!matches_team_b_id_fkey (id, name, logo),
+        tournament:tournament_id (id, name, season, slug)
+      `
     )
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
     .order("match_date", { ascending: false });
 
-  // Keep the cast loose for now; MatchesTimeline will accept this shape after its update.
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
@@ -181,7 +156,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
               seasonStatsByPlayer={seasonStatsByPlayer}
               errorMessage={playersError?.message || pssErr?.message}
             />
-            <MatchesTimeline
+            <TeamMatchesTimeline
               matches={matches}
               teamId={teamId}
               errorMessage={matchesError?.message}

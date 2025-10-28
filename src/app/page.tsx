@@ -303,14 +303,14 @@ export default async function Home() {
           </p>
 
           <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 pointer-events-none">
-            <div className="w-full  lg:w-[420px] select-none">
+            {/*<div className="w-full  lg:w-[420px] select-none">
               <MiniAnnouncements
                 limit={4}
                 pinnedPageSize={3}
                 basePath="/anakoinoseis"
                 allLinkHref="/anakoinoseis"
               />
-            </div>
+            </div>*/}
 
             <div className="w-full lg:max-w-[880px] pointer-events-auto">
               <RecentMatchesTabs
