@@ -39,16 +39,24 @@ function applyPairs(form: HTMLFormElement, pairs: [string, string][]) {
       const t = (el as HTMLInputElement).type;
       if (t === "checkbox") {
         const checked = value === "true" || value === "on" || value === "1";
-        (el as HTMLInputElement).checked = checked;
-        el.dispatchEvent(new Event("input", { bubbles: true })); // keep controlled bits in sync
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+        // Use native setter
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'checked')
+          ?.set?.call(el, checked);
+        // Dispatch 'click' for checkboxes
+        el.dispatchEvent(new Event("click", { bubbles: true }));
       } else if (t === "radio") {
-        (el as HTMLInputElement).checked = (el as HTMLInputElement).value === value;
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+        const shouldCheck = (el as HTMLInputElement).value === value;
+        // Use native setter
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'checked')
+          ?.set?.call(el, shouldCheck);
+        // Dispatch 'click' for radios
+        el.dispatchEvent(new Event("click", { bubbles: true }));
       } else {
-        (el as HTMLInputElement).value = value;
+        // For text, number, textarea, etc., use native value setter
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+          ?.set?.call(el, value);
+        // Dispatch 'input' for value changes
         el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
       }
     }
   }
