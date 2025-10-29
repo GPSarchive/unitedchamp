@@ -248,7 +248,7 @@ if (body.matches?.deleteIds?.length) {
       if (updateRows.length) {
         const { data, error } = await supabaseAdmin
           .from("tournament_stages")
-          .upsert(updateRows, { onConflict: "id" })
+          .upsert(updateRows, )
           .select();
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         upserted = upserted.concat(data ?? []);
@@ -278,7 +278,7 @@ if (body.matches?.deleteIds?.length) {
       if (updateRows.length) {
         const { data, error } = await supabaseAdmin
           .from("tournament_teams")
-          .upsert(updateRows, { onConflict: "id" })
+          .upsert(updateRows, )
           .select();
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         upserted = upserted.concat(data ?? []);
@@ -381,16 +381,7 @@ if (body.matches?.upsert?.length) {
   const koRowsAll = rows.filter(r => r.is_ko);  // KO matches where is_ko = true
   const lgRowsAll = rows.filter(r => !r.is_ko); // Non-KO matches where is_ko = false
 
-  // Guard: Check for duplicates inside this payload
-  const dup: string[] = [];
-  const seen = new Set<string>();
-  for (const r of lgRowsAll) {
-    const k = `${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}`;
-    if (seen.has(k)) dup.push(k); else seen.add(k);
-  }
-  if (dup.length) {
-    return NextResponse.json({ error: "duplicate league keys in payload", dup }, { status: 409 });
-  }
+  
 
   // Updates (respect optimistic updated_at unless forced)
   const toUpdate = rows.filter(r => r.id != null);
@@ -443,7 +434,7 @@ if (body.matches?.upsert?.length) {
     const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
     const { data, error } = await supabaseAdmin
       .from("matches")
-      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
+      .upsert(toCreateKO,)
       .select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     created.push(...(data ?? []));

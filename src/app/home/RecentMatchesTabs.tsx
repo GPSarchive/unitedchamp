@@ -26,10 +26,8 @@ type MatchRow = {
 const PLACEHOLDER = '/placeholder.png';
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
-function startOfTodayISO() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+function nowISO() {
+  return new Date().toISOString();
 }
 
 function formatLocal(iso: string | null) {
@@ -67,7 +65,7 @@ export default function RecentMatchesTabs({
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const todayISO = React.useMemo(() => startOfTodayISO(), []);
+  const currentISO = React.useMemo(() => nowISO(), []);
 
   React.useEffect(() => {
     setPage(1);  // Reset to first page when tab changes
@@ -94,10 +92,15 @@ export default function RecentMatchesTabs({
           dataQ = dataQ.eq('tournament_id', tournamentId);
         }
 
-        dataQ = dataQ.eq('status', isUpcoming ? 'scheduled' : 'finished');
+        // No status filter
 
-        // Filter based on date (upcoming or finished)
-        dataQ = isUpcoming ? dataQ.gte('match_date', todayISO) : dataQ.lte('match_date', todayISO);
+        // Filter based on date only
+        dataQ = isUpcoming 
+          ? dataQ.gte('match_date', currentISO) 
+          : dataQ.lt('match_date', currentISO);
+
+        // Order: upcoming ascending (soonest first), finished descending (most recent first)
+        dataQ = dataQ.order('match_date', { ascending: isUpcoming });
 
         // Set the pagination range
         const from = (page - 1) * pageSize;
@@ -117,7 +120,7 @@ export default function RecentMatchesTabs({
     };
 
     fetchMatches();
-  }, [tab, page, pageSize, tournamentId, todayISO]);
+  }, [tab, page, pageSize, tournamentId, currentISO]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -206,14 +209,9 @@ export default function RecentMatchesTabs({
                   const aLogo = A?.logo || PLACEHOLDER;
                   const bLogo = B?.logo || PLACEHOLDER;
 
-                  const aScore =
-                    tab === 'finished' && typeof m.team_a_score === 'number'
-                      ? m.team_a_score
-                      : null;
-                  const bScore =
-                    tab === 'finished' && typeof m.team_b_score === 'number'
-                      ? m.team_b_score
-                      : null;
+                  // Show scores if they exist, regardless of tab, but typically for past matches they will
+                  const aScore = typeof m.team_a_score === 'number' ? m.team_a_score : null;
+                  const bScore = typeof m.team_b_score === 'number' ? m.team_b_score : null;
 
                   return (
                     <li key={m.id} className="relative px-5 sm:px-6 py-6 hover:bg-white/5 transition-colors">
