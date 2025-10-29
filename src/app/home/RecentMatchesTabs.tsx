@@ -128,7 +128,7 @@ export default function RecentMatchesTabs({
 
   return (
     <section className={className} aria-label="Recent matches with tabs">
-      <div className={['mx-auto w-full', maxWClass].join(' ')}>
+      <div className={['mx-auto w-full sm:max-w-[440px] md:max-w-[440px] lg:max-w-[880px]', maxWClass].join(' ')}>
         <div className={wrapperClasses + ' overflow-hidden'}>
           {/* Tabs */}
           <div className="px-5 sm:px-6 pt-4">
@@ -173,7 +173,7 @@ export default function RecentMatchesTabs({
             <ul className="divide-y divide-white/10">
               {Array.from({ length: Math.min(pageSize, 6) }).map((_, i) => (
                 <li key={i} className="px-5 sm:px-6 py-5">
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
                     <div className="h-12 w-12 rounded-full bg-white/10 animate-pulse" />
                     <div className="flex-1">
                       <div className="h-6 w-2/3 bg-white/10 rounded mb-2 animate-pulse" />
@@ -217,18 +217,18 @@ export default function RecentMatchesTabs({
 
                   return (
                     <li key={m.id} className="relative px-5 sm:px-6 py-6 hover:bg-white/5 transition-colors">
-                      <div className="flex items-center justify-between gap-6">
-                        <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
                           <img
                             src={aLogo}
                             alt={aName}
                             className="h-12 w-12 rounded-full object-contain ring-1 ring-white/20 bg-black/30"
                           />
-                          <span className="max-w-[12rem] sm:max-w-[16rem] truncate font-extrabold text-white uppercase tracking-wide text-lg">
+                          <span className="truncate font-extrabold text-white uppercase tracking-wide text-lg">
                             {aName}
                           </span>
                         </div>
-                        <div className="flex flex-col items-center justify-center text-center shrink-0 w-[120px]">
+                        <div className="flex flex-col items-center justify-center text-center shrink-0">
                           {aScore !== null && bScore !== null ? (
                             <div className="font-black tabular-nums text-white text-[24px] sm:text-[28px] leading-none">
                               {aScore} <span className="mx-2">–</span> {bScore}
@@ -242,8 +242,8 @@ export default function RecentMatchesTabs({
                             {formatLocal(m.match_date)}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 justify-end min-w-0">
-                          <span className="max-w-[12rem] sm:max-w-[16rem] truncate font-extrabold text-white uppercase tracking-wide text-lg text-right">
+                        <div className="flex items-center gap-4 justify-end min-w-0 w-full sm:w-auto sm:justify-start">
+                          <span className="truncate font-extrabold text-white uppercase tracking-wide text-lg text-right sm:text-left">
                             {bName}
                           </span>
                           <img

@@ -385,7 +385,34 @@ export default function StageCard({
       )}
 
       {(isLeague || isGroups) && (
+        
         <div className="mt-4">
+          
+    
+
+    <div>
+      <label className="block w-32 text-white text-sm mb-1">Αγώνες ανά αντίπαλο</label>
+      <input
+        type="number"
+        min={1}
+        className={fieldBase}
+        value={Number(cfg.rounds_per_opponent ?? (cfg as any).αγώνες_ανά_αντίπαλο ?? (cfg.double_round ? 2 : 1))}
+        onChange={(e) => setCfg({ rounds_per_opponent: Math.max(1, Number(e.target.value) || 1) })}
+      />
+      
+    </div>
+
+    <div>
+      <label className="w-32 text-white text-sm mb-1">Μέγιστες αγωνιστικές</label>
+      <input
+        type="number"
+        min={0}
+        className={`${fieldBase} w-24`} // Adjust the width here
+        value={Number(cfg.limit_matchdays ?? (cfg as any).μέγιστες_αγωνιστικές ?? 0)}
+        onChange={(e) => setCfg({ limit_matchdays: Math.max(0, Number(e.target.value) || 0) })}
+      />
+      <p className={helperText}>0 = χωρίς όριο.</p>
+    </div>
           <StageStandingsMini
             stageIdx={effectiveStageIdx}
             kind={isLeague ? "league" : "groups"}

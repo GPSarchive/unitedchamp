@@ -162,11 +162,11 @@ export default function StatsEditor({
               <input type="hidden" name={`${baseStats}[blue_cards]`} value="0" />
 
               {/* Stats */}
-              <NumInput name={`${baseStats}[goals]`} def={goalsDefault} readOnly={!playedOn || readOnly} labelMD="G" />
-              <NumInput name={`${baseStats}[assists]`} def={assistsDefault} readOnly={!playedOn || readOnly} labelMD="A" />
-              <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} readOnly={!playedOn || readOnly} labelMD="Y" />
-              <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} readOnly={!playedOn || readOnly} labelMD="R" />
-              <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} readOnly={!playedOn || readOnly} labelMD="B" />
+              <NumInput name={`${baseStats}[goals]`} def={goalsDefault} readOnly={!playedOn || readOnly} labelMD="G" labelSM="G" />
+              <NumInput name={`${baseStats}[assists]`} def={assistsDefault} readOnly={!playedOn || readOnly} labelMD="A" labelSM="A" />
+              <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} readOnly={!playedOn || readOnly} labelMD="Y" labelSM="Y" />
+              <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} readOnly={!playedOn || readOnly} labelMD="R" labelSM="R" />
+              <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} readOnly={!playedOn || readOnly} labelMD="B" labelSM="B" />
 
               {/* MVP */}
               <div>
@@ -231,24 +231,28 @@ function NumInput({
   def,
   readOnly,
   labelMD,
+  labelSM,
 }: {
   name: string;
   def: string;
   readOnly: boolean;
   labelMD?: string;
+  labelSM?: string;
 }) {
   return (
-    <label className="block">
-      <span className="sr-only md:not-sr-only md:text-gray-500">{labelMD ?? ""}</span>
+    <div className="flex items-center gap-2 md:block">
       <input
         name={name}
         defaultValue={def}
-        className={`w-14 rounded border px-2 py-1 md:mt-1 ${readOnly ? "opacity-60" : ""}`}
+        className={`w-14 rounded border px-2 py-1 ${readOnly ? "opacity-60" : ""}`}
         type="text"
         inputMode="numeric"
         pattern="\d*"
         readOnly={readOnly}
+        aria-label={labelMD ?? ""}
       />
-    </label>
+      <span className="text-xs md:hidden">{labelSM ?? ""}</span>
+      <span className="hidden md:block md:text-gray-500 md:text-sm">{labelMD ?? ""}</span>
+    </div>
   );
 }
