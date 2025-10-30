@@ -63,38 +63,37 @@
   transform: scale(0.9) translate3d(0, 0, 0.1px);
 }
 
-  .pc-card {
-    height: 80svh;
-    max-height: none;
-    display: grid;
-    aspect-ratio: 0.718;
-    border-radius: var(--card-radius);
-    position: relative;
-    
-    animation: glow-bg 12s linear infinite;
-    box-shadow: rgba(0, 0, 0, 0.8) calc((var(--pointer-from-left) * 10px) - 3px)
-      calc((var(--pointer-from-top) * 20px) - 6px) 20px -5px;
-    transition: transform 1s ease;
-    transform: translate3d(0, 0, 0.1px) rotateX(0deg) rotateY(0deg);
-    background-size: 100% 100%;
-    background-position:
-      0 0,
-      0 0,
-      50% 50%,
-      0 0;
-    background-image:
-      radial-gradient(
-        farthest-side circle at var(--pointer-x) var(--pointer-y),
-        hsla(266, 100%, 90%, var(--card-opacity)) 4%,
-        hsla(266, 50%, 80%, calc(var(--card-opacity) * 0.75)) 10%,
-        hsla(266, 25%, 70%, calc(var(--card-opacity) * 0.5)) 50%,
-        hsla(266, 0%, 60%, 0) 100%
-      ),
-      radial-gradient(35% 52% at 55% 20%, #00ffaac4 0%, #073aff00 100%),
-      radial-gradient(100% 100% at 50% 50%, #00c1ffff 1%, #073aff00 76%),
-      conic-gradient(from 124deg at 50% 50%, #c137ffff 0%, #07c6ffff 40%, #07c6ffff 60%, #c137ffff 100%);
-    overflow: hidden;
-  }
+.pc-card {
+  height: 80svh;
+  max-height: none;
+  display: grid;
+  aspect-ratio: 0.718;
+  border-radius: var(--card-radius);
+  position: relative;
+  animation: glow-bg 18s linear infinite;  /* Increased duration from 12s for slower animation */
+  box-shadow: rgba(0, 0, 0, 0.8) calc((var(--pointer-from-left) * 10px) - 3px)
+    calc((var(--pointer-from-top) * 20px) - 6px) 20px -5px;
+  transition: transform 1s ease;
+  transform: translate3d(0, 0, 0.1px) rotateX(0deg) rotateY(0deg);
+  background-size: 100% 100%;
+  background-position:
+    0 0,
+    0 0,
+    50% 50%,
+    0 0;
+  background-image:
+    radial-gradient(
+      farthest-side circle at var(--pointer-x) var(--pointer-y),
+      hsla(266, 100%, 90%, calc(var(--card-opacity) * 0.6)) 4%,  /* Reduced alpha impact */
+      hsla(266, 50%, 80%, calc(var(--card-opacity) * 0.5)) 10%,  /* Reduced from 0.75 */
+      hsla(266, 25%, 70%, calc(var(--card-opacity) * 0.3)) 50%,  /* Reduced from 0.5 */
+      hsla(266, 0%, 60%, 0) 100%
+    ),
+    radial-gradient(35% 52% at 55% 20%, #00ffaac4 0%, #073aff00 100%),
+    radial-gradient(100% 100% at 50% 50%, #00c1ffff 1%, #073aff00 76%),
+    conic-gradient(from 124deg at 50% 50%, #c137ffff 0%, #07c6ffff 40%, #07c6ffff 60%, #c137ffff 100%);
+  overflow: hidden;
+}
 
 .pc-card:hover,
 .pc-card.active {
@@ -125,7 +124,7 @@
   mask-size: 150%;
   mask-position: top calc(200% - (var(--background-y) * 5)) left calc(100% - var(--background-x));
   transition: filter 0.6s ease;
-  filter: brightness(0.66) contrast(1.33) saturate(0.33) opacity(1);
+  filter: brightness(0.66) contrast(1.8) saturate(0.33) opacity(1);
   animation: holo-bg 18s linear infinite;
   mix-blend-mode: color-dodge;
 }
@@ -245,10 +244,10 @@
   background-image: radial-gradient(
     farthest-corner circle at var(--pointer-x) var(--pointer-y),
     hsl(248, 25%, 80%) 12%,
-    hsla(207, 40%, 30%, 0.8) 90%
+    hsla(207, 40%, 30%, 0.6) 90%  /* Reduced alpha from 0.8 */
   );
   mix-blend-mode: overlay;
-  filter: brightness(0.8) contrast(1.2);
+  filter: brightness(0.7) contrast(1.1);  /* Reduced from 0.8/1.2 */
   z-index: 4;
 }
 
@@ -261,13 +260,13 @@
 /* Option A: center + cover so it lines up with the mask */
 .avatar {
   position: absolute;
-  inset: 0;              /* fill the container */
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;     /* same sizing behavior as the mask */
-  object-position: center; /* same alignment as the mask */
-  opacity: calc(1.75 - var(--pointer-from-center));
-  transform: none;       /* remove translateX hack */
+  object-fit: cover;
+  object-position: center;
+  opacity: calc(1.5 - var(--pointer-from-center));  /* Reduced from 1.75 */
+  transform: none;
 }
 
 .pc-avatar-content::before {
@@ -426,7 +425,7 @@
   100% {
     background-position:
       0 var(--background-y),
-      90% 90%,
+      45% 45%,  /* Reduced from 90% 90% */
       center;
   }
 }

@@ -345,3 +345,12 @@ body {
     @apply bg-background text-foreground;
   }
 }
+/* globals.css */
+select option {
+  color: #000;        /* black text in dropdown */
+  background: #fff;   /* white dropdown background */
+}
+select option:checked {
+  background: #22d3ee; /* cyan-400 */
+  color: #fff;
+}
