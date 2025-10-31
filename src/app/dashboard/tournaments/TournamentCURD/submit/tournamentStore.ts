@@ -1368,6 +1368,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             slug: t.slug,
             season: t.season ?? null,
             format: t.format,
+            logo: (t as any).logo ?? null, 
           },
         };
       }
