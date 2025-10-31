@@ -333,16 +333,16 @@ export default async function Home() {
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Φοβερή εμπειρία! Τα τουρνουά είναι άρτια οργανωμένα και γεμάτα ενέργεια.»</p>
-              <div className="font-semibold">- Alex Johnson</div>
+              <p className="mb-4">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
+              <div className="font-semibold">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
             </div>
             <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Βρήκα την ιδανική ομάδα μου εδώ. Το προτείνω ανεπιφύλακτα!»</p>
-              <div className="font-semibold">- Maria Gonzalez</div>
+              <p className="mb-4">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
+              <div className="font-semibold">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
             </div>
             <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Υπέροχη πλατφόρμα για τους λάτρεις του ποδοσφαίρου. Εύχρηστη και διασκεδαστική!»</p>
-              <div className="font-semibold">- David Lee</div>
+              <p className="mb-4">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
+              <div className="font-semibold">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
             </div>
           </div>
         </div>

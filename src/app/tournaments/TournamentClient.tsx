@@ -227,7 +227,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                               {stage.kind === 'league' && '👥'}
                               {stage.kind === 'groups' && '👥'}
                               {stage.kind === 'knockout' && '🏆'}
-                              {stage.kind === 'mixed' && '🎯'}
+                             
                               <span className="capitalize">{stage.kind}</span>
                             </div>
                           </div>

@@ -15,6 +15,7 @@ export type { MatchPlayerStatRow } from "@/app/lib/types";
 type TournamentLite = {
   id: number;
   name: string;
+  logo: string | null; // ✅ Added logo field
 };
 
 // Your existing type, augmented with an optional tournament
@@ -37,11 +38,10 @@ export async function fetchMatch(id: Id) {
         // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
-        // Tournament (NEW)
-        // If your FK column is matches.tournament_id -> tournaments.id, Supabase can infer:
-        "tournament:tournaments(id,name)",
+        // Tournament (UPDATED - added logo field)
+        "tournament:tournaments(id,name,logo)",
         // If inference doesn't work in your project, swap the line above with:
-        // "tournament:tournaments!matches_tournament_id_fkey(id,name)",
+        // "tournament:tournaments!matches_tournament_id_fkey(id,name,logo)",
       ].join(",")
     )
     .eq("id", id)
