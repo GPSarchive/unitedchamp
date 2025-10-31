@@ -3,12 +3,17 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FaCalendarAlt, FaTrophy, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { Match } from "@/app/lib/types";
 
 const dtf = new Intl.DateTimeFormat("el-GR", {
-  dateStyle: "medium",
-  timeZone: "Europe/Athens",
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'UTC',
 });
 
 function formatDate(iso: string | null | undefined) {
@@ -29,167 +34,222 @@ interface TeamMatchesTimelineProps {
   errorMessage?: string | null;
 }
 
+type TabKey = 'upcoming' | 'finished';
+
 export default function TeamMatchesTimeline({
   matches,
   teamId,
   errorMessage,
 }: TeamMatchesTimelineProps) {
-  if (errorMessage) return <p className="text-red-400">Error loading matches: {errorMessage}</p>;
-  if (!matches || matches.length === 0) return <p className="text-slate-400">No matches recorded.</p>;
-
-  const sortedMatches = useMemo(
-    () => [...matches].sort((a, b) => timeValue(b.match_date) - timeValue(a.match_date)),
-    [matches]
-  );
-
+  const [tab, setTab] = useState<TabKey>('upcoming');
+  const [page, setPage] = useState(1);
   const pageSize = 5;
-  const [page, setPage] = useState(0);
-  const totalPages = Math.max(1, Math.ceil(sortedMatches.length / pageSize));
-  const start = page * pageSize;
-  const end = Math.min(start + pageSize, sortedMatches.length);
-  const pageSlice = sortedMatches.slice(start, end);
 
-  const goPrev = () => setPage((p) => Math.max(0, p - 1));
-  const goNext = () => setPage((p) => Math.min(totalPages - 1, p + 1));
+  // Separate matches into upcoming and finished based on score presence
+  const { upcomingMatches, finishedMatches } = useMemo(() => {
+    if (!matches || matches.length === 0) {
+      return { upcomingMatches: [], finishedMatches: [] };
+    }
+
+    const upcoming: Match[] = [];
+    const finished: Match[] = [];
+
+    matches.forEach((match) => {
+      // A match is finished if both scores are set (including 0)
+      const hasScores = typeof match.team_a_score === 'number' && typeof match.team_b_score === 'number';
+      
+      if (hasScores) {
+        finished.push(match);
+      } else {
+        upcoming.push(match);
+      }
+    });
+
+    // Sort: upcoming ascending (soonest first), finished descending (most recent first)
+    upcoming.sort((a, b) => timeValue(a.match_date) - timeValue(b.match_date));
+    finished.sort((a, b) => timeValue(b.match_date) - timeValue(a.match_date));
+
+    return { upcomingMatches: upcoming, finishedMatches: finished };
+  }, [matches]);
+
+  const currentMatches = tab === 'upcoming' ? upcomingMatches : finishedMatches;
+  const totalPages = Math.max(1, Math.ceil(currentMatches.length / pageSize));
+  const start = (page - 1) * pageSize;
+  const end = Math.min(start + pageSize, currentMatches.length);
+  const pageSlice = currentMatches.slice(start, end);
+
+  // Reset to page 1 when switching tabs
+  const handleTabChange = (newTab: TabKey) => {
+    setTab(newTab);
+    setPage(1);
+  };
+
+  if (errorMessage) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),_0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur p-5 sm:p-6">
+        <p className="text-red-400">Σφάλμα φόρτωσης αγώνων: {errorMessage}</p>
+      </section>
+    );
+  }
+
+  if (!matches || matches.length === 0) {
+    return (
+      <section className="rounded-2xl border border-white/10 bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),_0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur p-5 sm:p-6">
+        <p className="text-white/70">Δεν υπάρχουν καταγεγραμμένοι αγώνες.</p>
+      </section>
+    );
+  }
 
   return (
-    <section className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-amber-500/20 bg-gradient-to-b from-stone-900/60 via-amber-950/5 to-zinc-900">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 flex items-center gap-2">
-          <FaTrophy className="text-amber-400" /> Ιστορικό Αγώνων
-        </h2>
-
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-slate-400">
-            Προβολή <span className="text-slate-200">{start + 1}</span>–<span className="text-slate-200">{end}</span>{" "}
-            από <span className="text-slate-200">{sortedMatches.length}</span>
-          </span>
-          <div className="flex items-center rounded-lg border border-amber-600/30 overflow-hidden">
-            <button
-              type="button"
-              onClick={goPrev}
-              disabled={page === 0}
-              className="px-2 py-1 disabled:opacity-40 hover:bg-amber-500/10 focus:outline-none"
-              aria-label="Previous page"
-              title="Previous"
-            >
-              <FaChevronLeft />
-            </button>
-            <div className="px-3 py-1 text-slate-300 border-l border-r border-amber-600/30">
-              {page + 1}/{totalPages}
+    <section aria-label="Team matches timeline">
+      <div className="mx-auto w-full">
+        <div className="rounded-2xl border border-white/10 bg-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),_0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur overflow-hidden">
+          {/* Tabs */}
+          <div className="px-5 sm:px-6 pt-4">
+            <div className="inline-flex rounded-xl bg-white/5 p-1 ring-1 ring-white/10">
+              <button
+                onClick={() => handleTabChange('upcoming')}
+                className={[
+                  'px-5 py-3 text-sm font-semibold rounded-lg transition',
+                  tab === 'upcoming'
+                    ? 'bg-white/90 text-black'
+                    : 'text-white/80 hover:text-white hover:bg-white/10',
+                ].join(' ')}
+                aria-pressed={tab === 'upcoming'}
+              >
+                Επερχόμενοι
+              </button>
+              <button
+                onClick={() => handleTabChange('finished')}
+                className={[
+                  'px-5 py-3 text-sm font-semibold rounded-lg transition',
+                  tab === 'finished'
+                    ? 'bg-white/90 text-black'
+                    : 'text-white/80 hover:text-white hover:bg-white/10',
+                ].join(' ')}
+                aria-pressed={tab === 'finished'}
+              >
+                Ολοκληρωμένοι
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={page >= totalPages - 1}
-              className="px-2 py-1 disabled:opacity-40 hover:bg-amber-500/10 focus:outline-none"
-              aria-label="Next page"
-              title="Next"
-            >
-              <FaChevronRight />
-            </button>
           </div>
-        </div>
-      </div>
 
-      <div className="space-y-4">
-        {pageSlice.map((match) => {
-          const teamA = match.team_a ?? null;
-          const teamB = match.team_b ?? null;
-          const isTeamA = teamA?.id === teamId;
-          const myTeam = isTeamA ? teamA : teamB;
-          const opponent = isTeamA ? teamB : teamA;
-          const myScore = isTeamA ? match.team_a_score : match.team_b_score;
-          const oppScore = isTeamA ? match.team_b_score : match.team_a_score;
+          {/* Header */}
+          <div className="px-5 sm:px-6 py-5 flex items-center justify-between border-b border-white/10">
+            <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
+              {tab === 'upcoming' ? 'Επερχόμενοι Αγώνες' : 'Ολοκληρωμένοι Αγώνες'}
+            </h2>
+            <span className="text-xs sm:text-sm text-white/70">
+              {currentMatches.length} σύνολο
+            </span>
+          </div>
 
-          type Result = "Win" | "Loss" | "Draw" | "Upcoming";
-          let result: Result;
-          if (match.status === "finished") {
-            if (match.winner_team_id == null) result = "Draw";
-            else result = match.winner_team_id === teamId ? "Win" : "Loss";
-          } else {
-            result = "Upcoming";
-          }
+          {/* Matches List */}
+          <ul className="divide-y divide-white/10">
+            {pageSlice.length === 0 && (
+              <li className="px-5 sm:px-6 py-5 text-sm text-white/70">
+                Δεν υπάρχουν {tab === 'upcoming' ? 'επερχόμενοι' : 'ολοκληρωμένοι'} αγώνες.
+              </li>
+            )}
+            {pageSlice.map((match) => {
+              const teamA = match.team_a ?? null;
+              const teamB = match.team_b ?? null;
+              const isTeamA = teamA?.id === teamId;
+              const myTeam = isTeamA ? teamA : teamB;
+              const opponent = isTeamA ? teamB : teamA;
+              const myScore = isTeamA ? match.team_a_score : match.team_b_score;
+              const oppScore = isTeamA ? match.team_b_score : match.team_a_score;
 
-          const resultColor =
-            {
-              Win: "bg-emerald-900/30 text-emerald-300 border-emerald-600/50",
-              Loss: "bg-rose-900/30 text-rose-300 border-rose-600/50",
-              Draw: "bg-stone-900/30 text-stone-300 border-stone-600/50",
-              Upcoming: "bg-orange-900/30 text-amber-300 border-amber-600/50",
-            }[result];
+              const myName = myTeam?.name ?? "Η Ομάδα μου";
+              const oppName = opponent?.name ?? "Αντίπαλος";
+              const myLogo = myTeam?.logo || "/logo.jpg";
+              const oppLogo = opponent?.logo || "/logo.jpg";
 
-          const resultLabel =
-            {
-              Win: "Νίκη",
-              Loss: "Ήττα",
-              Draw: "Ισοπαλία",
-              Upcoming: "Προγραμματισμένος",
-            }[result];
+              const showScore = typeof myScore === 'number' && typeof oppScore === 'number';
 
-          return (
-            <Link
-              key={match.id}
-              href={`/matches/${match.id}`}
-              className="block p-4 rounded-xl bg-stone-950/70 border border-amber-600/30 hover:border-amber-400/50 transition-shadow hover:shadow-md hover:shadow-orange-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative w-full py-1">
-                  <div className="flex items-center w-full">
-                    <div className="flex-1 flex items-center justify-end gap-1 sm:gap-2 pr-3 sm:pr-6">
+              return (
+                <li
+                  key={match.id}
+                  className="relative px-5 sm:px-6 py-6 hover:bg-white/5 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                    {/* My Team */}
+                    <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
                       <Image
-                        src={myTeam?.logo ?? "/logo.jpg"}
-                        alt={`${myTeam?.name ?? "My Team"} logo`}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
+                        src={myLogo}
+                        alt={myName}
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full object-contain ring-2 ring-amber-400/30 bg-black/30"
                       />
-                      <p className="truncate max-w-[12ch] font-semibold text-white">
-                        {myTeam?.name ?? "—"}
-                      </p>
+                      <span className="truncate font-extrabold text-white uppercase tracking-wide text-lg">
+                        {myName}
+                      </span>
                     </div>
 
-                    <div className="flex-none w-0" aria-hidden />
-
-                    <div className="flex-1 flex items-center justify-start gap-1 sm:gap-2 pl-3 sm:pl-6">
-                      <p className="truncate max-w-[12ch] text-slate-200 text-right">
-                        {opponent?.name ?? "—"}
-                      </p>
-                      <Image
-                        src={opponent?.logo ?? "/logo.jpg"}
-                        alt={`${opponent?.name ?? "Opponent"} logo`}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pointer-events-none select-none absolute inset-0 flex items-center justify-center">
-                    <p className="px-2 text-base font-extrabold leading-none tracking-tight text-white">
-                      {match.status === "finished" ? (
-                        <>
-                          {myScore ?? "—"} <span className="text-slate-500">-</span> {oppScore ?? "—"}
-                        </>
+                    {/* Score or VS */}
+                    <div className="flex flex-col items-center justify-center text-center shrink-0">
+                      {showScore ? (
+                        <div className="font-black tabular-nums text-white text-[24px] sm:text-[28px] leading-none">
+                          {myScore} <span className="mx-2">–</span> {oppScore}
+                        </div>
                       ) : (
-                        <span className="text-slate-300">VS</span>
+                        <div className="font-extrabold text-white/85 text-[22px] sm:text-[24px] leading-none">
+                          VS
+                        </div>
                       )}
-                    </p>
-                  </div>
-                </div>
+                      <div className="mt-2 text-[13px] text-white/60 leading-none whitespace-nowrap">
+                        {formatDate(match.match_date)}
+                      </div>
+                    </div>
 
-                <div className="text-right">
-                  <p className="text-sm text-slate-400 flex items-center gap-1 justify-end">
-                    <FaCalendarAlt /> {formatDate(match.match_date)}
-                  </p>
-                  <span className={`mt-1 inline-block px-3 py-1 text-xs rounded-full border ${resultColor}`}>
-                    {resultLabel}
-                  </span>
-                </div>
+                    {/* Opponent */}
+                    <div className="flex items-center gap-4 justify-end min-w-0 w-full sm:w-auto sm:justify-start">
+                      <span className="truncate font-extrabold text-white uppercase tracking-wide text-lg text-right sm:text-left">
+                        {oppName}
+                      </span>
+                      <Image
+                        src={oppLogo}
+                        alt={oppName}
+                        width={48}
+                        height={48}
+                        className="h-12 w-12 rounded-full object-contain ring-1 ring-white/20 bg-black/30"
+                      />
+                    </div>
+                  </div>
+                  <Link
+                    href={`/matches/${match.id}`}
+                    className="absolute inset-0"
+                    aria-label={`${myName} vs ${oppName}`}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Pagination */}
+          {currentMatches.length > 0 && (
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-t border-white/10">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white/90 disabled:text-white/40 disabled:cursor-not-allowed bg-white/10 hover:bg-white/15 transition"
+              >
+                Προηγούμενα
+              </button>
+              <div className="text-xs text-white/70">
+                Σελίδα <span className="font-semibold text-white">{page}</span> / {totalPages}
               </div>
-            </Link>
-          );
-        })}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white/90 disabled:text-white/40 disabled:cursor-not-allowed bg-white/10 hover:bg-white/15 transition"
+              >
+                Επόμενα
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

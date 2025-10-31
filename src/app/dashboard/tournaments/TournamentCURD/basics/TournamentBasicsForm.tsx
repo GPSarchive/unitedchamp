@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
+import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 type T = NewTournamentPayload["tournament"];
 
@@ -13,11 +14,14 @@ export default function TournamentBasicsForm({
   value: T;
   onChange: (next: T) => void;
 }) {
+  // Get store actions for immediate DB save
+  const updateTournament = useTournamentStore(s => s.updateTournament);
+  const saveAll = useTournamentStore(s => s.saveAll);
+  const tournamentId = useTournamentStore(s => s.ids.tournamentId);
   const editedSlug = useRef(false);
   const [uploading, setUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
-  // derive a sensible dirName for uploads
   const dirName =
     (value.slug && value.slug.trim()) ||
     (value.name && value.name.trim()) ||
@@ -32,95 +36,142 @@ export default function TournamentBasicsForm({
         .replace(/[^a-z0-9-]/g, "");
       onChange({ ...value, slug });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.name]);
 
-  // Whenever logo changes, compute a preview URL:
-  // - if it's absolute http(s), use as-is
-  // - if it starts with '/', we assume it's a storage path like '/leagues/.../file.jpg'
+  const DEFAULT_TOURNAMENT_LOGO = "/images/tournament-default.svg";
+
   useEffect(() => {
-    const logo = value.logo || "";
-    const isHttp = /^https?:\/\//i.test(logo);
-    if (isHttp) {
-      setLogoPreview(logo);
-      return;
-    }
-    const rawPath = String(logo || "").replace(/^\/+/, ""); // strip leading /
-    if (!rawPath) {
-      setLogoPreview(null);
-      return;
+    const slug = (value.slug || value.name || "tournament") as string;
+    const logo = (value.logo || "") as string;
+    const id = Math.random().toString(36).slice(2);
+    const ctrl = new AbortController();
+
+    console.groupCollapsed(`[TBForm][preview][${id}] start`);
+    console.log("inputs", { slug, logo });
+
+    if (!logo) {
+      console.log("no logo -> default");
+      setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
+      console.groupEnd();
+      return () => ctrl.abort();
     }
 
-    // Use the signer route to get a temporary URL for display
-    // Note: we don't know the bucket here; use your default bucket name.
-    const defaultBucket = "GPSarchive's Project";
-    const bucketQP = encodeURIComponent(defaultBucket);
-    const pathQP = encodeURIComponent(rawPath);
-    fetch(`/api/storage?bucket=${bucketQP}&path=${pathQP}`, { credentials: "include" })
+    if (/^https?:\/\//i.test(logo)) {
+      console.log("absolute url -> use as-is");
+      setLogoPreview(logo);
+      console.groupEnd();
+      return () => ctrl.abort();
+    }
+
+    const hasSlash = logo.includes("/");
+    const resolvedKey = hasSlash
+      ? logo.replace(/^\/+/, "")
+      : `leagues/${String(slug).toLowerCase().trim()}/logos/${logo}`;
+    const bucket =
+      process.env.NEXT_PUBLIC_SUPABASE_TOURNAMENTS_BUCKET || "tournaments";
+    const q = new URLSearchParams({ bucket, path: resolvedKey });
+    const url = `/api/storage?${q.toString()}`;
+
+    console.log("sign request", { bucket, resolvedKey, url });
+
+    fetch(url, { credentials: "include", signal: ctrl.signal })
       .then(async (res) => {
-        const body = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        setLogoPreview(body?.signedUrl ?? null);
+        const text = await res.text().catch(() => "");
+        let body: any = null;
+        try { body = text ? JSON.parse(text) : null; } catch {}
+        console.log("sign response", { status: res.status, body });
+        if (!res.ok || !body?.signedUrl) {
+          setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
+          return;
+        }
+        setLogoPreview(body.signedUrl);
       })
-      .catch(() => setLogoPreview(null));
-  }, [value.logo]);
+      .catch((e) => {
+        console.warn("sign fetch error", e);
+        setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
+      })
+      .finally(() => console.groupEnd());
+
+    return () => ctrl.abort();
+  }, [value.logo, value.slug, value.name]);
 
   async function handleFilePick(file: File | null) {
     if (!file) return;
     setUploading(true);
+    const trace = Math.random().toString(36).slice(2);
+    console.groupCollapsed(`[TBForm][upload][${trace}] start`);
     try {
-      // 1) Ask the dedicated tournaments route for a signed upload URL
-      //    Files will be placed under leagues/[dirName]/logos/<uuid>.<ext>
-      const r1 = await fetch("/api/tournaments/image-upload", {
+      console.log("file", { name: file.name, type: file.type, size: file.size });
+      console.log("dirName", dirName);
+
+      // Step 1: Get signed upload URL
+      const r1 = await fetch("/api/storage/tournaments/image-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          dirName,                  // leaf folder derived from slug/name
+          dirName,
           contentType: file.type || "image/jpeg",
-          kind: "logos",            // optional subfolder
+          kind: "logos",
         }),
       });
       const a1 = await r1.json().catch(() => null);
+      console.log("step1 createSignedUploadUrl", { status: r1.status, a1 });
       if (!r1.ok) throw new Error(a1?.error || "Failed to get signed upload URL");
 
-      const { signedUrl, token, path, bucket } = a1 as {
-        signedUrl: string;
-        token: string;
-        path: string;
-        bucket: string;
-      };
+      const { signedUrl, token, path, bucket } = a1 as any;
 
-      // 2) Upload the file with PUT to the signedUrl
+      // Step 2: Upload file to storage
       const r2 = await fetch(signedUrl, {
         method: "PUT",
         headers: {
           "Content-Type": file.type || "image/jpeg",
           "x-upsert": "true",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: file,
       });
-      if (!r2.ok) {
-        const text = await r2.text().catch(() => "");
-        throw new Error(`Upload failed (${r2.status}): ${text || "unknown error"}`);
+      const t2 = await r2.text().catch(() => "");
+      console.log("step2 PUT upload", { status: r2.status, text: t2.slice(0, 200) });
+      if (!r2.ok) throw new Error(`Upload failed (${r2.status}): ${t2 || "unknown"}`);
+
+      // Step 3: Save logo path to form state
+      const logoPath = `/${path}`;
+      console.log("saving logo path", { path, saved: logoPath });
+      onChange({ ...value, logo: logoPath });
+
+      // Step 4: IMMEDIATE DB UPDATE via tournamentStore (if tournament exists in DB)
+      if (tournamentId && tournamentId > 0) {
+        console.log("step4 immediate DB save via tournamentStore", tournamentId);
+        try {
+          updateTournament({ logo: logoPath }); // Mark dirty in store
+          await saveAll(); // Persist to DB via /save-all API
+          console.log("step4 DB save successful");
+        } catch (err) {
+          console.warn("DB save failed, but file uploaded successfully:", err);
+          // Don't throw - file is uploaded, user can save form later
+        }
       }
 
-      // 3) Save the *storage path* (with leading slash to satisfy LogoSchema) in the form
-      //    Example: "/leagues/mini-euro-2025/logos/09f2f...jpg"
-      onChange({ ...value, logo: `/${path}` });
-
-      // 4) Get a signed preview to show instantly (use the bucket returned by the API)
+      // Step 5: Fetch signed URL for immediate preview
       const encBucket = encodeURIComponent(bucket);
       const encPath = encodeURIComponent(path);
-      const r3 = await fetch(`/api/storage?bucket=${encBucket}&path=${encPath}`, {
+      const r5 = await fetch(`/api/storage?bucket=${encBucket}&path=${encPath}`, {
         credentials: "include",
       });
-      const a3 = await r3.json().catch(() => null);
-      if (r3.ok && a3?.signedUrl) setLogoPreview(a3.signedUrl);
+      const a5 = await r5.json().catch(() => null);
+      console.log("step5 sign for immediate preview", { status: r5.status, a5 });
+      
+      if (r5.ok && a5?.signedUrl) {
+        setLogoPreview(a5.signedUrl);
+        console.log("preview set immediately:", a5.signedUrl);
+      }
+
     } catch (err) {
+      console.error("[upload] error", err);
       alert((err as Error).message || String(err));
     } finally {
+      console.groupEnd();
       setUploading(false);
     }
   }
@@ -153,7 +204,10 @@ export default function TournamentBasicsForm({
           {value.logo ? (
             <button
               className="text-xs px-2 py-1 rounded-md border border-white/10 text-white/80 hover:bg-white/5"
-              onClick={() => onChange({ ...value, logo: null })}
+              onClick={() => {
+                onChange({ ...value, logo: null });
+                setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
+              }}
               type="button"
             >
               Remove

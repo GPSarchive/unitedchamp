@@ -169,9 +169,12 @@ export const loadTournamentIntoStore = async (
 
   // Fetch standings
   const { data: standingsData, error: standingsError } = await supabaseInstance
-    .from('stage_standings')
-    .select('*')
-    .in('stage_id', stageIds);
+  .from("stage_standings")
+  .select("stage_id,group_id,team_id,played,won,drawn,lost,gf,ga,gd,points,rank")
+  .in("stage_id", stageIds.length ? stageIds : [-1])
+  .order("stage_id", { ascending: true })
+  .order("group_id", { ascending: true, nullsFirst: true })
+  .order("rank", { ascending: true, nullsFirst: true });
   console.log(`[loadTournamentIntoStore] Standings fetch result:`, { data: standingsData, error: standingsError });
 
   if (standingsError) {

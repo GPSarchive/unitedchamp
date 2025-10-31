@@ -16,32 +16,21 @@ type MaskStyle = CSSProperties & {
   maskMode?: "match-source" | "luminance" | "alpha";
 };
 
-function useBlobUrl(remoteUrl: string | null) {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let revoke: string | null = null;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!remoteUrl) {
-          setBlobUrl(null);
-          return;
-        }
-        const res = await fetch(remoteUrl, { credentials: "omit", mode: "cors" });
-        if (!res.ok) throw new Error(`mask fetch ${res.status}`);
-        const blob = await res.blob();
-        revoke = URL.createObjectURL(blob);
-        if (!cancelled) setBlobUrl(revoke);
-      } catch {
-        if (!cancelled) setBlobUrl(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-      if (revoke) URL.revokeObjectURL(revoke);
-    };
-  }, [remoteUrl]);
-  return blobUrl;
+// One-time blob fallback cache per URL if you ever need it.
+const __blobOnceCache = new Map<string, Promise<string>>();
+async function toBlobUrlOnce(u: string) {
+  if (!__blobOnceCache.has(u)) {
+    __blobOnceCache.set(
+      u,
+      fetch(u, { credentials: "omit", mode: "cors" })
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.blob();
+        })
+        .then((b) => URL.createObjectURL(b))
+    );
+  }
+  return __blobOnceCache.get(u)!;
 }
 
 // Optional: lightweight alpha detection (returns null if we can't tell)
@@ -65,11 +54,13 @@ function useHasAlpha(maskUrl: string | null) {
         ctx.drawImage(img, 0, 0);
         const { data } = ctx.getImageData(0, 0, w, h);
         let transparent = false;
-        for (let i = 3; i < data.length; i += 16) { // sparse sample
+        for (let i = 3; i < data.length; i += 16) {
           if (data[i] < 255) { transparent = true; break; }
         }
         if (!cancelled) setHasAlpha(transparent);
-      } catch { if (!cancelled) setHasAlpha(null); }
+      } catch {
+        if (!cancelled) setHasAlpha(null);
+      }
     };
     img.onerror = () => !cancelled && setHasAlpha(null);
     img.src = maskUrl;
@@ -97,24 +88,38 @@ export default function GlossOverlay({
   intensity?: number;
   disableIfOpaque?: boolean;
 }) {
-  // Call hooks unconditionally
+  // Signed URLs for image and mask
   const imageUrl = useSignedUrl(src ?? null);
-  const rawMaskUrl = useSignedUrl((maskSrc ?? src) ?? null);
+  const maskUrl = useSignedUrl((maskSrc ?? src) ?? null);
 
-  // 👉 Convert remote mask to same-origin blob URL (fixes CORP/CORS in CSS)
-  const blobMaskUrl = useBlobUrl(rawMaskUrl ?? null);
+  // Prefer direct reuse of the signed URL. Fallback to a cached blob only if you detect issues.
+  const [cssMaskUrl, setCssMaskUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      if (!maskUrl) { setCssMaskUrl(null); return; }
+      // Direct URL first: zero extra transfer when cached.
+      setCssMaskUrl(maskUrl);
+
+      // If you hit a browser that blocks CSS masks by CORP/CORS and you detect it,
+      // you can uncomment the next two lines to switch to a blob once:
+      // const blob = await toBlobUrlOnce(maskUrl);
+      // if (!cancel) setCssMaskUrl(blob);
+    })();
+    return () => { cancel = true; };
+  }, [maskUrl]);
 
   const reduce = useReducedMotion();
-  const hasAlpha = useHasAlpha(blobMaskUrl ?? null); // safe; returns null if tainted
+  const hasAlpha = useHasAlpha(maskUrl ?? null); // probe the real image; returns null if blocked
 
   const active = run && !reduce;
   const clamp = (v: number, min = 0, max = 1.5) => Math.min(Math.max(v, min), max);
 
-  // Build clip style with blob URL; keep hook order consistent
+  // Build clip style with the mask URL
   const clipStyle: MaskStyle = useMemo(
     () => ({
-      WebkitMaskImage: blobMaskUrl ? `url(${blobMaskUrl})` : undefined,
-      maskImage: blobMaskUrl ? `url(${blobMaskUrl})` : undefined,
+      WebkitMaskImage: cssMaskUrl ? `url(${cssMaskUrl})` : undefined,
+      maskImage: cssMaskUrl ? `url(${cssMaskUrl})` : undefined,
       WebkitMaskRepeat: "no-repeat",
       maskRepeat: "no-repeat",
       WebkitMaskSize: "cover",
@@ -125,11 +130,11 @@ export default function GlossOverlay({
       zIndex: 1,
       borderRadius: "inherit",
     }),
-    [blobMaskUrl]
+    [cssMaskUrl]
   );
 
   const shouldRender =
-    !!imageUrl && !!blobMaskUrl && !(disableIfOpaque && hasAlpha === false);
+    !!imageUrl && !!cssMaskUrl && !(disableIfOpaque && hasAlpha === false);
 
   if (!shouldRender) return null;
 

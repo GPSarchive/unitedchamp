@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useStages } from "../useStages";
-import type { Stage } from "../useTournamentData";
-import { useTournamentData } from "../useTournamentData";
+import { useStages } from "./useStages";
+import type { Stage } from "./useTournamentData";
+import { useTournamentData } from "./useTournamentData";
 
 const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   const { getGroupsForStage } = useStages();

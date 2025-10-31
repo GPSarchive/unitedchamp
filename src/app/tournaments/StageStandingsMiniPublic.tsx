@@ -1,9 +1,8 @@
-// app/tournaments/StageStandingsMiniPublic.tsx (updated to support single-group override)
-
+// app/tournaments/StageStandingsMiniPublic.tsx
 "use client";
 
 import * as React from "react";
-import { useTournamentData } from "./useTournamentData"; // Adjust path to your store
+import { useTournamentData } from "./useTournamentData";
 
 type Kind = "league" | "groups";
 
@@ -17,7 +16,7 @@ type StandingRow = {
   lost: number;
   gf: number;
   ga: number;
-  gd?: number;   // optional in DB; we’ll derive if missing
+  gd?: number;
   points: number;
   rank?: number | null;
 };
@@ -26,31 +25,28 @@ export default function StageStandingsMiniPublic({
   stageIdx,
   kind,
   showLogos = true,
-  stageIdOverride, // ← NEW
-  groupIdxOverride, // NEW: Optional group index to filter to a single group
+  stageIdOverride,
+  groupIdxOverride,
+  title = "ΒΑΘΜΟΛΟΓΙΑ",
+  subtitle,
 }: {
   stageIdx: number;
   kind: Kind;
-  /** if your store can resolve team logos, leave true; otherwise set false where you use it */
   showLogos?: boolean;
-  /** Explicit DB stage id to use (preferred if provided) */
   stageIdOverride?: number;
-  /** Explicit group index to filter to (if kind="groups", renders single group table) */
   groupIdxOverride?: number;
+  title?: string;
+  subtitle?: string;
 }) {
-  // store slices (adapted from useTournamentStore to useTournamentData)
   const standings = useTournamentData((s) => s.standings) as StandingRow[] | undefined;
   const stageIdByIndex = useTournamentData((s) => s.ids.stageIdByIndex);
   const groupIdByStage = useTournamentData((s) => s.ids.groupIdByStage);
   const getTeamName = useTournamentData((s) => s.getTeamName);
-  // optional: some stores expose a logo getter; fall back gracefully
   const getTeamLogo = useTournamentData((s) => s.getTeamLogo) ?? (() => null);
 
-  // Prefer the explicit DB id when provided
   const stageId = stageIdOverride ?? stageIdByIndex?.[stageIdx];
   const hasStage = typeof stageId === "number" && Number.isFinite(stageId);
 
-  
   const groupMap: Record<number, number> = React.useMemo(() => {
     if (!hasStage) return {};
     const raw = groupIdByStage?.[stageIdx] ?? {};
@@ -70,19 +66,17 @@ export default function StageStandingsMiniPublic({
     [groupMap]
   );
 
-  // slice standings to this stage and index by group
   const byGroup = React.useMemo(() => {
     const m = new Map<number, StandingRow[]>();
     (standings ?? []).forEach((r) => {
       if (!hasStage || r.stage_id !== stageId) return;
-      const g = kind === "groups" ? Number(r.group_id ?? -1) : 0; // league = single table
+      const g = kind === "groups" ? Number(r.group_id ?? -1) : 0;
       if (!m.has(g)) m.set(g, []);
       m.get(g)!.push(r);
     });
     return m;
   }, [standings, hasStage, stageId, kind]);
 
-  // empty / not hydrated
   if (!hasStage || byGroup.size === 0) {
     return (
       <div className="rounded-md border border-white/10 bg-white/5 p-2 text-xs text-white/60">
@@ -91,10 +85,6 @@ export default function StageStandingsMiniPublic({
     );
   }
 
-  // robust sort:
-  // 1) if rank provided, asc rank
-  // 2) else points desc, gd desc, gf desc
-  // 3) then name asc (stable)
   const sortRows = (rows: StandingRow[]) => {
     const safeName = (id: number) => getTeamName?.(id) ?? `Team #${id}`;
     return rows
@@ -125,16 +115,16 @@ export default function StageStandingsMiniPublic({
     const logo = showLogos ? getTeamLogo?.(teamId) : null;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logo}
             alt=""
-            className="h-5 w-5 rounded-sm object-cover border border-white/10"
+            className="h-6 w-6 rounded object-contain"
           />
         ) : null}
-        <span className="truncate">{name}</span>
+        <span className="font-semibold tracking-wide">{name}</span>
       </div>
     );
   };
@@ -144,42 +134,48 @@ export default function StageStandingsMiniPublic({
 
     return (
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-white/90">
-          <thead className="text-white/70">
-            <tr className="[&>th]:px-2 [&>th]:py-1 border-b border-white/10">
-              <th className="w-10 text-right">#</th>
-              <th className="text-left">Ομάδα</th>
-              <th className="w-10 text-right" title="Αγώνες">Αγώνες</th>
-              <th className="w-10 text-right" title="Νίκες">Νίκες</th>
-              <th className="w-10 text-right" title="Ισοπαλίες">Ισοπαλίες</th>
-              <th className="w-10 text-right" title="Ήττες">Ήττες</th>
-              <th className="w-12 text-right" title="Γκολ Υπέρ">Γκολ Υπέρ</th>
-              <th className="w-12 text-right" title="Γκολ Κατά">Γκολ Κατά</th>
-              <th className="w-12 text-right" title="Διαφορά τερμάτων">GD</th>
-              <th className="w-12 text-right" title="Βαθμοί">Βαθμοί</th>
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-gradient-to-r from-rose-700 to-rose-800 text-white uppercase tracking-[0.15em] text-[11px] font-extrabold">
+              <th className="px-4 py-3 text-center w-10">#</th>
+              <th className="px-4 py-3 text-left">ΟΜΑΔΑ</th>
+              <th className="px-2 py-3 text-center w-12" title="Αγώνες">Α</th>
+              <th className="px-2 py-3 text-center w-12" title="Νίκες">Ν</th>
+              <th className="px-2 py-3 text-center w-12" title="Ισοπαλίες">Ι</th>
+              <th className="px-2 py-3 text-center w-12" title="Ήττες">Η</th>
+              <th className="px-2 py-3 text-center w-12" title="Γκολ Υπέρ">Υ</th>
+              <th className="px-2 py-3 text-center w-12" title="Γκολ Κατά">Κ</th>
+              <th className="px-2 py-3 text-center w-12" title="Διαφορά">Δ</th>
+              <th className="px-4 py-3 text-center w-14 bg-gradient-to-r from-rose-800 to-rose-900" title="Βαθμοί">Β</th>
             </tr>
           </thead>
-          <tbody>
-            {sorted.map((r) => {
-              const rank = r.rank ?? "—";
-              const gd = typeof r.gd === "number" ? r.gd : (Number(r.gf) || 0) - (Number(r.ga) || 0);
+
+          <tbody className="bg-slate-900">
+            {sorted.map((r, idx) => {
+              const rank = r.rank ?? idx + 1;
+              const gd =
+                typeof r.gd === "number" ? r.gd : (Number(r.gf) || 0) - (Number(r.ga) || 0);
+              const gdDisplay = gd > 0 ? `+${gd}` : gd;
+
               return (
                 <tr
                   key={`${r.team_id}-${r.group_id ?? "0"}`}
-                  className="[&>td]:px-2 [&>td]:py-1 border-b border-white/5"
+                  className="border-b border-slate-700/50 hover:bg-slate-800 transition-colors text-white"
                 >
-                  <td className="text-right">{rank}</td>
-                  <td className="text-left">
+                  <td className="px-4 py-3.5 text-center font-black text-white/90">{rank}</td>
+                  <td className="px-4 py-3.5">
                     <TeamCell teamId={r.team_id} />
                   </td>
-                  <td className="text-right">{r.played}</td>
-                  <td className="text-right">{r.won}</td>
-                  <td className="text-right">{r.drawn}</td>
-                  <td className="text-right">{r.lost}</td>
-                  <td className="text-right">{r.gf}</td>
-                  <td className="text-right">{r.ga}</td>
-                  <td className="text-right">{gd}</td>
-                  <td className="text-right font-semibold">{r.points}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.played}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.won}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.drawn}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.lost}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.gf}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{r.ga}</td>
+                  <td className="px-2 py-3.5 text-center text-white/90">{gdDisplay}</td>
+                  <td className="px-4 py-3.5 text-center font-black text-base bg-slate-800">
+                    {r.points}
+                  </td>
                 </tr>
               );
             })}
@@ -192,29 +188,54 @@ export default function StageStandingsMiniPublic({
   if (kind === "league") {
     const rows = byGroup.get(0) ?? [];
     return (
-      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
-        <header className="text-sm text-white/80 font-medium">Βαθμολογία (League)</header>
+      <section className="rounded-xl overflow-hidden shadow-2xl border border-rose-900/30">
+        <div className="bg-slate-900 px-5 pt-5">
+          <h2 className="text-center text-white text-[28px] font-extrabold tracking-[0.2em]">
+            {title}
+          </h2>
+          {subtitle && (
+            <p className="mt-1 pb-4 text-center text-[11px] uppercase tracking-[0.25em] text-white/80">
+              {subtitle}
+            </p>
+          )}
+        </div>
+
         <Table rows={rows} />
+
+        <div className="bg-slate-900 px-4 py-2 text-xs text-white/60 text-center border-t border-slate-700/50">
+          Α (Αγώνες) - Ν (Νίκες) - Ι (Ισοπαλίες) - Η (Ήττες) - Υ (Γκολ Υπέρ) - Κ (Γκολ Κατά) - Δ (Διαφορά τερμάτων) - Β (Βαθμοί)
+        </div>
       </section>
     );
   }
 
-  // groups
-  // If groupIdxOverride provided, render single group
-  if (typeof groupIdxOverride === 'number') {
+  // Single group override
+  if (typeof groupIdxOverride === "number") {
     const dbGroupId = groupMap[groupIdxOverride];
     const rows = dbGroupId != null ? byGroup.get(dbGroupId) ?? [] : [];
-    const label = `Βαθμολογία Ομίλου ${groupIdxOverride + 1}`; // Or fetch group name if available
+    const label = `ΟΜΙΛΟΣ ${groupIdxOverride + 1}`;
+
     return (
-      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
-        <header className="text-sm text-white/80 font-medium">{label}</header>
+      <section className="rounded-xl overflow-hidden shadow-2xl border border-rose-900/30">
+        <div className="bg-slate-900 px-5 pt-5">
+          <h2 className="text-center text-white text-[28px] font-extrabold tracking-[0.2em]">
+            {title}
+          </h2>
+          <p className="mt-1 pb-4 text-center text-[11px] uppercase tracking-[0.25em] text-white/80">
+            {label}
+          </p>
+        </div>
+
         <Table rows={rows} />
+
+        <div className="bg-slate-900 px-4 py-2 text-xs text-white/60 text-center border-t border-slate-700/50">
+          Α (Αγώνες) - Ν (Νίκες) - Ι (Ισοπαλίες) - Η (Ήττες) - Υ (Γκολ Υπέρ) - Κ (Γκολ Κατά) - Δ (Διαφορά τερμάτων) - Β (Βαθμοί)
+        </div>
       </section>
     );
   }
 
-  // Prefer configured UI group order (groupMap). If missing, fall back to the
-  // actual group_ids we found in standings, labeling them 1..N by order.
+  // Multiple groups
   const groupsForRender =
     groupIdxs.length > 0
       ? groupIdxs
@@ -237,15 +258,33 @@ export default function StageStandingsMiniPublic({
           }));
 
   return (
-    <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
-      <header className="text-sm text-white/80 font-medium">Βαθμολογίες Ομίλων</header>
-      <div className="grid gap-3 md:grid-cols-2">
+    <section className="space-y-6">
+      <div className="bg-slate-900 px-5 pt-5 rounded-xl">
+        <h2 className="text-center text-white text-[28px] font-extrabold tracking-[0.2em]">
+          {title}
+        </h2>
+        {subtitle && (
+          <p className="mt-1 pb-4 text-center text-[11px] uppercase tracking-[0.25em] text-white/80">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
         {groupsForRender.map((g) => (
-          <div key={g.key} className="rounded-md border border-white/10 bg-white/5 p-2">
-            <div className="text-xs text-white/70 mb-2">{g.label}</div>
+          <div key={g.key} className="rounded-xl overflow-hidden shadow-2xl border border-rose-900/30">
+            <div className="bg-gradient-to-r from-rose-700 to-rose-800 px-4 py-3 text-center">
+              <h3 className="text-base font-extrabold text-white tracking-[0.18em] uppercase">
+                {g.label}
+              </h3>
+            </div>
             <Table rows={g.rows} />
           </div>
         ))}
+      </div>
+
+      <div className="bg-slate-900 px-4 py-3 text-xs text-white/60 text-center rounded-xl border border-slate-700/50">
+        Α (Αγώνες) - Ν (Νίκες) - Ι (Ισοπαλίες) - Η (Ήττες) - Υ (Γκολ Υπέρ) - Κ (Γκολ Κατά) - Δ (Διαφορά τερμάτων) - Β (Βαθμοί)
       </div>
     </section>
   );

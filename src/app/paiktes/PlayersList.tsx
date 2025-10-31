@@ -74,6 +74,7 @@ export default function PlayersList({
                       cursor-pointer 
                       transition-all duration-200
                       hover:bg-white/5
+                      hover:shadow-cyan-500/30 hover:scale-[1.01]  // ← Added nice glow and scale effect on hover
                       ${isActive ? "bg-cyan-500/10 border-l-4 border-l-cyan-400" : ""}
                     `}
                     role="button"
@@ -92,10 +93,10 @@ export default function PlayersList({
 
                     {/* Player Info */}
                     <div className="flex flex-col justify-center min-w-0">
-                      <div className="text-white font-semibold text-base truncate">
+                      <div className="text-white font-semibold text-lg md:text-base truncate">  
                         {player.first_name} {player.last_name}
                       </div>
-                      <div className="text-white/50 text-sm mt-0.5 flex items-center gap-2">
+                      <div className="text-white/50 text-base md:text-sm mt-0.5 flex items-center gap-2">  
                         <span>{player.team?.name || "—"}</span>
                         {player.position && (
                           <>
@@ -114,19 +115,19 @@ export default function PlayersList({
 
                     {/* Stats - Centered */}
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base"> 
                         {player.matches}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base"> 
                         {player.wins}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base">  
                         {showTournamentGoals && player.tournament_goals !== undefined
                           ? player.tournament_goals
                           : player.goals}
@@ -134,19 +135,19 @@ export default function PlayersList({
                     </div>
 
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base">  
                         {player.assists}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base">  
                         {player.mvp}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-base">
+                      <span className="text-white font-mono text-lg md:text-base"> 
                         {player.best_gk}
                       </span>
                     </div>

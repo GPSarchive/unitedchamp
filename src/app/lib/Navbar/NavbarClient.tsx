@@ -15,7 +15,7 @@ const NAV_LINKS = [
   { href: "/home",            label: "HOME",                     img: "/field2.jpg" },
   { href: "/anakoinoseis",    label: "ΑΝΑΚΟΙΝΩΣΕΙΣ",             img: "/ανακοινωσεις.jpg" },
   { href: "/OMADES",          label: "ΟΜΑΔΕΣ",                   img: "/Ομαδες.jpg" },
-  { href: "/tourna",        label: "ΤΟΥΡΝΟΥΑ",                 img: "/τουρνουα.jpg" },
+  { href: "/tournaments",        label: "ΤΟΥΡΝΟΥΑ",                 img: "/τουρνουα.jpg" },
   { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",              img: "/επικοινωνια.jpg" },
 
   // NEW

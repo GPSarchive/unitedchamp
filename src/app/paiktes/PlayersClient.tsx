@@ -1,4 +1,4 @@
-// src/app/paiktes/PlayersClient.tsx
+// src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination)
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -36,9 +36,15 @@ type TournamentOpt = { id: number; name: string; season: string | null };
 export default function PlayersClient({
   initialPlayers = [],
   tournaments = [],
+  totalCount = 0,
+  currentPage = 1,
+  pageSize = 50,
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
+  totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
@@ -75,6 +81,7 @@ export default function PlayersClient({
       sort: v,
       tournament_id:
         v === "tournament_goals" ? selectedTournamentId ?? "" : null,
+      page: 1, // Reset to page 1 on sort change
     });
   };
 
@@ -83,12 +90,22 @@ export default function PlayersClient({
     updateQuery({
       sort: "tournament_goals",
       tournament_id: Number.isFinite(id) ? id : null,
+      page: 1,
     });
   };
 
   const onTopChange = (val: string) => {
     const n = Number(val);
-    updateQuery({ top: Number.isFinite(n) && n > 0 ? n : null });
+    updateQuery({ 
+      top: Number.isFinite(n) && n > 0 ? n : null,
+      page: 1,
+    });
+  };
+
+  const onPageChange = (newPage: number) => {
+    updateQuery({ page: newPage });
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // When we grow to desktop, ensure list+card layout is visible
@@ -96,7 +113,7 @@ export default function PlayersClient({
     if (isXL) setDetailOpen(false);
   }, [isXL]);
 
-  // Filter + search
+  // Filter + search (client-side within current page)
   const players = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) return base;
@@ -132,6 +149,10 @@ export default function PlayersClient({
 
   const isAlphaSort = selectedSort === "alpha";
   const showTournamentGoals = selectedSort === "tournament_goals";
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const showPagination = totalPages > 1;
 
   return (
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
@@ -178,6 +199,7 @@ export default function PlayersClient({
       >
         {/* LEFT PANEL - Players List with Filters */}
         <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 overflow-hidden">
+          
           {/* Filter Header */}
           <PlayersFilterHeader
             selectedSort={selectedSort}
@@ -194,21 +216,81 @@ export default function PlayersClient({
           />
 
           {/* Players List */}
-          <div className="flex-1 overflow-hidden">
-            <PlayersList
-              players={players}
-              activeId={activeId}
-              onPlayerSelect={openDetailOnMobile}
-              onPlayerHover={(id) => isXL && setActiveId(id)}
-              showTournamentGoals={showTournamentGoals}
-              isAlphaSort={isAlphaSort}
-            />
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-y-auto">
+              <PlayersList
+                players={players}
+                activeId={activeId}
+                onPlayerSelect={openDetailOnMobile}
+                onPlayerHover={(id) => isXL && setActiveId(id)}
+                showTournamentGoals={showTournamentGoals}
+                isAlphaSort={isAlphaSort}
+              />
+            </div>
+
+            {/* Pagination Controls */}
+            {showPagination && (
+              <div className="sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-white/50">
+                    Page {currentPage} of {totalPages} • {totalCount} total players
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onPageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Previous
+                    </button>
+                    
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => onPageChange(pageNum)}
+                            className={`w-10 h-10 text-sm font-medium rounded transition-all ${
+                              currentPage === pageNum
+                                ? "bg-cyan-500 text-white"
+                                : "text-white/70 hover:bg-white/10"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => onPageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* RIGHT PANEL - Player Card (Desktop Only) */}
         <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col bg-zinc-950/50">
-
           <div className="flex-1 overflow-y-auto p-6">
             {active ? (
               <div className="sticky top-0">

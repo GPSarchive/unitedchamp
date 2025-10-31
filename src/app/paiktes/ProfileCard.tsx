@@ -406,10 +406,10 @@ function ProfileCardComponent({
               <div className={styles["pc-user-info"]}>
                 <div className={styles["pc-user-details"]}>
                   <div className={styles["pc-mini-avatar"]}>
-                    <SignedImg
+            {/*<SignedImg
                       src={(miniAvatarUrl ?? avatarUrl) || null}
                       alt={`${name || "User"} mini avatar`}
-                    />
+                    />*/}
                   </div>
                   <div className={styles["pc-user-text"]}>
                     
