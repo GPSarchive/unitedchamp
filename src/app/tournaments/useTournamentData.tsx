@@ -6,6 +6,8 @@ import { create } from "zustand";
 
 // Types to represent tournament data
 export type Tournament = {
+  matches_count: string;
+  teams_count: string;
   id: number;
   name: string;
   slug: string;

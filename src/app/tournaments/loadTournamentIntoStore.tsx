@@ -100,6 +100,8 @@ export const loadTournamentIntoStore = async (
     logo: tournamentData.logo,
     status: tournamentData.status,
     winner_team_id: tournamentData.winner_team_id,
+    matches_count: '',
+    teams_count: ''
   };
 
   // Fetch stages
