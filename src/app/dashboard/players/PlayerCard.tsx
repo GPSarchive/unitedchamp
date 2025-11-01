@@ -1,3 +1,4 @@
+//app/dashboard/players/PlayerCard.tsx
 "use client";
 
 import React from "react";

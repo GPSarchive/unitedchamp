@@ -1,4 +1,4 @@
-// src/app/matches/[id]/page.tsx
+// src/app/matches/[id]/page.tsx (OPTIMIZED - No Signing)
 export const revalidate = 0;
 
 import TeamBadge from "./TeamBadge";
@@ -15,58 +15,9 @@ import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import VantaBg from "@/app/lib/VantaBg";
-import styles from "./triumph.module.css";
 import ShinyText from "./ShinyText";
-import Image from "next/image";
-// ⬇️ NEW: import the client LaurelWreath
-
-
-/* ─────────────────────────────────────────────────────────
-   Προ-υπογραφή (signed URLs) για φωτογραφίες παικτών
-   ───────────────────────────────────────────────────────── */
-const PLAYER_BUCKET = "GPSarchive's Project";
-const SIGN_TTL_SECONDS = 60 * 5;
-
-/** Type guard: είναι storage key (σχετική διαδρομή) κι όχι πλήρες URL */
-function isStorageKey(v: unknown): v is string {
-  if (typeof v !== "string") return false;
-  if (/^(https?:)?\/\//i.test(v)) return false; // absolute URL
-  if (v.startsWith("/")) return false; // absolute path
-  if (v.startsWith("data:")) return false; // data URL
-  return v.trim().length > 0;
-}
-
-/** Μαζικά signed URLs για keys */
-async function bulkSign(keys: string[]) {
-  const unique = Array.from(new Set(keys));
-  if (unique.length === 0) return new Map<string, string>();
-  const { data, error } = await supabaseAdmin.storage
-    .from(PLAYER_BUCKET)
-    .createSignedUrls(unique, SIGN_TTL_SECONDS);
-  const map = new Map<string, string>();
-  if (!error && data) {
-    unique.forEach((k, i) => {
-      const u = data[i]?.signedUrl;
-      if (u) map.set(k, u);
-    });
-  }
-  return map;
-}
-
-/** Εφαρμογή signed URLs και εξαναγκασμός photo => string */
-function applySignedUrls(
-  list: PlayerAssociation[],
-  signedMap: Map<string, string>
-): PlayerAssociation[] {
-  return list.map((a) => {
-    const raw = (a.player as any).photo as unknown;
-    const photoSigned = isStorageKey(raw) ? signedMap.get(raw) : undefined;
-    const normalizedPhoto = (photoSigned ?? (typeof raw === "string" ? raw : "")) as string;
-    return { ...a, player: { ...a.player, photo: normalizedPhoto } };
-  });
-}
+import { TournamentImage } from "@/app/lib/OptimizedImage"; // ✅ UPDATED
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -82,7 +33,6 @@ export default async function Page({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ video?: string }>;
 }) {
-  // --- Έλεγχος admin (server-side) ---
   const supabase = await createSupabaseRouteClient();
   const {
     data: { user },
@@ -96,14 +46,12 @@ export default async function Page({
   const id = parseId(idStr) as Id | null;
   if (!id) return notFound();
 
-  // 1) Αγώνας
   const match = await fetchMatch(id);
   if (!match) return notFound();
 
-  // ✅ SIMPLIFIED: Tournament logo now properly typed after fixing queries.ts
-  const tournamentLogoRaw = match.tournament?.logo ?? null;
+  // ✅ NO SIGNING - Keep raw path
+  const tournamentLogo = match.tournament?.logo ?? null;
 
-  // 2) Παράλληλα: παίκτες/στατς/συμμετοχές
   const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
@@ -111,9 +59,9 @@ export default async function Page({
     fetchParticipantsMap(match.id),
   ]);
 
-  let teamAPlayers: PlayerAssociation[] =
+  const teamAPlayers: PlayerAssociation[] =
     aRes.status === "fulfilled" ? (aRes.value as PlayerAssociation[]) : [];
-  let teamBPlayers: PlayerAssociation[] =
+  const teamBPlayers: PlayerAssociation[] =
     bRes.status === "fulfilled" ? (bRes.value as PlayerAssociation[]) : [];
   const existingStats =
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
@@ -130,28 +78,7 @@ export default async function Page({
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
 
-  // 3) Υπογραφή φωτογραφιών (αν είναι storage keys)
-  let tournamentLogo: string | null = null;
-
-  try {
-    const photoKeys: string[] = [
-      ...teamAPlayers.map((a) => a.player.photo).filter(isStorageKey),
-      ...teamBPlayers.map((a) => a.player.photo).filter(isStorageKey),
-      ...(isStorageKey(tournamentLogoRaw) ? [tournamentLogoRaw] : []),
-    ];
-    const signedMap = await bulkSign(photoKeys);
-    teamAPlayers = applySignedUrls(teamAPlayers, signedMap);
-    teamBPlayers = applySignedUrls(teamBPlayers, signedMap);
-
-    // κανονικοποίηση tournament logo σε string URL
-    if (isStorageKey(tournamentLogoRaw)) {
-      tournamentLogo = signedMap.get(tournamentLogoRaw) ?? null;
-    } else if (typeof tournamentLogoRaw === "string") {
-      tournamentLogo = tournamentLogoRaw;
-    }
-  } catch (e) {
-    dataLoadErrors.push(`Photo signing: ${errMsg(e)}`);
-  }
+  // ✅ NO PHOTO SIGNING - Players already have raw paths
 
   const videoId = extractYouTubeId(video ?? null);
 
@@ -170,23 +97,18 @@ export default async function Page({
   const bIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_b.id;
 
-  // Στατική περιστροφή στεφανιού (όχι ολόκληρο SVG animation)
-  const LAUREL_ROTATE = 95;
-
   return (
     <div className="relative min-h-dvh overflow-x-visible">
-      {/* Φόντο Vanta */}
       <VantaBg className="absolute inset-0 -z-10" mode="balanced" />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
-      {/* ───────────── Triumphant Cup + Laurel (Gold) ───────────── */}
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         <div className="flex justify-center">
-          <div className={"pointer-events-none select-none"}>
-            {/* TOURNAMENT LOGO */}
+          <div className="pointer-events-none select-none">
+            {/* ✅ UPDATED: Use TournamentImage */}
             {tournamentLogo ? (
               <div className="mb-3 flex justify-center">
-                <Image
+                <TournamentImage
                   src={tournamentLogo}
                   alt={match.tournament?.name ?? "Tournament logo"}
                   width={160}
@@ -197,8 +119,6 @@ export default async function Page({
               </div>
             ) : null}
 
-
-            {/* Tournament Title (shiny) - ✅ SIMPLIFIED: No more type casting */}
             <div className="mt-4 flex justify-center">
               <ShinyText
                 text={
@@ -207,18 +127,17 @@ export default async function Page({
                 }
                 speed={3}
                 className="
-                text-center
-                text-3xl md:text-5xl
-                font-extrabold leading-tight tracking-tight
-                drop-shadow-[0_1px_0_rgba(0,0,0,.25)]
-              "
+                  text-center
+                  text-3xl md:text-5xl
+                  font-extrabold leading-tight tracking-tight
+                  drop-shadow-[0_1px_0_rgba(0,0,0,.25)]
+                "
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ───────────── Πίνακας αγώνα + Συμμετέχοντες ───────────── */}
       <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
         {dataLoadErrors.length > 0 && (
           <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-amber-200 text-sm">
@@ -269,7 +188,6 @@ export default async function Page({
           />
         </section>
 
-        {/* Βίντεο αγώνα */}
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-lg font-semibold">Match Video</h2>
           {videoId ? (
@@ -291,7 +209,6 @@ export default async function Page({
           )}
         </section>
 
-        {/* Επεξεργασία (admin) */}
         {isAdmin ? (
           <section className="rounded-2xl border bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-lg font-semibold">Admin: Match Player Stats</h2>

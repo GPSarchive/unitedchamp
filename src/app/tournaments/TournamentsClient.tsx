@@ -13,7 +13,10 @@ const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournament
       {/* Decorative BG: soft radial glow + subtle gridlines */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(65%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 -z-10
+                   [mask-image:radial-gradient(ellipse_120%_80%_at_50%_30%,#000_20%,transparent_70%)]
+                   bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.06)_0_2px,transparent_2px_12px)]"
+
       />
       <div
         aria-hidden

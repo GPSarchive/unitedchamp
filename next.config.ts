@@ -47,7 +47,15 @@ remotePatterns.push(
   { protocol: "http", hostname: "localhost", port: "3000", pathname: "/api/public/team-logo/**" },
   { protocol: "http", hostname: "127.0.0.1", port: "3000", pathname: "/api/public/team-logo/**" },
 );
+const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN;
 
+if (CDN_DOMAIN) {
+  remotePatterns.push({
+    protocol: "https",
+    hostname: CDN_DOMAIN,
+    pathname: "/**",
+  });
+}
 /**
  * 2b) Public team-logo host served from ultrachamp.gr
  * (covers both www and apex domains)

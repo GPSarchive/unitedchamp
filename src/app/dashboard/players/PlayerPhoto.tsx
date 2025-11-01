@@ -1,3 +1,4 @@
+//app/dashboard/players/PlayerPhoto.tsx
 "use client";
 import React, { useEffect, useState } from "react";
 

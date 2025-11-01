@@ -310,8 +310,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               bg-zinc-950/90 backdrop-blur-md text-white
             `}
           >
-            {/* horizontally scrollable cards on mobile (scrollbar hidden via global class) */}
-            <div className="flex items-stretch gap-3 px-3 py-3 overflow-x-auto no-scrollbar">
+            {/* vertically stacked cards on mobile */}
+            <div className="flex flex-col gap-3 px-3 py-3">
               {NAV_LINKS.map(({ href, label, img }) => (
                 <Link
                   key={href}
@@ -319,13 +319,13 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                   onClick={closeMobile}
                   aria-current={isActive(href)}
                   className={`
-                    relative group block shrink-0 w-[200px] h-[70px] rounded-lg overflow-hidden
+                    relative group block w-full h-[70px] rounded-lg overflow-hidden
                     border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900
-                    hover:border-white/30 transition
+                    hover:border-white/30 transition active:scale-[0.98]
                   `}
                 >
                   <Image
-                    src={img} alt={label} fill sizes="200px"
+                    src={img} alt={label} fill sizes="100vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
