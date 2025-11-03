@@ -1,3 +1,4 @@
+// src/app/paiktes/PlayerProfileCard.tsx
 "use client";
 
 import ProfileCard from "./ProfileCard";
@@ -12,6 +13,7 @@ export default function PlayerProfileCard({ player }: { player: PlayerLite }) {
       // media
       avatarUrl={player.photo}
       miniAvatarUrl={player.team?.logo ?? null}
+      iconUrl={player.team?.logo ?? null}
 
       // identity
       name={name || "—"}
@@ -20,18 +22,22 @@ export default function PlayerProfileCard({ player }: { player: PlayerLite }) {
       status={[
         player.age != null ? `${player.age}y` : null,
         player.height_cm ? `${player.height_cm}cm` : null,
-      ]
-        .filter(Boolean)
-        .join(" • ") || "—"}
+      ].filter(Boolean).join(" • ") || "—"}
+
+      // stats
+      teams={player.team ? [{ id: player.team.id, name: player.team.name, logo: player.team.logo ?? null }] : []}
+      matchesPlayed={player.matches ?? 0}
+      totalGoals={(player as any).tournament_goals ?? player.goals ?? 0}   // use tournament goals when present
+      totalAssists={player.assists ?? 0}
+      mvpAwards={player.mvp ?? 0}
+      bestGkAwards={player.best_gk ?? 0}
+      showStats={true}
 
       // look & feel
       showBehindGradient={false}
       enableTilt={true}
       enableMobileTilt={false}
       mobileTiltSensitivity={5}
-
-      // action
-
     />
   );
 }

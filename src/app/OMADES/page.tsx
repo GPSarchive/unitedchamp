@@ -1,4 +1,4 @@
-// app/OMADES/teams/page.tsx (or wherever your Teams page lives)
+// app/OMADES/teams/page.tsx 
 import DotGrid from "@/app/OMADES/DotGrid";
 import TeamsGrid from "@/app/OMADES/TeamsGrid";
 import SearchBar from "@/app/OMADES/SearchBar";
@@ -6,7 +6,7 @@ import Pagination from "@/app/OMADES/Pagination";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { Team } from "@/app/lib/types";
 import React from "react";
-
+import ColorBends from "./ColorBends";
 type SearchMap = { [key: string]: string | string[] | undefined };
 
 // RPC row shape returned by search_teams_fuzzy
@@ -23,21 +23,23 @@ type GridTeam = { id: number; name: string; logo: string };
 // ---- Background shell (DotGrid behind, content above) ----
 function Background() {
   return (
-    <DotGrid
-      fullscreen
-      className="z-0 pointer-events-none"
-      baseColor="#1F1B2E"
-      activeColor="#F59E0B"
-      dotSize={2}
-      gap={10}
-      proximity={100}
-      shockRadius={250}
-      shockStrength={5}
-      resistance={750}
-      returnDuration={1.5}
-    />
+    <div className="fixed inset-0 z-0 pointer-events-none">
+      <ColorBends
+        colors={["#211", "#29", "#29"]}
+        rotation={0}
+        speed={0.2}
+        scale={1.2}
+        frequency={2.5}
+        warpStrength={1}
+        mouseInfluence={0}
+        parallax={0}
+        noise={0.1}
+        transparent
+      />
+    </div>
   );
 }
+
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (

@@ -1,8 +1,9 @@
+// components/GlossOverlay.tsx - SIMPLIFIED (No signing!)
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useSignedUrl } from "./SignedImg";
+import { imageConfig } from "@/app/lib/image-config"; // ✅ Use image config
 
 type MaskStyle = CSSProperties & {
   WebkitMaskImage?: string;
@@ -16,56 +17,65 @@ type MaskStyle = CSSProperties & {
   maskMode?: "match-source" | "luminance" | "alpha";
 };
 
-// One-time blob fallback cache per URL if you ever need it.
-const __blobOnceCache = new Map<string, Promise<string>>();
-async function toBlobUrlOnce(u: string) {
-  if (!__blobOnceCache.has(u)) {
-    __blobOnceCache.set(
-      u,
-      fetch(u, { credentials: "omit", mode: "cors" })
-        .then((r) => {
-          if (!r.ok) throw new Error(String(r.status));
-          return r.blob();
-        })
-        .then((b) => URL.createObjectURL(b))
-    );
-  }
-  return __blobOnceCache.get(u)!;
+// ✅ SIMPLIFIED: Direct URL resolution (no signing!)
+function resolveImageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  
+  // Use the same logic as OptimizedImage
+  const resolved = imageConfig.resolve(path);
+  return resolved || imageConfig.getPlaceholder(imageConfig.bucketName as any);
 }
 
-// Optional: lightweight alpha detection (returns null if we can't tell)
-function useHasAlpha(maskUrl: string | null) {
+// Optional: lightweight alpha detection
+function useHasAlpha(imageUrl: string | null) {
   const [hasAlpha, setHasAlpha] = useState<boolean | null>(null);
+  
   useEffect(() => {
-    if (!maskUrl) {
+    if (!imageUrl) {
       setHasAlpha(null);
       return;
     }
+    
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
+    
     img.onload = () => {
       try {
-        const w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+        const w = img.naturalWidth || 1;
+        const h = img.naturalHeight || 1;
         const cv = document.createElement("canvas");
-        cv.width = w; cv.height = h;
+        cv.width = w;
+        cv.height = h;
         const ctx = cv.getContext("2d");
         if (!ctx) throw new Error("no ctx");
+        
         ctx.drawImage(img, 0, 0);
         const { data } = ctx.getImageData(0, 0, w, h);
+        
+        // Sample every 16th pixel for performance
         let transparent = false;
-        for (let i = 3; i < data.length; i += 16) {
-          if (data[i] < 255) { transparent = true; break; }
+        for (let i = 3; i < data.length; i += 64) {
+          if (data[i] < 255) {
+            transparent = true;
+            break;
+          }
         }
         if (!cancelled) setHasAlpha(transparent);
       } catch {
-        if (!cancelled) setHasAlpha(null);
+        // CORS or other error - assume it has alpha to be safe
+        if (!cancelled) setHasAlpha(true);
       }
     };
+    
     img.onerror = () => !cancelled && setHasAlpha(null);
-    img.src = maskUrl;
-    return () => { cancelled = true; };
-  }, [maskUrl]);
+    img.src = imageUrl;
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl]);
+  
   return hasAlpha;
 }
 
@@ -88,59 +98,45 @@ export default function GlossOverlay({
   intensity?: number;
   disableIfOpaque?: boolean;
 }) {
-  // Signed URLs for image and mask
-  const imageUrl = useSignedUrl(src ?? null);
-  const maskUrl = useSignedUrl((maskSrc ?? src) ?? null);
-
-  // Prefer direct reuse of the signed URL. Fallback to a cached blob only if you detect issues.
-  const [cssMaskUrl, setCssMaskUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let cancel = false;
-    (async () => {
-      if (!maskUrl) { setCssMaskUrl(null); return; }
-      // Direct URL first: zero extra transfer when cached.
-      setCssMaskUrl(maskUrl);
-
-      // If you hit a browser that blocks CSS masks by CORP/CORS and you detect it,
-      // you can uncomment the next two lines to switch to a blob once:
-      // const blob = await toBlobUrlOnce(maskUrl);
-      // if (!cancel) setCssMaskUrl(blob);
-    })();
-    return () => { cancel = true; };
-  }, [maskUrl]);
+  // ✅ SIMPLIFIED: Direct resolution (no API calls!)
+  const imageUrl = useMemo(() => resolveImageUrl(src), [src]);
+  const maskUrl = useMemo(() => resolveImageUrl(maskSrc ?? src), [maskSrc, src]);
 
   const reduce = useReducedMotion();
-  const hasAlpha = useHasAlpha(maskUrl ?? null); // probe the real image; returns null if blocked
+  const hasAlpha = useHasAlpha(maskUrl);
 
   const active = run && !reduce;
   const clamp = (v: number, min = 0, max = 1.5) => Math.min(Math.max(v, min), max);
 
   // Build clip style with the mask URL
   const clipStyle: MaskStyle = useMemo(
-    () => ({
-      WebkitMaskImage: cssMaskUrl ? `url(${cssMaskUrl})` : undefined,
-      maskImage: cssMaskUrl ? `url(${cssMaskUrl})` : undefined,
-      WebkitMaskRepeat: "no-repeat",
-      maskRepeat: "no-repeat",
-      WebkitMaskSize: "cover",
-      maskSize: "cover",
-      WebkitMaskPosition: "center",
-      maskPosition: "center",
-      maskMode: "alpha",
-      zIndex: 1,
-      borderRadius: "inherit",
-    }),
-    [cssMaskUrl]
+    () =>
+      maskUrl
+        ? {
+            WebkitMaskImage: `url(${maskUrl})`,
+            maskImage: `url(${maskUrl})`,
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskSize: "cover",
+            maskSize: "cover",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+            maskMode: "alpha",
+            zIndex: 1,
+            borderRadius: "inherit",
+          }
+        : {},
+    [maskUrl]
   );
 
   const shouldRender =
-    !!imageUrl && !!cssMaskUrl && !(disableIfOpaque && hasAlpha === false);
+    !!imageUrl && !!maskUrl && !(disableIfOpaque && hasAlpha === false);
 
   if (!shouldRender) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0" style={clipStyle}>
-      {/* static subtle gloss */}
+      {/* Static subtle gloss */}
       <div
         className="absolute inset-0"
         style={{
@@ -150,7 +146,8 @@ export default function GlossOverlay({
           opacity: 0.6 * clamp(intensity),
         }}
       />
-      {/* sweeping specular line */}
+      
+      {/* Sweeping specular line */}
       <motion.div
         className="absolute -inset-[20%]"
         style={{ transform: `rotate(${angle}deg)` }}
@@ -171,7 +168,8 @@ export default function GlossOverlay({
           }}
         />
       </motion.div>
-      {/* micro clearcoat */}
+      
+      {/* Micro clearcoat */}
       <div
         className="absolute inset-0"
         style={{

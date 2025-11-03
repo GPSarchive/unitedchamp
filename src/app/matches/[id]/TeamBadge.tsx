@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Stars } from "lucide-react";
 import * as React from "react";
 import type { Id } from "@/app/lib/types";
+import { TeamImage } from "@/app/lib/OptimizedImage";
 
 function initials(name: string) {
   return name
@@ -16,7 +16,7 @@ function initials(name: string) {
 }
 
 /**
- * TeamBadge – Neon Triumph Edition
+ * TeamBadge — Neon Triumph Edition
  * - Deep navy card with neon magenta→cyan accents
  * - Animated gradient outline & hover lift
  * - Image shimmer-in + subtle parallax
@@ -31,8 +31,6 @@ export default function TeamBadge({
   className?: string;
   highlight?: boolean;
 }) {
-  const [loaded, setLoaded] = React.useState(false);
-
   // Palette
   const cardBg = "bg-[#0b1020]";
   const baseRing =
@@ -90,12 +88,6 @@ export default function TeamBadge({
         {/* Crest */}
         <motion.div
           className={
-            // ⬇️ FIXES:
-            // - shrink-0: prevent flex from collapsing the crest to 0px
-            // - responsive sizes: give more room on md/lg screens
-            // - bg-black + object-contain for logos with transparency and odd aspect ratios
-            // - aspect-square to keep shape consistent
-            // - min-w ensures truncation happens to the name, not the logo
             `relative shrink-0 h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 aspect-square overflow-hidden rounded-2xl ${ringClass} bg-black`
           }
           title={team.name}
@@ -114,33 +106,17 @@ export default function TeamBadge({
             transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
           />
 
-          {/* logo / fallback with shimmer */}
+          {/* logo / fallback - using TeamImage */}
           {team.logo ? (
-            <>
-              {!loaded && (
-                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-800/60 to-zinc-900" />
-              )}
-              <motion.div
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.04 }}
-                transition={{ duration: 0.5 }}
-                className="absolute inset-0"
-              >
-                <Image
-                  src={team.logo}
-                  alt={`${team.name} logo`}
-                  fill
-                  // ⬇️ Prefer contain so full logo fits the square
-                  className="object-contain"
-                  // ⬇️ Provide correct intrinsic size hints for larger screens
-                  sizes="(min-width: 1280px) 96px, (min-width: 1024px) 80px, (min-width: 768px) 64px, 56px"
-                  onLoadingComplete={() => setLoaded(true)}
-                  onError={() => setLoaded(true)}
-                  draggable={false}
-                  priority={false}
-                />
-              </motion.div>
-            </>
+            <TeamImage
+              src={team.logo}
+              alt={`${team.name} logo`}
+              fill
+              objectFit="contain"
+              sizes="(min-width: 1280px) 96px, (min-width: 1024px) 80px, (min-width: 768px) 64px, 56px"
+              priority={false}
+              animate={true}
+            />
           ) : (
             <div className="grid h-full w-full place-items-center">
               <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-300 bg-fuchsia-500/10">
@@ -190,3 +166,9 @@ export default function TeamBadge({
     </motion.div>
   );
 }
+
+
+
+
+
+

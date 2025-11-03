@@ -488,19 +488,21 @@ export type Labels = {
 export type MatchPlayerStatRow = {
   id: number;
   match_id: number;
-  team_id: number | null;
+  team_id: number;
   player_id: number;
-  goals: number | null;
-  assists: number | null;
-  yellow_cards: number | null;
-  red_cards: number | null;
-  blue_cards: number | null;
-  mvp: boolean | null;
-  best_goalkeeper: boolean | null;
-  position: string | null;
-  is_captain: boolean | null;
-  gk: boolean | null;
+  goals: number;
+  assists: number;
+  own_goals: number;  // ✅ ADD THIS LINE
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  position?: string | null;
+  is_captain?: boolean;
+  gk?: boolean;
+  mvp?: boolean;
+  best_goalkeeper?: boolean;
 };
+
 
 export interface MatchParticipantRow {
   id: Id;

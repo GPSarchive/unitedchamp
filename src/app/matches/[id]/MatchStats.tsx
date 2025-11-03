@@ -1,9 +1,9 @@
 // src/app/matches/[id]/MatchStats.tsx
 import * as React from "react";
-import Image from "next/image";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
-import GlossOverlay from "@/app/paiktes/GlossOverlay"; // 👈 uses your provided gloss effect
+import GlossOverlay from "@/app/paiktes/GlossOverlay";
+import { PlayerImage } from "@/app/lib/OptimizedImage";
 
 /* ──────────────────────────────────────────────────────────
    Glass UI tokens
@@ -52,17 +52,6 @@ function sameTeam(a: unknown, b: unknown) {
   return String(a) === String(b);
 }
 
-/** Resolve image sources */
-function resolveImgSrc(raw?: string | null): string | undefined {
-  if (!raw) return undefined;
-  const s = String(raw).trim();
-  if (/^https?:\/\//i.test(s)) return s;
-  if (s.startsWith("/")) return s;
-  const key = s.replace(/^\/+/, "");
-  if (!key || key.includes("..")) return undefined;
-  return `/api/storage/player-img?path=${encodeURIComponent(key)}`;
-}
-
 /** Team panel (list view, stacked layout) */
 function TeamPanel({
   teamId,
@@ -103,11 +92,12 @@ function TeamPanel({
           const isBestGk = !!row?.best_goalkeeper;
 
           const name = `${player.first_name} ${player.last_name}`.trim();
-          const imgSrc = resolveImgSrc((player as any).photo as string | null | undefined);
+          const imgSrc = (player as any).photo as string | null | undefined;
           const initials = `${player.first_name?.[0] ?? ""}${player.last_name?.[0] ?? ""}`.toUpperCase();
 
           const goals = row?.goals ?? 0;
           const assists = row?.assists ?? 0;
+          const ownGoals = row?.own_goals ?? 0;
           const yellow = row?.yellow_cards ?? 0;
           const red = row?.red_cards ?? 0;
           const blue = row?.blue_cards ?? 0;
@@ -118,27 +108,28 @@ function TeamPanel({
                 {/* Portrait with black bg + gloss animation */}
                 <div className="relative h-28 w-20 overflow-hidden rounded-lg border border-black/50 bg-black shrink-0">
                   {imgSrc ? (
-                    <>
-                      <Image
+                    <div className="relative w-full h-full">
+                      <PlayerImage
                         src={imgSrc}
                         alt={`${name} photo`}
                         fill
+                        objectFit="cover"
                         sizes="80px"
-                        className="object-cover"
-                        unoptimized
+                        priority={false}
+                        animate={false}
                       />
                       {/* Gloss overlay (uses your provided animation) */}
                       <GlossOverlay
                         src={imgSrc}
                         maskSrc={imgSrc}
                         run
-                        disableIfOpaque={false} // show effect even for JPEGs (no alpha)
+                        disableIfOpaque={false}
                         intensity={1}
                         angle={18}
                         thickness={120}
                         duration={3.2}
                       />
-                    </>
+                    </div>
                   ) : (
                     <div className="grid h-full w-full place-items-center text-xl font-bold text-white/85">
                       {initials}
@@ -164,6 +155,14 @@ function TeamPanel({
               <div className="mt-4 flex flex-col gap-3 border-t border-black/30 pt-4">
                 <StatLine icon="⚽️" label="Goals" value={goals} />
                 <StatLine icon="🅰️" label="Assists" value={assists} color="text-sky-400" />
+                {ownGoals > 0 && (
+                  <StatLine 
+                    icon="🔴" 
+                    label="Own Goals" 
+                    value={ownGoals} 
+                    color="text-orange-500" 
+                  />
+                )}
                 <StatLine icon="🟨" label="Κίτρινη Κάρτα" value={yellow} color="text-yellow-400" />
                 <StatLine icon="🟥" label="Κόκκινη Κάρτα" value={red} color="text-red-400" />
                 <StatLine icon="🟦" label="Μπλέ καρτα" value={blue} color="text-blue-400" />
@@ -247,3 +246,9 @@ export default function ParticipantsStats({
     </section>
   );
 }
+
+
+
+
+
+

@@ -1,17 +1,11 @@
-// src/app/paiktes/page.tsx (OPTIMIZED)
+// src/app/paiktes/page.tsx (FIXED - NO SIGNING)
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite } from "./types";
 
-export const revalidate = 300; // Increase from 60 to 5 minutes (match sign TTL)
+export const revalidate = 300;
 
-// INCREASE sign TTL to reduce re-signing frequency
-const BUCKET = "GPSarchive's Project";
-const SIGN_TTL_SECONDS = 60 * 60; // 1 hour instead of 5 minutes
-
-// Add pagination constants
-const DEFAULT_PAGE_SIZE = 50; // Only load 50 players initially
-const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 50;
 
 type PLWithTGoals = PlayerLite & { tournament_goals?: number };
 
@@ -59,57 +53,11 @@ type MatchWinnerRow = {
 type MatchIdRow = { id: number };
 type MpsGoalsRow = { player_id: number; goals: number | null; match_id: number };
 
-function isStoragePathServer(v: string | null | undefined) {
-  if (!v) return false;
-  if (/^(https?:)?\/\//i.test(v)) return false;
-  if (v.startsWith("/")) return false;
-  if (v.startsWith("data:")) return false;
-  return true;
-}
-
-// OPTIMIZATION: Batch sign multiple URLs at once to reduce API calls
-async function signMultiplePaths(paths: string[]): Promise<Map<string, string | null>> {
-  const results = new Map<string, string | null>();
-  
-  // Filter to only storage paths
-  const storagePaths = paths.filter(isStoragePathServer);
-  
-  if (storagePaths.length === 0) {
-    paths.forEach(p => results.set(p, p)); // Return as-is if not storage paths
-    return results;
-  }
-
-  // Sign in parallel with Promise.all (faster than sequential)
-  const signPromises = storagePaths.map(async (path) => {
-    const { data, error } = await supabaseAdmin.storage
-      .from(BUCKET)
-      .createSignedUrl(path, SIGN_TTL_SECONDS);
-    
-    return { path, url: error ? null : data?.signedUrl ?? null };
-  });
-
-  const signed = await Promise.all(signPromises);
-  signed.forEach(({ path, url }) => results.set(path, url));
-  
-  return results;
-}
-
-async function signIfStoragePath(v: string | null | undefined) {
-  if (!v) return null;
-  if (!isStoragePathServer(v)) return v;
-
-  const { data, error } = await supabaseAdmin.storage
-    .from(BUCKET)
-    .createSignedUrl(v, SIGN_TTL_SECONDS);
-
-  return error ? null : data?.signedUrl ?? null;
-}
-
 type SP = { 
   sort?: string; 
   tournament_id?: string; 
   top?: string;
-  page?: string; // NEW: Add pagination support
+  page?: string;
 };
 
 export default async function PaiktesPage({
@@ -117,7 +65,6 @@ export default async function PaiktesPage({
 }: {
   searchParams?: Promise<SP>;
 }) {
-  // Parse search params
   const sp = await searchParams;
   const sortMode = (sp?.sort ?? "alpha").toLowerCase();
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
@@ -125,7 +72,7 @@ export default async function PaiktesPage({
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
   const pageSize = topN ?? DEFAULT_PAGE_SIZE;
 
-  // Fetch tournaments (unchanged)
+  // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, season")
@@ -138,7 +85,6 @@ export default async function PaiktesPage({
     season: string | null;
   }[];
 
-  // OPTIMIZATION: Add pagination to query
   const offset = (page - 1) * pageSize;
   
   // Fetch paginated players with count
@@ -147,13 +93,13 @@ export default async function PaiktesPage({
     .select("id, first_name, last_name, photo, position, height_cm, birth_date", { count: "exact" })
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true })
-    .range(offset, offset + pageSize - 1); // Pagination
+    .range(offset, offset + pageSize - 1);
 
   if (pErr) console.error("[paiktes] players query error:", pErr.message);
   const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
-  // Fetch all player_teams
+  // Fetch player_teams
   const { data: ptRows, error: ptErr } = await supabaseAdmin
     .from("player_teams")
     .select("player_id, team_id, created_at, updated_at")
@@ -164,37 +110,27 @@ export default async function PaiktesPage({
 
   if (ptErr) console.error("[paiktes] player_teams query error:", ptErr.message);
 
-  // Get all team IDs
   const allTeamIdsSet = new Set(
     (ptRows ?? []).map((r: PlayerTeamRow) => r.team_id).filter(Boolean)
   );
   const allTeamIds = Array.from(allTeamIdsSet);
 
-  // Fetch all teams
+  // Fetch teams
   const { data: teams } = allTeamIds.length
     ? await supabaseAdmin.from("teams").select("id, name, logo").in("id", allTeamIds)
     : { data: [] as TeamRow[] };
 
-  // OPTIMIZATION: Batch sign all images at once
-  const allImagePaths = [
-    ...p.map(pl => pl.photo).filter(Boolean) as string[],
-    ...(teams ?? []).map(t => t.logo).filter(Boolean) as string[]
-  ];
-  
-  const signedUrls = await signMultiplePaths(allImagePaths);
-
-  // Build team map with signed URLs
+  // ✅ NO SIGNING - Just build team map with raw paths
   const teamMap: Record<number, { id: number; name: string; logo: string | null }> = {};
   for (const t of (teams ?? [])) {
     teamMap[t.id] = {
       id: t.id,
       name: t.name ?? "",
-      logo: t.logo ? (signedUrls.get(t.logo) ?? null) : null
+      logo: t.logo, // ✅ Raw path
     };
   }
 
-  // Group teams by player
-  const teamsByPlayer = new Map<
+  const teamsByPlayer = new Map<  // ✅ Add < here
     number,
     { id: number; name: string; logo: string | null }[]
   >();
@@ -265,7 +201,7 @@ export default async function PaiktesPage({
     }
   }
 
-  // Enrich player data with signed URLs from batch
+  // ✅ NO SIGNING - Pass raw paths
   const now = new Date();
   const enriched: PLWithTGoals[] = p.map((pl) => {
     const age = pl.birth_date
@@ -282,16 +218,11 @@ export default async function PaiktesPage({
     const best_gk = gkByPlayer.get(pl.id) ?? 0;
     const wins = winsByPlayer.get(pl.id) ?? 0;
 
-    // Use pre-signed URL from batch
-    const signedPhoto = pl.photo 
-      ? (signedUrls.get(pl.photo) ?? "/player-placeholder.jpg")
-      : "/player-placeholder.jpg";
-
     return {
       id: pl.id,
       first_name: pl.first_name ?? "",
       last_name: pl.last_name ?? "",
-      photo: signedPhoto,
+      photo: pl.photo ?? "/player-placeholder.jpg", 
       position: pl.position ?? "",
       height_cm: pl.height_cm ?? null,
       birth_date: pl.birth_date ?? null,
@@ -369,9 +300,3 @@ export default async function PaiktesPage({
     </div>
   );
 }
-
-
-
-
-
-

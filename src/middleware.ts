@@ -9,7 +9,7 @@ const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 // Resolve origins safely from env
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_ORIGIN || ''
-const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN || '' // ✅ NEW
+const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN || 'images.ultrachamp.gr' // ✅ NEW
 
 const originFrom = (u: string) => { 
   try { return u ? new URL(u).origin : '' } catch { return '' } 

@@ -46,13 +46,14 @@ export async function saveAllStatsAction(formData: FormData) {
     .update({ referee: referee && referee.length ? referee : null })
     .eq('id', match_id);
 
-  /** Stats row (now includes position/is_captain/gk) */
+  /** Stats row - ✅ UPDATED: now includes own_goals */
   type Row = {
     match_id: number;
     team_id: number;
     player_id: number;
     goals: number;
     assists: number;
+    own_goals: number; // ✅ ADDED
     yellow_cards: number;
     red_cards: number;
     blue_cards: number;
@@ -75,11 +76,11 @@ export async function saveAllStatsAction(formData: FormData) {
   const statsRows = new Map<string, Row>();
   const partRows = new Map<string, ParticipantFormRow>();
 
-  // players[...] regex (stats) — captures position/is_captain/gk too
+  // ✅ UPDATED: regex now captures own_goals too
   const statsRe =
-    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|yellow_cards|red_cards|blue_cards|position|is_captain|gk|_delete)\]$/;
+    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|own_goals|yellow_cards|red_cards|blue_cards|position|is_captain|gk|_delete)\]$/;
 
-  // participants[...] regex (participation) — attendance only
+  // participants[...] regex (participation) – attendance only
   const partRe = /^participants\[(\d+)\]\[(\d+)\]\[(played)\]$/;
 
   // Parse entire form once
@@ -101,6 +102,7 @@ export async function saveAllStatsAction(formData: FormData) {
             player_id: playerId,
             goals: 0,
             assists: 0,
+            own_goals: 0, // ✅ ADDED
             yellow_cards: 0,
             red_cards: 0,
             blue_cards: 0,
@@ -159,7 +161,7 @@ export async function saveAllStatsAction(formData: FormData) {
     }
   }
 
-  // Awards (1 per match) — radios (apply ONLY to participants later)
+  // Awards (1 per match) – radios (apply ONLY to participants later)
   const mvpPlayerId = Number(formData.get('mvp_player_id') ?? 0) || 0;
   const bestGkPlayerId = Number(formData.get('best_gk_player_id') ?? 0) || 0;
 
@@ -241,26 +243,40 @@ export async function saveAllStatsAction(formData: FormData) {
     .single();
   if (mErr || !mt) throw new Error('Match not found');
 
-  // recompute from DB to reflect the upserts/deletes
+  // ✅ UPDATED: recompute from DB including own_goals
   const { data: agg, error: aggErr } = await supabase
     .from('match_player_stats')
-    .select('team_id, goals')
+    .select('team_id, goals, own_goals') // ✅ ADDED own_goals
     .eq('match_id', match_id);
   if (aggErr) throw aggErr;
 
-  const sum = new Map<number, number>();
+  // ✅ UPDATED: Calculate scores with own goals logic
+  // Team A score = (goals by Team A) + (own goals by Team B)
+  // Team B score = (goals by Team B) + (own goals by Team A)
+  const teamAId = Number(mt.team_a_id);
+  const teamBId = Number(mt.team_b_id);
+
+  let aGoals = 0;
+  let bGoals = 0;
+
   for (const r of agg ?? []) {
     const tid = Number(r.team_id);
     const g = Number(r.goals) || 0;
-    sum.set(tid, (sum.get(tid) ?? 0) + g);
+    const og = Number(r.own_goals) || 0;
+
+    if (tid === teamAId) {
+      aGoals += g;   // Team A's own goals count for Team A
+      bGoals += og;  // Team A's own goals count for Team B
+    } else if (tid === teamBId) {
+      bGoals += g;   // Team B's own goals count for Team B
+      aGoals += og;  // Team B's own goals count for Team A
+    }
   }
-  const aGoals = sum.get(Number(mt.team_a_id)) ?? 0;
-  const bGoals = sum.get(Number(mt.team_b_id)) ?? 0;
 
   const isTie = aGoals === bGoals;
   const winner_team_id = isTie
     ? null
-    : (aGoals > bGoals ? Number(mt.team_a_id) : Number(mt.team_b_id));
+    : (aGoals > bGoals ? teamAId : teamBId);
 
   // Save scores; finish only if not a tie
   const { error: upErr } = await supabase
@@ -274,7 +290,7 @@ export async function saveAllStatsAction(formData: FormData) {
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when finished (non-tie) — fire-and-forget
+  // Run progression only when finished (non-tie) – fire-and-forget
   if (!isTie) {
     progressAfterMatch(match_id).catch(console.error);
   }
@@ -300,24 +316,40 @@ async function fetchMatchTeams(
   return { teamA: Number(data.team_a_id), teamB: Number(data.team_b_id) };
 }
 
+/** ✅ UPDATED: Compute goals with own goals logic */
 async function computeGoalsByTeam(
   supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
-  matchId: number
-): Promise<Map<number, number>> {
+  matchId: number,
+  teamAId: number,
+  teamBId: number
+): Promise<{ aGoals: number; bGoals: number }> {
+  // ✅ UPDATED: select own_goals too
   const { data, error } = await supabase
     .from('match_player_stats')
-    .select('team_id, goals')
+    .select('team_id, goals, own_goals')
     .eq('match_id', matchId);
 
   if (error) throw error;
 
-  const sum = new Map<number, number>();
+  let aGoals = 0;
+  let bGoals = 0;
+
+  // ✅ UPDATED: Apply own goals logic
   for (const row of data ?? []) {
     const tid = Number(row.team_id);
     const g = Number(row.goals) || 0;
-    sum.set(tid, (sum.get(tid) ?? 0) + g);
+    const og = Number(row.own_goals) || 0;
+
+    if (tid === teamAId) {
+      aGoals += g;   // Team A's goals
+      bGoals += og;  // Team A's own goals count for Team B
+    } else if (tid === teamBId) {
+      bGoals += g;   // Team B's goals
+      aGoals += og;  // Team B's own goals count for Team A
+    }
   }
-  return sum;
+
+  return { aGoals, bGoals };
 }
 
 /** -------------------------------
@@ -330,9 +362,7 @@ export async function recalcScoresFromStatsAction(formData: FormData) {
   if (!Number.isFinite(matchId)) throw new Error('Bad match id');
 
   const { teamA, teamB } = await fetchMatchTeams(supabase, matchId);
-  const totals = await computeGoalsByTeam(supabase, matchId);
-  const aGoals = totals.get(teamA) ?? 0;
-  const bGoals = totals.get(teamB) ?? 0;
+  const { aGoals, bGoals } = await computeGoalsByTeam(supabase, matchId, teamA, teamB);
 
   const { error } = await supabase
     .from('matches')
@@ -357,9 +387,7 @@ export async function finalizeFromStatsAction(formData: FormData) {
   if (!Number.isFinite(matchId)) throw new Error('Bad match id');
 
   const { teamA, teamB } = await fetchMatchTeams(supabase, matchId);
-  const totals = await computeGoalsByTeam(supabase, matchId);
-  const aGoals = totals.get(teamA) ?? 0;
-  const bGoals = totals.get(teamB) ?? 0;
+  const { aGoals, bGoals } = await computeGoalsByTeam(supabase, matchId, teamA, teamB);
 
   if (aGoals === bGoals) {
     throw new Error('Cannot finalize: scores are equal. Resolve tie before finishing.');

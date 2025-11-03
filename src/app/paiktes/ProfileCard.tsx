@@ -1,3 +1,4 @@
+// src/app/paiktes/ProfileCard.tsx (FINAL - Big logos, no border, centered name)
 "use client";
 
 import React, {
@@ -7,13 +8,14 @@ import React, {
   useMemo,
   CSSProperties,
 } from "react";
-import SignedImg from "./SignedImg";
+import type { PlayerLite } from "./types";
 import GlossOverlay from "./GlossOverlay";
 import styles from "./ProfileCard.module.css";
+import { PlayerImage } from "@/app/lib/OptimizedImage";
 
-/** ====== Visual defaults (you can tweak freely) ====== */
+/** ====== Visual defaults ====== */
 const DEFAULT_BEHIND_GRADIENT =
-  "conic-gradient(from 124deg at 50% 50%, #8B5CF6 0%, #3B82F6 40%, #3B82F6 60%, #8B5CF6 100%)"; // Updated to violet-blue mix for softened holo effect
+  "conic-gradient(from 124deg at 50% 50%, #8B5CF6 0%, #3B82F6 40%, #3B82F6 60%, #8B5CF6 100%)";
 
 const DEFAULT_INNER_GRADIENT =
   "linear-gradient(145deg,#60496e8c 0%,#71C4FF44 100%)";
@@ -74,7 +76,6 @@ export type ProfileCardProps = {
   enableMobileTilt?: boolean;
   mobileTiltSensitivity?: number;
 
-  /** UI copy */
   miniAvatarUrl?: string | null;
   name?: string;
   title?: string;
@@ -85,16 +86,14 @@ export type ProfileCardProps = {
 
   onContactClick?: () => void;
 
-  /** New stats props */
-  teams?: { id: number; name: string; logo?: string | null }[]; // Array for multiple teams
+  teams?: { id: number; name: string; logo?: string | null }[];
   totalGoals?: number;
   totalAssists?: number;
   mvpAwards?: number;
   bestGkAwards?: number;
   matchesPlayed?: number;
 
-  /** Toggle to show stats section */
-  showStats?: boolean; // Default true if stats provided
+  showStats?: boolean;
 };
 
 function ProfileCardComponent({
@@ -109,10 +108,10 @@ function ProfileCardComponent({
   enableMobileTilt = false,
   mobileTiltSensitivity = 5,
   miniAvatarUrl = null,
-  name = "Javi A. Torres",
-  title = "Software Engineer",
-  handle = "javicodes",
-  status = "Online",
+  name = "Player Name",
+  title = "Position",
+  handle = "handle",
+  status = "Active",
   contactText = "Contact",
   showUserInfo = true,
   onContactClick,
@@ -127,8 +126,16 @@ function ProfileCardComponent({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
 
-  // If .active exists in the CSS module, use it; otherwise fall back to global "active"
   const activeClass = (styles as Record<string, string>)["active"] ?? "active";
+
+  // ✅ Use team logo as fallback if no player image
+  const displayImage = useMemo(() => {
+    if (avatarUrl && avatarUrl !== "/player-placeholder.jpg") {
+      return avatarUrl;
+    }
+    // Fallback to first team logo if available
+    return teams[0]?.logo || avatarUrl;
+  }, [avatarUrl, teams]);
 
   /** ---- animation handlers ---- */
   const animationHandlers = useMemo<AnimationHandlers | null>(() => {
@@ -351,7 +358,6 @@ function ProfileCardComponent({
     handleDeviceOrientation,
   ]);
 
-  /** CSS variables for gradients/icons */
   const cardStyle = useMemo(() => {
     const vars: CSSProperties = {
       ["--icon" as any]: iconUrl ? `url(${iconUrl})` : "none",
@@ -383,102 +389,97 @@ function ProfileCardComponent({
           <div
             className={`${styles["pc-content"]} ${styles["pc-avatar-content"]}`}
           >
-            {/* Signed image (Supabase or regular URL) */}
-            <SignedImg
+            {/* ✅ Player image with team logo fallback */}
+            <PlayerImage
+              src={displayImage}
+              alt={name || "Player"}
+              width={512}
+              height={512}
               className={styles["avatar"]}
-              src={avatarUrl ?? null}
-              alt={`${name || "User"} avatar`}
+              priority
             />
 
             {/* Specular gloss, clipped to the PNG alpha */}
             <GlossOverlay
-              src={avatarUrl ?? null}
-              maskSrc={avatarUrl ?? null}
+              src={displayImage}
+              maskSrc={displayImage}
               angle={18}
               thickness={120}
               intensity={1}
-              // disableIfOpaque keeps it off on JPEGs (no alpha).
               disableIfOpaque
             />
 
-                        {/* Floating user panel */}
+            {/* ✅ CENTERED PLAYER NAME AT TOP */}
+            {name && (
+              <div className={styles["pc-player-name-centered"]}>
+                {name}
+              </div>
+            )}
+
+            {/* ✅ Floating user panel - FULLY TRANSPARENT, NO BORDER, BIGGER LOGOS */}
             {showUserInfo && (
               <div className={styles["pc-user-info"]}>
-                <div className={styles["pc-user-details"]}>
-                  <div className={styles["pc-mini-avatar"]}>
-            {/*<SignedImg
-                      src={(miniAvatarUrl ?? avatarUrl) || null}
-                      alt={`${name || "User"} mini avatar`}
-                    />*/}
+                {/* Team logos - MUCH BIGGER */}
+                {teams.length > 0 && (
+                  <div className={styles["pc-team-logos-row"]}>
+                    {teams.map((team) => (
+                      <div key={team.id} className={styles["pc-panel-team-logo"]}>
+                        {team.logo ? (
+                          <PlayerImage
+                            src={team.logo}
+                            alt={team.name}
+                            width={80}
+                            height={80}
+                            className={styles["pc-team-logo-img"]}
+                          />
+                        ) : (
+                          <div className={styles["pc-team-logo-placeholder"]} />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className={styles["pc-user-text"]}>
-                    
-                    <div className={styles["pc-status"]}>{status}</div>
-                  </div>
-                </div>
-                
+                )}
+
                 {showStats && (
-              <div className={`${styles["pc-stats"]} mt-auto`}>
-                {/* Player name as first item */}
-                <div className={`${styles["pc-player-name"]} text-3xl font-bold mb-6`}>
-                  {name}
-                </div>
+                  <div className={styles["pc-stats"]}>
+                    {/* Stats container - COMPACT GRID */}
+                    <div className={styles["pc-stats-container"]}>
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Goals</span>
+                        <span className={styles["pc-stat-value"]}>{totalGoals}</span>
+                      </div>
 
-                {/* Stats container with grid */}
-                <div className={`${styles["pc-stats-container"]} grid grid-cols-3 gap-8`}>
-                  {/* Teams */}
-                  {teams.length > 0 && (
-                    <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                      <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Teams</span>
-                      <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>
-                        {teams.map((team) => team.name).join(', ')}
-                      </span>
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Assists</span>
+                        <span className={styles["pc-stat-value"]}>{totalAssists}</span>
+                      </div>
+
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>MVP</span>
+                        <span className={styles["pc-stat-value"]}>{mvpAwards}</span>
+                      </div>
+
+                      {bestGkAwards >= 1 && (
+                        <div className={styles["pc-stat-item"]}>
+                          <span className={styles["pc-stat-field"]}>GK</span>
+                          <span className={styles["pc-stat-value"]}>{bestGkAwards}</span>
+                        </div>
+                      )}
+
+                      <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Matches</span>
+                        <span className={styles["pc-stat-value"]}>{matchesPlayed}</span>
+                      </div>
                     </div>
-                  )}
-
-                  {/* Goals */}
-                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Goals</span>
-                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{totalGoals}</span>
                   </div>
-
-                  {/* Assists */}
-                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Assists</span>
-                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{totalAssists}</span>
-                  </div>
-
-                  {/* MVP */}
-                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>MVP</span>
-                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{mvpAwards}</span>
-                  </div>
-
-                  {/* Best GK (if >=1) */}
-                  {bestGkAwards >= 1 && (
-                    <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                      <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Best GK</span>
-                      <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{bestGkAwards}</span>
-                    </div>
-                  )}
-
-                  {/* Matches */}
-                  <div className={`${styles["pc-stat-item"]} p-6 rounded-lg text-center`}>
-                    <span className={`${styles["pc-stat-field"]} block text-xl text-white/70 mb-3`}>Matches</span>
-                    <span className={`${styles["pc-stat-value"]} block text-4xl font-bold text-white`}>{matchesPlayed}</span>
-                  </div>
-                </div>
-              </div>
-              )}
+                )}
               </div>
             )}
           </div>
 
           {/* === TEXT LAYER === */}
           <div className={styles["pc-content"]}>
-            <div className={styles["pc-details"]}>
-              <p>{title}</p>
-            </div>
+            
           </div>
         </div>
       </section>

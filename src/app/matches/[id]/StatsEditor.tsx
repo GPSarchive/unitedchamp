@@ -50,18 +50,19 @@ export default function StatsEditor({
 
       {/* One responsive layout (no duplicate DOM) */}
       <div className="space-y-3">
-        {/* Desktop headers (visual only) */}
-        <div className="hidden md:grid md:grid-cols-[70px_minmax(160px,1fr)_80px_50px_50px_repeat(5,56px)_80px_98px_60px] md:gap-3 md:px-1 md:text-sm md:text-gray-500">
+        {/* Desktop headers (visual only) - ✅ UPDATED: repeat(6,56px) instead of repeat(5,56px) */}
+        <div className="hidden md:grid md:grid-cols-[70px_minmax(160px,1fr)_80px_50px_50px_repeat(6,56px)_80px_98px_60px] md:gap-3 md:px-1 md:text-sm md:text-gray-500">
           <div>Συμ.</div>
           <div>Player</div>
           <div>Pos</div>
           <div>Cap</div>
           <div>GK</div>
-          <div>G</div>
-          <div>A</div>
-          <div>Y</div>
-          <div>R</div>
-          <div>B</div>
+          <div>goals</div>
+          <div>Assist</div>
+          <div>Αυτο goal</div> {/* ✅ ADDED */}
+          <div>Yellow</div>
+          <div>Rred</div>
+          <div>Blue</div>
           <div>MVP</div>
           <div>Best GK</div>
           <div>Clear</div>
@@ -80,6 +81,7 @@ export default function StatsEditor({
 
           const goalsDefault = String(stats?.goals ?? 0);
           const assistsDefault = String(stats?.assists ?? 0);
+          const ownGoalsDefault = String(stats?.own_goals ?? 0); // ✅ ADDED
           const ycDefault = String(stats?.yellow_cards ?? 0);
           const rcDefault = String(stats?.red_cards ?? 0);
           const bcDefault = String(stats?.blue_cards ?? 0);
@@ -90,7 +92,7 @@ export default function StatsEditor({
               className="
                 rounded-lg border p-3
                 grid gap-2
-                md:grid-cols-[70px_minmax(160px,1fr)_80px_50px_50px_repeat(5,56px)_80px_98px_60px]
+                md:grid-cols-[70px_minmax(160px,1fr)_80px_50px_50px_repeat(6,56px)_80px_98px_60px]
                 md:items-center md:gap-3
               "
             >
@@ -157,16 +159,18 @@ export default function StatsEditor({
               {/* Hidden numeric fallbacks FIRST */}
               <input type="hidden" name={`${baseStats}[goals]`} value="0" />
               <input type="hidden" name={`${baseStats}[assists]`} value="0" />
+              <input type="hidden" name={`${baseStats}[own_goals]`} value="0" /> {/* ✅ ADDED */}
               <input type="hidden" name={`${baseStats}[yellow_cards]`} value="0" />
               <input type="hidden" name={`${baseStats}[red_cards]`} value="0" />
               <input type="hidden" name={`${baseStats}[blue_cards]`} value="0" />
 
               {/* Stats */}
-              <NumInput name={`${baseStats}[goals]`} def={goalsDefault} readOnly={!playedOn || readOnly} labelMD="G" labelSM="G" />
-              <NumInput name={`${baseStats}[assists]`} def={assistsDefault} readOnly={!playedOn || readOnly} labelMD="A" labelSM="A" />
-              <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} readOnly={!playedOn || readOnly} labelMD="Y" labelSM="Y" />
-              <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} readOnly={!playedOn || readOnly} labelMD="R" labelSM="R" />
-              <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} readOnly={!playedOn || readOnly} labelMD="B" labelSM="B" />
+              <NumInput name={`${baseStats}[goals]`} def={goalsDefault} readOnly={!playedOn || readOnly} labelMD="Goals" labelSM="Goals" />
+              <NumInput name={`${baseStats}[assists]`} def={assistsDefault} readOnly={!playedOn || readOnly} labelMD="Assists" labelSM="Assists" />
+              <NumInput name={`${baseStats}[own_goals]`} def={ownGoalsDefault} readOnly={!playedOn || readOnly} labelMD="Αυτο Goal" labelSM="Αυτο Goal" /> {/* ✅ ADDED */}
+              <NumInput name={`${baseStats}[yellow_cards]`} def={ycDefault} readOnly={!playedOn || readOnly} labelMD="Yellow" labelSM="Yellow" />
+              <NumInput name={`${baseStats}[red_cards]`} def={rcDefault} readOnly={!playedOn || readOnly} labelMD="Red" labelSM="Red" />
+              <NumInput name={`${baseStats}[blue_cards]`} def={bcDefault} readOnly={!playedOn || readOnly} labelMD="Blue" labelSM="Blue" />
 
               {/* MVP */}
               <div>

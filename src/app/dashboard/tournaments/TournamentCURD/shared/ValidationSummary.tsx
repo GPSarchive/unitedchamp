@@ -1,4 +1,4 @@
-//app/dashboard/tournaments/TournamentCURD/preview/shared/ValidationSummary.tsx
+//app/dashboard/tournaments/TournamentCURD/shared/ValidationSummary.tsx
 "use client";
 
 export default function ValidationSummary({ errors }: { errors: string[] }) {
