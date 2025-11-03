@@ -65,7 +65,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
         {stageStandings.length === 0 ? (
           <div className="p-6 text-center">
             <div className="text-red-600 dark:text-red-400 font-semibold mb-2">Το τουρνουά ξεκίνησε!            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">Έλεγξε το console για debugging info</div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">Ετοιμοι Για Δράση ;</div>
           </div>
         ) : (
           <div className="overflow-x-auto">
