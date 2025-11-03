@@ -8,7 +8,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const BUCKET_NAME = "GPSarchive's Project";
 
 // 🎯 TOGGLE THIS: Set to true if your bucket is public (RECOMMENDED for best performance)
-export const USE_PUBLIC_BUCKET ="true";
+export const USE_PUBLIC_BUCKET =true;
 
 // Optional: Your Cloudflare CDN domain (e.g., "images.yoursite.com")
 const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN || null;
