@@ -347,16 +347,16 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             )}
           </div>
 
-          {/* Mobile hamburger */}
+          {/* Mobile hamburger with label */}
           <button
             type="button"
             onClick={toggleMobile}
             aria-label="Menu"
             aria-expanded={mobileOpen}
             aria-controls="mobile-menu"
-            className="md:hidden inline-flex items-center justify-center size-9 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
+            className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
           >
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
               <path
                 fill="currentColor"
                 d={mobileOpen
@@ -368,6 +368,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 strokeLinecap="round"
               />
             </svg>
+            <span className="text-sm font-medium">
+              {mobileOpen ? "Close" : "Menu"}
+            </span>
           </button>
         </div>
       </nav>

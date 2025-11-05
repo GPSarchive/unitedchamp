@@ -6,11 +6,14 @@ import { Trophy, Users, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import HomeHero from '@/app/home/HomeHero';
 import EventCalendar from '@/app/home/Calendar';
+import TeamDashboard from '@/app/home/TeamDashboard';
+import ResponsiveCallendar from '@/app/home/ResponsiveCalendar';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
 import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
-
+import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
+import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -217,7 +220,7 @@ export default async function Home() {
 
   const [{ user }, { rawMatches }] = await Promise.all([fetchSingleUser(), fetchMatchesWithTeams()]);
   const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
-
+  console.log('Rendering Home page with events:', eventsToPass);
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">
       {/* Hero Carousel Section */}
@@ -247,57 +250,100 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Calendar Section */}
-      <section className="full-bleed safe-px safe-pb">
-        <EventCalendar
-                                   
-          className="w-full"
-          initialEvents={eventsToPass}
-          fetchFromDb={false}
-        />
-      </section>
 
-      {/* Features Section */}
+      {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center">Η ομάδα σε περιμένει</h2>
-          <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Users className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4">Φιλόξενη Κοινότητα</h3>
-              <p className="text-gray-200 text-sm sm:text-base">
-                Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
-              </p>
+        <div className="container mx-auto max-w-7xl">
+          {/* Desktop: Side by side, Mobile: Stacked */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_480px] gap-6 lg:gap-8">
+            
+            {/* Left: Team Dashboard */}
+            <div className="flex flex-col">
+              <TeamDashboard
+                allMatches={eventsToPass}
+                userTeams={[]} // TODO: Get from user auth/profile when implemented
+                className="flex-1"
+              />
             </div>
 
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <Trophy className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">Ποιοτικοι Αγώνες</h3>
-              <p className="text-gray-200 text-sm sm:text-base">
-                Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
-              </p>
+            {/* Right: Calendar */}
+            <div className="flex flex-col lg:sticky lg:top-4 lg:self-start">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Πλήρες Πρόγραμμα Αγώνων
+              </h2>
+              <EnhancedMobileCalendar
+              initialEvents={eventsToPass}
+              highlightTeams={[]} // TODO: Match userTeams above
+              className="h-full"
+            />
             </div>
 
-            <div className="p-6 sm:p-8 rounded-lg shadow-lg border border-orange-400/20 bg-white/5 backdrop-blur-md hover:border-orange-400/40 transition">
-              <div className="p-3 w-fit rounded-full bg-orange-500/20 border border-orange-400/30 mb-4">
-                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8" aria-hidden="true" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-semibold mb-2">Προφίλ & Στατιστικά</h3>
-              <p className="text-gray-200 text-sm sm:text-base">
-                Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
-              </p>
-            </div>
           </div>
         </div>
-      </GridBgSection>
+       </GridBgSection>
+       
+
+
+
+        {/* Features Section */}
+        <VantaSection
+        className="py-12 sm:py-16 text-white"
+        overlayClassName="bg-black/20"
+        // προαιρετικά: color={0x9f371b} backgroundColor={0xf4c253}
+        // προαιρετικά: minHeight={20} scale={1} scaleMobile={1}
+      >
+         <div className="container mx-auto px-4">
+    <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
+      Η ομάδα σε περιμένει
+    </h2>
+
+    <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
+      {/* Card */}
+      <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+          <Users className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+        </div>
+        <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4 text-white">
+          Φιλόξενη Κοινότητα
+        </h3>
+        <p className="text-white/75 text-sm sm:text-base">
+          Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
+        </p>
+      </div>
+
+      <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+          <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+        </div>
+        <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">
+          Ποιοτικοί Αγώνες
+        </h3>
+        <p className="text-white/75 text-sm sm:text-base">
+          Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
+        </p>
+      </div>
+
+      <div className="group p-6 sm:p-8 rounded-xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+          <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+        </div>
+        <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-white">
+          Προφίλ & Στατιστικά
+        </h3>
+        <p className="text-white/75 text-sm sm:text-base">
+          Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
+        </p>
+      </div>
+    </div>
+  </div>
+      </VantaSection>
 
       {/* Call to Action */}
       <GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
-        <div className="w-full max-w-7xl px-4 flex flex-col items-center text-center">
+        <div className="w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
           </h2>
@@ -327,29 +373,36 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      {/* Testimonials */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center">Τι λένε οι παίκτες μας</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
-              <div className="font-semibold">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
-            </div>
-            <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
-              <div className="font-semibold">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
-            </div>
-            <div className="bg-white text-black p-6 rounded-lg shadow-md">
-              <p className="mb-4">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
-              <div className="font-semibold">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
-            </div>
-          </div>
-        </div>
-      </VantaSection>
+      {/* Testimonials (with Vant) */}
+      <VantaSection
+        className="py-12 sm:py-16 text-white"
+        overlayClassName="bg-black/20">
+  <div className="container mx-auto px-4">
+    <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
+      Τι λένε οι παίκτες μας
+    </h2>
 
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <p className="mb-4 text-white/90">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
+        <div className="font-semibold text-white/80">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
+      </div>
+
+      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <p className="mb-4 text-white/90">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
+        <div className="font-semibold text-white/80">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
+      </div>
+
+      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+        <p className="mb-4 text-white/90">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
+        <div className="font-semibold text-white/80">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
+      </div>
+    </div>
+  </div>
+</VantaSection>
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">
+        
         <div className="container mx-auto px-4">
           <p>© 2025 Ultra Champ.</p>
           <div className="mt-4">

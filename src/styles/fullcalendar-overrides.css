@@ -60,9 +60,14 @@
   background: linear-gradient(180deg, var(--fc-surface), var(--fc-surface-2));
   border-radius: var(--fc-radius);
   box-shadow: var(--fc-shadow);
-  overflow: hidden;
+ 
 }
-
+.fc .fc-scroller {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch; /* smooth on Mac trackpads */
+  }
+  
 /* ---- Column headers (days) ---- */
 .fc .fc-col-header {
   position: sticky;
