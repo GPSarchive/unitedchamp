@@ -289,12 +289,7 @@ export default async function Home() {
 
 
         {/* Features Section */}
-        <VantaSection
-        className="py-12 sm:py-16 text-white"
-        overlayClassName="bg-black/20"
-        // προαιρετικά: color={0x9f371b} backgroundColor={0xf4c253}
-        // προαιρετικά: minHeight={20} scale={1} scaleMobile={1}
-      >
+        <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
          <div className="container mx-auto px-4">
     <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
       Η ομάδα σε περιμένει
@@ -373,33 +368,33 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      {/* Testimonials (with Vant) */}
-      <VantaSection
-        className="py-12 sm:py-16 text-white"
-        overlayClassName="bg-black/20">
-  <div className="container mx-auto px-4">
-    <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
-      Τι λένε οι παίκτες μας
-    </h2>
+      {/* Testimonials */}
+      <section>
 
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <p className="mb-4 text-white/90">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
-        <div className="font-semibold text-white/80">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
-      </div>
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
+            Τι λένε οι παίκτες μας
+          </h2>
 
-      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <p className="mb-4 text-white/90">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
-        <div className="font-semibold text-white/80">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
-      </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <p className="mb-4 text-white/90">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
+              <div className="font-semibold text-white/80">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
+            </div>
 
-      <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <p className="mb-4 text-white/90">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
-        <div className="font-semibold text-white/80">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
-      </div>
-    </div>
-  </div>
-</VantaSection>
+            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <p className="mb-4 text-white/90">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
+              <div className="font-semibold text-white/80">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
+            </div>
+
+            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <p className="mb-4 text-white/90">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
+              <div className="font-semibold text-white/80">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
+            </div>
+          </div>
+        </div>
+
+      </section>       
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">
         

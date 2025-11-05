@@ -20,7 +20,7 @@ return (
 <div className="min-h-screen bg-zinc-950 text-white">
 <header className="mx-auto w-full max-w-7xl px-4 pt-10 pb-6">
 <h1 className="text-3xl sm:text-4xl font-bold">Αγώνες</h1>
-<p className="mt-2 text-white/70">Φίλτρα ανά ομάδα, διοργάνωση και ημερομηνία.</p>
+
 </header>
 
 
