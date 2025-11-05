@@ -18,7 +18,7 @@ const NAV_LINKS = [
   { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ", img: "/tournamentPhoto.png" },
   { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ", img: "/επικοινωνια.jpg" },
   { href: "/paiktes", label: "ΠΑΙΚΤΕΣ", img: "/παικτες.jpg" },
-  { href: "/agones", label: "ΑΓΩΝΕΣ", img: "/αγωνες.jpg" },
+  { href: "/matches", label: "ΑΓΩΝΕΣ", img: "/αγωνες.jpg" },
   { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ", img: "/γενικη-καταταξη.jpg" },
   { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ", img: "/κανονισμος.jpg" },
 ] as const;
