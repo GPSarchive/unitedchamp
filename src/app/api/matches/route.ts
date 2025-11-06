@@ -13,7 +13,7 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "match_date",
   "team_a_score",
   "team_b_score",
-  // Optional tournament wiring on CREATE is OK (but immutable via PATCH)
+  "field", // ✅ NEW
   "stage_id",
   "matchday",
   "round",
@@ -25,6 +25,7 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "home_source_match_id",
   "away_source_match_id",
 ]);
+  
 
 /* =======================
    Minimal same-origin guard

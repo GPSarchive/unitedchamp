@@ -83,14 +83,16 @@ export type MatchStatus = "scheduled" | "finished";
 /** Base match row (nullable date for drafts, two-state status) */
 export interface MatchRow {
   id: Id;
-  match_date: string | null; // timestamptz ISO (UTC) or null
+  match_date: string | null;
   status: MatchStatus;
   team_a_score: number;
   team_b_score: number;
   winner_team_id: Id | null;
   team_a_id: Id;
   team_b_id: Id;
+  field?: string | null; // ✅ NEW: Field/venue where match is played
 }
+
 
 /**
  * ---------------------------------

@@ -299,7 +299,18 @@ export default function RowEditor({
                 )}
               </div>
             </Section>
-
+            <Section title="Match details" icon={<Users2 className="h-4 w-4" />}>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-white/70">Field/Venue</span>
+              <input
+                type="text"
+                value={(form as any).field ?? ""}
+                onChange={(e) => set("field" as any, e.target.value || null)}
+                placeholder="e.g., Stadium A, Field 1"
+                className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 placeholder:text-white/30"
+              />
+            </label>     
+            </Section>
             <Section title="Status" icon={<Flag className="h-4 w-4" />}>
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-white/70">Status</span>

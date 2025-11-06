@@ -24,11 +24,13 @@ const UPDATABLE_FIELDS = new Set<keyof any>([
   "winner_team_id",
   "team_a_id",
   "team_b_id",
-  "match_date",     // allow updating date
-  "team_a_score",   // allow updating score
-  "team_b_score",   // allow updating score
-  "matchday",       // planning helper, non-structural
+  "match_date",
+  "team_a_score",
+  "team_b_score",
+  "matchday",
+  "field", // ✅ NEW
 ]);
+
 
 /* =======================
    Minimal same-origin guard

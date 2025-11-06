@@ -30,7 +30,7 @@ export type TeamDraft = {
  */
 export type DraftMatch = {
   db_id?: number | null;
-  updated_at?: string | null;  // Add this to resolve the type error
+  updated_at?: string | null;
   stageIdx: number;
   groupIdx?: number | null;
   bracket_pos?: number | null;
@@ -44,15 +44,18 @@ export type DraftMatch = {
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
+  field?: string | null; // ✅ NEW
   home_source_match_idx?: number | null;
   away_source_match_idx?: number | null;
   home_source_outcome?: "W" | "L" | null;
-  away_source_outcome?: "W" | "L" | "L" | null;
+  away_source_outcome?: "W" | "L" | null;
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
 };
+
+
 
 export type WizardMode = "create" | "edit";
 export type WizardMeta = { id: number; slug: string | null; updated_at: string; created_at: string };

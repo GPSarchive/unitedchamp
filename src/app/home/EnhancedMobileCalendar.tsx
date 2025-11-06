@@ -412,7 +412,10 @@ export default function EnhancedMobileCalendar({
   const days = useMemo(() => {
     const monthDays = getMonthDays(currentYear, currentMonth);
     monthDays.forEach((day) => {
-      const dateKey = day.date.toISOString().slice(0, 10);
+      const dateKey =
+   `${day.date.getFullYear()}-` +
+   String(day.date.getMonth() + 1).padStart(2, "0") + "-" +
+   String(day.date.getDate()).padStart(2, "0");
       day.matches = matchesByDate.get(dateKey) ?? [];
     });
     return monthDays;

@@ -329,7 +329,7 @@ export default async function Home() {
           Προφίλ & Στατιστικά
         </h3>
         <p className="text-white/75 text-sm sm:text-base">
-          Γκολ, ασίστ, clean sheets και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
+          Γκολ, ασίστ, συμμετοχές και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
         </p>
       </div>
     </div>
