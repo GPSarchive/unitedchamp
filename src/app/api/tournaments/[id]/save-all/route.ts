@@ -434,7 +434,7 @@ if (body.matches?.upsert?.length) {
     const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
     const { data, error } = await supabaseAdmin
       .from("matches")
-      .upsert(toCreateKO,)
+      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
       .select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     created.push(...(data ?? []));

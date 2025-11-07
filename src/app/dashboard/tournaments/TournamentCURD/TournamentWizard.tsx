@@ -107,7 +107,9 @@ export default function TournamentWizard({
   const removeGroup = useTournamentStore((s) => s.removeGroup);
 
   // hydrate the store once from incoming props (payload + initial matches + teams)
+  // BUT skip in edit mode - the snapshot load below will handle it
   useEffect(() => {
+    if (mode === "edit") return; // ✅ Skip initial seed in edit mode to prevent double hydration
     seedFromWizard(payload, teams, initialDraftMatches ?? []);
     // also mirror payload to the store for any components reading from there
     useTournamentStore.setState({ payload });
