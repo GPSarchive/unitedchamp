@@ -2,39 +2,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import type { TeamDraft, DraftMatch } from "../TournamentWizard";
-import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { useTournamentStore, matchSig } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
 
 /* ---------------- helpers ---------------- */
-function rrPairKey(a?: number | null, b?: number | null) {
-  const x = a ?? 0, y = b ?? 0;
-  return x < y ? `${x}-${y}` : `${y}-${x}`;
-}
-
-function rowSignature(m: DraftMatch) {
-  if (m.round != null && m.bracket_pos != null) {
-    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
-  }
-  const g = m.groupIdx ?? -1;
-  const md = m.matchday ?? 0;
-  const pair = rrPairKey(m.team_a_id, m.team_b_id);
-  return `RR|S${m.stageIdx ?? -1}|G${g}|MD${md}|${pair}`;
-}
-
 function reactKey(m: DraftMatch, i: number) {
   const id = (m as any)?.db_id as number | null | undefined;
-  const sig = rowSignature(m);
+  const sig = matchSig(m);
   return id != null ? `M#${id}|${sig}` : `${sig}|I${i}`;
-}
-
-function legacyRowSignature(m: DraftMatch) {
-  const parts = [
-    m.stageIdx ?? "", m.groupIdx ?? "", m.matchday ?? "",
-    m.round ?? "", m.bracket_pos ?? "", m.team_a_id ?? "",
-    m.team_b_id ?? "", m.match_date ?? "",
-  ];
-  return parts.join("|");
 }
 
 function isoToLocalInput(iso?: string | null) {
@@ -68,15 +44,28 @@ const selReindexKOPointers = (s: TournamentState) => s.reindexKOPointers as (sta
 const selSetKORoundPos = (s: TournamentState) => s.setKORoundPos as (stageIdx: number, from: { round: number; bracket_pos: number }, to: { round: number; bracket_pos: number }) => void;
 
 /* ---------------- overlay sync helpers ---------------- */
+/**
+ * Migrate overlay when identity changes (e.g., KO round/pos or RR matchday)
+ */
 function migrateOverlayKey(oldKey: string, newKey: string) {
   if (!oldKey || !newKey || oldKey === newKey) return;
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }>;
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
   const ov = overlay[oldKey];
   if (!ov) return;
   const next = { ...overlay };
   next[newKey] = { ...ov };
   delete next[oldKey];
   useTournamentStore.setState({ dbOverlayBySig: next });
+}
+
+/**
+ * Find overlay by db_id and migrate to new key
+ */
+function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
+  const found = Object.entries(overlay).find(([, v]) => v?.db_id === dbId);
+  if (!found) return;
+  migrateOverlayKey(found[0], newKey);
 }
 
 function safeOverlay(ov?: Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }) {
@@ -92,32 +81,33 @@ function ensureOverlayForRow(row: DraftMatch) {
   const team_b_score = (row as any).team_b_score;
   const winner_team_id = (row as any).winner_team_id;
   const updated_at = (row as any).updated_at;
-  const hasDbBits = db_id != null || status != null || team_a_score != null || team_b_score != null || winner_team_id != null;
-  if (!hasDbBits) return;
-  
-  const key = legacyRowSignature(row);
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }>;
-  const curr = overlay[key];
-  const nextVal = {
-    db_id: db_id ?? curr?.db_id ?? null,
-    updated_at: updated_at ?? curr?.updated_at ?? null,
-    status: status ?? curr?.status ?? "scheduled",
-    team_a_score: team_a_score ?? curr?.team_a_score ?? null,
-    team_b_score: team_b_score ?? curr?.team_b_score ?? null,
-    winner_team_id: winner_team_id ?? curr?.winner_team_id ?? null,
-    home_source_round: row.home_source_round ?? (curr as any)?.home_source_round ?? null,
-    home_source_bracket_pos: row.home_source_bracket_pos ?? (curr as any)?.home_source_bracket_pos ?? null,
-    away_source_round: row.away_source_round ?? (curr as any)?.away_source_round ?? null,
-    away_source_bracket_pos: row.away_source_bracket_pos ?? (curr as any)?.away_source_bracket_pos ?? null,
-  } as const;
-  useTournamentStore.setState({ dbOverlayBySig: { ...overlay, [key]: nextVal } });
-}
+  const field = (row as any).field ?? null; // ✅ NEW
 
-function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }>;
-  const found = Object.entries(overlay).find(([, v]) => v?.db_id === dbId);
-  if (!found) return;
-  migrateOverlayKey(found[0], newKey);
+  const hasDbBits = db_id != null || status != null || team_a_score != null || team_b_score != null || winner_team_id != null || field != null;
+  if (!hasDbBits) return;
+
+  const key = matchSig(row);
+  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
+  const curr = overlay[key] ?? {};
+
+  useTournamentStore.setState({
+    dbOverlayBySig: {
+      ...overlay,
+      [key]: {
+        db_id: db_id ?? curr.db_id ?? null,
+        updated_at: updated_at ?? curr.updated_at ?? null,
+        status: status ?? curr.status ?? "scheduled",
+        team_a_score: team_a_score ?? curr.team_a_score ?? null,
+        team_b_score: team_b_score ?? curr.team_b_score ?? null,
+        winner_team_id: winner_team_id ?? curr.winner_team_id ?? null,
+        field,
+        home_source_round: row.home_source_round ?? curr.home_source_round ?? null,
+        home_source_bracket_pos: row.home_source_bracket_pos ?? curr.home_source_bracket_pos ?? null,
+        away_source_round: row.away_source_round ?? curr.away_source_round ?? null,
+        away_source_bracket_pos: row.away_source_bracket_pos ?? curr.away_source_bracket_pos ?? null,
+      }
+    }
+  });
 }
 
 /* ---------------- Round-Robin Integrity Fix ---------------- */
@@ -272,8 +262,8 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
   const allRowsForStage = useMemo(() => {
     const rows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
     return rows.map((r) => {
-      const sigLegacy = legacyRowSignature(r);
-      const ovRaw = dbOverlayBySig[rowSignature(r)] || dbOverlayBySig[sigLegacy] || 
+      const sigLegacy = matchSig(r);
+      const ovRaw = dbOverlayBySig[matchSig(r)] || dbOverlayBySig[sigLegacy] || 
         ((r as any).db_id != null ? Object.values(dbOverlayBySig).find((v) => v?.db_id === (r as any).db_id) : undefined);
       const ov = safeOverlay(ovRaw);
       return ov ? ({ ...r, ...ov } as DraftMatch) : r;
@@ -358,13 +348,13 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
   type Patch = Partial<Pick<DraftMatch, "matchday" | "round" | "bracket_pos" | "team_a_id" | "team_b_id" | "match_date">>;
 
   const applyPatch = (target: DraftMatch, patch: Patch) => {
-    const beforeLegacy = legacyRowSignature(target);
+    const beforeLegacy = matchSig(target);
     if (isKO) {
       const currR = target.round ?? 1, currP = target.bracket_pos ?? 1;
       const newR = patch.round ?? currR, newP = patch.bracket_pos ?? currP;
       if (newR !== currR || newP !== currP) {
         ensureRowExists(effectiveStageIdx, newR, newP);
-        const afterLegacyTmp = legacyRowSignature({ ...target, round: newR, bracket_pos: newP });
+        const afterLegacyTmp = matchSig({ ...target, round: newR, bracket_pos: newP });
         const dbId = (target as any).db_id as number | null | undefined;
         if (dbId != null) migrateOverlayByDbIdToKey(dbId, afterLegacyTmp);
         else migrateOverlayKey(beforeLegacy, afterLegacyTmp);
@@ -378,7 +368,7 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
             if (i >= 0) {
               const merged = { ...next[i], ...rest };
               next[i] = merged;
-              const afterLegacy = legacyRowSignature(merged);
+              const afterLegacy = matchSig(merged);
               if (afterLegacy !== afterLegacyTmp) {
                 const mDbId = (merged as any).db_id;
                 if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
@@ -403,14 +393,14 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
       const fixedRows = fixRoundRobinIntegrity(target, patch, stageRows, teamsInGroup);
       const next = fixedRows.slice();
       const dbId = (target as any).db_id as number | null | undefined;
-      const beforeStruct = rowSignature(target);
+      const beforeStruct = matchSig(target);
       let idx = -1;
       if (dbId != null) idx = next.findIndex((r) => (r as any).db_id === dbId);
-      if (idx < 0) idx = next.findIndex((r) => rowSignature(r) === beforeStruct);
-      if (idx < 0) idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy);
+      if (idx < 0) idx = next.findIndex((r) => matchSig(r) === beforeStruct);
+      if (idx < 0) idx = next.findIndex((r) => matchSig(r) === beforeLegacy);
       const base = idx >= 0 ? next[idx] : target;
       const merged: DraftMatch = { ...base, ...patch, matchday: base.matchday ?? null };
-      const afterLegacy = legacyRowSignature(merged);
+      const afterLegacy = matchSig(merged);
       if (afterLegacy !== beforeLegacy) {
         const mDbId = (merged as any).db_id;
         if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
@@ -420,8 +410,8 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
       if (idx >= 0) {
         next[idx] = merged;
       } else {
-        const afterStruct = rowSignature(merged);
-        const j = next.findIndex((r) => rowSignature(r) === afterStruct);
+        const afterStruct = matchSig(merged);
+        const j = next.findIndex((r) => matchSig(r) === afterStruct);
         if (j >= 0) next[j] = merged;
         else next.push(merged);
       }
@@ -469,7 +459,7 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
     // ✅ FIXED: Ensure db_id is in overlay before removal
     const dbId = (m as any).db_id;
     if (dbId != null) {
-      const key = legacyRowSignature(m);
+      const key = matchSig(m);
       const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
       const curr = overlay[key];
       if (!curr || curr.db_id == null) {
@@ -481,7 +471,7 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
         });
       }
     }
-    console.debug("[planner.delete]", { db_id: dbId ?? null, key: legacyRowSignature(m) });
+    console.debug("[planner.delete]", { db_id: dbId ?? null, key: matchSig(m) });
     removeMatch(m);
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
