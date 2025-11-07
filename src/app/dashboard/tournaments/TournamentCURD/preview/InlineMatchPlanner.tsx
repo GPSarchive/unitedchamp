@@ -114,20 +114,28 @@ function ensureOverlayForRow(row: DraftMatch) {
 /**
  * Determines which "repeat cycle" a match belongs to based on matchday.
  * For multi-round RR (double, triple, etc.), we need to group matches by their repeat.
- * 
+ *
  * @param matchday - The matchday number (1-based)
  * @param teamsCount - Number of teams in the group/league
  * @returns The repeat number (1 for first cycle, 2 for second, etc.)
  */
 function getRepeatFromMatchday(matchday: number, teamsCount: number): number {
   if (!matchday || !teamsCount || teamsCount < 2) return 1;
-  
+
   // In round-robin, each cycle has (teamsCount - 1) matchdays for even counts
   // or teamsCount matchdays for odd counts (due to BYE rotation)
   const matchdaysPerCycle = teamsCount % 2 === 0 ? teamsCount - 1 : teamsCount;
-  
+
   // Calculate which repeat this matchday belongs to (1-based)
   return Math.ceil(matchday / matchdaysPerCycle);
+}
+
+/**
+ * Helper to get team pair signature (for RR match key part)
+ */
+function rrPairKey(a?: number | null, b?: number | null) {
+  const x = a ?? 0, y = b ?? 0;
+  return x < y ? `${x}-${y}` : `${y}-${x}`;
 }
 
 function fixRoundRobinIntegrity(
@@ -138,7 +146,7 @@ function fixRoundRobinIntegrity(
 ): DraftMatch[] {
   // Only apply to non-KO matches
   if (target.round != null || target.bracket_pos != null) return allStageMatches;
-  
+
   const hasTeamChange = patch.team_a_id !== undefined || patch.team_b_id !== undefined;
   if (!hasTeamChange) return allStageMatches;
 
@@ -165,45 +173,56 @@ function fixRoundRobinIntegrity(
   const targetRepeat = getRepeatFromMatchday(target.matchday ?? 1, teamsInGroup);
 
   const newPairKey = rrPairKey(newTeamA, newTeamB);
-  
+
   // Find duplicate match in THE SAME REPEAT CYCLE and same group
   const duplicateMatch = allStageMatches.find((m) => {
     if (m === target) return false;
     if (m.stageIdx !== target.stageIdx) return false;
     if (m.groupIdx !== target.groupIdx) return false;
     if (m.round != null || m.bracket_pos != null) return false;
-    
+
     // ✅ KEY FIX: Only consider duplicates in the same repeat cycle
     const mRepeat = getRepeatFromMatchday(m.matchday ?? 1, teamsInGroup);
     if (mRepeat !== targetRepeat) return false;
-    
+
     return rrPairKey(m.team_a_id, m.team_b_id) === newPairKey;
   });
 
   if (duplicateMatch) {
-    console.log("[RR Integrity Fix]", { 
-      duplicate: duplicateMatch, 
-      teamThatStayed, 
+    console.log("[RR Integrity Fix]", {
+      duplicate: duplicateMatch,
+      teamThatStayed,
       teamReplaced,
       targetRepeat,
       targetMatchday: target.matchday,
       duplicateMatchday: duplicateMatch.matchday
     });
-    
+
     return allStageMatches.map((m) => {
       if (m !== duplicateMatch) return m;
-      
+
+      // ✅ CRITICAL FIX: Migrate overlay when team IDs change (signature changes)
+      const oldSig = matchSig(m); // Get signature BEFORE team swap
+
       // Swap the replaced team into the duplicate match
+      let fixed: DraftMatch;
       if (m.team_a_id === teamThatStayed) {
-        const fixed = { ...m, team_b_id: teamReplaced };
-        ensureOverlayForRow(fixed);
-        return fixed;
+        fixed = { ...m, team_b_id: teamReplaced };
       } else if (m.team_b_id === teamThatStayed) {
-        const fixed = { ...m, team_a_id: teamReplaced };
-        ensureOverlayForRow(fixed);
-        return fixed;
+        fixed = { ...m, team_a_id: teamReplaced };
+      } else {
+        return m;
       }
-      return m;
+
+      const newSig = matchSig(fixed); // Get signature AFTER team swap
+
+      // Migrate overlay from old key to new key (preserves db_id!)
+      if (oldSig !== newSig) {
+        migrateOverlayKey(oldSig, newSig);
+      }
+
+      ensureOverlayForRow(fixed);
+      return fixed;
     });
   }
 
