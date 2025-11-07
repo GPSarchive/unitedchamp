@@ -1,7 +1,7 @@
 // app/page.tsx
 import Image from 'next/image';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
-import { headers } from 'next/headers';                   
+import { headers } from 'next/headers';
 import { Trophy, Users, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import HomeHero from '@/app/home/HomeHero';
@@ -14,6 +14,9 @@ import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
 import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
+import TournamentsGrid from './home/TournamentsGrid';
+import type { Tournament } from "@/app/tournaments/useTournamentData";
+import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -155,6 +158,51 @@ async function fetchMatchesWithTeams() {
   });
 }
 
+async function fetchTournaments() {
+  return withConsoleTiming('db:tournaments', async () => {
+    const { data, error } = await supabaseAdmin
+      .from('tournaments')
+      .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .order('id', { ascending: false })
+      .limit(6); // Limit to 6 tournaments for homepage
+
+    if (error) {
+      console.error('Error fetching tournaments:', error.message);
+      return { tournaments: [], tournamentsError: error };
+    }
+
+    console.log(`Tournaments fetched: ${data?.length ?? 0}`);
+
+    // Fetch counts for each tournament
+    const tournamentsWithCounts = await Promise.all(
+      (data ?? []).map(async (tournament) => {
+        // Fetch teams count
+        const { count: teamsCount } = await supabaseAdmin
+          .from('tournament_teams')
+          .select('*', { count: 'exact', head: true })
+          .eq('tournament_id', tournament.id);
+
+        // Fetch matches count
+        const { count: matchesCount } = await supabaseAdmin
+          .from('matches')
+          .select('*', { count: 'exact', head: true })
+          .eq('tournament_id', tournament.id);
+
+        return {
+          ...tournament,
+          teams_count: String(teamsCount ?? 0),
+          matches_count: String(matchesCount ?? 0),
+        };
+      })
+    );
+
+    // Sign tournament logos
+    const signedTournaments = await signTournamentLogos(tournamentsWithCounts as Tournament[]);
+
+    return { tournaments: signedTournaments, tournamentsError: null };
+  });
+}
+
 /**
  * ------------------------------
  * Mapping functions
@@ -218,9 +266,14 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
 
-  const [{ user }, { rawMatches }] = await Promise.all([fetchSingleUser(), fetchMatchesWithTeams()]);
+  const [{ user }, { rawMatches }, { tournaments }] = await Promise.all([
+    fetchSingleUser(),
+    fetchMatchesWithTeams(),
+    fetchTournaments()
+  ]);
   const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
   console.log('Rendering Home page with events:', eventsToPass);
+  console.log('Tournaments for homepage:', tournaments.length);
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">
       {/* Hero Carousel Section */}
@@ -346,24 +399,8 @@ export default async function Home() {
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
           </p>
 
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-16 pointer-events-none">
-            {/*<div className="w-full  lg:w-[420px] select-none">
-              <MiniAnnouncements
-                limit={4}
-                pinnedPageSize={3}
-                basePath="/anakoinoseis"
-                allLinkHref="/anakoinoseis"
-              />
-            </div>*/}
-
-            <div className="w-full sm:max-w-[440px] md:max-w-[440px] lg:max-w-[880px] pointer-events-auto">
-              <RecentMatchesTabs
-                className="mt-10 lg:mt-0"
-                pageSize={12}
-                variant="transparent"
-                maxWClass="max-w-none"
-              />
-            </div>
+          <div className="w-full max-w-7xl">
+            <TournamentsGrid tournaments={tournaments} />
           </div>
         </div>
       </GridBgSection>
