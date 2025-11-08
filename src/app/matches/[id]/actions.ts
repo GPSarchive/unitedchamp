@@ -161,7 +161,7 @@ export async function saveAllStatsAction(formData: FormData) {
     }
   }
 
-  // Awards (1 per match) – radios (apply ONLY to participants later)
+  // Awards (1 per match) – radios (will be set via RPC)
   const mvpPlayerId = Number(formData.get('mvp_player_id') ?? 0) || 0;
   const bestGkPlayerId = Number(formData.get('best_gk_player_id') ?? 0) || 0;
 
@@ -192,7 +192,7 @@ export async function saveAllStatsAction(formData: FormData) {
   }
 
   // -----------------------
-  // Guard stats by participation (+ apply awards only to participants)
+  // Guard stats by participation (NO awards applied here - will use RPC)
   // -----------------------
   const participatedIds = new Set<number>(toUpsertParticipants.map((r) => r.player_id));
   const statUpserts: Row[] = [];
@@ -207,18 +207,16 @@ export async function saveAllStatsAction(formData: FormData) {
     } else {
       const { _delete, ...clean } = r as any;
 
-      // Apply awards now, only if participant
-      if (mvpPlayerId && clean.player_id === mvpPlayerId) {
-        clean.mvp = true;
-      }
-      if (bestGkPlayerId && clean.player_id === bestGkPlayerId) {
-        clean.best_goalkeeper = true;
-      }
+      // ✅ CRITICAL: Awards are NOT set here - they will be set atomically via RPC
+      // Always set to false during upsert to avoid constraint violations
+      clean.mvp = false;
+      clean.best_goalkeeper = false;
 
       statUpserts.push(clean as Row);
     }
   }
 
+  // Delete removed player stats
   if (statDeletes.length) {
     const { error } = await supabase
       .from('match_player_stats')
@@ -228,11 +226,25 @@ export async function saveAllStatsAction(formData: FormData) {
     if (error) throw error;
   }
 
+  // Upsert all stats (without awards)
   if (statUpserts.length) {
     const { error } = await supabase
       .from('match_player_stats')
       .upsert(statUpserts, { onConflict: 'match_id,player_id' });
     if (error) throw error;
+  }
+
+  // ✅ ATOMIC AWARD UPDATE via Database Function
+  // This is 100% safe - clears all awards first, then sets new ones in a single transaction
+  const { error: rpcError } = await supabase.rpc('update_match_awards', {
+    p_match_id: match_id,
+    p_mvp_player_id: mvpPlayerId || null,
+    p_best_gk_player_id: bestGkPlayerId || null
+  });
+
+  if (rpcError) {
+    console.error('Error updating match awards:', rpcError);
+    throw rpcError;
   }
 
   // --- Auto-finalize from the just-saved stats ---
