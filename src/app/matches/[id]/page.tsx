@@ -99,7 +99,7 @@ export default async function Page({
 
   return (
     <div className="relative min-h-dvh overflow-x-visible">
-      <section className="absolute inset-0 -z-10" mode="balanced" />
+      <section className="absolute inset-0 -z-10"  />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
