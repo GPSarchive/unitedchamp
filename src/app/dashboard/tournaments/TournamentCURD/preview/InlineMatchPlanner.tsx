@@ -5,6 +5,7 @@ import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
+import MatchControlPanel from "./MatchPlannerZ/MatchControlPanel";
 
 /* ---------------- helpers ---------------- */
 function rrPairKey(a?: number | null, b?: number | null) {
@@ -318,6 +319,8 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
   }, [allRowsForStage, isGroups, isKO, groupIdx, useAllGroups]);
 
   const [teamQuery, setTeamQuery] = useState("");
+  const [editingMatch, setEditingMatch] = useState<DraftMatch | null>(null);
+
   const filteredVisible = useMemo(() => {
     const q = teamQuery.trim().toLowerCase();
     if (!q) return visible;
@@ -589,74 +592,100 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
               {isKO ? (
                 filteredVisible.map((m, i) => {
                   const key = reactKey(m, i);
+                  const isEditing = editingMatch && rowSignature(editingMatch) === rowSignature(m);
                   return (
-                    <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
-                      <td className="px-4 py-4">
-                        <input type="number" className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                          value={m.round ?? 1} onChange={(e) => applyPatch(m, { round: Number(e.target.value) || 1, matchday: null })} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <input type="number" className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                          value={m.bracket_pos ?? 1} onChange={(e) => applyPatch(m, { bracket_pos: Number(e.target.value) || 1 })} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          {nameOf(m.team_a_id ?? null).logo ? (
-                            <img src={nameOf(m.team_a_id ?? null).logo!} alt="Team A" className="w-12 h-12 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
-                          )}
-                          <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                            value={m.team_a_id ?? ""} onChange={(e) => applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })}>
-                            <option value="">— Select Team A —</option>
-                            {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
-                          </select>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          {nameOf(m.team_b_id ?? null).logo ? (
-                            <img src={nameOf(m.team_b_id ?? null).logo!} alt="Team B" className="w-12 h-12 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
-                          )}
-                          <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                            value={m.team_b_id ?? ""} onChange={(e) => applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })}>
-                            <option value="">— Select Team B —</option>
-                            {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
-                          </select>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        {(() => {
-                          const a = ((m as any).team_a_score ?? null) as number | null;
-                          const b = ((m as any).team_b_score ?? null) as number | null;
-                          return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
-                        })()}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={["inline-flex items-center rounded px-2 py-0.5 text-xs",
-                          ((m as any).status ?? "scheduled") === "finished" ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
-                            : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10"].join(" ")}>
-                          {((m as any).status ?? "scheduled")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <input type="datetime-local"
-                          className="bg-slate-950 text-white border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white transition-all duration-300 ease-in-out hover:bg-gray-800"
-                          value={isoToLocalInput(m.match_date as string | null)} onChange={(e) => applyPatch(m, { match_date: localInputToISO(e.target.value) })} />
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button className="px-2 py-1 rounded border border-white/15 hover:bg-white/10 text-xs"
-                            onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })} title="Swap teams">
-                            Swap
-                          </button>
-                          <button className="px-2 py-1 rounded border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
-                            onClick={() => removeRow(m)}>Delete</button>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
+                        <td className="px-4 py-4">
+                          <input type="number" className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                            value={m.round ?? 1} onChange={(e) => applyPatch(m, { round: Number(e.target.value) || 1, matchday: null })} />
+                        </td>
+                        <td className="px-4 py-4">
+                          <input type="number" className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                            value={m.bracket_pos ?? 1} onChange={(e) => applyPatch(m, { bracket_pos: Number(e.target.value) || 1 })} />
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            {nameOf(m.team_a_id ?? null).logo ? (
+                              <img src={nameOf(m.team_a_id ?? null).logo!} alt="Team A" className="w-12 h-12 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
+                            )}
+                            <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                              value={m.team_a_id ?? ""} onChange={(e) => applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })}>
+                              <option value="">— Select Team A —</option>
+                              {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            {nameOf(m.team_b_id ?? null).logo ? (
+                              <img src={nameOf(m.team_b_id ?? null).logo!} alt="Team B" className="w-12 h-12 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
+                            )}
+                            <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                              value={m.team_b_id ?? ""} onChange={(e) => applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })}>
+                              <option value="">— Select Team B —</option>
+                              {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          {(() => {
+                            const a = ((m as any).team_a_score ?? null) as number | null;
+                            const b = ((m as any).team_b_score ?? null) as number | null;
+                            return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
+                          })()}
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={["inline-flex items-center rounded px-2 py-0.5 text-xs",
+                            ((m as any).status ?? "scheduled") === "finished" ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
+                              : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10"].join(" ")}>
+                            {((m as any).status ?? "scheduled")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <input type="datetime-local"
+                            className="bg-slate-950 text-white border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white transition-all duration-300 ease-in-out hover:bg-gray-800"
+                            value={isoToLocalInput(m.match_date as string | null)} onChange={(e) => applyPatch(m, { match_date: localInputToISO(e.target.value) })} />
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              className={`px-2 py-1 rounded border text-xs ${
+                                isEditing
+                                  ? 'border-blue-400/50 bg-blue-500/20 text-blue-200'
+                                  : 'border-blue-400/30 text-blue-200 hover:bg-blue-500/10'
+                              }`}
+                              onClick={() => setEditingMatch(isEditing ? null : m)}
+                              title="Edit match details and player stats">
+                              {isEditing ? 'Close' : 'Edit'}
+                            </button>
+                            <button className="px-2 py-1 rounded border border-white/15 hover:bg-white/10 text-xs"
+                              onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })} title="Swap teams">
+                              Swap
+                            </button>
+                            <button className="px-2 py-1 rounded border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
+                              onClick={() => removeRow(m)}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isEditing && (
+                        <tr key={`${key}-expanded`}>
+                          <td colSpan={8} className="p-0">
+                            <div className="border-t-2 border-blue-400/30">
+                              <MatchControlPanel
+                                match={m}
+                                teams={teams}
+                                onClose={() => setEditingMatch(null)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })
               ) : (
@@ -676,66 +705,92 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
                       </tr>
                       {ms.map((m, i) => {
                         const key = reactKey(m, i);
+                        const isEditing = editingMatch && rowSignature(editingMatch) === rowSignature(m);
                         return (
-                          <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2">
-                                {nameOf(m.team_a_id ?? null).logo ? (
-                                  <img src={nameOf(m.team_a_id ?? null).logo!} alt="Team A" className="w-12 h-12 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
-                                )}
-                                <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                                  value={m.team_a_id ?? ""} onChange={(e) => applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })}>
-                                  <option value="">— Select Team A —</option>
-                                  {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
-                                </select>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2">
-                                {nameOf(m.team_b_id ?? null).logo ? (
-                                  <img src={nameOf(m.team_b_id ?? null).logo!} alt="Team B" className="w-12 h-12 rounded-full object-cover" />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
-                                )}
-                                <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                                  value={m.team_b_id ?? ""} onChange={(e) => applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })}>
-                                  <option value="">— Select Team B —</option>
-                                  {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
-                                </select>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              {(() => {
-                                const a = ((m as any).team_a_score ?? null) as number | null;
-                                const b = ((m as any).team_b_score ?? null) as number | null;
-                                return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
-                              })()}
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className={["inline-flex items-center rounded px-2 py-0.5 text-xs",
-                                ((m as any).status ?? "scheduled") === "finished" ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
-                                  : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10"].join(" ")}>
-                                {((m as any).status ?? "scheduled")}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
-                              <input type="datetime-local"
-                                className="bg-slate-950 text-white border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white transition-all duration-300 ease-in-out hover:bg-gray-800"
-                                value={isoToLocalInput(m.match_date as string | null)} onChange={(e) => applyPatch(m, { match_date: localInputToISO(e.target.value) })} />
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center justify-end gap-2">
-                                <button className="px-2 py-1 rounded border border-white/15 hover:bg-white/10 text-xs"
-                                  onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })} title="Swap teams">
-                                  Swap
-                                </button>
-                                <button className="px-2 py-1 rounded border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
-                                  onClick={() => removeRow(m)}>Delete</button>
-                              </div>
-                            </td>
-                          </tr>
+                          <>
+                            <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2">
+                                  {nameOf(m.team_a_id ?? null).logo ? (
+                                    <img src={nameOf(m.team_a_id ?? null).logo!} alt="Team A" className="w-12 h-12 rounded-full object-cover" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
+                                  )}
+                                  <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                                    value={m.team_a_id ?? ""} onChange={(e) => applyPatch(m, { team_a_id: e.target.value ? Number(e.target.value) : null })}>
+                                    <option value="">— Select Team A —</option>
+                                    {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
+                                  </select>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2">
+                                  {nameOf(m.team_b_id ?? null).logo ? (
+                                    <img src={nameOf(m.team_b_id ?? null).logo!} alt="Team B" className="w-12 h-12 rounded-full object-cover" />
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs">No Logo</div>
+                                  )}
+                                  <select className="min-w-48 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                                    value={m.team_b_id ?? ""} onChange={(e) => applyPatch(m, { team_b_id: e.target.value ? Number(e.target.value) : null })}>
+                                    <option value="">— Select Team B —</option>
+                                    {teamOptions.map((opt) => (<option key={opt.id} value={opt.id}>{opt.label}</option>))}
+                                  </select>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                {(() => {
+                                  const a = ((m as any).team_a_score ?? null) as number | null;
+                                  const b = ((m as any).team_b_score ?? null) as number | null;
+                                  return a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>;
+                                })()}
+                              </td>
+                              <td className="px-4 py-4">
+                                <span className={["inline-flex items-center rounded px-2 py-0.5 text-xs",
+                                  ((m as any).status ?? "scheduled") === "finished" ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
+                                    : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10"].join(" ")}>
+                                  {((m as any).status ?? "scheduled")}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4">
+                                <input type="datetime-local"
+                                  className="bg-slate-950 text-white border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white transition-all duration-300 ease-in-out hover:bg-gray-800"
+                                  value={isoToLocalInput(m.match_date as string | null)} onChange={(e) => applyPatch(m, { match_date: localInputToISO(e.target.value) })} />
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    className={`px-2 py-1 rounded border text-xs ${
+                                      isEditing
+                                        ? 'border-blue-400/50 bg-blue-500/20 text-blue-200'
+                                        : 'border-blue-400/30 text-blue-200 hover:bg-blue-500/10'
+                                    }`}
+                                    onClick={() => setEditingMatch(isEditing ? null : m)}
+                                    title="Edit match details and player stats">
+                                    {isEditing ? 'Close' : 'Edit'}
+                                  </button>
+                                  <button className="px-2 py-1 rounded border border-white/15 hover:bg-white/10 text-xs"
+                                    onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })} title="Swap teams">
+                                    Swap
+                                  </button>
+                                  <button className="px-2 py-1 rounded border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
+                                    onClick={() => removeRow(m)}>Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                            {isEditing && (
+                              <tr key={`${key}-expanded`}>
+                                <td colSpan={6} className="p-0">
+                                  <div className="border-t-2 border-blue-400/30">
+                                    <MatchControlPanel
+                                      match={m}
+                                      teams={teams}
+                                      onClose={() => setEditingMatch(null)}
+                                    />
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
                         );
                       })}
                     </>
@@ -746,6 +801,8 @@ export default function InlineMatchPlanner({ miniPayload, teams, forceStageIdx }
           </table>
         </div>
       )}
+
+{/* Match Control Panel appears below the edited row */}
     </section>
   );
 }
