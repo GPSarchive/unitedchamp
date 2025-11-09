@@ -15,13 +15,6 @@ function initials(name: string) {
     .join("");
 }
 
-/**
- * TeamBadge — Neon Triumph Edition
- * - Deep navy card with neon magenta→cyan accents
- * - Animated gradient outline & hover lift
- * - Image shimmer-in + subtle parallax
- * - Trophy pulse + stardust when highlight=true
- */
 export default function TeamBadge({
   team,
   className = "",
@@ -31,56 +24,48 @@ export default function TeamBadge({
   className?: string;
   highlight?: boolean;
 }) {
-  // Palette
-  const cardBg = "bg-[#0b1020]";
+  const cardBg = "bg-neutral-900/90";
   const baseRing =
-    "border border-white/10 ring-1 ring-white/10 shadow-[0_1px_0_rgba(255,255,255,0.05)]";
+    "border border-amber-800/40 ring-1 ring-amber-700/20 shadow-[0_2px_12px_rgba(0,0,0,0.6)]";
   const winRing =
-    "ring-2 ring-fuchsia-400/70 border-fuchsia-400/20 shadow-[0_0_36px_rgba(240,46,170,0.25)]";
+    "ring-2 ring-amber-400/80 border-amber-400/50 shadow-[0_0_36px_rgba(251,191,36,0.5)]";
 
   const ringClass = highlight ? winRing : baseRing;
   const nameClass = highlight
-    ? "text-white drop-shadow-[0_1px_0_rgba(0,0,0,.25)]"
-    : "text-zinc-100";
-  const subClass = highlight ? "text-cyan-300/90" : "text-zinc-400";
+    ? "text-white drop-shadow-[0_1px_3px_rgba(251,191,36,0.6)]"
+    : "text-amber-50";
+  const subClass = highlight ? "text-amber-200" : "text-amber-300/60";
 
   return (
     <motion.div
       className={`group relative isolate overflow-hidden rounded-3xl ${cardBg} ${
-        highlight ? "border border-fuchsia-400/20" : "border border-white/10"
+        highlight ? "border border-amber-400/40" : "border border-neutral-700/50"
       } p-3 backdrop-blur-sm ${className}`}
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
     >
-      {/* Animated edge aura */}
+      {/* Animated gold edge aura */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute -inset-[1px] -z-10 rounded-3xl"
         style={{
           background:
-            "linear-gradient(120deg, rgba(240,46,170,0.22), rgba(0,212,255,0.18))",
+            "linear-gradient(135deg, rgba(251,191,36,0.25), rgba(245,158,11,0.2))",
           mask: "linear-gradient(#000, #000) content-box, linear-gradient(#000, #000)",
           WebkitMask:
             "linear-gradient(#000, #000) content-box, linear-gradient(#000, #000)",
         }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: highlight ? 1 : 0.6 }}
+        animate={{ opacity: highlight ? 1 : 0.5 }}
       />
 
-      {/* flowing background ribbons */}
+      {/* Subtle gold glow orbs */}
       <motion.div
         aria-hidden
         className="absolute -right-16 -top-24 h-48 w-48 rounded-full blur-3xl"
-        style={{ background: "radial-gradient(closest-side, rgba(240,46,170,0.16), transparent)" }}
+        style={{ background: "radial-gradient(closest-side, rgba(251,191,36,0.2), transparent)" }}
         animate={{ x: [0, -8, 4, 0], y: [0, 6, -4, 0] }}
-        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-      />
-      <motion.div
-        aria-hidden
-        className="absolute -left-20 -bottom-24 h-56 w-56 rounded-full blur-3xl"
-        style={{ background: "radial-gradient(closest-side, rgba(0,212,255,0.16), transparent)" }}
-        animate={{ x: [0, 6, -4, 0], y: [0, -8, 6, 0] }}
         transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
       />
 
@@ -88,25 +73,25 @@ export default function TeamBadge({
         {/* Crest */}
         <motion.div
           className={
-            `relative shrink-0 h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 aspect-square overflow-hidden rounded-2xl ${ringClass} bg-black`
+            `relative shrink-0 h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 aspect-square overflow-hidden rounded-2xl ${ringClass} bg-black/90`
           }
           title={team.name}
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.98 }}
         >
-          {/* moving highlight ring */}
+          {/* Subtle rotating gold highlight */}
           <motion.div
             aria-hidden
             className="pointer-events-none absolute inset-0 rounded-2xl"
             style={{
               background:
-                "conic-gradient(from 0deg, rgba(255,255,255,0.06), transparent 25%, rgba(255,255,255,0.06) 50%, transparent 75%, rgba(255,255,255,0.06))",
+                "conic-gradient(from 0deg, rgba(251,191,36,0.15), transparent 30%, rgba(251,191,36,0.15) 60%, transparent 90%, rgba(251,191,36,0.15))",
             }}
             animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+            transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
           />
 
-          {/* logo / fallback - using TeamImage */}
+          {/* logo / fallback */}
           {team.logo ? (
             <TeamImage
               src={team.logo}
@@ -119,13 +104,13 @@ export default function TeamBadge({
             />
           ) : (
             <div className="grid h-full w-full place-items-center">
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-300 bg-fuchsia-500/10">
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-amber-400 bg-amber-500/20">
                 {initials(team.name) || "—"}
               </span>
             </div>
           )}
 
-          {/* Winning trophy & stardust */}
+          {/* Gold trophy for winners */}
           <AnimatePresence>
             {highlight && (
               <motion.div
@@ -135,7 +120,7 @@ export default function TeamBadge({
                 exit={{ opacity: 0 }}
                 transition={{ type: "spring", stiffness: 300, damping: 18 }}
               >
-                <Trophy className="h-4 w-4 text-amber-300 drop-shadow" />
+                <Trophy className="h-4 w-4 text-amber-400 drop-shadow-[0_2px_6px_rgba(251,191,36,0.8)]" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -150,11 +135,11 @@ export default function TeamBadge({
         </div>
       </div>
 
-      {/* Stardust burst when highlighted */}
+      {/* Gold sparkle when highlighted */}
       <AnimatePresence>
         {highlight && (
           <motion.div
-            className="pointer-events-none absolute right-3 top-3 text-cyan-200/70"
+            className="pointer-events-none absolute right-3 top-3 text-amber-300"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
@@ -166,9 +151,3 @@ export default function TeamBadge({
     </motion.div>
   );
 }
-
-
-
-
-
-
