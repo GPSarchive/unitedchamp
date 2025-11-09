@@ -1,7 +1,7 @@
-// src/app/matches/[id]/page.tsx
+// src/app/matches/[id]/page.tsx (OPTIMIZED - No Signing)
 export const revalidate = 0;
 
-import MatchHero from "./MatchHero";
+import TeamBadge from "./TeamBadge";
 import ParticipantsStats from "./MatchStats";
 import StatsEditor from "./StatsEditor";
 import { saveAllStatsAction } from "./actions";
@@ -15,26 +15,15 @@ import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
+import VantaBg from "@/app/lib/VantaBg";
+import ShinyText from "./ShinyText";
+import { TournamentImage } from "@/app/lib/OptimizedImage"; // ✅ UPDATED
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
   if (typeof e === "string") return e;
   const anyE = e as any;
   return anyE?.message || anyE?.error?.message || JSON.stringify(anyE);
-}
-
-// Section Divider Component
-function SectionDivider() {
-  return (
-    <div className="relative py-8">
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-amber-700/50"></div>
-      </div>
-      <div className="relative flex justify-center">
-        <div className="h-2 w-2 rotate-45 bg-amber-500/60"></div>
-      </div>
-    </div>
-  );
 }
 
 export default async function Page({
@@ -56,9 +45,12 @@ export default async function Page({
   const { video } = await searchParams;
   const id = parseId(idStr) as Id | null;
   if (!id) return notFound();
-  
+
   const match = await fetchMatch(id);
   if (!match) return notFound();
+
+  // ✅ NO SIGNING - Keep raw path
+  const tournamentLogo = match.tournament?.logo ?? null;
 
   const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
@@ -86,78 +78,120 @@ export default async function Page({
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
 
+  // ✅ NO PHOTO SIGNING - Players already have raw paths
+
   const videoId = extractYouTubeId(video ?? null);
-  
-  function formatNaiveISO(iso: string) {
-    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
-    if (!m) return "TBD";
-    const [_, y, mo, d, h, mi, s] = m;
-    const dt = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi, +(s ?? 0)));
-    return new Intl.DateTimeFormat("en-GB", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "UTC",
-    }).format(dt);
-  }
-  
-  const dateLabel = match.match_date ? formatNaiveISO(match.match_date) : "TBD";
+
+  const dateLabel = match.match_date
+    ? new Date(match.match_date).toLocaleString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "TBD";
+
+  const aIsWinner =
+    match.winner_team_id && match.winner_team_id === match.team_a.id;
+  const bIsWinner =
+    match.winner_team_id && match.winner_team_id === match.team_b.id;
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-amber-600 via-orange-700 to-amber-900">
-      {/* GRAND Hero Section */}
-      <MatchHero
-        teamA={match.team_a}
-        teamB={match.team_b}
-        tournament={match.tournament}
-        score={{ a: match.team_a_score, b: match.team_b_score }}
-        status={formatStatus(match.status)}
-        date={dateLabel}
-        referee={match.referee}
-        winnerId={match.winner_team_id}
-      />
+    <div className="relative min-h-dvh overflow-x-visible">
+      <VantaBg className="absolute inset-0 -z-10" mode="balanced" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
-      {/* Content Sections */}
-      <div className="container mx-auto max-w-7xl space-y-0 px-4 py-8 sm:px-6 lg:px-8">
-        {dataLoadErrors.length > 0 && (
-          <>
-            <div className="rounded-xl border border-red-500/50 bg-red-950/80 p-4 text-red-200 backdrop-blur-sm">
-              <p className="font-semibold">⚠️ Some data failed to load:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-                {dataLoadErrors.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
+      <div className="container mx-auto max-w-6xl px-4 pt-6">
+        <div className="flex justify-center">
+          <div className="pointer-events-none select-none">
+            {/* ✅ UPDATED: Use TournamentImage */}
+            {tournamentLogo ? (
+              <div className="mb-3 flex justify-center">
+                <TournamentImage
+                  src={tournamentLogo}
+                  alt={match.tournament?.name ?? "Tournament logo"}
+                  width={160}
+                  height={160}
+                  className="h-14 w-auto rounded-md bg-white/5 p-2 ring-1 ring-white/10"
+                  priority
+                />
+              </div>
+            ) : null}
+
+            <div className="mt-4 flex justify-center">
+              <ShinyText
+                text={
+                  match.tournament?.name ??
+                  `${match.team_a.name} vs ${match.team_b.name}`
+                }
+                speed={3}
+                className="
+                  text-center
+                  text-3xl md:text-5xl
+                  font-extrabold leading-tight tracking-tight
+                  drop-shadow-[0_1px_0_rgba(0,0,0,.25)]
+                "
+              />
             </div>
-            <SectionDivider />
-          </>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
+        {dataLoadErrors.length > 0 && (
+          <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-amber-200 text-sm">
+            <p className="font-medium">Some data failed to load:</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              {dataLoadErrors.map((m, i) => (
+                <li key={i}>{m}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
-        {/* Match Stats */}
-        <ParticipantsStats
-          renderAs="card"
-          labels={{ left: "Home Squad", right: "Away Squad" }}
-          teamA={{ id: match.team_a.id, name: match.team_a.name }}
-          teamB={{ id: match.team_b.id, name: match.team_b.name }}
-          associationsA={teamAPlayers}
-          associationsB={teamBPlayers}
-          statsByPlayer={existingStats}
-          participants={participants}
-        />
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 shadow-sm backdrop-blur text-white">
+          <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_auto_1fr] md:gap-8">
+            <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
 
-        <SectionDivider />
+            <div className="relative mx-auto min-w-[220px] text-center">
+              <div className="text-xs uppercase tracking-wide text-white/70">
+                {formatStatus(match.status)}
+              </div>
+              <div className="text-4xl font-bold leading-none text-white">
+                {match.team_a_score}
+                <span className="text-white/60">-</span>
+                {match.team_b_score}
+              </div>
+              <div className="text-sm text-white/70">{dateLabel}</div>
+              {match.referee && (
+                <div className="mt-1 text-xs text-white/75">
+                  Διαιτητής: <span className="font-medium">{match.referee}</span>
+                </div>
+              )}
+            </div>
 
-        {/* Match Video */}
-        <section className="overflow-hidden rounded-2xl border border-amber-800/50 bg-black/90 p-4 shadow-2xl backdrop-blur-md sm:p-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-white sm:text-2xl">Match Highlights</h2>
-            <div className="mt-2 h-1 w-20 rounded-full bg-gradient-to-r from-amber-500 to-transparent" />
+            <TeamBadge team={match.team_b} className="text-right" highlight={!!bIsWinner} />
           </div>
+
+          <div className="my-6 h-px w-full bg-white/10" />
+
+          <ParticipantsStats
+            renderAs="embedded"
+            labels={{ left: "Home", right: "Away" }}
+            teamA={{ id: match.team_a.id, name: match.team_a.name }}
+            teamB={{ id: match.team_b.id, name: match.team_b.name }}
+            associationsA={teamAPlayers}
+            associationsB={teamBPlayers}
+            statsByPlayer={existingStats}
+            participants={participants}
+          />
+        </section>
+
+        <section className="rounded-2xl border bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold">Match Video</h2>
           {videoId ? (
-            <div className="aspect-video w-full overflow-hidden rounded-xl border border-amber-700/40 shadow-xl">
+            <div className="aspect-video w-full overflow-hidden rounded-xl">
               <iframe
                 className="h-full w-full"
                 src={`https://www.youtube.com/embed/${videoId}`}
@@ -167,60 +201,52 @@ export default async function Page({
               />
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-amber-700/50 bg-neutral-900/70 p-8 text-center backdrop-blur-sm">
-              <p className="text-sm text-amber-200/80 sm:text-base">
-                No video available. Add <code className="rounded bg-amber-600/20 px-2 py-1 text-xs text-amber-300 sm:text-sm">?video=YOUTUBE_ID</code> to the URL.
+            <div className="text-sm text-gray-600">
+              <p>
+                No video provided. Append <code>?video=YOUTUBE_ID_OR_URL</code> to the page URL.
               </p>
             </div>
           )}
         </section>
 
-        {/* Admin Section - STACKED LAYOUT */}
-        {isAdmin && (
-          <>
-            <SectionDivider />
-            <section className="overflow-hidden rounded-2xl border border-amber-800/50 bg-black/90 p-4 shadow-2xl backdrop-blur-md sm:p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-white sm:text-2xl">Admin Panel</h2>
-                <div className="mt-2 h-1 w-20 rounded-full bg-gradient-to-r from-amber-500 to-transparent" />
-                <p className="mt-3 text-xs text-amber-200/80 sm:text-sm">
-                  Ενεργοποίησε <strong className="text-amber-300">Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε στατιστικά.
-                </p>
+        {isAdmin ? (
+          <section className="rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold">Admin: Match Player Stats</h2>
+            <p className="mb-4 text-xs text-gray-500">
+              Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
+              στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
+            </p>
+
+            <form id="stats-form" action={saveAllStatsAction}>
+              <input type="hidden" name="match_id" value={String(match.id)} />
+              <div className="grid grid-cols-1 gap-6">
+                <StatsEditor
+                  teamId={match.team_a.id}
+                  teamName={match.team_a.name}
+                  associations={teamAPlayers}
+                  existing={existingStats}
+                  participants={participants}
+                />
+                <StatsEditor
+                  teamId={match.team_b.id}
+                  teamName={match.team_b.name}
+                  associations={teamBPlayers}
+                  existing={existingStats}
+                  participants={participants}
+                />
               </div>
 
-              <form id="stats-form" action={saveAllStatsAction}>
-                <input type="hidden" name="match_id" value={String(match.id)} />
-                
-                {/* STACKED: One column, vertical layout */}
-                <div className="space-y-6">
-                  <StatsEditor
-                    teamId={match.team_a.id}
-                    teamName={match.team_a.name}
-                    associations={teamAPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                  />
-                  <StatsEditor
-                    teamId={match.team_b.id}
-                    teamName={match.team_b.name}
-                    associations={teamBPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                  />
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <button
-                    type="submit"
-                    className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 text-sm font-semibold text-black shadow-lg transition-all hover:from-amber-400 hover:to-amber-500 hover:shadow-[0_0_30px_rgba(251,191,36,0.6)] sm:w-auto sm:px-8"
-                  >
-                    💾 Save All Stats
-                  </button>
-                </div>
-              </form>
-            </section>
-          </>
-        )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="submit"
+                  className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+                >
+                  Save all
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
       </div>
     </div>
   );
