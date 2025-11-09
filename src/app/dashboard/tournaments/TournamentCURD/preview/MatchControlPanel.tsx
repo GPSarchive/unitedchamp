@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Save, X, AlertCircle, RotateCcw, Award } from "lucide-react";
 import { useTournamentStore } from "../submit/tournamentStore";
 import type { DraftMatch } from "../TournamentWizard";
@@ -123,8 +123,14 @@ export default function MatchControlPanel({
   const [awarding, setAwarding] = useState(false);
   const [awardError, setAwardError] = useState<string | null>(null);
 
-  // Initialize manual status from DB overlay or auto-calculate
+  // Ref to track if status has been initialized
+  const hasInitialized = useRef(false);
+
+  // Initialize manual status from DB overlay or auto-calculate (only once)
   useEffect(() => {
+    // Only auto-set status on initial load
+    if (hasInitialized.current) return;
+    
     if (overlay.status) {
       setManualStatus(overlay.status as "scheduled" | "finished");
     } else {
@@ -132,7 +138,9 @@ export default function MatchControlPanel({
       const hasParticipants = teamAPlayers.some(p => p.played) || teamBPlayers.some(p => p.played);
       setManualStatus(hasParticipants ? "finished" : "scheduled");
     }
-  }, [overlay.status, teamAPlayers, teamBPlayers]); // Re-run when players load
+    
+    hasInitialized.current = true;
+  }, [overlay.status, teamAPlayers, teamBPlayers]);
 
   // Fetch data on mount
   useEffect(() => {
