@@ -1,7 +1,7 @@
 'use server';
 
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
-import { progressAfterMatch, recomputeStandingsNow } from '../../progression';
+import { progressAfterMatch, recomputeStandingsNow } from '../progression';
 
 type PlayerStatInput = {
   player_id: number;

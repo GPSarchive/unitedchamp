@@ -1100,8 +1100,8 @@ export async function updateTournamentAction(formData: FormData) {
     }
   }
 
-  revalidatePath('/tournoua');
-  redirect(`/tournoua/${payload.tournament.slug ?? existing.slug ?? ''}`);
+  revalidatePath('/tournaments');
+  redirect(`/tournaments/${payload.tournament.slug ?? existing.slug ?? ''}`);
 }
 
 /* =========================
@@ -1141,6 +1141,6 @@ export async function deleteTournamentAction(tournamentId: number) {
   const delTournament = await supabaseAdmin.from('tournaments').delete().eq('id', tournamentId);
   if (delTournament.error) return { ok: false, error: delTournament.error.message };
 
-  revalidatePath('/tournoua');
+  revalidatePath('/tournaments');
   return { ok: true };
 }

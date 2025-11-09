@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { ChevronDown, ChevronUp, Save, X, AlertCircle, RotateCcw, Award } from "lucide-react";
-import { useTournamentStore } from "../../submit/tournamentStore";
-import type { DraftMatch } from "../../TournamentWizard";
-import type { TeamDraft } from "../../TournamentWizard";
+import { useTournamentStore } from "../submit/tournamentStore";
+import type { DraftMatch } from "../TournamentWizard";
+import type { TeamDraft } from "../TournamentWizard";
 import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinAction } from "./actions";
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
