@@ -9,7 +9,7 @@ interface ExpandedRowEditorProps {
   match: DraftMatch;
   teams: { id: number; name: string; logo: string | null }[];
   onUpdate: (patch: Partial<DraftMatch>) => void;
-  onServerUpdate?: (matchId: number) => void; // Callback μετά από επιτυχή ενημέρωση στον διακομιστή
+  onServerUpdate?: (matchId: number) => void; // Callback after successful server update
   allowDraws: boolean;
   stageKind: "knockout" | "groups" | "league" | null;
 }
@@ -41,7 +41,7 @@ export function ExpandedRowEditor({
   const scoresEqual = localScoreA === localScoreB;
   const isDraw = isFinished && allowDraws && scoresEqual;
 
-  // Αυτόματη εκκαθάριση νικητή σε ισοπαλία
+  // Auto-clear winner for draws
   useEffect(() => {
     if (isDraw && localWinner != null) {
       setLocalWinner(null);
@@ -49,7 +49,7 @@ export function ExpandedRowEditor({
   }, [isDraw, localWinner]);
 
   const handleSave = async () => {
-    // Πρώτα ενημέρωση τοπικής κατάστασης μέσω του onUpdate του γονέα
+    // First, update local state via the parent's onUpdate
     const patch: Partial<DraftMatch> = {
       status: localStatus as "scheduled" | "finished",
       team_a_score: isFinished ? localScoreA : null,
@@ -58,14 +58,14 @@ export function ExpandedRowEditor({
       field: localField || null,
     };
     
-    // Άμεση ενημέρωση τοπικού store για καλύτερη ανταπόκριση UI
+    // Update local store immediately for UI responsiveness
     onUpdate(patch);
 
-    // Αν υπάρχει ID στη βάση, ενημέρωση και στον διακομιστή
+    // If we have a database ID, also update the server
     const dbId = (match as any).db_id;
     if (dbId && typeof dbId === 'number') {
-      // patch.status μπορεί να είναι "scheduled" | "finished" | null | undefined (από DraftMatch),
-      // κανονικοποίηση σε "scheduled" | "finished" | undefined για τον server updater
+      // patch.status may be "scheduled" | "finished" | null | undefined (from DraftMatch),
+      // normalize to "scheduled" | "finished" | undefined for the server updater
       const statusForServer: "scheduled" | "finished" | undefined = patch.status ?? undefined;
       await updateMatch({
         matchId: dbId,
@@ -80,14 +80,14 @@ export function ExpandedRowEditor({
 
   const validationError = useMemo(() => {
     if (isFinished) {
-      if (localScoreA < 0 || localScoreB < 0) return "Τα σκορ δεν μπορούν να είναι αρνητικά";
+      if (localScoreA < 0 || localScoreB < 0) return "Scores cannot be negative";
       
       if (allowDraws && scoresEqual) {
-        if (localWinner != null) return "Ο νικητής πρέπει να είναι κενός σε ισοπαλία";
+        if (localWinner != null) return "Winner must be empty for a draw";
       } else {
-        if (!localWinner) return "Απαιτείται νικητής όταν η κατάσταση είναι «Ολοκληρώθηκε»";
+        if (!localWinner) return "Winner is required when status is 'finished'";
         if (![match.team_a_id, match.team_b_id].includes(localWinner))
-          return "Ο νικητής πρέπει να είναι η Ομάδα A ή η Ομάδα B";
+          return "Winner must be Team A or Team B";
       }
     }
     return null;
@@ -96,9 +96,9 @@ export function ExpandedRowEditor({
   return (
     <div className="bg-zinc-900/50 p-4 space-y-4 border-t border-white/10">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Κατάσταση */}
+        {/* Status */}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/70">Κατάσταση</span>
+          <span className="text-xs text-white/70">Status</span>
           <select
             value={localStatus}
             onChange={(e) => {
@@ -107,14 +107,14 @@ export function ExpandedRowEditor({
             }}
             className="px-3 py-2 min-h-[44px] rounded-md bg-slate-950 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
           >
-            <option value="scheduled">Προγραμματισμένος</option>
-            <option value="finished">Ολοκληρώθηκε</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="finished">Finished</option>
           </select>
         </label>
 
-        {/* Σκορ Ομάδας A */}
+        {/* Team A Score */}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/70">Σκορ Ομάδας A</span>
+          <span className="text-xs text-white/70">Team A Score</span>
           <input
             type="number"
             min={0}
@@ -125,9 +125,9 @@ export function ExpandedRowEditor({
           />
         </label>
 
-        {/* Σκορ Ομάδας B */}
+        {/* Team B Score */}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/70">Σκορ Ομάδας B</span>
+          <span className="text-xs text-white/70">Team B Score</span>
           <input
             type="number"
             min={0}
@@ -138,16 +138,16 @@ export function ExpandedRowEditor({
           />
         </label>
 
-        {/* Νικητής */}
+        {/* Winner */}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/70">Νικητής</span>
+          <span className="text-xs text-white/70">Winner</span>
           <select
             value={localWinner ?? ""}
             onChange={(e) => setLocalWinner(e.target.value === "" ? null : Number(e.target.value))}
             disabled={isDraw || !isFinished}
             className="px-3 py-2 min-h-[44px] rounded-md bg-slate-950 text-white border border-white/10 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
           >
-            <option value="">— Επιλέξτε νικητή —</option>
+            <option value="">— Select Winner —</option>
             {([match.team_a_id, match.team_b_id]
               .filter((id): id is number => typeof id === "number"))
               .map((id) => {
@@ -160,38 +160,38 @@ export function ExpandedRowEditor({
               })}
           </select>
           {isFinished && allowDraws && scoresEqual && (
-            <span className="text-xs text-emerald-300 mt-1">Ισοπαλία — ο νικητής θα μείνει κενός</span>
+            <span className="text-xs text-emerald-300 mt-1">Draw — winner will be empty</span>
           )}
           {isFinished && !allowDraws && scoresEqual && !localWinner && (
-            <span className="text-xs text-rose-300 mt-1">Δεν επιτρέπονται ισοπαλίες — επιλέξτε νικητή</span>
+            <span className="text-xs text-rose-300 mt-1">Draws not allowed — pick a winner</span>
           )}
         </label>
 
-        {/* Γήπεδο/Έδρα */}
+        {/* Field/Venue */}
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-white/70">Γήπεδο/Έδρα</span>
+          <span className="text-xs text-white/70">Field/Venue</span>
           <input
             type="text"
             value={localField}
             onChange={(e) => setLocalField(e.target.value)}
-            placeholder="π.χ. Στάδιο Α"
+            placeholder="e.g., Stadium A"
             className="px-3 py-2 min-h-[44px] rounded-md bg-slate-950 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 placeholder:text-white/30"
           />
         </label>
       </div>
 
-      {/* Μηνύματα κατάστασης */}
+      {/* Status Messages */}
       {validationError && (
         <p className="text-rose-300 text-sm">{validationError}</p>
       )}
       {error && (
-        <p className="text-rose-300 text-sm">Σφάλμα διακομιστή: {error}</p>
+        <p className="text-rose-300 text-sm">Server error: {error}</p>
       )}
       {showSuccess && (
-        <p className="text-emerald-300 text-sm">✓ Ο αγώνας ενημερώθηκε με επιτυχία</p>
+        <p className="text-emerald-300 text-sm">✓ Match updated successfully</p>
       )}
 
-      {/* Κουμπί αποθήκευσης */}
+      {/* Save Button */}
       <div className="flex justify-end gap-2">
         <button
           onClick={handleSave}
@@ -210,10 +210,10 @@ export function ExpandedRowEditor({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Γίνεται αποθήκευση...
+              Saving...
             </span>
           ) : (
-            'Αποθήκευση αλλαγών'
+            'Save Changes'
           )}
         </button>
       </div>
