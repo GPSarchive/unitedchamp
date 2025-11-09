@@ -84,6 +84,9 @@ export default function MatchControlPanel({
   const overlay = dbOverlayBySig[sig] || {};
   const dbId = overlay.db_id || (match as any).db_id;
 
+  // Track actual DB status (not just dropdown selection)
+  const dbStatus = overlay.status as "scheduled" | "finished" | undefined;
+
   // Merged match data (draft + DB overlay)
   const mergedMatch = useMemo(() => ({ ...match, ...overlay }), [match, overlay]);
 
@@ -484,7 +487,7 @@ export default function MatchControlPanel({
     if (loadingPlayers) {
       return (
         <div className="py-8 text-center text-white/50">
-          Loading players...
+          Φόρτωση παικτών...
         </div>
       );
     }
@@ -492,7 +495,7 @@ export default function MatchControlPanel({
     if (teamPlayers.length === 0) {
       return (
         <div className="py-8 text-center text-white/50">
-          No players found for {teamName}
+          Δεν βρέθηκαν παίκτες για την ομάδα {teamName}
         </div>
       );
     }
@@ -502,19 +505,19 @@ export default function MatchControlPanel({
         <table className="min-w-full text-xs">
           <thead className="bg-zinc-800/50 text-white/80">
             <tr>
-              <th className="px-2 py-2 text-left">Played</th>
-              <th className="px-2 py-2 text-left">Player</th>
-              <th className="px-2 py-2 text-left">Pos</th>
-              <th className="px-2 py-2 text-center">Cap</th>
-              <th className="px-2 py-2 text-center">GK</th>
-              <th className="px-2 py-2 text-center">Goals</th>
-              <th className="px-2 py-2 text-center">Assists</th>
-              <th className="px-2 py-2 text-center">Own Goals</th>
-              <th className="px-2 py-2 text-center">YC</th>
-              <th className="px-2 py-2 text-center">RC</th>
-              <th className="px-2 py-2 text-center">BC</th>
-              <th className="px-2 py-2 text-center">MVP</th>
-              <th className="px-2 py-2 text-center">Best GK</th>
+              <th className="px-2 py-2 text-left" title="Επιλέξτε αν ο παίκτης έπαιξε">Έπαιξε</th>
+              <th className="px-2 py-2 text-left">Παίκτης</th>
+              <th className="px-2 py-2 text-left" title="Θέση παίκτη">Θέση</th>
+              <th className="px-2 py-2 text-center" title="Αρχηγός">Αρχ</th>
+              <th className="px-2 py-2 text-center" title="Τερματοφύλακας">ΤΦ</th>
+              <th className="px-2 py-2 text-center" title="Γκολ">Γκολ</th>
+              <th className="px-2 py-2 text-center" title="Ασίστ">Ασίστ</th>
+              <th className="px-2 py-2 text-center" title="Αυτογκόλ">Αυτογκ.</th>
+              <th className="px-2 py-2 text-center" title="Κίτρινες Κάρτες">ΚΚ</th>
+              <th className="px-2 py-2 text-center" title="Κόκκινες Κάρτες">ΚοΚ</th>
+              <th className="px-2 py-2 text-center" title="Μπλε Κάρτες">ΜΚ</th>
+              <th className="px-2 py-2 text-center" title="MVP αγώνα">MVP</th>
+              <th className="px-2 py-2 text-center" title="Καλύτερος Τερματοφύλακας">Καλ. ΤΦ</th>
             </tr>
           </thead>
           <tbody>
@@ -659,10 +662,26 @@ export default function MatchControlPanel({
     <div className="space-y-3 rounded-lg border border-white/20 bg-zinc-900/50 p-4">
       {/* Header with Close button */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <h3 className="text-lg font-semibold text-white">Match Control Panel</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-white">Πίνακας Ελέγχου Αγώνα</h3>
+          <div className="group relative">
+            <AlertCircle className="h-4 w-4 text-white/50 hover:text-white/80 cursor-help" />
+            <div className="absolute left-0 top-6 z-50 hidden w-80 rounded-lg border border-white/20 bg-zinc-900 p-3 text-xs text-white shadow-xl group-hover:block">
+              <p className="font-semibold mb-2">Οδηγίες Χρήσης:</p>
+              <ul className="space-y-1 list-disc list-inside text-white/80">
+                <li>Για νέο αγώνα: Ορίστε κατάσταση "Ολοκληρωμένο", επιλέξτε παίκτες που έπαιξαν, συμπληρώστε στατιστικά</li>
+                <li>Για ήττα/bye: Χρησιμοποιήστε τα κουμπιά "Απονομή 3-0" (εμφανίζονται μόνο αν ο αγώνας δεν είναι αποθηκευμένος ως ολοκληρωμένος)</li>
+                <li>Για διόρθωση ολοκληρωμένου αγώνα: Πατήστε το κουμπί επαναφοράς (↻) για να διαγράψετε τα στατιστικά και να επιστρέψετε στην αρχική κατάσταση</li>
+                <li>Μην επιλέξετε "Προγραμματισμένο" από τη λίστα - μπορεί να προκαλέσει σφάλματα</li>
+                <li>Μετά από κάθε αλλαγή, πατήστε "Αποθήκευση Αγώνα"</li>
+              </ul>
+            </div>
+          </div>
+        </div>
         <button
           onClick={onClose}
           className="rounded-lg p-1 text-white/50 hover:bg-white/10 hover:text-white"
+          title="Κλείσιμο"
         >
           <X className="h-5 w-5" />
         </button>
@@ -674,30 +693,30 @@ export default function MatchControlPanel({
           onClick={() => setShowMetadata(!showMetadata)}
           className="flex w-full items-center justify-between px-4 py-3 text-white hover:bg-white/5"
         >
-          <span className="font-medium">Match Details</span>
+          <span className="font-medium">Λεπτομέρειες Αγώνα</span>
           {showMetadata ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {showMetadata && (
           <div className="space-y-3 border-t border-white/10 p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-white/70">Team A</label>
+                <label className="block text-sm text-white/70">Ομάδα A</label>
                 <div className="text-white">{teamAName}</div>
               </div>
               <div>
-                <label className="block text-sm text-white/70">Team B</label>
+                <label className="block text-sm text-white/70">Ομάδα B</label>
                 <div className="text-white">{teamBName}</div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-white/70">Score</label>
+                <label className="block text-sm text-white/70">Σκορ</label>
                 <div className="text-xl font-bold text-white">
                   {calculatedScores.team_a_score} - {calculatedScores.team_b_score}
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-white/70 mb-1">Status</label>
+                <label className="block text-sm text-white/70 mb-1">Κατάσταση</label>
                 <div className="flex items-center gap-2">
                   <select
                     value={manualStatus}
@@ -705,16 +724,17 @@ export default function MatchControlPanel({
                       setManualStatus(e.target.value as "scheduled" | "finished");
                     }}
                     className="flex-1 rounded border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white"
+                    title="Επιλέξτε την κατάσταση του αγώνα"
                   >
-                    <option value="scheduled">Scheduled</option>
-                    <option value="finished">Finished</option>
+                    <option value="scheduled" disabled>Προγραμματισμένο (μην επιλέξετε)</option>
+                    <option value="finished">Ολοκληρωμένο</option>
                   </select>
-                  {effectiveStatus === 'finished' && (
+                  {dbStatus === 'finished' && (
                     <button
                       onClick={handleRevert}
                       disabled={reverting || saving || awarding || !dbId}
                       className="flex items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs text-orange-300 hover:bg-orange-500/20 disabled:opacity-50"
-                      title="Clear stats and revert to scheduled"
+                      title="Επαναφορά στο προγραμματισμένο - διαγράφει όλα τα στατιστικά"
                     >
                       <RotateCcw className="h-3 w-3" />
                     </button>
@@ -724,50 +744,54 @@ export default function MatchControlPanel({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-white/70">Match Date (UTC)</label>
+                <label className="block text-sm text-white/70">Ημερομηνία Αγώνα (UTC)</label>
                 <input
                   type="datetime-local"
                   value={formData.match_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, match_date: e.target.value }))}
                   className="w-full rounded border border-white/10 bg-zinc-900 px-3 py-2 text-white"
+                  title="Επιλέξτε ημερομηνία και ώρα αγώνα"
                 />
               </div>
               <div>
-                <label className="block text-sm text-white/70">Field</label>
+                <label className="block text-sm text-white/70">Γήπεδο</label>
                 <input
                   type="text"
                   value={formData.field}
                   onChange={(e) => setFormData(prev => ({ ...prev, field: e.target.value }))}
                   className="w-full rounded border border-white/10 bg-zinc-900 px-3 py-2 text-white"
-                  placeholder="Field name"
+                  placeholder="Όνομα γηπέδου"
+                  title="Εισάγετε το όνομα του γηπέδου"
                 />
               </div>
             </div>
 
-            {/* Forfeit/Bye Quick Actions - only show when scheduled */}
-            {effectiveStatus === 'scheduled' && (
+            {/* Forfeit/Bye Quick Actions - only show when NOT saved as finished in DB */}
+            {dbStatus !== 'finished' && (
               <div className="border-t border-white/10 pt-3">
-                <label className="block text-sm text-white/70 mb-2">Quick Actions (Forfeit/Bye)</label>
+                <label className="block text-sm text-white/70 mb-2">Γρήγορες Ενέργειες (Ήττα/Bye)</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => handleAwardForfeit('A')}
                     disabled={awarding || saving || reverting || !dbId}
                     className="flex items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
+                    title="Απονομή νίκης 3-0 λόγω ήττας αντιπάλου"
                   >
                     <Award className="h-4 w-4" />
-                    Award 3-0 to {teamAName}
+                    Απονομή 3-0 στην {teamAName}
                   </button>
                   <button
                     onClick={() => handleAwardForfeit('B')}
                     disabled={awarding || saving || reverting || !dbId}
                     className="flex items-center justify-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm text-blue-300 hover:bg-blue-500/20 disabled:opacity-50"
+                    title="Απονομή νίκης 3-0 λόγω ήττας αντιπάλου"
                   >
                     <Award className="h-4 w-4" />
-                    Award 3-0 to {teamBName}
+                    Απονομή 3-0 στην {teamBName}
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-white/50">
-                  Use for forfeits or byes. This will finish the match with a 3-0 score without requiring player stats.
+                  Χρησιμοποιήστε για ήττες ή byes. Αυτό θα ολοκληρώσει τον αγώνα με σκορ 3-0 χωρίς να απαιτούνται στατιστικά παικτών.
                 </p>
               </div>
             )}
@@ -780,8 +804,9 @@ export default function MatchControlPanel({
         <button
           onClick={() => setShowTeamA(!showTeamA)}
           className="flex w-full items-center justify-between px-4 py-3 text-white hover:bg-white/5"
+          title="Στατιστικά παικτών της ομάδας"
         >
-          <span className="font-medium">{teamAName} - Player Stats</span>
+          <span className="font-medium">{teamAName} - Στατιστικά Παικτών</span>
           {showTeamA ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {showTeamA && (
@@ -796,8 +821,9 @@ export default function MatchControlPanel({
         <button
           onClick={() => setShowTeamB(!showTeamB)}
           className="flex w-full items-center justify-between px-4 py-3 text-white hover:bg-white/5"
+          title="Στατιστικά παικτών της ομάδας"
         >
-          <span className="font-medium">{teamBName} - Player Stats</span>
+          <span className="font-medium">{teamBName} - Στατιστικά Παικτών</span>
           {showTeamB ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {showTeamB && (
@@ -835,16 +861,18 @@ export default function MatchControlPanel({
             onClick={onClose}
             disabled={saving || reverting || awarding}
             className="rounded-lg border border-white/20 px-4 py-2 text-white hover:bg-white/10 disabled:opacity-50"
+            title="Κλείσιμο χωρίς αποθήκευση"
           >
-            Cancel
+            Ακύρωση
           </button>
           <button
             onClick={handleSave}
             disabled={saving || reverting || awarding || !dbId}
             className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
+            title="Αποθήκευση όλων των αλλαγών στον αγώνα"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save Match'}
+            {saving ? 'Αποθήκευση...' : 'Αποθήκευση Αγώνα'}
           </button>
         </div>
       </div>
