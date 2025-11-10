@@ -90,14 +90,25 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
     // Merged match data (draft + DB overlay)
     const mergedMatch = useMemo(() => ({ ...match, ...overlay }), [match, overlay]);
   
-    // Local form state
+    // Local form state - initialize from mergedMatch to include DB overlay data
     const [formData, setFormData] = useState({
-      team_a_id: match.team_a_id ?? null,
-      team_b_id: match.team_b_id ?? null,
-      match_date: isoToLocalInput(match.match_date),
-      field: (match as any).field ?? "",
-      venue: (match as any).venue ?? "",
+      team_a_id: mergedMatch.team_a_id ?? null,
+      team_b_id: mergedMatch.team_b_id ?? null,
+      match_date: isoToLocalInput(mergedMatch.match_date),
+      field: (mergedMatch as any).field ?? "",
+      venue: (mergedMatch as any).venue ?? "",
     });
+
+    // Update form data when merged match changes (e.g., when overlay loads from DB)
+    useEffect(() => {
+      setFormData({
+        team_a_id: mergedMatch.team_a_id ?? null,
+        team_b_id: mergedMatch.team_b_id ?? null,
+        match_date: isoToLocalInput(mergedMatch.match_date),
+        field: (mergedMatch as any).field ?? "",
+        venue: (mergedMatch as any).venue ?? "",
+      });
+    }, [mergedMatch]);
   
     // Manual status override
     const [manualStatus, setManualStatus] = useState<"scheduled" | "finished">("scheduled");
