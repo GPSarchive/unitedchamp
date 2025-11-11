@@ -290,7 +290,20 @@ export async function saveAllStatsAction(formData: FormData) {
     ? null
     : (aGoals > bGoals ? teamAId : teamBId);
 
-  // Save scores and mark as finished (ties are still finished matches)
+  // Check if this is a KO match - ties are not allowed in knockout matches
+  const { data: matchData, error: matchErr } = await supabase
+    .from('matches')
+    .select('is_ko')
+    .eq('id', match_id)
+    .single();
+
+  if (matchErr) throw matchErr;
+
+  if (matchData?.is_ko && isTie) {
+    throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
+  }
+
+  // Save scores and mark as finished (ties are still finished matches for non-KO)
   const { error: upErr } = await supabase
     .from('matches')
     .update({
