@@ -290,19 +290,19 @@ export async function saveAllStatsAction(formData: FormData) {
     ? null
     : (aGoals > bGoals ? teamAId : teamBId);
 
-  // Save scores; finish only if not a tie
+  // Save scores and mark as finished (ties are still finished matches)
   const { error: upErr } = await supabase
     .from('matches')
     .update({
       team_a_score: aGoals,
       team_b_score: bGoals,
       winner_team_id,
-      status: isTie ? 'scheduled' : 'finished',
+      status: 'finished',
     })
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when finished (non-tie) – fire-and-forget
+  // Run progression only when there's a winner (non-tie) – fire-and-forget
   if (!isTie) {
     progressAfterMatch(match_id).catch(console.error);
   }
