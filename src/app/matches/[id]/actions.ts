@@ -302,10 +302,10 @@ export async function saveAllStatsAction(formData: FormData) {
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when there's a winner (non-tie) – fire-and-forget
-  if (!isTie) {
-    progressAfterMatch(match_id).catch(console.error);
-  }
+  // Always run progression (handles KO and non-KO stages appropriately)
+  // For non-KO rounds (groups/league), ties need progression to update standings
+  // For KO rounds, progression logic internally handles ties (no winner to propagate)
+  progressAfterMatch(match_id).catch(console.error);
 
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);
