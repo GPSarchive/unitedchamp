@@ -141,10 +141,12 @@ export async function middleware(req: NextRequest) {
   if (process.env.NODE_ENV !== 'production') scriptSrcParts.push("'unsafe-eval'")
   const scriptSrc = scriptSrcParts.join(' ')
 
+  // ✅ FIX: Remove nonce from style-src-elem to allow CSS-in-JS libraries (framer-motion)
+  // When nonce is present, 'unsafe-inline' is ignored per CSP spec
+  // CSS-in-JS libraries inject <style> tags without nonces, causing CSP violations
   const styleSources = [
     "'self'",
     "'unsafe-inline'",
-    `'nonce-${nonce}'`,
     'https://fonts.googleapis.com',
     'https://cdnjs.cloudflare.com',
     'https://cdn.jsdelivr.net',
@@ -162,7 +164,7 @@ export async function middleware(req: NextRequest) {
     `style-src-attr 'unsafe-inline'`,
     "font-src 'self' data: https://fonts.gstatic.com https:",
     `connect-src ${connectSrc}`,
-    "frame-src 'self'",
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com", // ✅ Allow YouTube embeds
     "worker-src 'self' blob:",
     "form-action 'self'",
     "object-src 'none'",
