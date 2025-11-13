@@ -15,7 +15,8 @@ import {
 import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
-import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
+
 import VantaSection from "@/app/home/VantaSection";
 import ShinyText from "./ShinyText";
 import { TournamentImage } from "@/app/lib/OptimizedImage"; // ✅ UPDATED
@@ -42,7 +43,8 @@ export default async function Page({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ video?: string }>;
 }) {
-  const supabase = await createSupabaseRouteClient();
+  const supabase = await createSupabaseRSCClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
