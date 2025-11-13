@@ -10,14 +10,23 @@ import {
   fetchPlayersForTeam,
   fetchMatchStatsMap,
   fetchParticipantsMap,
+  fetchStandingsByStage,
 } from "./queries";
 import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/Server";
-import VantaBg from "@/app/lib/VantaBg";
+import VantaSection from "@/app/home/VantaSection";
 import ShinyText from "./ShinyText";
 import { TournamentImage } from "@/app/lib/OptimizedImage"; // ✅ UPDATED
+
+// ✅ NEW COMPONENTS
+import WelcomeMessage from "./WelcomeMessage";
+import TournamentHeader from "./TournamentHeader";
+import TeamVersusScore from "./TeamVersusScore";
+import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
+import TournamentStandings from "./TournamentStandings";
+import VantaBg from "../../lib/VantaBg";
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -52,11 +61,18 @@ export default async function Page({
   // ✅ NO SIGNING - Keep raw path
   const tournamentLogo = match.tournament?.logo ?? null;
 
-  const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
+  // Debug: log match stage_id
+  console.log('[Match Page] Match ID:', match.id, 'Stage ID:', match.stage_id, 'Group ID:', match.group_id);
+
+  const [aRes, bRes, statsRes, partsRes, standingsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
+    // Fetch all standings for the stage
+    match.stage_id
+      ? fetchStandingsByStage(match.stage_id)
+      : Promise.resolve([]),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -67,6 +83,15 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
+  const standings =
+    standingsRes.status === "fulfilled" ? standingsRes.value : [];
+
+  // Debug: log standings data
+  console.log('[Match Page] Standings result:', {
+    status: standingsRes.status,
+    count: standings.length,
+    data: standings
+  });
 
   const dataLoadErrors: string[] = [];
   if (aRes.status === "rejected")
@@ -77,6 +102,8 @@ export default async function Page({
     dataLoadErrors.push(`Match stats: ${errMsg(statsRes.reason)}`);
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
+  if (standingsRes.status === "rejected")
+    dataLoadErrors.push(`Standings: ${errMsg(standingsRes.reason)}`);
 
   // ✅ NO PHOTO SIGNING - Players already have raw paths
 
@@ -97,45 +124,68 @@ export default async function Page({
   const bIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_b.id;
 
+  // ✅ Prepare data for new components
+  const isScheduled = match.status === "scheduled";
+  const hasParticipants = participants.size > 0;
+  const hasScores = match.team_a_score !== null && match.team_b_score !== null;
+  const showWelcomeMessage = isScheduled && !hasParticipants && !hasScores;
+
+  // Prepare scorers data
+  const scorers = Array.from(existingStats.values())
+    .filter((stat) => stat.goals > 0 || (stat.own_goals && stat.own_goals > 0))
+    .map((stat) => {
+      const player = [...teamAPlayers, ...teamBPlayers].find(
+        (p) => p.player.id === stat.player_id
+      )?.player;
+      return {
+        player: player || {
+          id: stat.player_id,
+          first_name: "Unknown",
+          last_name: "",
+        },
+        goals: stat.goals || 0,
+        ownGoals: stat.own_goals || 0,
+        teamId: stat.team_id,
+      };
+    });
+
+  // Prepare participants data
+  const participantsData = Array.from(participants.values())
+    .map((part) => {
+      const player = [...teamAPlayers, ...teamBPlayers].find(
+        (p) => p.player.id === part.player_id
+      )?.player;
+      if (!player) return null;
+      return {
+        player: {
+          id: player.id,
+          first_name: player.first_name ?? null,
+          last_name: player.last_name ?? null,
+          photo: player.photo ?? null,
+        },
+        teamId: part.team_id,
+        played: part.played,
+      };
+    })
+    .filter((p) => p !== null);
+
   return (
+
     <div className="relative min-h-dvh overflow-x-visible">
-      <section className="absolute inset-0 -z-10"  />
+      {/* ✅ VantaBg as background */}
+      <VantaBg 
+        className="absolute inset-0 -z-10" 
+        mode="eco"
+      />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
-        <div className="flex justify-center">
-          <div className="pointer-events-none select-none">
-            {/* ✅ UPDATED: Use TournamentImage */}
-            {tournamentLogo ? (
-              <div className="mb-3 flex justify-center">
-                <TournamentImage
-                  src={tournamentLogo}
-                  alt={match.tournament?.name ?? "Tournament logo"}
-                  width={160}
-                  height={160}
-                  className="h-14 w-auto rounded-md bg-white/5 p-2 ring-1 ring-white/10"
-                  priority
-                />
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex justify-center">
-              <ShinyText
-                text={
-                  match.tournament?.name ??
-                  `${match.team_a.name} vs ${match.team_b.name}`
-                }
-                speed={3}
-                className="
-                  text-center
-                  text-3xl md:text-5xl
-                  font-extrabold leading-tight tracking-tight
-                  drop-shadow-[0_1px_0_rgba(0,0,0,.25)]
-                "
-              />
-            </div>
-          </div>
-        </div>
+        {match.tournament && (
+          <TournamentHeader
+            logo={match.tournament.logo}
+            name={match.tournament.name}
+          />
+        )}
       </div>
 
       <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
@@ -150,46 +200,37 @@ export default async function Page({
           </div>
         )}
 
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5 md:p-6 shadow-sm backdrop-blur text-white">
-          <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_auto_1fr] md:gap-8">
-            <TeamBadge team={match.team_a} highlight={!!aIsWinner} />
+        {/* ✅ NEW: Welcome Message for Unplayed Matches */}
+        {showWelcomeMessage && <WelcomeMessage matchDate={match.match_date} />}
 
-            <div className="relative mx-auto min-w-[220px] text-center">
-              <div className="text-xs uppercase tracking-wide text-white/70">
-                {formatStatus(match.status)}
-              </div>
-              <div className="text-4xl font-bold leading-none text-white">
-                {match.team_a_score}
-                <span className="text-white/60">-</span>
-                {match.team_b_score}
-              </div>
-              <div className="text-sm text-white/70">{dateLabel}</div>
-              {match.referee && (
-                <div className="mt-1 text-xs text-white/75">
-                  Διαιτητής: <span className="font-medium">{match.referee}</span>
-                </div>
-              )}
-            </div>
+        {/* ✅ NEW: Team vs Score Display with Scorers */}
+        <TeamVersusScore
+          teamA={match.team_a}
+          teamB={match.team_b}
+          scoreA={match.team_a_score}
+          scoreB={match.team_b_score}
+          status={match.status}
+          matchDate={match.match_date}
+          referee={match.referee ?? null}
+          winnerTeamId={match.winner_team_id}
+          scorers={scorers}
+        />
 
-            <TeamBadge team={match.team_b} className="text-right" highlight={!!bIsWinner} />
-          </div>
-
-          <div className="my-6 h-px w-full bg-white/10" />
-
-          <ParticipantsStats
-            renderAs="embedded"
-            labels={{ left: "Home", right: "Away" }}
-            teamA={{ id: match.team_a.id, name: match.team_a.name }}
-            teamB={{ id: match.team_b.id, name: match.team_b.name }}
-            associationsA={teamAPlayers}
-            associationsB={teamBPlayers}
-            statsByPlayer={existingStats}
-            participants={participants}
+        {/* ✅ NEW: Match Participants Showcase - Before Video */}
+        {participantsData.length > 0 && (
+          <MatchParticipantsShowcase
+            teamAId={match.team_a.id}
+            teamBId={match.team_b.id}
+            teamAName={match.team_a.name}
+            teamBName={match.team_b.name}
+            teamALogo={match.team_a.logo ?? null}
+            teamBLogo={match.team_b.logo ?? null}
+            participants={participantsData}
           />
-        </section>
+        )}
 
-        <section className="rounded-2xl border bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">Match Video</h2>
+        <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
+          <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Match Video</h2>
           {videoId ? (
             <div className="aspect-video w-full overflow-hidden rounded-xl">
               <iframe
@@ -201,7 +242,7 @@ export default async function Page({
               />
             </div>
           ) : (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-white/70">
               <p>
                 No video provided. Append <code>?video=YOUTUBE_ID_OR_URL</code> to the page URL.
               </p>
@@ -209,10 +250,13 @@ export default async function Page({
           )}
         </section>
 
+        {/* ✅ NEW: Tournament Standings - After Video - Always shows, displays empty state if no data */}
+        <TournamentStandings standings={standings} />
+
         {isAdmin ? (
-          <section className="rounded-2xl border bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold">Admin: Match Player Stats</h2>
-            <p className="mb-4 text-xs text-gray-500">
+          <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
+            <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Admin: Match Player Stats</h2>
+            <p className="mb-4 text-xs text-white/70">
               Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
               στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
             </p>
@@ -239,7 +283,7 @@ export default async function Page({
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="submit"
-                  className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+                  className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
                 >
                   Save all
                 </button>

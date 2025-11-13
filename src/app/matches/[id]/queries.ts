@@ -21,6 +21,8 @@ type TournamentLite = {
 // Your existing type, augmented with an optional tournament
 export type MatchWithTournament = MatchWithTeams & {
   tournament: TournamentLite | null;
+  stage_id: number | null;
+  group_id: number | null;
 };
 
 export async function fetchMatch(id: Id) {
@@ -35,6 +37,8 @@ export async function fetchMatch(id: Id) {
         "team_b_score",
         "winner_team_id",
         "referee",
+        "stage_id",
+        "group_id",
         // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
@@ -138,4 +142,103 @@ export async function fetchParticipantsMap(matchId: Id) {
     for (const row of data as any[]) map.set(row.player_id, row as ParticipantRow);
   }
   return map;
+}
+
+// ============================================================================
+// STANDINGS
+// ============================================================================
+
+export type StandingRow = {
+  stage_id: number;
+  group_id: number | null;
+  team_id: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gf: number;
+  ga: number;
+  gd: number;
+  points: number;
+  rank: number | null;
+  team: {
+    id: number;
+    name: string;
+    logo: string | null;
+  };
+};
+
+/**
+ * Fetch all standings for a stage (all groups)
+ * Returns teams sorted by rank within each group
+ */
+export async function fetchStandingsByStage(
+  stageId: Id
+): Promise<StandingRow[]> {
+  console.log('[fetchStandingsByStage] Querying stage_id:', stageId);
+
+  // Fetch standings data
+  const { data: standingsData, error: standingsError } = await supabaseAdmin
+    .from("stage_standings")
+    .select(
+      "stage_id, group_id, team_id, played, won, drawn, lost, gf, ga, gd, points, rank"
+    )
+    .eq("stage_id", stageId)
+    .order("group_id", { ascending: true, nullsFirst: true })
+    .order("rank", { ascending: true, nullsFirst: false })
+    .order("points", { ascending: false });
+
+  console.log('[fetchStandingsByStage] Standings query result:', {
+    error: standingsError?.message,
+    dataCount: standingsData?.length ?? 0,
+  });
+
+  if (standingsError || !standingsData) return [];
+
+  // Get unique team IDs
+  const teamIds = [...new Set(standingsData.map((s: any) => s.team_id))];
+
+  // Fetch team data separately
+  const { data: teamsData, error: teamsError } = await supabaseAdmin
+    .from("teams")
+    .select("id, name, logo")
+    .in("id", teamIds);
+
+  console.log('[fetchStandingsByStage] Teams query result:', {
+    error: teamsError?.message,
+    dataCount: teamsData?.length ?? 0,
+  });
+
+  if (teamsError || !teamsData) return [];
+
+  // Create a map for quick team lookup
+  const teamsMap = new Map(teamsData.map((t: any) => [t.id, t]));
+
+  // Combine standings with team data
+  const standings: StandingRow[] = standingsData.map((s: any) => ({
+    stage_id: s.stage_id,
+    group_id: s.group_id,
+    team_id: s.team_id,
+    played: s.played,
+    won: s.won,
+    drawn: s.drawn,
+    lost: s.lost,
+    gf: s.gf,
+    ga: s.ga,
+    gd: s.gd,
+    points: s.points,
+    rank: s.rank,
+    team: teamsMap.get(s.team_id) || {
+      id: s.team_id,
+      name: `Team #${s.team_id}`,
+      logo: null,
+    },
+  }));
+
+  console.log('[fetchStandingsByStage] Final result:', {
+    count: standings.length,
+    data: standings
+  });
+
+  return standings;
 }
