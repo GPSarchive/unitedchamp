@@ -329,6 +329,25 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
       bGoals > aGoals ? teamBId :
       null; // Draw
 
+    // Check if this is a KO match - ties are not allowed in knockout matches
+    const isTie = aGoals === bGoals;
+    if (status === 'finished') {
+      const { data: matchCheck, error: checkErr } = await supabase
+        .from('matches')
+        .select('is_ko')
+        .eq('id', matchId)
+        .single();
+
+      if (checkErr) {
+        console.error('Error checking match type:', checkErr);
+        return { success: false, error: 'Failed to verify match type' };
+      }
+
+      if (matchCheck?.is_ko && isTie) {
+        return { success: false, error: 'Knockout matches cannot end in a tie. A winner must be determined.' };
+      }
+    }
+
     // 5. Update match (scores, status, winner, metadata)
     const { error: matchError } = await supabase
       .from('matches')
