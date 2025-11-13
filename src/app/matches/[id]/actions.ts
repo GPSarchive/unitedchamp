@@ -320,6 +320,11 @@ export async function saveAllStatsAction(formData: FormData) {
   // For KO rounds, progression logic internally handles ties (no winner to propagate)
   progressAfterMatch(match_id).catch(console.error);
 
+  // Run progression only when finished (non-tie) – fire-and-forget
+  if (!isTie) {
+    progressAfterMatch(match_id).catch(console.error);
+  }
+//push comment 
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);
   redirect(`/matches/${match_id}?saved=1`);
