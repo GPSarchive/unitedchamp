@@ -290,23 +290,36 @@ export async function saveAllStatsAction(formData: FormData) {
     ? null
     : (aGoals > bGoals ? teamAId : teamBId);
 
-  // Save scores; finish only if not a tie
+  // Check if this is a KO match - ties are not allowed in knockout matches
+  const { data: matchData, error: matchErr } = await supabase
+    .from('matches')
+    .select('is_ko')
+    .eq('id', match_id)
+    .single();
+
+  if (matchErr) throw matchErr;
+
+  if (matchData?.is_ko && isTie) {
+    throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
+  }
+
+  // Save scores and mark as finished (ties are still finished matches for non-KO)
   const { error: upErr } = await supabase
     .from('matches')
     .update({
       team_a_score: aGoals,
       team_b_score: bGoals,
       winner_team_id,
-      status: isTie ? 'scheduled' : 'finished',
+      status: 'finished',
     })
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Run progression only when finished (non-tie) – fire-and-forget
-  if (!isTie) {
-    progressAfterMatch(match_id).catch(console.error);
-  }
-//push comment 
+  // Always run progression (handles KO and non-KO stages appropriately)
+  // For non-KO rounds (groups/league), ties need progression to update standings
+  // For KO rounds, progression logic internally handles ties (no winner to propagate)
+  progressAfterMatch(match_id).catch(console.error);
+
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);
   redirect(`/matches/${match_id}?saved=1`);
