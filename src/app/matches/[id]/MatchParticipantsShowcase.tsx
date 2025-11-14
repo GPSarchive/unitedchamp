@@ -165,6 +165,11 @@ function ParticipantCard({
     `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
   const firstName = player.first_name || "Άγνωστος";
 
+  // Check if player has a real photo (not the placeholder)
+  const hasPlayerPhoto = player.photo &&
+    player.photo !== '/player-placeholder.jpg' &&
+    player.photo.trim() !== '';
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -184,9 +189,9 @@ function ParticipantCard({
       >
         {/* Player Photo or Team Logo */}
         <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
-          {player.photo ? (
+          {hasPlayerPhoto ? (
             <PlayerImage
-              src={player.photo}
+              src={player.photo!}
               alt={playerName}
               width={96}
               height={96}
