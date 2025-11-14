@@ -173,10 +173,10 @@ export default async function Page({
 
   return (
 
-    <div className="relative min-h-dvh overflow-x-visible">
+    <div className="relative min-h-screen overflow-x-hidden overflow-y-auto">
       {/* ✅ VantaBg as background */}
-      <VantaBg 
-        className="absolute inset-0 -z-10" 
+      <VantaBg
+        className="absolute inset-0 -z-10"
         mode="eco"
       />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />

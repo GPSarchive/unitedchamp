@@ -49,13 +49,13 @@ export default function MatchParticipantsShowcase({
   }
 
   return (
-    <div className="py-6">
+    <div className="py-6 overflow-hidden">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="mb-8 text-center"
+        className="mb-8 text-center px-4"
       >
           <div className="mb-3 flex items-center justify-center gap-3">
             <Users className="h-8 w-8 text-red-500" />
@@ -138,7 +138,7 @@ function TeamSection({
       </div>
 
       {/* Participants Grid */}
-      <div className="flex flex-wrap justify-center gap-6">
+      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-6 px-2">
         {participants.map((participant, index) => (
           <ParticipantCard
             key={participant.player.id}
@@ -179,11 +179,10 @@ function ParticipantCard({
       className="group cursor-pointer"
     >
       <div
-        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-all hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
-        style={{ width: "140px" }}
+        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-3 sm:p-4 backdrop-blur-sm transition-all hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60 w-[120px] sm:w-[140px]"
       >
         {/* Player Photo or Team Logo */}
-        <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
+        <div className="relative mb-2 sm:mb-3 h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
           {player.photo ? (
             <PlayerImage
               src={player.photo}

@@ -85,9 +85,9 @@ export default function TeamVersusScore({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
-      className="rounded-2xl border border-white/20 bg-black/50 p-6 backdrop-blur-sm md:p-8 shadow-lg"
+      className="rounded-2xl border border-white/20 bg-black/50 p-4 backdrop-blur-sm md:p-6 lg:p-8 shadow-lg overflow-hidden"
     >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-4 lg:gap-8">
         {/* Team A */}
         <TeamDisplay
           team={teamA}
@@ -103,7 +103,7 @@ export default function TeamVersusScore({
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200 }}
-              className="flex items-center gap-3 text-6xl font-black md:text-7xl lg:text-8xl"
+              className="flex items-center gap-1 text-4xl font-black sm:text-5xl sm:gap-2 md:text-6xl md:gap-3 lg:text-7xl"
             >
               <span
                 className="text-white"
@@ -128,7 +128,7 @@ export default function TeamVersusScore({
               initial={{ opacity: 0, rotate: -10 }}
               animate={{ opacity: 1, rotate: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-5xl font-black text-white md:text-6xl lg:text-7xl"
+              className="text-3xl font-black text-white sm:text-4xl md:text-5xl lg:text-6xl"
               style={{
                 textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
               }}
@@ -203,7 +203,7 @@ function TeamDisplay({
       {/* Team Logo */}
       <div className="relative pointer-events-none">
         <div
-          className={`relative h-20 w-20 overflow-hidden rounded-2xl border-2 md:h-28 md:w-28 lg:h-32 lg:w-32 ${
+          className={`relative h-16 w-16 overflow-hidden rounded-2xl border-2 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28 ${
             isWinner
               ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]"
               : "border-white/20"
@@ -242,7 +242,7 @@ function TeamDisplay({
 
       {/* Team Name */}
       <div
-        className={`max-w-full px-2 text-center text-lg font-bold md:text-xl ${
+        className={`max-w-full px-1 text-center text-sm font-bold sm:text-base md:text-lg lg:text-xl break-words hyphens-auto ${
           isWinner
             ? "text-amber-400"
             : "text-white"
@@ -250,7 +250,9 @@ function TeamDisplay({
         style={{
           textShadow: isWinner
             ? '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 15px rgba(251,191,36,0.4)'
-            : '1px 1px 3px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
+            : '1px 1px 3px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word'
         }}
       >
         {team.name}
