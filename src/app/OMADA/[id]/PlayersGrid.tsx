@@ -4,22 +4,23 @@ import { motion } from "framer-motion";
 import {
   FaUser,
   FaRulerVertical,
-  FaBirthdayCake,
   FaFutbol,
   FaHandsHelping,
   FaExclamationTriangle,
   FaTimesCircle,
   FaCircle,
 } from "react-icons/fa";
-import { Users, Star, Award } from "lucide-react";
+import { Users, TrendingUp, Award } from "lucide-react";
 import AvatarImage from "./AvatarImage";
 import { PlayerAssociation } from "@/app/lib/types";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import { TeamImage } from "@/app/lib/OptimizedImage";
 
 interface PlayersGridProps {
   playerAssociations: PlayerAssociation[] | null;
   seasonStatsByPlayer?: Record<number, any[]>;
   errorMessage?: string | null;
+  teamLogo?: string | null;
 }
 
 const DEV = process.env.NODE_ENV !== "production";
@@ -28,6 +29,7 @@ export default function PlayersGrid({
   playerAssociations,
   seasonStatsByPlayer,
   errorMessage,
+  teamLogo,
 }: PlayersGridProps) {
   if (errorMessage) {
     return (
@@ -50,12 +52,12 @@ export default function PlayersGrid({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="relative rounded-2xl p-6 shadow-lg backdrop-blur-sm border border-white/20 bg-black/50 isolate overflow-hidden"
+      className="relative rounded-2xl p-6 md:p-8 shadow-lg backdrop-blur-sm border border-white/10 bg-[#0b1020] isolate overflow-hidden"
     >
       {/* Floating Orb */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -right-24 -top-32 h-64 w-64 rounded-full blur-3xl opacity-15"
+        className="pointer-events-none absolute -right-24 -top-32 h-64 w-64 rounded-full blur-3xl opacity-20"
         style={{ background: "radial-gradient(closest-side, rgba(34,211,238,0.4), transparent)" }}
         animate={{ x: [0, -12, 6, 0], y: [0, 10, -6, 0] }}
         transition={{ repeat: Infinity, duration: 11, ease: "easeInOut" }}
@@ -66,27 +68,24 @@ export default function PlayersGrid({
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5 }}
-        className="mb-6 flex items-center gap-3 relative z-10"
+        className="mb-8 flex items-center gap-3 relative z-10"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30">
-          <Users className="h-5 w-5 text-cyan-300" />
+        <motion.div
+          initial={{ rotate: -15, scale: 0.8 }}
+          animate={{ rotate: 0, scale: 1 }}
+          transition={{ duration: 0.5, type: "spring" }}
+          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 shadow-[0_0_24px_rgba(34,211,238,0.3)]"
+        >
+          <Users className="h-6 w-6 text-cyan-300" />
+        </motion.div>
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-300 via-blue-200 to-purple-300 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(34,211,238,0.5)]">
+            Αποστολή
+          </h2>
+          <p className="text-sm text-zinc-400 mt-0.5">
+            {playerAssociations.length} {playerAssociations.length === 1 ? "παίκτης" : "παίκτες"}
+          </p>
         </div>
-        <h2
-          className="text-3xl font-bold text-white"
-          style={{
-            textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
-          }}
-        >
-          Αποστολή
-        </h2>
-        <span
-          className="text-lg text-white/60"
-          style={{
-            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-          }}
-        >
-          ({playerAssociations.length} {playerAssociations.length === 1 ? "παίκτης" : "παίκτες"})
-        </span>
       </motion.div>
 
       {/* Players Grid */}
@@ -119,7 +118,6 @@ export default function PlayersGrid({
           }>;
 
           const playerName = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Άγνωστος";
-          const firstName = p.first_name || "Άγνωστος";
 
           return (
             <motion.div
@@ -132,145 +130,190 @@ export default function PlayersGrid({
                 type: "spring",
                 stiffness: 200,
               }}
-              whileHover={{ scale: 1.03, y: -5 }}
-              className="group relative overflow-hidden rounded-2xl border-2 border-white/20 bg-black/40 p-4 backdrop-blur-sm transition-all hover:border-cyan-400/40 hover:shadow-[0_0_25px_rgba(34,211,238,0.2)]"
+              className="group relative overflow-hidden rounded-2xl border border-white/20 bg-[#0d1424] backdrop-blur-sm transition-all hover:border-cyan-400/40 hover:shadow-[0_0_25px_rgba(34,211,238,0.2)]"
             >
-              {/* Card Content */}
-              <div className="flex flex-col gap-3">
-                {/* Player Avatar & Name */}
-                <div className="flex items-center gap-3">
-                  <div className="relative h-16 w-16 overflow-hidden rounded-full border-3 border-white/30 bg-gradient-to-br from-slate-700 to-slate-800 shadow-lg">
-                    <AvatarImage
-                      src={photoUrl}
-                      alt={playerName}
-                      width={64}
-                      height={64}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                      sizes="64px"
-                    />
-                    {/* Hover glow */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+              {/* Card Header with Photo */}
+              <div className="relative p-6 pb-4 bg-gradient-to-b from-white/5 to-transparent">
+                <div className="flex flex-col items-center">
+                  {/* Player Photo with Team Logo Background */}
+                  <div className="relative mb-4">
+                    <div className="relative h-24 w-24 overflow-hidden rounded-full border-3 border-white/30 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl ring-2 ring-cyan-500/20">
+                      <AvatarImage
+                        src={photoUrl}
+                        alt={playerName}
+                        width={96}
+                        height={96}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        sizes="96px"
+                      />
+                      {/* Hover glow */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/20 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+                    </div>
+
+                    {/* Team Logo Badge */}
+                    {teamLogo && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.5 + index * 0.05, type: "spring" }}
+                        className="absolute -bottom-2 -right-2 h-10 w-10 rounded-full border-2 border-[#0d1424] bg-black/90 p-1.5 shadow-lg ring-1 ring-white/10"
+                      >
+                        <TeamImage
+                          src={teamLogo}
+                          alt="Team"
+                          width={32}
+                          height={32}
+                          className="h-full w-full object-contain"
+                          sizes="32px"
+                        />
+                      </motion.div>
+                    )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-base font-bold text-white truncate"
-                      style={{
-                        textShadow: '1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
-                      }}
-                    >
-                      {firstName}
-                    </p>
-                    {p.last_name && (
-                      <p
-                        className="text-sm text-white/80 truncate"
-                        style={{
-                          textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                        }}
-                      >
-                        {p.last_name}
-                      </p>
-                    )}
+                  {/* Player Name */}
+                  <h3 className="text-xl font-bold text-white text-center mb-1">
+                    {p.first_name} {p.last_name}
+                  </h3>
 
-                    {/* Quick info */}
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/60">
-                      <span className="inline-flex items-center gap-1">
-                        <FaUser className="h-3 w-3" /> {p.position ?? "—"}
-                      </span>
-                      {p.height_cm && (
+                  {/* Position & Height */}
+                  <div className="flex items-center gap-3 text-sm text-zinc-400">
+                    <span className="inline-flex items-center gap-1">
+                      <FaUser className="h-3 w-3" /> {p.position ?? "—"}
+                    </span>
+                    {p.height_cm && (
+                      <>
+                        <span className="text-white/20">•</span>
                         <span className="inline-flex items-center gap-1">
                           <FaRulerVertical className="h-3 w-3" /> {p.height_cm}cm
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Star icon on hover */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    whileHover={{ opacity: 1, scale: 1 }}
-                    className="absolute right-3 top-3"
-                  >
-                    <Star className="h-4 w-4 text-cyan-400" />
-                  </motion.div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-5 gap-1.5 text-xs">
-                  <div className="flex flex-col items-center rounded-lg bg-orange-900/20 border border-orange-600/30 p-2">
-                    <FaFutbol className="h-4 w-4 mb-1 text-amber-400" />
-                    <p className="font-bold text-white">{stats.total_goals ?? 0}</p>
-                  </div>
-                  <div className="flex flex-col items-center rounded-lg bg-cyan-900/20 border border-cyan-600/30 p-2">
-                    <FaHandsHelping className="h-4 w-4 mb-1 text-cyan-400" />
-                    <p className="font-bold text-white">{stats.total_assists ?? 0}</p>
-                  </div>
-                  <div className="flex flex-col items-center rounded-lg bg-yellow-900/20 border border-yellow-600/30 p-2">
-                    <FaExclamationTriangle className="h-4 w-4 mb-1 text-yellow-400" />
-                    <p className="font-bold text-white">{stats.yellow_cards ?? 0}</p>
-                  </div>
-                  <div className="flex flex-col items-center rounded-lg bg-red-900/20 border border-red-600/30 p-2">
-                    <FaTimesCircle className="h-4 w-4 mb-1 text-red-400" />
-                    <p className="font-bold text-white">{stats.red_cards ?? 0}</p>
-                  </div>
-                  <div className="flex flex-col items-center rounded-lg bg-blue-900/20 border border-blue-600/30 p-2">
-                    <FaCircle className="h-4 w-4 mb-1 text-blue-400" />
-                    <p className="font-bold text-white">{stats.blue_cards ?? 0}</p>
+                      </>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Per-Season Stats */}
-                {perSeason.length > 0 && (
-                  <div className="mt-2 rounded-lg bg-white/5 border border-white/10 p-3 overflow-x-auto">
-                    <p
-                      className="text-xs font-semibold text-cyan-300 mb-2 flex items-center gap-1"
-                      style={{
-                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                      }}
-                    >
-                      <Award className="h-3 w-3" /> Στατιστικά ανά Σεζόν
-                    </p>
-                    <table className="w-full text-[10px] text-white/80">
-                      <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="text-left py-1 pr-2 font-semibold">Σεζόν</th>
-                          <th className="text-left py-1 pr-2 font-semibold">M</th>
-                          <th className="text-left py-1 pr-2 font-semibold">G/A</th>
-                          <th className="text-left py-1 pr-2 font-semibold">Κάρτες</th>
-                          <th className="text-left py-1 font-semibold">Βραβεία</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {perSeason.map((row, i) => (
-                          <tr key={i} className="border-b border-white/5 last:border-0">
-                            <td className="py-1 pr-2 text-cyan-300">{row.season}</td>
-                            <td className="py-1 pr-2">{row.matches}</td>
-                            <td className="py-1 pr-2 font-semibold">
-                              {row.goals}/{row.assists}
-                            </td>
-                            <td className="py-1 pr-2 text-yellow-300">
-                              {row.yellow_cards}/{row.red_cards}/{row.blue_cards}
-                            </td>
-                            <td className="py-1 text-amber-300">
-                              {row.mvp}/{row.best_gk}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              {/* Stats List */}
+              <div className="border-t border-white/10 px-6 py-4 space-y-2">
+                <StatRow
+                  icon={<FaFutbol className="h-4 w-4" />}
+                  label="Γκολ"
+                  value={stats.total_goals ?? 0}
+                  color="text-amber-400"
+                  bgColor="bg-amber-500/10"
+                  borderColor="border-amber-500/20"
+                />
+                <StatRow
+                  icon={<FaHandsHelping className="h-4 w-4" />}
+                  label="Ασίστ"
+                  value={stats.total_assists ?? 0}
+                  color="text-cyan-400"
+                  bgColor="bg-cyan-500/10"
+                  borderColor="border-cyan-500/20"
+                />
+                <StatRow
+                  icon={<FaExclamationTriangle className="h-4 w-4" />}
+                  label="Κίτρινες"
+                  value={stats.yellow_cards ?? 0}
+                  color="text-yellow-400"
+                  bgColor="bg-yellow-500/10"
+                  borderColor="border-yellow-500/20"
+                />
+                <StatRow
+                  icon={<FaTimesCircle className="h-4 w-4" />}
+                  label="Κόκκινες"
+                  value={stats.red_cards ?? 0}
+                  color="text-red-400"
+                  bgColor="bg-red-500/10"
+                  borderColor="border-red-500/20"
+                />
+                <StatRow
+                  icon={<FaCircle className="h-4 w-4" />}
+                  label="Μπλε"
+                  value={stats.blue_cards ?? 0}
+                  color="text-blue-400"
+                  bgColor="bg-blue-500/10"
+                  borderColor="border-blue-500/20"
+                />
+              </div>
+
+              {/* Per-Season Stats */}
+              {perSeason.length > 0 && (
+                <div className="border-t border-white/10 px-6 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="h-4 w-4 text-fuchsia-400" />
+                    <h4 className="text-sm font-bold text-fuchsia-300">
+                      Στατιστικά ανά Σεζόν
+                    </h4>
                   </div>
-                )}
+                  <div className="space-y-2">
+                    {perSeason.map((row, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.05 + i * 0.03 }}
+                        className="flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-xs hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-cyan-300">{row.season}</span>
+                          <span className="text-white/30">•</span>
+                          <span className="text-zinc-400">{row.matches} αγ.</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-zinc-300">
+                          <span className="text-emerald-400 font-bold">{row.goals}G</span>
+                          <span className="text-cyan-400 font-bold">{row.assists}A</span>
+                          {(row.mvp > 0 || row.best_gk > 0) && (
+                            <div className="flex items-center gap-1">
+                              <Award className="h-3 w-3 text-amber-400" />
+                              <span className="text-amber-400 font-bold">{row.mvp + row.best_gk}</span>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                {DEV && (
-                  <p className="text-[9px] text-zinc-600 break-all mt-1 font-mono">
+              {DEV && (
+                <div className="border-t border-white/10 px-6 py-2">
+                  <p className="text-[9px] text-zinc-700 break-all font-mono">
                     {photoUrl}
                   </p>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           );
         })}
       </div>
     </motion.section>
+  );
+}
+
+function StatRow({
+  icon,
+  label,
+  value,
+  color,
+  bgColor,
+  borderColor,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}) {
+  return (
+    <div className={`flex items-center justify-between rounded-lg border ${borderColor} ${bgColor} px-3 py-2.5 hover:bg-opacity-20 transition-all`}>
+      <div className="flex items-center gap-2">
+        <div className={`${color} p-1.5`}>
+          {icon}
+        </div>
+        <span className="text-sm text-zinc-300 font-medium">{label}</span>
+      </div>
+      <span className={`text-lg font-black ${color}`}>{value}</span>
+    </div>
   );
 }

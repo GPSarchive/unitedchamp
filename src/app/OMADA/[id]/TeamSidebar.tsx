@@ -2,31 +2,33 @@
 'use client';
 
 import { motion } from "framer-motion";
-import { FaTrophy, FaUsers, FaHashtag, FaChartLine, FaCalendarAlt, FaAward, FaShieldAlt } from "react-icons/fa";
+import { FaTrophy, FaUsers, FaHashtag, FaChartLine, FaShieldAlt } from "react-icons/fa";
 import { Trophy, Crown } from "lucide-react";
 import { Team } from "@/app/lib/types";
 import { TeamImage } from "@/app/lib/OptimizedImage";
+import TournamentStandingsWidget, { type StandingRow } from "./TournamentStandingsWidget";
 
-type TournamentLight = {
+type TournamentWithStandings = {
   id: number;
   name: string | null;
   season: string | null;
   status?: string | null;
   winner_team_id?: number | null;
+  standings: StandingRow[];
 };
 
 export default function TeamSidebar({
   team,
-  tournaments,
+  tournamentsWithStandings,
   wins,
   errors,
 }: {
   team: Team;
-  tournaments: TournamentLight[];
+  tournamentsWithStandings: TournamentWithStandings[];
   wins: { id: number; name: string | null; season: string | null }[];
   errors?: { membership?: string; wins?: string };
 }) {
-  const membershipCount = tournaments.length;
+  const membershipCount = tournamentsWithStandings.length;
   const winsCount = wins.length;
 
   return (
@@ -118,42 +120,20 @@ export default function TeamSidebar({
         <StatCard icon={<Trophy className="h-5 w-5" />} label="Τίτλοι" value={winsCount} highlight delay={0.65} />
       </motion.div>
 
-      {/* Tournaments List */}
+      {/* Tournament Standings */}
       {membershipCount > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-          className="relative z-10"
-        >
-          <h3
-            className="text-lg font-bold text-white mb-3 flex items-center gap-2"
-            style={{
-              textShadow: '1px 1px 3px rgba(0,0,0,0.8)'
-            }}
-          >
-            <FaCalendarAlt className="text-cyan-400" /> Τουρνουά
-          </h3>
-          <ul className="space-y-2">
-            {tournaments.map((t, index) => (
-              <motion.li
-                key={t.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.75 + index * 0.05, duration: 0.4 }}
-                className="text-sm text-white bg-white/5 border border-white/10 hover:border-cyan-400/50 hover:bg-white/10 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all rounded-lg px-3 py-2.5 flex items-center justify-between"
-              >
-                <span className="truncate font-medium">{t.name ?? "—"}</span>
-                {t.season && (
-                  <span className="ml-2 shrink-0 inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-cyan-300 text-xs font-semibold">
-                    <span className="size-1.5 rounded-full bg-cyan-400/80" />
-                    {t.season}
-                  </span>
-                )}
-              </motion.li>
-            ))}
-          </ul>
-        </motion.div>
+        <div className="relative z-10 space-y-4">
+          {tournamentsWithStandings.map((tournament, index) => (
+            <TournamentStandingsWidget
+              key={tournament.id}
+              standings={tournament.standings}
+              tournamentName={tournament.name ?? "Τουρνουά"}
+              season={tournament.season}
+              highlightTeamId={team.id}
+              index={index}
+            />
+          ))}
+        </div>
       )}
 
       {/* Championships List */}

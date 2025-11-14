@@ -2,6 +2,8 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-sid
 import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
 import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
+import TeamStats from "./TeamStats";
+import type { StandingRow } from "./TournamentStandingsWidget";
 import {
   type Team,
   type PlayerAssociation,
@@ -9,6 +11,72 @@ import {
   normalizeTeamPlayers,
   type TeamPlayersRowRaw,
 } from "@/app/lib/types";
+
+// Helper function to fetch standings for a specific tournament
+async function fetchTournamentStandings(tournamentId: number): Promise<StandingRow[]> {
+  // First, get the latest stage for this tournament
+  const { data: stages, error: stagesError } = await supabaseAdmin
+    .from("stages")
+    .select("id")
+    .eq("tournament_id", tournamentId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (stagesError || !stages || stages.length === 0) {
+    return [];
+  }
+
+  const stageId = stages[0].id;
+
+  // Fetch standings for this stage
+  const { data: standingsData, error: standingsError } = await supabaseAdmin
+    .from("stage_standings")
+    .select(
+      "stage_id, group_id, team_id, played, won, drawn, lost, gf, ga, gd, points, rank"
+    )
+    .eq("stage_id", stageId)
+    .order("rank", { ascending: true, nullsFirst: false })
+    .order("points", { ascending: false });
+
+  if (standingsError || !standingsData) return [];
+
+  // Get unique team IDs
+  const teamIds = [...new Set(standingsData.map((s: any) => s.team_id))];
+
+  // Fetch team data separately
+  const { data: teamsData, error: teamsError } = await supabaseAdmin
+    .from("teams")
+    .select("id, name, logo")
+    .in("id", teamIds);
+
+  if (teamsError || !teamsData) return [];
+
+  // Create a map for quick team lookup
+  const teamsMap = new Map(teamsData.map((t: any) => [t.id, t]));
+
+  // Combine standings with team data
+  const standings: StandingRow[] = standingsData.map((s: any) => ({
+    stage_id: s.stage_id,
+    group_id: s.group_id,
+    team_id: s.team_id,
+    played: s.played,
+    won: s.won,
+    drawn: s.drawn,
+    lost: s.lost,
+    gf: s.gf,
+    ga: s.ga,
+    gd: s.gd,
+    points: s.points,
+    rank: s.rank,
+    team: teamsMap.get(s.team_id) || {
+      id: s.team_id,
+      name: `Team #${s.team_id}`,
+      logo: null,
+    },
+  }));
+
+  return standings;
+}
 
 type TeamPageProps = {
   params: Promise<{ id: string }>;
@@ -130,6 +198,50 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
+  // ── Fetch standings for each tournament ───────────────────────────────────────
+  const tournamentsWithStandings = await Promise.all(
+    tournaments.map(async (tournament: any) => {
+      const standings = await fetchTournamentStandings(tournament.id);
+      return {
+        ...tournament,
+        standings,
+      };
+    })
+  );
+
+  // ── Calculate team stats from matches ─────────────────────────────────────────
+  let wins = 0;
+  let draws = 0;
+  let losses = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  if (matches) {
+    matches.forEach((match) => {
+      // Only count finished matches
+      if (typeof match.team_a_score !== 'number' || typeof match.team_b_score !== 'number') {
+        return;
+      }
+
+      const isTeamA = match.team_a?.id === teamId;
+      const myScore = isTeamA ? match.team_a_score : match.team_b_score;
+      const oppScore = isTeamA ? match.team_b_score : match.team_a_score;
+
+      goalsFor += myScore ?? 0;
+      goalsAgainst += oppScore ?? 0;
+
+      if (match.winner_team_id === teamId) {
+        wins++;
+      } else if (match.winner_team_id === null) {
+        draws++;
+      } else {
+        losses++;
+      }
+    });
+  }
+
+  const totalMatches = wins + draws + losses;
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-orange-950 via-black to-zinc-950">
       {/* Dark Neon Background Gradient */}
@@ -140,17 +252,26 @@ export default async function TeamPage({ params }: TeamPageProps) {
           {/* Left Sidebar: Logo + Basic Info */}
           <TeamSidebar
             team={team as Team}
-            tournaments={tournaments}
-            wins={wins}
+            tournamentsWithStandings={tournamentsWithStandings}
+            wins={winsList ?? []}
             errors={{ membership: membershipErr?.message, wins: winsErr?.message }}
           />
 
-          {/* Right Content: Players + Matches */}
+          {/* Right Content: Stats + Players + Matches */}
           <div className="space-y-8">
+            <TeamStats
+              wins={wins}
+              draws={draws}
+              losses={losses}
+              goalsFor={goalsFor}
+              goalsAgainst={goalsAgainst}
+              totalMatches={totalMatches}
+            />
             <PlayersGrid
               playerAssociations={playerAssociations}
               seasonStatsByPlayer={seasonStatsByPlayer}
               errorMessage={playersError?.message || pssErr?.message}
+              teamLogo={team.logo}
             />
             <TeamMatchesTimeline
               matches={matches}
