@@ -48,7 +48,7 @@ export default function WelcomeMessage({
           className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-white/60"
         >
           <Clock className="h-4 w-4" />
-          <span>
+          <span suppressHydrationWarning>
             Προγραμματισμένο: {new Date(matchDate).toLocaleDateString("el-GR")}
           </span>
         </motion.div>

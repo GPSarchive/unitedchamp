@@ -111,16 +111,6 @@ export default async function Page({
 
   const videoId = extractYouTubeId(video ?? null);
 
-  const dateLabel = match.match_date
-    ? new Date(match.match_date).toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "TBD";
-
   const aIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_a.id;
   const bIsWinner =
