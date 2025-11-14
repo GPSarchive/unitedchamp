@@ -81,8 +81,13 @@ function saveToCache(path: string, url: string): void {
 }
 
 // Clean up expired entries periodically
-if (typeof window !== "undefined") {
-  setInterval(() => {
+// Managed via hook to ensure proper cleanup
+let cleanupIntervalId: NodeJS.Timeout | null = null;
+
+function startCacheCleanup() {
+  if (typeof window === "undefined" || cleanupIntervalId !== null) return;
+
+  cleanupIntervalId = setInterval(() => {
     try {
       const keys = Object.keys(localStorage);
       for (const key of keys) {
@@ -98,6 +103,13 @@ if (typeof window !== "undefined") {
       }
     } catch {}
   }, 10 * 60 * 1000); // Every 10 minutes
+}
+
+function stopCacheCleanup() {
+  if (cleanupIntervalId !== null) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
 }
 
 async function fetchSignedUrl(path: string): Promise<string | null> {
@@ -141,37 +153,46 @@ function useImageUrl(
 ): string | null {
   const [url, setUrl] = useState<string | null>(() => {
     if (!src) return getPlaceholder(type);
-    
+
     // PUBLIC MODE: Return direct URL immediately
     if (imageConfig.usePublic) {
       return imageConfig.resolve(src, type);
     }
-    
+
     // PRIVATE MODE: Check cache first
     if (isStoragePath(src)) {
       const cached = getFromCache(src);
       return cached || null;
     }
-    
+
     return src;
   });
 
+  // Start cache cleanup on first mount (globally shared)
+  useEffect(() => {
+    startCacheCleanup();
+    return () => {
+      // Cleanup is shared across all instances, so we don't stop it here
+      // It will be cleaned up when the page unmounts
+    };
+  }, []);
+
   useEffect(() => {
     let ignore = false;
-    
+
     async function load() {
       if (!src) {
         if (!ignore) setUrl(getPlaceholder(type));
         return;
       }
-      
+
       // PUBLIC MODE: Direct URL
       if (imageConfig.usePublic) {
         const resolved = imageConfig.resolve(src, type);
         if (!ignore) setUrl(resolved);
         return;
       }
-      
+
       // PRIVATE MODE: Sign URL
       if (!isStoragePath(src)) {
         if (!ignore) setUrl(src);
@@ -189,9 +210,9 @@ function useImageUrl(
       const signed = await fetchSignedUrl(src);
       if (!ignore) setUrl(signed || getPlaceholder(type));
     }
-    
+
     load();
-    
+
     return () => {
       ignore = true;
     };

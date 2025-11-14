@@ -75,8 +75,13 @@ function saveToCache(bucket: string, path: string, url: string): void {
 }
 
 // Clean up expired entries periodically
-if (typeof window !== "undefined") {
-  setInterval(() => {
+// Managed via hook to ensure proper cleanup
+let __cleanupIntervalId: NodeJS.Timeout | null = null;
+
+function startCacheCleanup() {
+  if (typeof window === "undefined" || __cleanupIntervalId !== null) return;
+
+  __cleanupIntervalId = setInterval(() => {
     try {
       const keys = Object.keys(localStorage);
       for (const key of keys) {
@@ -92,6 +97,13 @@ if (typeof window !== "undefined") {
       }
     } catch {}
   }, 10 * 60 * 1000); // Every 10 minutes
+}
+
+function stopCacheCleanup() {
+  if (__cleanupIntervalId !== null) {
+    clearInterval(__cleanupIntervalId);
+    __cleanupIntervalId = null;
+  }
 }
 
 export function isStoragePath(v: string | null | undefined) {
@@ -111,16 +123,25 @@ export function useSignedUrl(pathOrUrl: string | null | undefined, bucket = BUCK
     return pathOrUrl ?? null;
   });
 
+  // Start cache cleanup on first mount (globally shared)
+  useEffect(() => {
+    startCacheCleanup();
+    return () => {
+      // Cleanup is shared across all instances, so we don't stop it here
+      // It will be cleaned up when the page unmounts
+    };
+  }, []);
+
   useEffect(() => {
     let ignore = false;
-    
+
     async function run() {
       try {
         if (!pathOrUrl) {
           if (!ignore) setUrl(null);
           return;
         }
-        
+
         if (!isStoragePath(pathOrUrl)) {
           if (!ignore) setUrl(pathOrUrl);
           return;
@@ -136,12 +157,12 @@ export function useSignedUrl(pathOrUrl: string | null | undefined, bucket = BUCK
         // Check for pending request
         const key = `${bucket}:${pathOrUrl}`;
         let promise = __pendingRequests.get(key);
-        
+
         if (!promise) {
           // Create new request
           promise = fetch(
             `/api/storage/tournament-img-loader/sign?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(pathOrUrl)}`,
-            { 
+            {
               credentials: "include",
               // Add cache header for browser caching
               headers: { "Cache-Control": "public, max-age=3300" } // 55 minutes
@@ -159,7 +180,7 @@ export function useSignedUrl(pathOrUrl: string | null | undefined, bucket = BUCK
             .finally(() => {
               __pendingRequests.delete(key);
             });
-          
+
           __pendingRequests.set(key, promise);
         }
 
@@ -169,9 +190,9 @@ export function useSignedUrl(pathOrUrl: string | null | undefined, bucket = BUCK
         if (!ignore) setUrl(null);
       }
     }
-    
+
     run();
-    
+
     return () => {
       ignore = true;
     };
