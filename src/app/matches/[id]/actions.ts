@@ -83,8 +83,17 @@ export async function saveAllStatsAction(formData: FormData) {
   // participants[...] regex (participation) – attendance only
   const partRe = /^participants\[(\d+)\]\[(\d+)\]\[(played)\]$/;
 
-  // Parse entire form once
-  for (const [k, v] of formData.entries()) {
+  // Collect all field names first (to handle checkboxes with multiple values)
+  const allKeys = Array.from(formData.keys());
+  const processedKeys = new Set<string>();
+
+  for (const k of allKeys) {
+    if (processedKeys.has(k)) continue;
+    processedKeys.add(k);
+
+    // Get ALL values for this key (important for checkboxes with hidden fallbacks)
+    const allValues = formData.getAll(k);
+
     // --- stats bucket ---
     {
       const m = statsRe.exec(k);
@@ -102,7 +111,7 @@ export async function saveAllStatsAction(formData: FormData) {
             player_id: playerId,
             goals: 0,
             assists: 0,
-            own_goals: 0, // ✅ ADDED
+            own_goals: 0,
             yellow_cards: 0,
             red_cards: 0,
             blue_cards: 0,
@@ -112,18 +121,28 @@ export async function saveAllStatsAction(formData: FormData) {
         }
 
         const row = statsRows.get(key)!;
-        const val = typeof v === 'string' ? v : (v as File).name;
 
-        if (field === '_delete') {
-          (row as any)._delete = val === 'true' || val === 'on' || val === '1';
+        // For checkboxes, check if 'true' exists in any of the values
+        if (field === '_delete' || field === 'is_captain' || field === 'gk') {
+          const isChecked = allValues.some(v => {
+            const val = typeof v === 'string' ? v : (v as File).name;
+            return val === 'true' || val === 'on' || val === '1';
+          });
+          (row as any)[field] = isChecked;
         } else if (field === 'team_id' || field === 'player_id') {
           // captured by key; ignore
-        } else if (field === 'is_captain' || field === 'gk') {
-          (row as any)[field] = val === 'true' || val === 'on' || val === '1';
         } else if (field === 'position') {
+          // Use last value for text inputs
+          const val = typeof allValues[allValues.length - 1] === 'string'
+            ? allValues[allValues.length - 1] as string
+            : (allValues[allValues.length - 1] as File).name;
           const tpos = (val ?? '').trim();
           (row as any).position = tpos && tpos.toUpperCase() !== 'TBD' ? tpos : null;
         } else {
+          // Use last value for numeric inputs
+          const val = typeof allValues[allValues.length - 1] === 'string'
+            ? allValues[allValues.length - 1] as string
+            : (allValues[allValues.length - 1] as File).name;
           const n = Number(val);
           (row as any)[field] = Number.isFinite(n) ? Math.max(0, n) : 0;
         }
@@ -151,10 +170,13 @@ export async function saveAllStatsAction(formData: FormData) {
         }
 
         const row = partRows.get(key)!;
-        const raw = typeof v === 'string' ? v : (v as File).name;
 
         if (field === 'played') {
-          row.played = raw === 'true' || raw === 'on' || raw === '1';
+          // Check if 'true' exists in any of the values (handles checkbox + hidden input)
+          row.played = allValues.some(v => {
+            const val = typeof v === 'string' ? v : (v as File).name;
+            return val === 'true' || val === 'on' || val === '1';
+          });
         }
         continue;
       }
