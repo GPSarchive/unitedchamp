@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Trophy, TrendingUp, Award, Medal, Crown } from "lucide-react";
+import Link from "next/link";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import type { StandingRow } from "./queries";
 
@@ -179,38 +180,36 @@ function StandingRowDesktop({
         </div>
       </td>
       <td className="py-4 pl-2">
-        <div className="flex items-center gap-3">
-          <motion.div
-            className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/20 bg-black/50 ring-1 ring-white/10"
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            {standing.team.logo ? (
-              <TeamImage
-                src={standing.team.logo}
-                alt={standing.team.name}
-                fill
-                objectFit="contain"
-                sizes="40px"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs font-bold text-fuchsia-300">
-                {standing.team.name.charAt(0)}
-              </div>
-            )}
-            {/* Shimmer effect for first place */}
-            {isFirst && (
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                animate={{ x: ["-100%", "100%"] }}
-                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-              />
-            )}
-          </motion.div>
-          <span className={`font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
-            {standing.team.name}
-          </span>
-        </div>
+        <Link href={`/omada/${standing.team_id}`} className="block">
+          <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/20 bg-black/50 ring-1 ring-white/10">
+              {standing.team.logo ? (
+                <TeamImage
+                  src={standing.team.logo}
+                  alt={standing.team.name}
+                  fill
+                  objectFit="contain"
+                  sizes="40px"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-fuchsia-300">
+                  {standing.team.name.charAt(0)}
+                </div>
+              )}
+              {/* Shimmer effect for first place */}
+              {isFirst && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                />
+              )}
+            </div>
+            <span className={`font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
+              {standing.team.name}
+            </span>
+          </div>
+        </Link>
       </td>
       <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.played}</td>
       <td className="px-3 py-4 text-center text-emerald-400 font-semibold">{standing.won}</td>
@@ -287,7 +286,7 @@ function StandingCardMobile({
       }`}
     >
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <Link href={`/omada/${standing.team_id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold ${getBadgeStyle()}`}
           >
@@ -318,7 +317,7 @@ function StandingCardMobile({
             </div>
             <div className="text-xs text-zinc-500">{standing.played} αγώνες</div>
           </div>
-        </div>
+        </Link>
         <div
           className={`text-2xl font-bold ${
             isFirst

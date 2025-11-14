@@ -26,7 +26,9 @@ import WelcomeMessage from "./WelcomeMessage";
 import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
+import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
+
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -170,10 +172,33 @@ export default async function Page({
     })
     .filter((p) => p !== null);
 
-  return (
-<div className="relative min-h-dvh overflow-x-visible bg-gradient-to-br from-orange-950 via-black to-zinc-950">
-  <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-600/20 via-black/40 to-black" />
+  // Prepare full roster data for scheduled matches
+  const rosterData = [
+    ...teamAPlayers.map((pa) => ({
+      player: {
+        id: pa.player.id,
+        first_name: pa.player.first_name ?? null,
+        last_name: pa.player.last_name ?? null,
+        photo: pa.player.photo ?? null,
+      },
+      teamId: match.team_a.id,
+    })),
+    ...teamBPlayers.map((pa) => ({
+      player: {
+        id: pa.player.id,
+        first_name: pa.player.first_name ?? null,
+        last_name: pa.player.last_name ?? null,
+        photo: pa.player.photo ?? null,
+      },
+      teamId: match.team_b.id,
+    })),
+  ];
 
+  return (
+
+    <div className="relative min-h-dvh overflow-x-visible bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    {/* ✅ Simple gradient background instead of VantaBg */}
+    <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
@@ -212,8 +237,18 @@ export default async function Page({
           scorers={scorers}
         />
 
-        {/* ✅ NEW: Match Participants Showcase - Before Video */}
-        {participantsData.length > 0 && (
+        {/* ✅ NEW: Show full rosters for scheduled matches, participants for finished matches */}
+        {isScheduled && rosterData.length > 0 ? (
+          <TeamRostersDisplay
+            teamAId={match.team_a.id}
+            teamBId={match.team_b.id}
+            teamAName={match.team_a.name}
+            teamBName={match.team_b.name}
+            teamALogo={match.team_a.logo ?? null}
+            teamBLogo={match.team_b.logo ?? null}
+            rosterPlayers={rosterData}
+          />
+        ) : participantsData.length > 0 ? (
           <MatchParticipantsShowcase
             teamAId={match.team_a.id}
             teamBId={match.team_b.id}
@@ -223,7 +258,7 @@ export default async function Page({
             teamBLogo={match.team_b.logo ?? null}
             participants={participantsData}
           />
-        )}
+        ) : null}
 
         <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
           <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Match Video</h2>
