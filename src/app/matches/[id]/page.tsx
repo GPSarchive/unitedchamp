@@ -26,6 +26,7 @@ import WelcomeMessage from "./WelcomeMessage";
 import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
+import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
 import VantaBg from "../../lib/VantaBg";
 
@@ -171,6 +172,28 @@ export default async function Page({
     })
     .filter((p) => p !== null);
 
+  // Prepare full roster data for scheduled matches
+  const rosterData = [
+    ...teamAPlayers.map((pa) => ({
+      player: {
+        id: pa.player.id,
+        first_name: pa.player.first_name ?? null,
+        last_name: pa.player.last_name ?? null,
+        photo: pa.player.photo ?? null,
+      },
+      teamId: match.team_a.id,
+    })),
+    ...teamBPlayers.map((pa) => ({
+      player: {
+        id: pa.player.id,
+        first_name: pa.player.first_name ?? null,
+        last_name: pa.player.last_name ?? null,
+        photo: pa.player.photo ?? null,
+      },
+      teamId: match.team_b.id,
+    })),
+  ];
+
   return (
 
     <div className="relative min-h-dvh overflow-x-visible">
@@ -218,8 +241,18 @@ export default async function Page({
           scorers={scorers}
         />
 
-        {/* ✅ NEW: Match Participants Showcase - Before Video */}
-        {participantsData.length > 0 && (
+        {/* ✅ NEW: Show full rosters for scheduled matches, participants for finished matches */}
+        {isScheduled && rosterData.length > 0 ? (
+          <TeamRostersDisplay
+            teamAId={match.team_a.id}
+            teamBId={match.team_b.id}
+            teamAName={match.team_a.name}
+            teamBName={match.team_b.name}
+            teamALogo={match.team_a.logo ?? null}
+            teamBLogo={match.team_b.logo ?? null}
+            rosterPlayers={rosterData}
+          />
+        ) : participantsData.length > 0 ? (
           <MatchParticipantsShowcase
             teamAId={match.team_a.id}
             teamBId={match.team_b.id}
@@ -229,7 +262,7 @@ export default async function Page({
             teamBLogo={match.team_b.logo ?? null}
             participants={participantsData}
           />
-        )}
+        ) : null}
 
         <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
           <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Match Video</h2>
