@@ -43,7 +43,7 @@ export default function TeamSidebar({
   return (
     <div
       ref={sidebarRef}
-      className="sticky top-8 h-fit space-y-6 rounded-2xl bg-gradient-to-b from-stone-800/50 to-stone-900/50 p-6 border border-amber-500/20 shadow-2xl backdrop-blur-md"
+      className="sticky top-8 h-fit space-y-6 rounded-2xl bg-black/50 p-6 border border-white/20 shadow-lg backdrop-blur-sm"
     >
       {/* Logo with LightRays */}
      <div className="relative mx-auto w-64 h-64 overflow-hidden rounded-full border-4 border-amber-400/30 shadow-lg ring-1 ring-amber-300/20 group">
@@ -72,35 +72,35 @@ export default function TeamSidebar({
 
       {/* Name and Established */}
       <div className="text-center">
-      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400">
+      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400">
           {team.name}
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-white/70 mt-1" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
           Established: {team.created_at ? new Date(team.created_at).toLocaleDateString() : "Unknown"}
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
-      <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-      <FaHashtag className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Team ID</p>
-          <p className="text-xl font-bold text-white">{team.am ?? "—"}</p>
+      <div className="p-4 rounded-xl bg-black/40 border border-white/20 text-center backdrop-blur-sm">
+      <FaHashtag className="mx-auto text-cyan-400 mb-2" />
+          <p className="text-sm text-white/70" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Team ID</p>
+          <p className="text-xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{team.am ?? "—"}</p>
         </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-          <FaChartLine className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Season Score</p>
-          <p className="text-xl font-bold text-white">{team.season_score ?? 0}</p>
+        <div className="p-4 rounded-xl bg-black/40 border border-white/20 text-center backdrop-blur-sm">
+          <FaChartLine className="mx-auto text-purple-400 mb-2" />
+          <p className="text-sm text-white/70" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Season Score</p>
+          <p className="text-xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{team.season_score ?? 0}</p>
         </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-          <FaUsers className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Tournaments</p>
-          <p className="text-xl font-bold text-white">{membershipCount}</p>
+        <div className="p-4 rounded-xl bg-black/40 border border-white/20 text-center backdrop-blur-sm">
+          <FaUsers className="mx-auto text-blue-400 mb-2" />
+          <p className="text-sm text-white/70" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Tournaments</p>
+          <p className="text-xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{membershipCount}</p>
         </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
+        <div className="p-4 rounded-xl bg-black/40 border border-white/20 text-center backdrop-blur-sm">
           <FaTrophy className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Championships</p>
-          <p className="text-xl font-bold text-white">{winsCount}</p>
+          <p className="text-sm text-white/70" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Championships</p>
+          <p className="text-xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{winsCount}</p>
         </div>
       </div>
 
@@ -108,22 +108,22 @@ export default function TeamSidebar({
 {membershipCount > 0 && (
   <div>
     <h3
-      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-2 flex items-center gap-2"
+      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 mb-2 flex items-center gap-2"
       title="Tournaments the team has participated in"
     >
-      <FaCalendarAlt className="text-amber-400" /> Tournaments
+      <FaCalendarAlt className="text-cyan-400" /> Tournaments
     </h3>
     <ul className="space-y-2">
       {tournaments.map((t) => (
         <li
           key={t.id}
-          className="text-sm text-slate-200 bg-slate-900/40 border border-amber-600/30 hover:border-amber-400/50 hover:shadow-md hover:shadow-orange-500/10 transition-colors rounded-lg px-3 py-2 flex items-center justify-between"
+          className="text-sm text-white bg-black/40 border border-white/20 hover:border-white/40 hover:shadow-md hover:bg-black/50 transition-all rounded-lg px-3 py-2 flex items-center justify-between backdrop-blur-sm"
         >
-          <span className="truncate">{t.name ?? "—"}</span>
+          <span className="truncate" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{t.name ?? "—"}</span>
 
           {t.season ? (
-            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-orange-900/25 px-2 py-0.5 text-amber-200 text-xs">
-              <span className="size-1.5 rounded-full bg-amber-400/80" />
+            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-purple-400/30 bg-purple-900/25 px-2 py-0.5 text-purple-200 text-xs">
+              <span className="size-1.5 rounded-full bg-purple-400/80" />
               {t.season}
             </span>
           ) : null}
@@ -137,7 +137,7 @@ export default function TeamSidebar({
 {winsCount > 0 && (
   <div>
     <h3
-      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-2 flex items-center gap-2"
+      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 mb-2 flex items-center gap-2"
       title="Championships the team has won"
     >
       <FaAward className="text-amber-400" /> Championships
@@ -146,13 +146,13 @@ export default function TeamSidebar({
       {wins.map((w) => (
         <li
           key={w.id}
-          className="text-sm text-slate-200 bg-slate-900/40 border border-amber-600/30 hover:border-amber-400/50 hover:shadow-md hover:shadow-orange-500/10 transition-colors rounded-lg px-3 py-2 flex items-center justify-between"
+          className="text-sm text-white bg-black/40 border border-amber-400/30 hover:border-amber-400/50 hover:shadow-md hover:shadow-amber-500/20 transition-all rounded-lg px-3 py-2 flex items-center justify-between backdrop-blur-sm"
         >
-          <span className="truncate">{w.name ?? "Champion"}</span>
+          <span className="truncate" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{w.name ?? "Champion"}</span>
 
           {w.season ? (
-            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-900/20 px-2 py-0.5 text-red-200 text-xs">
-              <span className="size-1.5 rounded-full bg-red-400/80" />
+            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-400/30 bg-amber-900/20 px-2 py-0.5 text-amber-200 text-xs">
+              <span className="size-1.5 rounded-full bg-amber-400/80" />
               {w.season}
             </span>
           ) : null}
