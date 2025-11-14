@@ -210,9 +210,9 @@ export default async function TeamPage({ params }: TeamPageProps) {
   );
 
   // ── Calculate team stats from matches ─────────────────────────────────────────
-  let wins = 0;
-  let draws = 0;
-  let losses = 0;
+  let matchWins = 0;
+  let matchDraws = 0;
+  let matchLosses = 0;
   let goalsFor = 0;
   let goalsAgainst = 0;
 
@@ -231,16 +231,16 @@ export default async function TeamPage({ params }: TeamPageProps) {
       goalsAgainst += oppScore ?? 0;
 
       if (match.winner_team_id === teamId) {
-        wins++;
+        matchWins++;
       } else if (match.winner_team_id === null) {
-        draws++;
+        matchDraws++;
       } else {
-        losses++;
+        matchLosses++;
       }
     });
   }
 
-  const totalMatches = wins + draws + losses;
+  const totalMatches = matchWins + matchDraws + matchLosses;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-orange-950 via-black to-zinc-950">
@@ -260,9 +260,9 @@ export default async function TeamPage({ params }: TeamPageProps) {
           {/* Right Content: Stats + Players + Matches */}
           <div className="space-y-8">
             <TeamStats
-              wins={wins}
-              draws={draws}
-              losses={losses}
+              wins={matchWins}
+              draws={matchDraws}
+              losses={matchLosses}
               goalsFor={goalsFor}
               goalsAgainst={goalsAgainst}
               totalMatches={totalMatches}
