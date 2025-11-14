@@ -27,7 +27,6 @@ import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
 import TournamentStandings from "./TournamentStandings";
-import VantaBg from "../../lib/VantaBg";
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -172,14 +171,9 @@ export default async function Page({
     .filter((p) => p !== null);
 
   return (
+<div className="relative min-h-dvh overflow-x-visible bg-gradient-to-br from-orange-950 via-black to-zinc-950">
+  <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-orange-600/20 via-black/40 to-black" />
 
-    <div className="relative min-h-dvh overflow-x-visible">
-      {/* ✅ VantaBg as background */}
-      <VantaBg 
-        className="absolute inset-0 -z-10" 
-        mode="eco"
-      />
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (

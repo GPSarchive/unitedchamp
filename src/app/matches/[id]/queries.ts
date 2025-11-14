@@ -1,4 +1,5 @@
 // app/tournoua/match/[id]/queries.ts
+'use server'
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   normalizeTeamPlayers,
