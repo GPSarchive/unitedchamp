@@ -46,14 +46,11 @@ export default function PlayersList({
               const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
               const isActive = activeId === player.id;
 
-              // ✅ Use team logo as fallback if no player photo
-              const displayPhoto = useMemo(() => {
-                if (player.photo && player.photo !== "/player-placeholder.jpg") {
-                  return player.photo;
-                }
-                // Fallback to first team logo
-                return player.team?.logo || player.teams?.[0]?.logo || player.photo;
-              }, [player.photo, player.team, player.teams]);
+              // ✅ Simple computation - no useMemo needed
+              const displayPhoto =
+                player.photo && player.photo !== "/player-placeholder.jpg"
+                  ? player.photo
+                  : player.team?.logo || player.teams?.[0]?.logo || player.photo;
 
               return (
                 <div key={player.id}>
