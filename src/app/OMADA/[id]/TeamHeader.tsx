@@ -1,61 +1,74 @@
-// app/OMADA/[id]/TeamHeader.tsx
+import Image from "next/image";
 import { Team } from "@/app/lib/types";
-import LightRays from "./react-bits/LightRays";
 
-export default function TeamHeader({ team }: { team: Team }) {
+type TeamHeaderProps = {
+  team: Team;
+  playersCount: number;
+  tournamentsCount: number;
+  winsCount: number;
+};
+
+const formatter = new Intl.DateTimeFormat("el-GR", {
+  year: "numeric",
+  month: "long",
+  day: "2-digit",
+});
+
+export default function TeamHeader({
+  team,
+  playersCount,
+  tournamentsCount,
+  winsCount,
+}: TeamHeaderProps) {
+  const established = team.created_at ? formatter.format(new Date(team.created_at)) : null;
+
   return (
-    <div className="relative mb-8 overflow-hidden rounded-2xl border border-zinc-800/50 bg-gradient-to-br from-orange-900/10 to-zinc-900/50 shadow-xl">
-      <div className="relative flex flex-col items-center gap-6 p-8 md:p-12 text-center">
-        {team.logo && (
-          <div
-            className="relative overflow-hidden rounded-full border-4 border-orange-500/30 bg-transparent p-4 shadow-2xl ring-2 ring-orange-400/20"
-          >
-            {/* Full-bleed rays+logo frame */}
-            <div className="relative -m-4 md:-m-8">{/* cancel the p-4 / p-8 padding */}
-              {/* Larger square rays+logo */}
-              <div className="relative">
-                <div className="relative aspect-square w-[8rem] md:w-[24rem] 2xl:w-[32rem]">
-                  <LightRays
-                    
-                    className="absolute inset-0 h-full w-full rounded-full pointer-events-none mix-blend-screen"
-                    raysOrigin="top-center"
-                    raysColor="#ffd700"
-                    raysSpeed={1.2}
-                    lightSpread={0.9}
-                    rayLength={1.5}
-                    followMouse
-                    mouseInfluence={0.15}
-                    noiseAmount={0.08}
-                    distortion={0.03}
-                    logoSrc={team.logo}
-                    logoStrength={1.8}
-                    logoFit="cover"
-                    // Note: logoScale in the shader is a zoom-OUT safety (0.1–1). 1.5 will clamp to 1.0.
-                    logoScale={1.0}
-                    
-                    /* New pop-in animation props */
-                    popIn
-                    
-                    popDuration={800}
-                    popDelay={100}
-                    
-                    popScaleFrom={0.85}
-                  />
-                </div>
-              </div>
-            </div>
+    <header className="rounded-3xl border border-slate-800/70 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 shadow-[0_30px_60px_rgba(2,6,23,0.45)] md:p-12">
+      <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 ring-1 ring-slate-700 md:h-28 md:w-28">
+            {team.logo ? (
+              <Image
+                src={team.logo}
+                alt={team.name ?? "Team logo"}
+                width={112}
+                height={112}
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                No Logo
+              </span>
+            )}
           </div>
-        )}
 
-        <div className="flex flex-col">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600 tracking-tight leading-tight">
-            {team.name}
-          </h1>
-          <p className="mt-3 text-lg font-medium text-zinc-300">
-            Established: {team.created_at ? new Date(team.created_at).toLocaleDateString() : "Unknown"}
-          </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Team profile</p>
+            <h1 className="mt-3 text-3xl font-semibold leading-tight text-white sm:text-4xl md:text-5xl">
+              {team.name}
+            </h1>
+            <p className="mt-3 text-sm text-slate-400">
+              Established {established ?? "—"}
+            </p>
+          </div>
         </div>
+
+        <dl className="grid w-full gap-3 sm:grid-cols-2 md:w-auto md:min-w-[360px]">
+          <Metric label="Season score" value={team.season_score ?? 0} />
+          <Metric label="Players" value={playersCount} />
+          <Metric label="Tournaments" value={tournamentsCount} />
+          <Metric label="Titles" value={winsCount} />
+        </dl>
       </div>
+    </header>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+      <dt className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">{label}</dt>
+      <dd className="mt-2 text-2xl font-semibold text-white">{value}</dd>
     </div>
   );
 }
