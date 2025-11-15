@@ -177,7 +177,7 @@ function PlayersFilterHeaderComponent({
                 px-2 py-2 text-xs font-semibold uppercase tracking-wider
                 transition-all duration-200
                 border-b-2
-                ${opt.column === "player" ? "text-left" : "text-center"}
+                text-center
                 ${
                   selectedSort === opt.value
                     ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
