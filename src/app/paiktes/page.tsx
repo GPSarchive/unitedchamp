@@ -327,7 +327,7 @@ export default async function PaiktesPage({
         )
         .in("match_id", tMatchIds);
 
-      const typedMpsRows = (mpsRows ?? []) as TournamentMPSRow[];
+      const typedMpsRows = (mpsRows ?? []) as unknown as TournamentMPSRow[];
 
       type TStats = {
         matches: number;
