@@ -225,7 +225,11 @@ export default async function PaiktesPage({
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
   const topN = sp?.top ? Number(sp.top) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
-  const pageSize = topN ?? DEFAULT_PAGE_SIZE;
+
+  // ✅ When Top N is selected, we need to fetch ALL relevant players
+  // to properly sort by stats and then limit to top N
+  const needsFullFetch = !!topN;
+  const pageSize = needsFullFetch ? 9999 : DEFAULT_PAGE_SIZE;
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -521,6 +525,17 @@ export default async function PaiktesPage({
       break;
   }
 
+  // ✅ Apply Top N limit AFTER sorting
+  // This ensures we get the actual top N players by the selected metric
+  let finalPlayers = enriched;
+  let finalCount = totalCount ?? 0;
+
+  if (topN) {
+    // Take top N after sorting (works for both global and tournament stats)
+    finalPlayers = enriched.slice(0, topN);
+    finalCount = Math.min(topN, enriched.length);
+  }
+
   // ✅ Serialize tournament stats for client (Map → plain object)
   const tournamentStatsForClient: Record<number, Record<number, TournamentStats>> = {};
   for (const [tournamentId, playerStats] of allTournamentStats) {
@@ -533,10 +548,10 @@ export default async function PaiktesPage({
   return (
     <div className="h-screen bg-black overflow-hidden">
       <PlayersClient
-        initialPlayers={enriched}
+        initialPlayers={finalPlayers}
         tournaments={tournaments}
         tournamentStats={tournamentStatsForClient}
-        totalCount={totalCount ?? 0}
+        totalCount={finalCount}
         currentPage={page}
         pageSize={pageSize}
       />
