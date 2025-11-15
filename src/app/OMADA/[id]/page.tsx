@@ -154,6 +154,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
                 playerAssociations={playerAssociations}
                 seasonStatsByPlayer={seasonStatsByPlayer}
                 errorMessage={playersError?.message || pssErr?.message}
+                teamLogo={team.logo}
               />
               <TeamMatchesTimeline
                 matches={matches}
