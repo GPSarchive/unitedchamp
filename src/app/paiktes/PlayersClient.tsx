@@ -271,6 +271,7 @@ export default function PlayersClient({
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
+  const isTournamentScoped = !!clientTournamentId;
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -307,7 +308,7 @@ export default function PlayersClient({
               Πίσω
             </button>
             <div className="pt-16 px-4 pb-8">
-              <PlayerProfileCard player={active} />
+              <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
           </div>
         </div>
@@ -347,6 +348,7 @@ export default function PlayersClient({
                 onPlayerHover={handlePlayerHover}
                 showTournamentGoals={showTournamentGoals}
                 isAlphaSort={isAlphaSort}
+                isTournamentScoped={isTournamentScoped}
               />
             </div>
 
@@ -416,7 +418,7 @@ export default function PlayersClient({
           <div className="flex-1 overflow-y-auto p-6">
             {active ? (
               <div className="sticky top-0">
-                <PlayerProfileCard player={active} />
+                <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">

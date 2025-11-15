@@ -5,7 +5,13 @@ import { memo, useMemo } from "react";
 import ProfileCard from "./ProfileCard";
 import type { PlayerLite } from "./types";
 
-function PlayerProfileCardComponent({ player }: { player: PlayerLite }) {
+function PlayerProfileCardComponent({
+  player,
+  isTournamentScoped = false
+}: {
+  player: PlayerLite;
+  isTournamentScoped?: boolean;
+}) {
   // ✅ Memoize computed values
   const name = useMemo(
     () => `${player.first_name} ${player.last_name}`.trim() || "—",
@@ -42,7 +48,41 @@ function PlayerProfileCardComponent({ player }: { player: PlayerLite }) {
     [player.team]
   );
 
-  const totalGoals = (player as any).tournament_goals ?? player.goals ?? 0;
+  // ✅ Tournament-aware stats
+  const matchesPlayed = useMemo(
+    () => isTournamentScoped && player.tournament_matches !== undefined
+      ? player.tournament_matches
+      : player.matches ?? 0,
+    [isTournamentScoped, player.tournament_matches, player.matches]
+  );
+
+  const totalGoals = useMemo(
+    () => isTournamentScoped && player.tournament_goals !== undefined
+      ? player.tournament_goals
+      : player.goals ?? 0,
+    [isTournamentScoped, player.tournament_goals, player.goals]
+  );
+
+  const totalAssists = useMemo(
+    () => isTournamentScoped && player.tournament_assists !== undefined
+      ? player.tournament_assists
+      : player.assists ?? 0,
+    [isTournamentScoped, player.tournament_assists, player.assists]
+  );
+
+  const mvpAwards = useMemo(
+    () => isTournamentScoped && player.tournament_mvp !== undefined
+      ? player.tournament_mvp
+      : player.mvp ?? 0,
+    [isTournamentScoped, player.tournament_mvp, player.mvp]
+  );
+
+  const bestGkAwards = useMemo(
+    () => isTournamentScoped && player.tournament_best_gk !== undefined
+      ? player.tournament_best_gk
+      : player.best_gk ?? 0,
+    [isTournamentScoped, player.tournament_best_gk, player.best_gk]
+  );
 
   return (
     <ProfileCard
@@ -55,13 +95,13 @@ function PlayerProfileCardComponent({ player }: { player: PlayerLite }) {
       title={teamTitle}
       handle={handle}
       status={status}
-      // stats
+      // stats (tournament-aware)
       teams={teams}
-      matchesPlayed={player.matches ?? 0}
+      matchesPlayed={matchesPlayed}
       totalGoals={totalGoals}
-      totalAssists={player.assists ?? 0}
-      mvpAwards={player.mvp ?? 0}
-      bestGkAwards={player.best_gk ?? 0}
+      totalAssists={totalAssists}
+      mvpAwards={mvpAwards}
+      bestGkAwards={bestGkAwards}
       showStats={true}
       // look & feel
       showBehindGradient={false}

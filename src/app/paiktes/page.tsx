@@ -279,50 +279,186 @@ export default async function PaiktesPage({
     };
   });
 
-  // Apply sorting
+  // ✅ TOURNAMENT-SCOPED STATS: Compute all tournament stats when tournament is selected
+  if (tournamentId) {
+    const { data: matchRows } = await supabaseAdmin
+      .from("matches")
+      .select("id, winner_team_id")
+      .eq("tournament_id", tournamentId);
+
+    const tMatches = matchRows ?? [];
+    const tMatchIds = tMatches.map((m) => m.id as number);
+
+    if (tMatchIds.length) {
+      const winnerByMatch = new Map<number, number | null>();
+      for (const m of tMatches) {
+        winnerByMatch.set(m.id as number, m.winner_team_id as number | null);
+      }
+
+      const { data: mpsRows } = await supabaseAdmin
+        .from("match_player_stats")
+        .select(
+          [
+            "match_id",
+            "player_id",
+            "team_id",
+            "goals",
+            "assists",
+            "yellow_cards",
+            "red_cards",
+            "blue_cards",
+            "mvp",
+            "best_goalkeeper",
+          ].join(",")
+        )
+        .in("match_id", tMatchIds);
+
+      type TStats = {
+        matches: number;
+        goals: number;
+        assists: number;
+        yellow_cards: number;
+        red_cards: number;
+        blue_cards: number;
+        mvp: number;
+        best_gk: number;
+        wins: number;
+      };
+
+      const tStatsByPlayer = new Map<number, TStats>();
+
+      const ensure = (playerId: number): TStats => {
+        let s = tStatsByPlayer.get(playerId);
+        if (!s) {
+          s = {
+            matches: 0,
+            goals: 0,
+            assists: 0,
+            yellow_cards: 0,
+            red_cards: 0,
+            blue_cards: 0,
+            mvp: 0,
+            best_gk: 0,
+            wins: 0,
+          };
+          tStatsByPlayer.set(playerId, s);
+        }
+        return s;
+      };
+
+      // Track unique matches per player
+      const matchesByTPlayer = new Map<number, Set<number>>();
+
+      for (const r of mpsRows ?? []) {
+        const pid = r.player_id as number;
+        const s = ensure(pid);
+
+        // Track unique matches
+        if (!matchesByTPlayer.has(pid)) {
+          matchesByTPlayer.set(pid, new Set());
+        }
+        matchesByTPlayer.get(pid)!.add(r.match_id as number);
+
+        s.goals += (r.goals as number) ?? 0;
+        s.assists += (r.assists as number) ?? 0;
+        s.yellow_cards += (r.yellow_cards as number) ?? 0;
+        s.red_cards += (r.red_cards as number) ?? 0;
+        s.blue_cards += (r.blue_cards as number) ?? 0;
+        s.mvp += r.mvp ? 1 : 0;
+        s.best_gk += r.best_goalkeeper ? 1 : 0;
+
+        const winnerTeamId = winnerByMatch.get(r.match_id as number);
+        if (winnerTeamId && winnerTeamId === r.team_id) {
+          s.wins += 1;
+        }
+      }
+
+      // Set match counts based on unique matches
+      for (const [playerId, matchSet] of matchesByTPlayer) {
+        const s = tStatsByPlayer.get(playerId);
+        if (s) {
+          s.matches = matchSet.size;
+        }
+      }
+
+      // Apply tournament stats to enriched players
+      for (const pl of enriched) {
+        const s = tStatsByPlayer.get(pl.id);
+        if (!s) continue;
+
+        pl.tournament_matches = s.matches;
+        pl.tournament_goals = s.goals;
+        pl.tournament_assists = s.assists;
+        pl.tournament_yellow_cards = s.yellow_cards;
+        pl.tournament_red_cards = s.red_cards;
+        pl.tournament_blue_cards = s.blue_cards;
+        pl.tournament_mvp = s.mvp;
+        pl.tournament_best_gk = s.best_gk;
+        pl.tournament_wins = s.wins;
+      }
+    }
+  }
+
+  // ✅ TOURNAMENT-AWARE SORTING: Helper function to get the right metric
+  const hasTournament = !!tournamentId;
+
+  function metric(
+    p: PLWithTGoals,
+    globalKey: keyof PLWithTGoals,
+    tournamentKey: keyof PLWithTGoals
+  ): number {
+    if (hasTournament) {
+      const t = p[tournamentKey];
+      if (typeof t === "number") return t;
+    }
+    const g = p[globalKey];
+    return typeof g === "number" ? g : 0;
+  }
+
+  // Apply sorting (tournament-aware when tournament is selected)
   switch (sortMode) {
     case "goals":
-      enriched.sort((a, b) => b.goals - a.goals);
+    case "tournament_goals":
+      enriched.sort(
+        (a, b) =>
+          metric(b, "goals", "tournament_goals") -
+          metric(a, "goals", "tournament_goals")
+      );
       break;
     case "matches":
-      enriched.sort((a, b) => b.matches - a.matches);
+      enriched.sort(
+        (a, b) =>
+          metric(b, "matches", "tournament_matches") -
+          metric(a, "matches", "tournament_matches")
+      );
       break;
     case "wins":
-      enriched.sort((a, b) => b.wins - a.wins);
+      enriched.sort(
+        (a, b) =>
+          metric(b, "wins", "tournament_wins") -
+          metric(a, "wins", "tournament_wins")
+      );
       break;
     case "assists":
-      enriched.sort((a, b) => b.assists - a.assists);
+      enriched.sort(
+        (a, b) =>
+          metric(b, "assists", "tournament_assists") -
+          metric(a, "assists", "tournament_assists")
+      );
       break;
     case "mvp":
-      enriched.sort((a, b) => b.mvp - a.mvp);
+      enriched.sort(
+        (a, b) =>
+          metric(b, "mvp", "tournament_mvp") -
+          metric(a, "mvp", "tournament_mvp")
+      );
       break;
     case "bestgk":
-      enriched.sort((a, b) => b.best_gk - a.best_gk);
-      break;
-    case "tournament_goals":
-      if (Number.isFinite(tournamentId)) {
-        const { data: matchRows } = await supabaseAdmin
-          .from("matches")
-          .select("id")
-          .eq("tournament_id", tournamentId as number);
-
-        const tMatchIds = (matchRows ?? []).map((m) => (m as MatchIdRow).id);
-
-        const { data: mpsGoalRows } = tMatchIds.length
-          ? await supabaseAdmin
-              .from("match_player_stats")
-              .select("player_id, goals, match_id")
-              .in("match_id", tMatchIds)
-          : { data: [] as MpsGoalsRow[] };
-
-        const tGoals = new Map<number, number>();
-        for (const r of (mpsGoalRows ?? []) as MpsGoalsRow[]) {
-          tGoals.set(r.player_id, (tGoals.get(r.player_id) ?? 0) + (r.goals ?? 0));
-        }
-
-        for (const pl of enriched) pl.tournament_goals = tGoals.get(pl.id) ?? 0;
-        enriched.sort((a, b) => (b.tournament_goals ?? 0) - (a.tournament_goals ?? 0));
-      }
+      enriched.sort(
+        (a, b) =>
+          metric(b, "best_gk", "tournament_best_gk") -
+          metric(a, "best_gk", "tournament_best_gk")
+      );
       break;
   }
 
