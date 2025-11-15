@@ -50,7 +50,9 @@ export default function PlayersGrid({
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div
+        className="grid justify-items-center gap-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+      >
         {playerAssociations.map((assoc) => {
           const p = assoc.player;
 
@@ -96,7 +98,7 @@ export default function PlayersGrid({
           return (
             <article
               key={p.id}
-              className="group flex flex-col rounded-[28px] border border-white/10 bg-black/35 p-6 shadow-[0_35px_90px_-60px_rgba(255,160,70,0.85)] transition-transform duration-500 hover:-translate-y-1 hover:shadow-[0_60px_120px_-70px_rgba(255,170,90,0.95)]"
+              className="group flex w-full max-w-[260px] flex-col rounded-[28px] border border-white/10 bg-black/35 p-5 shadow-[0_35px_90px_-60px_rgba(255,160,70,0.85)] transition-transform duration-500 hover:-translate-y-1 hover:shadow-[0_60px_120px_-70px_rgba(255,170,90,0.95)]"
             >
               <div className="relative overflow-hidden rounded-[24px] border border-white/10 bg-black/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
                 <div className="relative aspect-[3/4] w-full">
