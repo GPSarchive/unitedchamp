@@ -1,61 +1,71 @@
 // app/OMADA/[id]/TeamHeader.tsx
 import { Team } from "@/app/lib/types";
-import LightRays from "./react-bits/LightRays";
+import Image from "next/image";
+import { FaCalendarAlt, FaShieldAlt, FaTrophy } from "react-icons/fa";
 
 export default function TeamHeader({ team }: { team: Team }) {
   return (
-    <div className="relative mb-8 overflow-hidden rounded-2xl border border-zinc-800/50 bg-gradient-to-br from-orange-900/10 to-zinc-900/50 shadow-xl">
-      <div className="relative flex flex-col items-center gap-6 p-8 md:p-12 text-center">
+    <div className="relative mb-6 overflow-hidden rounded-2xl border-2 border-amber-600/40 bg-gradient-to-r from-stone-950/95 via-amber-950/20 to-stone-950/95 shadow-2xl backdrop-blur-sm">
+      {/* Horizontal Layout */}
+      <div className="relative flex items-center gap-6 p-6 md:p-8">
+        {/* Left: Team Logo */}
         {team.logo && (
-          <div
-            className="relative overflow-hidden rounded-full border-4 border-orange-500/30 bg-transparent p-4 shadow-2xl ring-2 ring-orange-400/20"
-          >
-            {/* Full-bleed rays+logo frame */}
-            <div className="relative -m-4 md:-m-8">{/* cancel the p-4 / p-8 padding */}
-              {/* Larger square rays+logo */}
-              <div className="relative">
-                <div className="relative aspect-square w-[8rem] md:w-[24rem] 2xl:w-[32rem]">
-                  <LightRays
-                    
-                    className="absolute inset-0 h-full w-full rounded-full pointer-events-none mix-blend-screen"
-                    raysOrigin="top-center"
-                    raysColor="#ffd700"
-                    raysSpeed={1.2}
-                    lightSpread={0.9}
-                    rayLength={1.5}
-                    followMouse
-                    mouseInfluence={0.15}
-                    noiseAmount={0.08}
-                    distortion={0.03}
-                    logoSrc={team.logo}
-                    logoStrength={1.8}
-                    logoFit="cover"
-                    // Note: logoScale in the shader is a zoom-OUT safety (0.1–1). 1.5 will clamp to 1.0.
-                    logoScale={1.0}
-                    
-                    /* New pop-in animation props */
-                    popIn
-                    
-                    popDuration={800}
-                    popDelay={100}
-                    
-                    popScaleFrom={0.85}
-                  />
-                </div>
-              </div>
+          <div className="relative flex-shrink-0">
+            <div className="relative h-24 w-24 md:h-32 md:w-32 rounded-xl overflow-hidden border-2 border-amber-500/50 bg-gradient-to-br from-amber-900/20 to-orange-900/20 shadow-xl ring-4 ring-amber-400/10">
+              <Image
+                src={team.logo}
+                alt={`${team.name} logo`}
+                fill
+                className="object-contain p-2"
+                sizes="(max-width: 768px) 96px, 128px"
+              />
+              {/* Glow effect behind logo */}
+              <div className="absolute inset-0 bg-gradient-radial from-amber-500/20 via-transparent to-transparent blur-xl" />
             </div>
           </div>
         )}
 
-        <div className="flex flex-col">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600 tracking-tight leading-tight">
-            {team.name}
-          </h1>
-          <p className="mt-3 text-lg font-medium text-zinc-300">
-            Established: {team.created_at ? new Date(team.created_at).toLocaleDateString() : "Unknown"}
-          </p>
+        {/* Center/Right: Team Info */}
+        <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Team Name & Details */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-amber-500 tracking-tight leading-none drop-shadow-lg">
+              {team.name}
+            </h1>
+
+            {/* Info Pills */}
+            <div className="flex flex-wrap gap-2 mt-1">
+              <div className="inline-flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full border border-amber-500/30">
+                <FaCalendarAlt className="text-amber-400 text-xs" />
+                <span className="text-xs font-semibold text-zinc-200">
+                  Est. {team.created_at ? new Date(team.created_at).getFullYear() : "Unknown"}
+                </span>
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full border border-amber-500/30">
+                <FaShieldAlt className="text-amber-400 text-xs" />
+                <span className="text-xs font-semibold text-zinc-200">Active Squad</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Optional: Stats/Achievements Section */}
+          <div className="hidden lg:flex items-center gap-4">
+            <div className="flex flex-col items-center px-6 py-3 bg-black/40 backdrop-blur-md rounded-xl border border-amber-500/30">
+              <FaTrophy className="text-amber-400 text-2xl mb-1" />
+              <span className="text-xs text-zinc-400 uppercase tracking-wide">Season</span>
+              <span className="text-lg font-bold text-white">2024/25</span>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Accent Line */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-50" />
+
+      {/* Corner Decorations */}
+      <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-radial from-amber-500/10 via-transparent to-transparent blur-2xl pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-gradient-radial from-orange-500/10 via-transparent to-transparent blur-2xl pointer-events-none" />
     </div>
   );
 }
