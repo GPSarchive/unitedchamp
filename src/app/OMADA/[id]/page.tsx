@@ -1,8 +1,8 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-side Supabase client
+import TeamHeader from "./TeamHeader";
 import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
 import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
   type PlayerAssociation,
@@ -132,14 +132,11 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <div className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Vanta background (client-only), positioned behind everything */}
-      <VantaBg className="absolute inset-0 -z-10" />
-
-      {/* Optional: a very subtle warm overlay to help contrast */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
-
+    <div className="relative min-h-screen text-slate-50 overflow-x-hidden bg-gradient-to-b from-zinc-950 via-stone-950 to-zinc-950">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Team Header - Horizontal banner at top */}
+        <TeamHeader team={team as Team} />
+
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
           {/* Left Sidebar: Logo + Basic Info */}
           <TeamSidebar
