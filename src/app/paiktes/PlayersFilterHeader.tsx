@@ -1,5 +1,7 @@
-// src/app/paiktes/PlayersFilterHeader.tsx
+// src/app/paiktes/PlayersFilterHeader.tsx (OPTIMIZED - React.memo)
 "use client";
+
+import { memo, useCallback } from "react";
 
 type Tournament = { id: number; name: string; season: string | null };
 
@@ -17,7 +19,17 @@ type Props = {
   onReset: () => void;
 };
 
-export default function PlayersFilterHeader({
+// ✅ Move sortOptions outside to prevent recreation
+const SORT_OPTIONS = [
+  { value: "matches", label: "Αγώνες", column: "matches" },
+  { value: "wins", label: "Νίκες", column: "wins" },
+  { value: "goals", label: "Γκολ", column: "goals" },
+  { value: "assists", label: "Ασίστ", column: "assists" },
+  { value: "mvp", label: "MVP", column: "mvp" },
+  { value: "bestgk", label: "Best GK", column: "bestgk" },
+] as const;
+
+function PlayersFilterHeaderComponent({
   selectedSort,
   selectedTournamentId,
   topN,
@@ -30,15 +42,42 @@ export default function PlayersFilterHeader({
   onSearchChange,
   onReset,
 }: Props) {
-  const sortOptions = [
-    
-    { value: "matches", label: "Αγώνες", column: "matches" },
-    { value: "wins", label: "Νίκες", column: "wins" },
-    { value: "goals", label: "Γκολ", column: "goals" },
-    { value: "assists", label: "Ασίστ", column: "assists" },
-    { value: "mvp", label: "MVP", column: "mvp" },
-    { value: "bestgk", label: "Best GK", column: "bestgk" },
-  ];
+  // ✅ Wrap event handlers in useCallback
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onSearchChange(e.target.value);
+    },
+    [onSearchChange]
+  );
+
+  const handleTournamentChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const val = e.target.value;
+      if (val) {
+        onSortChange("tournament_goals");
+        onTournamentChange(val);
+      } else {
+        onTournamentChange("");
+      }
+    },
+    [onSortChange, onTournamentChange]
+  );
+
+  const handleTopBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      onTopChange(e.target.value);
+    },
+    [onTopChange]
+  );
+
+  const handleTopKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        onTopChange((e.target as HTMLInputElement).value);
+      }
+    },
+    [onTopChange]
+  );
 
   return (
     <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10">
@@ -49,7 +88,7 @@ export default function PlayersFilterHeader({
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Αναζήτηση παίκτη ή ομάδας..."
               className="w-full bg-white/5 border border-white/10 px-4 py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all"
             />
@@ -89,15 +128,7 @@ export default function PlayersFilterHeader({
             </label>
             <select
                 value={selectedTournamentId ?? ""}
-                onChange={(e) => {
-                    const val = e.target.value;
-                    if (val) {
-                    onSortChange("tournament_goals");
-                    onTournamentChange(val);
-                    } else {
-                    onTournamentChange("");
-                    }
-                }}
+                onChange={handleTournamentChange}
                 className="w-full appearance-none bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"
                 >
               <option value="">— Όλα τα τουρνουά —</option>
@@ -120,12 +151,8 @@ export default function PlayersFilterHeader({
               min={1}
               placeholder="π.χ. 20"
               defaultValue={topN ?? ""}
-              onBlur={(e) => onTopChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onTopChange((e.target as HTMLInputElement).value);
-                }
-              }}
+              onBlur={handleTopBlur}
+              onKeyDown={handleTopKeyDown}
               className="w-full bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"
             />
           </div>
@@ -142,7 +169,7 @@ export default function PlayersFilterHeader({
         </div>
       </div>
           {/* Sortable columns */}
-          {sortOptions.map((opt) => (
+          {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => onSortChange(opt.value)}
@@ -171,3 +198,7 @@ export default function PlayersFilterHeader({
     </div>
   );
 }
+
+// ✅ Export memoized component
+const PlayersFilterHeader = memo(PlayersFilterHeaderComponent);
+export default PlayersFilterHeader;

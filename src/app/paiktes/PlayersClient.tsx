@@ -1,7 +1,7 @@
-// src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination)
+// src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination + Rerender fixes)
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
@@ -31,6 +31,23 @@ function useIsXL() {
   return isXL;
 }
 
+/** Hook: Debounce a value */
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 type TournamentOpt = { id: number; name: string; season: string | null };
 
 export default function PlayersClient({
@@ -49,6 +66,9 @@ export default function PlayersClient({
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
   const [q, setQ] = useState("");
+  // ✅ Debounce search query to reduce rerenders while typing
+  const debouncedQ = useDebounce(q, 300);
+
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
   );
@@ -65,48 +85,61 @@ export default function PlayersClient({
     : null;
   const top = sp?.get("top") ? Number(sp.get("top")) : null;
 
-  const updateQuery = (
-    patch: Record<string, string | number | null | undefined>
-  ) => {
-    const next = new URLSearchParams(sp?.toString() ?? "");
-    Object.entries(patch).forEach(([k, v]) => {
-      if (v === undefined || v === null || v === "") next.delete(k);
-      else next.set(k, String(v));
-    });
-    router.replace(`/paiktes?${next.toString()}`, { scroll: false });
-  };
+  const updateQuery = useCallback(
+    (patch: Record<string, string | number | null | undefined>) => {
+      const next = new URLSearchParams(sp?.toString() ?? "");
+      Object.entries(patch).forEach(([k, v]) => {
+        if (v === undefined || v === null || v === "") next.delete(k);
+        else next.set(k, String(v));
+      });
+      router.replace(`/paiktes?${next.toString()}`, { scroll: false });
+    },
+    [router, sp]
+  );
 
-  const onSortChange = (v: string) => {
-    updateQuery({
-      sort: v,
-      tournament_id:
-        v === "tournament_goals" ? selectedTournamentId ?? "" : null,
-      page: 1, // Reset to page 1 on sort change
-    });
-  };
+  const onSortChange = useCallback(
+    (v: string) => {
+      updateQuery({
+        sort: v,
+        tournament_id:
+          v === "tournament_goals" ? selectedTournamentId ?? "" : null,
+        page: 1, // Reset to page 1 on sort change
+      });
+    },
+    [updateQuery, selectedTournamentId]
+  );
 
-  const onTournamentChange = (idStr: string) => {
-    const id = Number(idStr);
-    updateQuery({
-      sort: "tournament_goals",
-      tournament_id: Number.isFinite(id) ? id : null,
-      page: 1,
-    });
-  };
+  const onTournamentChange = useCallback(
+    (idStr: string) => {
+      const id = Number(idStr);
+      updateQuery({
+        sort: "tournament_goals",
+        tournament_id: Number.isFinite(id) ? id : null,
+        page: 1,
+      });
+    },
+    [updateQuery]
+  );
 
-  const onTopChange = (val: string) => {
-    const n = Number(val);
-    updateQuery({ 
-      top: Number.isFinite(n) && n > 0 ? n : null,
-      page: 1,
-    });
-  };
+  const onTopChange = useCallback(
+    (val: string) => {
+      const n = Number(val);
+      updateQuery({
+        top: Number.isFinite(n) && n > 0 ? n : null,
+        page: 1,
+      });
+    },
+    [updateQuery]
+  );
 
-  const onPageChange = (newPage: number) => {
-    updateQuery({ page: newPage });
-    // Scroll to top when changing pages
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const onPageChange = useCallback(
+    (newPage: number) => {
+      updateQuery({ page: newPage });
+      // Scroll to top when changing pages
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [updateQuery]
+  );
 
   // When we grow to desktop, ensure list+card layout is visible
   useEffect(() => {
@@ -114,8 +147,9 @@ export default function PlayersClient({
   }, [isXL]);
 
   // Filter + search (client-side within current page)
+  // ✅ Use debounced query to prevent excessive filtering while typing
   const players = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = debouncedQ.trim().toLowerCase();
     if (!needle) return base;
     return base.filter((p) => {
       const hay = `${p.first_name} ${p.last_name} ${p.team?.name ?? ""} ${
@@ -123,7 +157,7 @@ export default function PlayersClient({
       }`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [base, q]);
+  }, [base, debouncedQ]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -135,17 +169,31 @@ export default function PlayersClient({
       ? (byId as Record<number, PLWithTGoals | undefined>)[activeId] ?? null
       : null;
 
-  const openDetailOnMobile = (id: number) => {
-    setActiveId(id);
-    if (!isXL) {
-      setDetailOpen(true);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+  const openDetailOnMobile = useCallback(
+    (id: number) => {
+      setActiveId(id);
+      if (!isXL) {
+        setDetailOpen(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [isXL]
+  );
 
-  const closeDetailOnMobile = () => {
+  const closeDetailOnMobile = useCallback(() => {
     setDetailOpen(false);
-  };
+  }, []);
+
+  const handleReset = useCallback(() => {
+    router.replace("/paiktes");
+  }, [router]);
+
+  const handlePlayerHover = useCallback(
+    (id: number) => {
+      if (isXL) setActiveId(id);
+    },
+    [isXL]
+  );
 
   const isAlphaSort = selectedSort === "alpha";
   const showTournamentGoals = selectedSort === "tournament_goals";
@@ -212,7 +260,7 @@ export default function PlayersClient({
             onTournamentChange={onTournamentChange}
             onTopChange={onTopChange}
             onSearchChange={setQ}
-            onReset={() => router.replace("/paiktes")}
+            onReset={handleReset}
           />
 
           {/* Players List */}
@@ -222,7 +270,7 @@ export default function PlayersClient({
                 players={players}
                 activeId={activeId}
                 onPlayerSelect={openDetailOnMobile}
-                onPlayerHover={(id) => isXL && setActiveId(id)}
+                onPlayerHover={handlePlayerHover}
                 showTournamentGoals={showTournamentGoals}
                 isAlphaSort={isAlphaSort}
               />

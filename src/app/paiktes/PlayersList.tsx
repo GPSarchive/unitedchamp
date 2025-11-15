@@ -1,7 +1,7 @@
-// src/app/paiktes/PlayersList.tsx (FIXED - Team logo fallback)
+// src/app/paiktes/PlayersList.tsx (OPTIMIZED - React.memo + fixed useMemo)
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, memo, useCallback } from "react";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import type { PlayerLite } from "./types";
 
@@ -16,7 +16,150 @@ type Props = {
   isAlphaSort?: boolean;
 };
 
-export default function PlayersList({
+// ✅ Helper function to compute display photo (moved outside component)
+function getDisplayPhoto(player: PlayerRow): string {
+  if (player.photo && player.photo !== "/player-placeholder.jpg") {
+    return player.photo;
+  }
+  // Fallback to first team logo
+  return player.team?.logo || player.teams?.[0]?.logo || player.photo;
+}
+
+// ✅ Memoized individual player row component
+const PlayerRowItem = memo(function PlayerRowItem({
+  player,
+  isActive,
+  showLetter,
+  letter,
+  showTournamentGoals,
+  onPlayerSelect,
+  onPlayerHover,
+}: {
+  player: PlayerRow;
+  isActive: boolean;
+  showLetter: boolean;
+  letter: string;
+  showTournamentGoals: boolean;
+  onPlayerSelect: (id: number) => void;
+  onPlayerHover?: (id: number) => void;
+}) {
+  const displayPhoto = useMemo(() => getDisplayPhoto(player), [player]);
+
+  const handleClick = useCallback(() => {
+    onPlayerSelect(player.id);
+  }, [onPlayerSelect, player.id]);
+
+  const handleMouseEnter = useCallback(() => {
+    onPlayerHover?.(player.id);
+  }, [onPlayerHover, player.id]);
+
+  return (
+    <div>
+      {/* Alphabetical Divider */}
+      {showLetter && (
+        <div className="sticky top-0 z-[9] bg-zinc-900 border-y border-white/10 px-6 py-3 text-sm font-bold text-white/70 tracking-widest">
+          {letter}
+        </div>
+      )}
+
+      {/* Player Row */}
+      <div
+        data-pid={player.id}
+        onMouseEnter={handleMouseEnter}
+        onClick={handleClick}
+        className={`
+          grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4
+          px-6 py-4
+          border-b border-white/5
+          cursor-pointer
+          transition-all duration-200
+          hover:bg-white/5
+          hover:shadow-cyan-500/30 hover:scale-[1.01]
+          ${isActive ? "bg-cyan-500/10 border-l-4 border-l-cyan-400" : ""}
+        `}
+        role="button"
+        aria-pressed={isActive}
+      >
+        {/* Photo */}
+        <div className="flex items-center">
+          <div className="relative w-14 h-14 overflow-hidden rounded-lg bg-white/5 border border-white/10">
+            <PlayerImage
+              src={displayPhoto}
+              alt={`${player.first_name} ${player.last_name}`}
+              width={56}
+              height={56}
+              className="w-full h-full object-cover"
+              animate={false}
+            />
+          </div>
+        </div>
+
+        {/* Player Info */}
+        <div className="flex flex-col justify-center min-w-0">
+          <div className="text-white font-semibold text-lg md:text-base truncate">
+            {player.first_name} {player.last_name}
+          </div>
+          <div className="text-white/50 text-base md:text-sm mt-0.5 flex items-center gap-2">
+            <span>{player.team?.name || "—"}</span>
+            {player.position && (
+              <>
+                <span className="text-white/30">•</span>
+                <span>{player.position}</span>
+              </>
+            )}
+            {player.height_cm && (
+              <>
+                <span className="text-white/30">•</span>
+                <span>{player.height_cm}cm</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {player.matches}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {player.wins}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {showTournamentGoals && player.tournament_goals !== undefined
+              ? player.tournament_goals
+              : player.goals}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {player.assists}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {player.mvp}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-lg md:text-base">
+            {player.best_gk}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+function PlayersListComponent({
   players,
   activeId,
   onPlayerSelect,
@@ -46,120 +189,17 @@ export default function PlayersList({
               const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
               const isActive = activeId === player.id;
 
-              // ✅ Use team logo as fallback if no player photo
-              const displayPhoto = useMemo(() => {
-                if (player.photo && player.photo !== "/player-placeholder.jpg") {
-                  return player.photo;
-                }
-                // Fallback to first team logo
-                return player.team?.logo || player.teams?.[0]?.logo || player.photo;
-              }, [player.photo, player.team, player.teams]);
-
               return (
-                <div key={player.id}>
-                  {/* Alphabetical Divider */}
-                  {showLetter && (
-                    <div className="sticky top-0 z-[9] bg-zinc-900 border-y border-white/10 px-6 py-3 text-sm font-bold text-white/70 tracking-widest">
-                      {letter}
-                    </div>
-                  )}
-
-                  {/* Player Row */}
-                  <div
-                    ref={(el) => {
-                      itemRefs.current[player.id] = el;
-                    }}
-                    data-pid={player.id}
-                    onMouseEnter={() => onPlayerHover?.(player.id)}
-                    onClick={() => onPlayerSelect(player.id)}
-                    className={`
-                      grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4 
-                      px-6 py-4 
-                      border-b border-white/5 
-                      cursor-pointer 
-                      transition-all duration-200
-                      hover:bg-white/5
-                      hover:shadow-cyan-500/30 hover:scale-[1.01]
-                      ${isActive ? "bg-cyan-500/10 border-l-4 border-l-cyan-400" : ""}
-                    `}
-                    role="button"
-                    aria-pressed={isActive}
-                  >
-                    {/* Photo - ✅ UPDATED: Use team logo fallback */}
-                    <div className="flex items-center">
-                      <div className="relative w-14 h-14 overflow-hidden rounded-lg bg-white/5 border border-white/10">
-                        <PlayerImage
-                          src={displayPhoto}
-                          alt={`${player.first_name} ${player.last_name}`}
-                          width={56}
-                          height={56}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Player Info */}
-                    <div className="flex flex-col justify-center min-w-0">
-                      <div className="text-white font-semibold text-lg md:text-base truncate">  
-                        {player.first_name} {player.last_name}
-                      </div>
-                      <div className="text-white/50 text-base md:text-sm mt-0.5 flex items-center gap-2">  
-                        <span>{player.team?.name || "—"}</span>
-                        {player.position && (
-                          <>
-                            <span className="text-white/30">•</span>
-                            <span>{player.position}</span>
-                          </>
-                        )}
-                        {player.height_cm && (
-                          <>
-                            <span className="text-white/30">•</span>
-                            <span>{player.height_cm}cm</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {player.matches}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {player.wins}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {showTournamentGoals && player.tournament_goals !== undefined
-                          ? player.tournament_goals
-                          : player.goals}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {player.assists}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {player.mvp}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-center">
-                      <span className="text-white font-mono text-lg md:text-base">
-                        {player.best_gk}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <PlayerRowItem
+                  key={player.id}
+                  player={player}
+                  isActive={isActive}
+                  showLetter={showLetter}
+                  letter={letter}
+                  showTournamentGoals={showTournamentGoals}
+                  onPlayerSelect={onPlayerSelect}
+                  onPlayerHover={onPlayerHover}
+                />
               );
             })}
           </div>
@@ -168,3 +208,7 @@ export default function PlayersList({
     </div>
   );
 }
+
+// ✅ Export memoized component
+const PlayersList = memo(PlayersListComponent);
+export default PlayersList;

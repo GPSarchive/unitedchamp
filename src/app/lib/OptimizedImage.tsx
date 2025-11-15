@@ -1,7 +1,7 @@
-// components/OptimizedImage.tsx
+// components/OptimizedImage.tsx (OPTIMIZED - React.memo)
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { 
@@ -219,7 +219,7 @@ export interface OptimizedImageProps {
   animate?: boolean;
 }
 
-export default function OptimizedImage({
+function OptimizedImageComponent({
   src,
   alt,
   type = ImageType.PLAYER,
@@ -295,18 +295,22 @@ export default function OptimizedImage({
   );
 }
 
+// ✅ Export memoized component
+const OptimizedImage = memo(OptimizedImageComponent);
+export default OptimizedImage;
+
 // ============================================================================
-// Specialized Components
+// Specialized Components (also memoized)
 // ============================================================================
 
-export function PlayerImage(props: Omit<OptimizedImageProps, "type">) {
+export const PlayerImage = memo(function PlayerImage(props: Omit<OptimizedImageProps, "type">) {
   return <OptimizedImage {...props} type={ImageType.PLAYER} />;
-}
+});
 
-export function TeamImage(props: Omit<OptimizedImageProps, "type">) {
+export const TeamImage = memo(function TeamImage(props: Omit<OptimizedImageProps, "type">) {
   return <OptimizedImage {...props} type={ImageType.TEAM} />;
-}
+});
 
-export function TournamentImage(props: Omit<OptimizedImageProps, "type">) {
+export const TournamentImage = memo(function TournamentImage(props: Omit<OptimizedImageProps, "type">) {
   return <OptimizedImage {...props} type={ImageType.TOURNAMENT} />;
-}
+});
