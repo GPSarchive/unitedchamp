@@ -36,11 +36,11 @@ export default function PlayersGrid({
 
   return (
     <section className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-amber-500/20 bg-gradient-to-b from-stone-900/60 via-amber-950/5 to-zinc-900">
-      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-4 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-6 flex items-center gap-2">
         <FaUsers className="text-amber-400" /> Squad
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {playerAssociations.map((assoc) => {
           const p = assoc.player;
           const photoUrl = resolvePlayerPhotoUrl(p.photo);
@@ -71,99 +71,110 @@ export default function PlayersGrid({
           return (
             <div
               key={p.id}
-              className="p-4 rounded-xl bg-stone-950/40 border border-amber-600/30 hover:border-amber-400/50 transition-shadow hover:shadow-md hover:shadow-orange-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+              className="group relative aspect-[5/8] rounded-xl overflow-hidden border-2 border-amber-600/40 hover:border-amber-400/70 transition-all duration-300 hover:shadow-xl hover:shadow-amber-500/30 hover:scale-[1.02]"
             >
-              <div className="flex items-center gap-3 mb-3">
+              {/* Background Image */}
+              <div className="absolute inset-0">
                 <AvatarImage
                   src={photoUrl}
                   alt={`${p.first_name} ${p.last_name}`}
-                  width={48}
-                  height={48}
-                  className="rounded-full border-2 border-amber-400/30 object-cover"
-                  sizes="48px"
+                  fill
+                  className="object-cover object-top"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                 />
-                <div>
-                  <p className="font-semibold text-white">
+                {/* Gradient Overlays */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent opacity-90" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent" />
+              </div>
+
+              {/* Content Overlay */}
+              <div className="absolute inset-0 flex flex-col justify-between p-4">
+                {/* Top Section - Name & Basic Info */}
+                <div className="space-y-1">
+                  <h3 className="font-bold text-white text-lg leading-tight drop-shadow-lg">
                     {p.first_name} {p.last_name}
-                  </p>
-                  <p className="text-sm text-zinc-400 flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center gap-1">
-                      <FaUser /> {p.position ?? "—"}
+                  </h3>
+                  <div className="flex flex-wrap gap-2 text-[10px] text-zinc-200/90">
+                    <span className="inline-flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                      <FaUser className="text-amber-400" /> {p.position ?? "—"}
                     </span>
                     {p.height_cm && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaRulerVertical /> {p.height_cm}cm
+                      <span className="inline-flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        <FaRulerVertical className="text-amber-400" /> {p.height_cm}cm
                       </span>
                     )}
                     {p.birth_date && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaBirthdayCake />{" "}
+                      <span className="inline-flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        <FaBirthdayCake className="text-amber-400" />{" "}
                         {new Date(p.birth_date).toLocaleDateString("el-GR")}
                       </span>
                     )}
-                  </p>
+                  </div>
+                </div>
 
-                  {DEV && (
-                    <p className="text-[10px] text-zinc-500 break-all mt-1">
-                      img: <code>{photoUrl}</code>
-                    </p>
+                {/* Bottom Section - Stats */}
+                <div className="space-y-2">
+                  {/* Quick Stats */}
+                  <div className="flex justify-between items-center gap-1 text-xs bg-black/60 backdrop-blur-md rounded-lg p-2 border border-amber-500/30">
+                    <div className="flex items-center gap-1 text-amber-400">
+                      <FaFutbol className="text-[10px]" />
+                      <span className="font-semibold text-white">{stats.total_goals ?? 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-400">
+                      <FaHandsHelping className="text-[10px]" />
+                      <span className="font-semibold text-white">{stats.total_assists ?? 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-yellow-400">
+                      <FaExclamationTriangle className="text-[10px]" />
+                      <span className="font-semibold text-white">{stats.yellow_cards ?? 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-red-400">
+                      <FaTimesCircle className="text-[10px]" />
+                      <span className="font-semibold text-white">{stats.red_cards ?? 0}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-blue-400">
+                      <FaCircle className="text-[10px]" />
+                      <span className="font-semibold text-white">{stats.blue_cards ?? 0}</span>
+                    </div>
+                  </div>
+
+                  {/* Season Stats - Compact List */}
+                  {perSeason.length > 0 && (
+                    <div className="bg-black/60 backdrop-blur-md rounded-lg p-2 border border-amber-500/30 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-amber-600 scrollbar-track-transparent">
+                      <div className="space-y-1">
+                        {perSeason.map((row, i) => (
+                          <div
+                            key={i}
+                            className="flex justify-between text-[9px] text-zinc-200 border-b border-white/10 last:border-0 pb-1 last:pb-0"
+                          >
+                            <span className="font-semibold text-amber-400 min-w-[45px]">
+                              {row.season}
+                            </span>
+                            <span className="flex gap-2">
+                              <span title="Matches">M:{row.matches}</span>
+                              <span title="Goals/Assists">
+                                {row.goals}/{row.assists}
+                              </span>
+                              <span title="Yellow/Red/Blue Cards" className="text-yellow-300">
+                                {row.yellow_cards}/{row.red_cards}/{row.blue_cards}
+                              </span>
+                              {(row.mvp > 0 || row.best_gk > 0) && (
+                                <span title="MVP/Best GK" className="text-amber-300">
+                                  ⭐{row.mvp + row.best_gk}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-2 text-sm">
-                <div className="text-center bg-orange-900/20 p-2 rounded">
-                  <FaFutbol className="mx-auto text-amber-400" />
-                  <p className="text-zinc-100">{stats.total_goals ?? 0}</p>
-                </div>
-                <div className="text-center bg-orange-900/20 p-2 rounded">
-                  <FaHandsHelping className="mx-auto text-amber-400" />
-                  <p className="text-zinc-100">{stats.total_assists ?? 0}</p>
-                </div>
-                <div className="text-center bg-yellow-900/20 p-2 rounded">
-                  <FaExclamationTriangle className="mx-auto text-yellow-400" />
-                  <p className="text-zinc-100">{stats.yellow_cards ?? 0}</p>
-                </div>
-                <div className="text-center bg-red-900/20 p-2 rounded">
-                  <FaTimesCircle className="mx-auto text-red-400" />
-                  <p className="text-zinc-100">{stats.red_cards ?? 0}</p>
-                </div>
-                <div className="text-center bg-stone-900/25 p-2 rounded">
-                  <FaCircle className="mx-auto text-amber-300" />
-                  <p className="text-zinc-100">{stats.blue_cards ?? 0}</p>
-                </div>
-              </div>
-
-              {perSeason.length > 0 && (
-                <div className="mt-4 text-xs overflow-x-auto">
-                  <table className="w-full text-zinc-300">
-                    <thead>
-                      <tr className="border-b border-amber-600/30">
-                        <th className="text-left py-1 pr-2">Season</th>
-                        <th className="text-left py-1 pr-2">M</th>
-                        <th className="text-left py-1 pr-2">G/A</th>
-                        <th className="text-left py-1 pr-2">Y/R/B</th>
-                        <th className="text-left py-1 pr-2">MVP/GK</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {perSeason.map((row, i) => (
-                        <tr key={i} className="border-b border-white/5 last:border-0">
-                          <td className="py-1 pr-2">{row.season}</td>
-                          <td className="py-1 pr-2">{row.matches}</td>
-                          <td className="py-1 pr-2">
-                            {row.goals}/{row.assists}
-                          </td>
-                          <td className="py-1 pr-2">
-                            {row.yellow_cards}/{row.red_cards}/{row.blue_cards}
-                          </td>
-                          <td className="py-1 pr-2">
-                            {row.mvp}/{row.best_gk}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {DEV && (
+                <div className="absolute top-0 right-0 text-[8px] text-zinc-400 bg-black/80 p-1 rounded-bl max-w-[120px] truncate">
+                  {photoUrl}
                 </div>
               )}
             </div>
