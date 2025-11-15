@@ -109,8 +109,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-zinc-950 via-slate-950 to-black text-slate-50">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(255,140,60,0.18),transparent_55%)]" />
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#12040c] via-[#1a0505] to-black text-slate-50">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(255,110,64,0.22),transparent_55%),radial-gradient(circle_at_bottom,rgba(255,60,120,0.18),transparent_60%)]" />
 
       <div className="container mx-auto max-w-7xl px-4 py-10">
         <div className="space-y-8">
