@@ -82,15 +82,15 @@ function PlayersFilterHeaderComponent({
   return (
     <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10">
       {/* Search & Count Row */}
-      <div className="px-6 py-4 border-b border-white/5">
-        <div className="flex items-center gap-4">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           <div className="relative flex-1">
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Αναζήτηση παίκτη ή ομάδας..."
-              className="w-full bg-white/5 border border-white/10 px-4 py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all"
+              className="w-full bg-white/5 border border-white/10 px-4 py-2.5 md:py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all rounded-md"
             />
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40"
@@ -106,31 +106,26 @@ function PlayersFilterHeaderComponent({
               />
             </svg>
           </div>
-          <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10">
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 rounded-md whitespace-nowrap">
             <span className="text-white/50 text-sm">Σύνολο:</span>
             <span className="text-white font-mono font-semibold">{playerCount}</span>
           </div>
         </div>
       </div>
 
-      {/* Filter Buttons - Aligned with Column Headers */}
-      <div className="px-6 py-3 border-b border-white/5">
-        <div className="grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4">
-          {/* Photo column - empty */}
-          <div></div>
-      {/* Tournament & Top Filters */}
-      <div className="px-6 py-4 border-b border-white/5 bg-zinc-950/50">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-          {/* Tournament Filter */}
-          <div className="md:col-span-5">
+      {/* Filter Controls - Mobile Optimized */}
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5 bg-zinc-950/50">
+        <div className="flex flex-col gap-3">
+          {/* Tournament Filter - Full width on mobile */}
+          <div className="w-full">
             <label className="block text-xs text-white/50 font-medium mb-2 uppercase tracking-wider">
               Φίλτρο Τουρνουά
             </label>
             <select
-                value={selectedTournamentId ?? ""}
-                onChange={handleTournamentChange}
-                className="w-full appearance-none bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"
-                >
+              value={selectedTournamentId ?? ""}
+              onChange={handleTournamentChange}
+              className="w-full appearance-none bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
+            >
               <option value="">— Όλα τα τουρνουά —</option>
               {tournaments.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -141,40 +136,51 @@ function PlayersFilterHeaderComponent({
             </select>
           </div>
 
-          {/* Top N Input */}
-          <div className="md:col-span-3">
-            <label className="block text-xs text-white/50 font-medium mb-2 uppercase tracking-wider">
-              Εμφάνιση Top
-            </label>
-            <input
-              type="number"
-              min={1}
-              placeholder="π.χ. 20"
-              defaultValue={topN ?? ""}
-              onBlur={handleTopBlur}
-              onKeyDown={handleTopKeyDown}
-              className="w-full bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"
-            />
-          </div>
+          {/* Top N and Reset - Side by side on mobile */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-white/50 font-medium mb-2 uppercase tracking-wider">
+                Εμφάνιση Top
+              </label>
+              <input
+                type="number"
+                min={1}
+                placeholder="π.χ. 20"
+                defaultValue={topN ?? ""}
+                onBlur={handleTopBlur}
+                onKeyDown={handleTopKeyDown}
+                className="w-full bg-white/5 text-white border border-white/10 px-3 md:px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
+              />
+            </div>
 
-          {/* Reset Button */}
-          <div className="md:col-span-4">
-            <button
-              onClick={onReset}
-              className="w-full px-4 py-2.5 bg-white/5 text-white/70 text-sm font-medium border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all"
-            >
-              Επαναφορά Φίλτρων
-            </button>
+            <div className="flex items-end">
+              <button
+                onClick={onReset}
+                className="w-full px-3 md:px-4 py-2.5 bg-white/5 text-white/70 text-sm font-medium border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded-md"
+              >
+                Επαναφορά
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Sort Buttons - Horizontal scroll on mobile */}
+      <div className="border-b border-white/5 overflow-x-auto scrollbar-hide">
+        <div className="flex min-w-max md:grid md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-0 px-4 md:px-6">
+          {/* Empty space for photo column on desktop */}
+          <div className="hidden md:block"></div>
+
+          {/* Player name placeholder on desktop */}
+          <div className="hidden md:block"></div>
+
           {/* Sortable columns */}
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => onSortChange(opt.value)}
               className={`
-                px-2 py-2 text-xs font-semibold uppercase tracking-wider
+                flex-shrink-0 px-4 md:px-2 py-3 md:py-2 text-xs font-semibold uppercase tracking-wider
                 transition-all duration-200
                 border-b-2
                 text-center
@@ -193,8 +199,6 @@ function PlayersFilterHeaderComponent({
           ))}
         </div>
       </div>
-
-
     </div>
   );
 }

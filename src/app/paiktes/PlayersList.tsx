@@ -57,7 +57,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="sticky top-0 z-[9] bg-zinc-900 border-y border-white/10 px-6 py-3 text-sm font-bold text-white/70 tracking-widest">
+        <div className="sticky top-0 z-[9] bg-zinc-900 border-y border-white/10 px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-white/70 tracking-widest">
           {letter}
         </div>
       )}
@@ -68,21 +68,21 @@ const PlayerRowItem = memo(function PlayerRowItem({
         onMouseEnter={handleMouseEnter}
         onClick={handleClick}
         className={`
-          grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4
-          px-6 py-4
+          grid grid-cols-[60px_1fr_60px_60px_60px_60px_60px_60px] md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-2 md:gap-4
+          px-3 md:px-6 py-3 md:py-4
           border-b border-white/5
           cursor-pointer
           transition-all duration-200
           hover:bg-white/5
           hover:shadow-cyan-500/30 hover:scale-[1.01]
-          ${isActive ? "bg-cyan-500/10 border-l-4 border-l-cyan-400" : ""}
+          ${isActive ? "bg-cyan-500/10 border-l-2 md:border-l-4 border-l-cyan-400" : ""}
         `}
         role="button"
         aria-pressed={isActive}
       >
         {/* Photo */}
         <div className="flex items-center">
-          <div className="relative w-14 h-14 overflow-hidden rounded-lg bg-white/5 border border-white/10">
+          <div className="relative w-12 h-12 md:w-14 md:h-14 overflow-hidden rounded-lg bg-white/5 border border-white/10">
             <PlayerImage
               src={displayPhoto}
               alt={`${player.first_name} ${player.last_name}`}
@@ -96,21 +96,21 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Player Info */}
         <div className="flex flex-col justify-center min-w-0">
-          <div className="text-white font-semibold text-lg md:text-base truncate">
+          <div className="text-white font-semibold text-sm md:text-base truncate">
             {player.first_name} {player.last_name}
           </div>
-          <div className="text-white/50 text-base md:text-sm mt-0.5 flex items-center gap-2">
-            <span>{player.team?.name || "—"}</span>
+          <div className="text-white/50 text-xs md:text-sm mt-0.5 flex items-center gap-1 md:gap-2">
+            <span className="truncate">{player.team?.name || "—"}</span>
             {player.position && (
               <>
-                <span className="text-white/30">•</span>
-                <span>{player.position}</span>
+                <span className="text-white/30 hidden sm:inline">•</span>
+                <span className="hidden sm:inline">{player.position}</span>
               </>
             )}
             {player.height_cm && (
               <>
-                <span className="text-white/30">•</span>
-                <span>{player.height_cm}cm</span>
+                <span className="text-white/30 hidden md:inline">•</span>
+                <span className="hidden md:inline">{player.height_cm}cm</span>
               </>
             )}
           </div>
@@ -118,19 +118,19 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Stats */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {player.matches}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {player.wins}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {showTournamentGoals && player.tournament_goals !== undefined
               ? player.tournament_goals
               : player.goals}
@@ -138,19 +138,19 @@ const PlayerRowItem = memo(function PlayerRowItem({
         </div>
 
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {player.assists}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {player.mvp}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-lg md:text-base">
+          <span className="text-white font-mono text-xs md:text-base">
             {player.best_gk}
           </span>
         </div>
