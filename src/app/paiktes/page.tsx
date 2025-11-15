@@ -7,6 +7,19 @@ export const revalidate = 300;
 
 const DEFAULT_PAGE_SIZE = 50;
 
+// Type for pre-computed tournament statistics
+type TournamentStats = {
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp: number;
+  best_gk: number;
+  wins: number;
+};
+
 type PLWithTGoals = PlayerLite & { tournament_goals?: number };
 
 type PlayerRow = {
@@ -67,12 +80,140 @@ type TournamentMPSRow = {
   best_goalkeeper: boolean | null;
 };
 
-type SP = { 
-  sort?: string; 
-  tournament_id?: string; 
+type SP = {
+  sort?: string;
+  tournament_id?: string;
   top?: string;
   page?: string;
 };
+
+// ✅ Pre-compute tournament stats for all tournaments
+async function computeAllTournamentStats(
+  tournamentIds: number[],
+  playerIds: number[]
+): Promise<Map<number, Map<number, TournamentStats>>> {
+  const result = new Map<number, Map<number, TournamentStats>>();
+
+  if (tournamentIds.length === 0 || playerIds.length === 0) return result;
+
+  // Fetch all matches for all tournaments at once
+  const { data: allMatches } = await supabaseAdmin
+    .from("matches")
+    .select("id, tournament_id, winner_team_id")
+    .in("tournament_id", tournamentIds);
+
+  if (!allMatches || allMatches.length === 0) return result;
+
+  const matchIdsByTournament = new Map<number, number[]>();
+  const winnerByMatch = new Map<number, number | null>();
+
+  for (const m of allMatches) {
+    const tid = m.tournament_id as number;
+    const mid = m.id as number;
+
+    if (!matchIdsByTournament.has(tid)) {
+      matchIdsByTournament.set(tid, []);
+    }
+    matchIdsByTournament.get(tid)!.push(mid);
+    winnerByMatch.set(mid, m.winner_team_id as number | null);
+  }
+
+  // Fetch all match_player_stats for all these matches
+  const allMatchIds = allMatches.map(m => m.id as number);
+  const { data: allMpsRows } = await supabaseAdmin
+    .from("match_player_stats")
+    .select([
+      "match_id",
+      "player_id",
+      "team_id",
+      "goals",
+      "assists",
+      "yellow_cards",
+      "red_cards",
+      "blue_cards",
+      "mvp",
+      "best_goalkeeper",
+    ].join(","))
+    .in("match_id", allMatchIds)
+    .in("player_id", playerIds);
+
+  const typedAllMps = (allMpsRows ?? []) as unknown as TournamentMPSRow[];
+
+  // Group MPS rows by tournament
+  const mpsByTournament = new Map<number, TournamentMPSRow[]>();
+  for (const row of typedAllMps) {
+    // Find which tournament this match belongs to
+    const match = allMatches.find(m => m.id === row.match_id);
+    if (match) {
+      const tid = match.tournament_id as number;
+      if (!mpsByTournament.has(tid)) {
+        mpsByTournament.set(tid, []);
+      }
+      mpsByTournament.get(tid)!.push(row);
+    }
+  }
+
+  // Compute stats for each tournament
+  for (const [tournamentId, mpsRows] of mpsByTournament) {
+    const statsByPlayer = new Map<number, TournamentStats>();
+    const matchesByPlayer = new Map<number, Set<number>>();
+
+    const ensure = (playerId: number): TournamentStats => {
+      let s = statsByPlayer.get(playerId);
+      if (!s) {
+        s = {
+          matches: 0,
+          goals: 0,
+          assists: 0,
+          yellow_cards: 0,
+          red_cards: 0,
+          blue_cards: 0,
+          mvp: 0,
+          best_gk: 0,
+          wins: 0,
+        };
+        statsByPlayer.set(playerId, s);
+      }
+      return s;
+    };
+
+    for (const r of mpsRows) {
+      const pid = r.player_id;
+      const s = ensure(pid);
+
+      // Track unique matches
+      if (!matchesByPlayer.has(pid)) {
+        matchesByPlayer.set(pid, new Set());
+      }
+      matchesByPlayer.get(pid)!.add(r.match_id);
+
+      s.goals += r.goals ?? 0;
+      s.assists += r.assists ?? 0;
+      s.yellow_cards += r.yellow_cards ?? 0;
+      s.red_cards += r.red_cards ?? 0;
+      s.blue_cards += r.blue_cards ?? 0;
+      s.mvp += r.mvp ? 1 : 0;
+      s.best_gk += r.best_goalkeeper ? 1 : 0;
+
+      const winnerTeamId = winnerByMatch.get(r.match_id);
+      if (winnerTeamId && winnerTeamId === r.team_id) {
+        s.wins += 1;
+      }
+    }
+
+    // Set match counts
+    for (const [playerId, matchSet] of matchesByPlayer) {
+      const s = statsByPlayer.get(playerId);
+      if (s) {
+        s.matches = matchSet.size;
+      }
+    }
+
+    result.set(tournamentId, statsByPlayer);
+  }
+
+  return result;
+}
 
 export default async function PaiktesPage({
   searchParams,
@@ -293,125 +434,27 @@ export default async function PaiktesPage({
     };
   });
 
-  // ✅ TOURNAMENT-SCOPED STATS: Compute all tournament stats when tournament is selected
-  if (tournamentId) {
-    const { data: matchRows } = await supabaseAdmin
-      .from("matches")
-      .select("id, winner_team_id")
-      .eq("tournament_id", tournamentId);
+  // ✅ PRE-COMPUTE TOURNAMENT STATS FOR ALL TOURNAMENTS (for instant sort switching)
+  const tournamentIds = tournaments.map(t => t.id);
+  const allTournamentStats = await computeAllTournamentStats(tournamentIds, playerIds);
 
-    const tMatches = matchRows ?? [];
-    const tMatchIds = tMatches.map((m) => m.id as number);
+  // Apply tournament stats for the selected tournament (if any) for server-side rendering
+  if (tournamentId && allTournamentStats.has(tournamentId)) {
+    const tStatsByPlayer = allTournamentStats.get(tournamentId)!;
 
-    if (tMatchIds.length) {
-      const winnerByMatch = new Map<number, number | null>();
-      for (const m of tMatches) {
-        winnerByMatch.set(m.id as number, m.winner_team_id as number | null);
-      }
+    for (const pl of enriched) {
+      const s = tStatsByPlayer.get(pl.id);
+      if (!s) continue;
 
-      const { data: mpsRows } = await supabaseAdmin
-        .from("match_player_stats")
-        .select(
-          [
-            "match_id",
-            "player_id",
-            "team_id",
-            "goals",
-            "assists",
-            "yellow_cards",
-            "red_cards",
-            "blue_cards",
-            "mvp",
-            "best_goalkeeper",
-          ].join(",")
-        )
-        .in("match_id", tMatchIds);
-
-      const typedMpsRows = (mpsRows ?? []) as unknown as TournamentMPSRow[];
-
-      type TStats = {
-        matches: number;
-        goals: number;
-        assists: number;
-        yellow_cards: number;
-        red_cards: number;
-        blue_cards: number;
-        mvp: number;
-        best_gk: number;
-        wins: number;
-      };
-
-      const tStatsByPlayer = new Map<number, TStats>();
-
-      const ensure = (playerId: number): TStats => {
-        let s = tStatsByPlayer.get(playerId);
-        if (!s) {
-          s = {
-            matches: 0,
-            goals: 0,
-            assists: 0,
-            yellow_cards: 0,
-            red_cards: 0,
-            blue_cards: 0,
-            mvp: 0,
-            best_gk: 0,
-            wins: 0,
-          };
-          tStatsByPlayer.set(playerId, s);
-        }
-        return s;
-      };
-
-      // Track unique matches per player
-      const matchesByTPlayer = new Map<number, Set<number>>();
-
-      for (const r of typedMpsRows) {
-        const pid = r.player_id;
-        const s = ensure(pid);
-
-        // Track unique matches
-        if (!matchesByTPlayer.has(pid)) {
-          matchesByTPlayer.set(pid, new Set());
-        }
-        matchesByTPlayer.get(pid)!.add(r.match_id);
-
-        s.goals += r.goals ?? 0;
-        s.assists += r.assists ?? 0;
-        s.yellow_cards += r.yellow_cards ?? 0;
-        s.red_cards += r.red_cards ?? 0;
-        s.blue_cards += r.blue_cards ?? 0;
-        s.mvp += r.mvp ? 1 : 0;
-        s.best_gk += r.best_goalkeeper ? 1 : 0;
-
-        const winnerTeamId = winnerByMatch.get(r.match_id);
-        if (winnerTeamId && winnerTeamId === r.team_id) {
-          s.wins += 1;
-        }
-      }
-
-      // Set match counts based on unique matches
-      for (const [playerId, matchSet] of matchesByTPlayer) {
-        const s = tStatsByPlayer.get(playerId);
-        if (s) {
-          s.matches = matchSet.size;
-        }
-      }
-
-      // Apply tournament stats to enriched players
-      for (const pl of enriched) {
-        const s = tStatsByPlayer.get(pl.id);
-        if (!s) continue;
-
-        pl.tournament_matches = s.matches;
-        pl.tournament_goals = s.goals;
-        pl.tournament_assists = s.assists;
-        pl.tournament_yellow_cards = s.yellow_cards;
-        pl.tournament_red_cards = s.red_cards;
-        pl.tournament_blue_cards = s.blue_cards;
-        pl.tournament_mvp = s.mvp;
-        pl.tournament_best_gk = s.best_gk;
-        pl.tournament_wins = s.wins;
-      }
+      pl.tournament_matches = s.matches;
+      pl.tournament_goals = s.goals;
+      pl.tournament_assists = s.assists;
+      pl.tournament_yellow_cards = s.yellow_cards;
+      pl.tournament_red_cards = s.red_cards;
+      pl.tournament_blue_cards = s.blue_cards;
+      pl.tournament_mvp = s.mvp;
+      pl.tournament_best_gk = s.best_gk;
+      pl.tournament_wins = s.wins;
     }
   }
 
@@ -478,11 +521,21 @@ export default async function PaiktesPage({
       break;
   }
 
+  // ✅ Serialize tournament stats for client (Map → plain object)
+  const tournamentStatsForClient: Record<number, Record<number, TournamentStats>> = {};
+  for (const [tournamentId, playerStats] of allTournamentStats) {
+    tournamentStatsForClient[tournamentId] = {};
+    for (const [playerId, stats] of playerStats) {
+      tournamentStatsForClient[tournamentId][playerId] = stats;
+    }
+  }
+
   return (
     <div className="h-screen bg-black overflow-hidden">
-      <PlayersClient 
-        initialPlayers={enriched} 
+      <PlayersClient
+        initialPlayers={enriched}
         tournaments={tournaments}
+        tournamentStats={tournamentStatsForClient}
         totalCount={totalCount ?? 0}
         currentPage={page}
         pageSize={pageSize}

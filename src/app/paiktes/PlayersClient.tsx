@@ -50,15 +50,29 @@ function useDebounce<T>(value: T, delay: number): T {
 
 type TournamentOpt = { id: number; name: string; season: string | null };
 
+type TournamentStats = {
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp: number;
+  best_gk: number;
+  wins: number;
+};
+
 export default function PlayersClient({
   initialPlayers = [],
   tournaments = [],
+  tournamentStats = {},
   totalCount = 0,
   currentPage = 1,
   pageSize = 50,
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
+  tournamentStats?: Record<number, Record<number, TournamentStats>>;
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
@@ -177,11 +191,34 @@ export default function PlayersClient({
   // Filter + search + sort (client-side for instant response)
   // ✅ Use debounced query to prevent excessive filtering while typing
   const players = useMemo(() => {
-    // Step 1: Filter by search query
+    // Step 1: Apply pre-computed tournament stats to all players
+    const enrichedBase = base.map(p => {
+      const enriched = { ...p };
+
+      // If tournament is selected and we have stats for it, apply them
+      if (clientTournamentId && tournamentStats[clientTournamentId]) {
+        const stats = tournamentStats[clientTournamentId][p.id];
+        if (stats) {
+          enriched.tournament_matches = stats.matches;
+          enriched.tournament_goals = stats.goals;
+          enriched.tournament_assists = stats.assists;
+          enriched.tournament_yellow_cards = stats.yellow_cards;
+          enriched.tournament_red_cards = stats.red_cards;
+          enriched.tournament_blue_cards = stats.blue_cards;
+          enriched.tournament_mvp = stats.mvp;
+          enriched.tournament_best_gk = stats.best_gk;
+          enriched.tournament_wins = stats.wins;
+        }
+      }
+
+      return enriched;
+    });
+
+    // Step 2: Filter by search query
     const needle = debouncedQ.trim().toLowerCase();
-    let filtered = base;
+    let filtered = enrichedBase;
     if (needle) {
-      filtered = base.filter((p) => {
+      filtered = enrichedBase.filter((p) => {
         const hay = `${p.first_name} ${p.last_name} ${p.team?.name ?? ""} ${
           p.position
         }`.toLowerCase();
@@ -189,30 +226,50 @@ export default function PlayersClient({
       });
     }
 
-    // Step 2: Apply client-side sorting for instant responsiveness
+    // Step 3: Tournament-aware sorting helper
+    const hasTournament = !!clientTournamentId;
+    const metric = (p: PLWithTGoals, globalKey: keyof PLWithTGoals, tournamentKey: keyof PLWithTGoals): number => {
+      if (hasTournament) {
+        const t = p[tournamentKey];
+        if (typeof t === "number") return t;
+      }
+      const g = p[globalKey];
+      return typeof g === "number" ? g : 0;
+    };
+
+    // Step 4: Apply tournament-aware sorting for instant responsiveness
     const sorted = [...filtered];
     switch (clientSort) {
       case "goals":
-        sorted.sort((a, b) => b.goals - a.goals);
+      case "tournament_goals":
+        sorted.sort((a, b) =>
+          metric(b, "goals", "tournament_goals") - metric(a, "goals", "tournament_goals")
+        );
         break;
       case "matches":
-        sorted.sort((a, b) => b.matches - a.matches);
+        sorted.sort((a, b) =>
+          metric(b, "matches", "tournament_matches") - metric(a, "matches", "tournament_matches")
+        );
         break;
       case "wins":
-        sorted.sort((a, b) => b.wins - a.wins);
+        sorted.sort((a, b) =>
+          metric(b, "wins", "tournament_wins") - metric(a, "wins", "tournament_wins")
+        );
         break;
       case "assists":
-        sorted.sort((a, b) => b.assists - a.assists);
+        sorted.sort((a, b) =>
+          metric(b, "assists", "tournament_assists") - metric(a, "assists", "tournament_assists")
+        );
         break;
       case "mvp":
-        sorted.sort((a, b) => b.mvp - a.mvp);
+        sorted.sort((a, b) =>
+          metric(b, "mvp", "tournament_mvp") - metric(a, "mvp", "tournament_mvp")
+        );
         break;
       case "bestgk":
-        sorted.sort((a, b) => b.best_gk - a.best_gk);
-        break;
-      case "tournament_goals":
-        // Use server-sorted data for tournament goals (requires additional DB queries)
-        // Don't re-sort client-side
+        sorted.sort((a, b) =>
+          metric(b, "best_gk", "tournament_best_gk") - metric(a, "best_gk", "tournament_best_gk")
+        );
         break;
       case "alpha":
       default:
@@ -226,7 +283,7 @@ export default function PlayersClient({
     }
 
     return sorted;
-  }, [base, debouncedQ, clientSort]);
+  }, [base, debouncedQ, clientSort, clientTournamentId, tournamentStats]);
 
   // Quick lookup for card
   const byId = useMemo(
