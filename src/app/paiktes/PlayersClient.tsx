@@ -143,16 +143,30 @@ export default function PlayersClient({
   const onTournamentChange = useCallback(
     (idStr: string) => {
       const id = Number(idStr);
-      // ✅ Update client state immediately
-      setClientTournamentId(Number.isFinite(id) ? id : null);
-      setClientSort("tournament_goals");
+      const isSelectingTournament = Number.isFinite(id);
 
-      // Fetch from server with new tournament filter
-      updateQuery({
-        sort: "tournament_goals",
-        tournament_id: Number.isFinite(id) ? id : null,
-        page: 1,
-      });
+      // ✅ Update client state immediately
+      setClientTournamentId(isSelectingTournament ? id : null);
+
+      // Only change sort mode when SELECTING a tournament, not when clearing
+      if (isSelectingTournament) {
+        setClientSort("tournament_goals");
+        // Fetch from server with tournament filter and tournament_goals sort
+        updateQuery({
+          sort: "tournament_goals",
+          tournament_id: id,
+          page: 1,
+        });
+      } else {
+        // Clearing tournament - reset to alphabetical sort
+        setClientSort("alpha");
+        // Fetch from server with no tournament filter
+        updateQuery({
+          sort: "alpha",
+          tournament_id: null,
+          page: 1,
+        });
+      }
     },
     [updateQuery]
   );
