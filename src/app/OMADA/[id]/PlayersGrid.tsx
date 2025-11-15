@@ -1,14 +1,3 @@
-import {
-  FaUser,
-  FaRulerVertical,
-  FaBirthdayCake,
-  FaFutbol,
-  FaHandsHelping,
-  FaExclamationTriangle,
-  FaTimesCircle,
-  FaCircle,
-  FaUsers,
-} from "react-icons/fa";
 import AvatarImage from "./AvatarImage";
 import { PlayerAssociation } from "@/app/lib/types";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
@@ -18,8 +7,6 @@ interface PlayersGridProps {
   seasonStatsByPlayer?: Record<number, any[]>;
   errorMessage?: string | null;
 }
-
-const DEV = process.env.NODE_ENV !== "production";
 
 export default function PlayersGrid({
   playerAssociations,
@@ -35,19 +22,24 @@ export default function PlayersGrid({
   }
 
   return (
-    <section className="rounded-2xl p-6 shadow-xl backdrop-blur-sm border border-amber-500/20 bg-gradient-to-b from-stone-900/60 via-amber-950/5 to-zinc-900">
-      <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-4 flex items-center gap-2">
-        <FaUsers className="text-amber-400" /> Squad
-      </h2>
+    <section className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6 shadow-[0_20px_50px_rgba(2,6,23,0.35)]">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-white">Squad</h2>
+          <p className="text-sm text-slate-400">Profiles and key numbers for every active player.</p>
+        </div>
+        <span className="rounded-full border border-slate-800 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
+          {playerAssociations.length} players
+        </span>
+      </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {playerAssociations.map((assoc) => {
           const p = assoc.player;
           const photoUrl = resolvePlayerPhotoUrl(p.photo);
 
           const stats =
             p.player_statistics?.[0] ?? {
-              age: null,
               total_goals: 0,
               total_assists: 0,
               yellow_cards: 0,
@@ -68,108 +60,86 @@ export default function PlayersGrid({
             updated_at: string;
           }>;
 
+          const recentSeason = perSeason[0];
+
           return (
-            <div
+            <li
               key={p.id}
-              className="p-4 rounded-xl bg-stone-950/40 border border-amber-600/30 hover:border-amber-400/50 transition-shadow hover:shadow-md hover:shadow-orange-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+              className="group flex h-full flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 transition hover:border-slate-700 hover:bg-slate-900"
             >
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-4">
                 <AvatarImage
                   src={photoUrl}
                   alt={`${p.first_name} ${p.last_name}`}
-                  width={48}
-                  height={48}
-                  className="rounded-full border-2 border-amber-400/30 object-cover"
-                  sizes="48px"
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-2xl border border-slate-800 object-cover"
+                  sizes="56px"
                 />
-                <div>
-                  <p className="font-semibold text-white">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-white">
                     {p.first_name} {p.last_name}
                   </p>
-                  <p className="text-sm text-zinc-400 flex flex-wrap items-center gap-3">
-                    <span className="inline-flex items-center gap-1">
-                      <FaUser /> {p.position ?? "—"}
-                    </span>
-                    {p.height_cm && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaRulerVertical /> {p.height_cm}cm
-                      </span>
-                    )}
-                    {p.birth_date && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaBirthdayCake />{" "}
-                        {new Date(p.birth_date).toLocaleDateString("el-GR")}
-                      </span>
-                    )}
+                  <p className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+                    {p.position ? <span>{p.position}</span> : null}
+                    {p.height_cm ? <span>{p.height_cm} cm</span> : null}
+                    {p.birth_date ? (
+                      <span>{new Date(p.birth_date).toLocaleDateString("el-GR")}</span>
+                    ) : null}
                   </p>
-
-                  {DEV && (
-                    <p className="text-[10px] text-zinc-500 break-all mt-1">
-                      img: <code>{photoUrl}</code>
-                    </p>
-                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-5 gap-2 text-sm">
-                <div className="text-center bg-orange-900/20 p-2 rounded">
-                  <FaFutbol className="mx-auto text-amber-400" />
-                  <p className="text-zinc-100">{stats.total_goals ?? 0}</p>
-                </div>
-                <div className="text-center bg-orange-900/20 p-2 rounded">
-                  <FaHandsHelping className="mx-auto text-amber-400" />
-                  <p className="text-zinc-100">{stats.total_assists ?? 0}</p>
-                </div>
-                <div className="text-center bg-yellow-900/20 p-2 rounded">
-                  <FaExclamationTriangle className="mx-auto text-yellow-400" />
-                  <p className="text-zinc-100">{stats.yellow_cards ?? 0}</p>
-                </div>
-                <div className="text-center bg-red-900/20 p-2 rounded">
-                  <FaTimesCircle className="mx-auto text-red-400" />
-                  <p className="text-zinc-100">{stats.red_cards ?? 0}</p>
-                </div>
-                <div className="text-center bg-stone-900/25 p-2 rounded">
-                  <FaCircle className="mx-auto text-amber-300" />
-                  <p className="text-zinc-100">{stats.blue_cards ?? 0}</p>
-                </div>
-              </div>
+              <dl className="grid grid-cols-5 gap-3 text-center text-xs text-slate-400">
+                <Stat label="Goals" value={stats.total_goals ?? 0} />
+                <Stat label="Assists" value={stats.total_assists ?? 0} />
+                <Stat label="Yellow" value={stats.yellow_cards ?? 0} />
+                <Stat label="Red" value={stats.red_cards ?? 0} />
+                <Stat label="Blue" value={stats.blue_cards ?? 0} />
+              </dl>
 
-              {perSeason.length > 0 && (
-                <div className="mt-4 text-xs overflow-x-auto">
-                  <table className="w-full text-zinc-300">
-                    <thead>
-                      <tr className="border-b border-amber-600/30">
-                        <th className="text-left py-1 pr-2">Season</th>
-                        <th className="text-left py-1 pr-2">M</th>
-                        <th className="text-left py-1 pr-2">G/A</th>
-                        <th className="text-left py-1 pr-2">Y/R/B</th>
-                        <th className="text-left py-1 pr-2">MVP/GK</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {perSeason.map((row, i) => (
-                        <tr key={i} className="border-b border-white/5 last:border-0">
-                          <td className="py-1 pr-2">{row.season}</td>
-                          <td className="py-1 pr-2">{row.matches}</td>
-                          <td className="py-1 pr-2">
-                            {row.goals}/{row.assists}
-                          </td>
-                          <td className="py-1 pr-2">
-                            {row.yellow_cards}/{row.red_cards}/{row.blue_cards}
-                          </td>
-                          <td className="py-1 pr-2">
-                            {row.mvp}/{row.best_gk}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {recentSeason ? (
+                <div className="mt-auto rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-300">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span>{recentSeason.season}</span>
+                    <span>{recentSeason.matches} matches</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <SeasonFact label="Goals" value={recentSeason.goals} />
+                    <SeasonFact label="Assists" value={recentSeason.assists} />
+                    <SeasonFact
+                      label="Cards"
+                      value={`${recentSeason.yellow_cards}/${recentSeason.red_cards}/${recentSeason.blue_cards}`}
+                    />
+                    <SeasonFact
+                      label="Awards"
+                      value={`MVP ${recentSeason.mvp} • GK ${recentSeason.best_gk}`}
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+              ) : null}
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-2 py-3">
+      <dt className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{label}</dt>
+      <dd className="mt-1 text-base font-semibold text-white">{value}</dd>
+    </div>
+  );
+}
+
+function SeasonFact({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-xl border border-slate-900/80 bg-slate-900/60 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-1 font-medium text-slate-200">{value}</p>
+    </div>
   );
 }
