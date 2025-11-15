@@ -165,6 +165,9 @@ function ParticipantCard({
     `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
   const firstName = player.first_name || "Άγνωστος";
 
+  const isPlaceholderPhoto =
+    !player.photo || player.photo === "/player-placeholder.jpg";
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -175,39 +178,40 @@ function ParticipantCard({
         type: "spring",
         stiffness: 200,
       }}
+      // ✅ Only the card scales on hover
       whileHover={{ scale: 1.08, y: -8 }}
-      className="group cursor-pointer"
+      className="cursor-pointer"
     >
       <div
-        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-all hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
+        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-shadow hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
         style={{ width: "140px" }}
       >
-        {/* Player Photo or Team Logo */}
+        {/* Avatar wrapper */}
         <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
-          {player.photo ? (
+          {!isPlaceholderPhoto ? (
             <PlayerImage
-              src={player.photo}
+              src={player.photo!}
               alt={playerName}
               width={96}
               height={96}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+              // ✅ No group-hover transform here
+              className="block h-full w-full object-cover object-center"
             />
           ) : teamLogo ? (
             <div className="relative h-full w-full p-3">
               <TeamImage
                 src={teamLogo}
                 alt={`${firstName} team logo`}
-                fill
-                objectFit="contain"
-                sizes="96px"
-                className="transition-transform duration-300 group-hover:scale-110"
+                width={96}
+                height={96}
+                className="block h-full w-full object-contain object-center"
               />
             </div>
           ) : null}
 
-          {/* Hover glow effect */}
+          {/* Hover glow effect, but non-blocking */}
           <div
-            className="absolute inset-0 bg-gradient-to-t from-red-500/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-red-500/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
           />
         </div>
 
@@ -216,7 +220,8 @@ function ParticipantCard({
           <div
             className="mb-1 text-sm font-bold text-white"
             style={{
-              textShadow: '1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
+              textShadow:
+                "1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000",
             }}
           >
             {firstName}
@@ -225,14 +230,13 @@ function ParticipantCard({
             <div
               className="text-xs text-white/80"
               style={{
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
               }}
             >
               {player.last_name}
             </div>
           )}
         </div>
-          {/* Decorative star on hover */}
 
         {/* Decorative star on hover */}
         <motion.div

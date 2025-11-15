@@ -62,7 +62,8 @@ export default function TeamRostersDisplay({
           <h2
             className="text-3xl font-bold md:text-4xl text-white"
             style={{
-              textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
+              textShadow:
+                "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
             }}
           >
             Ομάδες Αγώνα
@@ -71,7 +72,7 @@ export default function TeamRostersDisplay({
         <p
           className="text-lg text-white/80"
           style={{
-            textShadow: '1px 1px 3px rgba(0,0,0,0.8)'
+            textShadow: "1px 1px 3px rgba(0,0,0,0.8)",
           }}
         >
           Τα ρόστερ των ομάδων που θα αγωνιστούν
@@ -79,7 +80,7 @@ export default function TeamRostersDisplay({
       </motion.div>
 
       {/* Teams Display - Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
         {/* Team A */}
         {teamARoster.length > 0 && (
           <TeamSection
@@ -122,7 +123,8 @@ function TeamSection({
         <h3
           className="text-2xl font-bold text-white md:text-3xl"
           style={{
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
+            textShadow:
+              "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
           }}
         >
           {teamName}
@@ -130,7 +132,7 @@ function TeamSection({
         <p
           className="mt-1 text-sm text-red-300/90"
           style={{
-            textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+            textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
           }}
         >
           {roster.length} {roster.length === 1 ? "παίκτης" : "παίκτες"}
@@ -165,6 +167,10 @@ function RosterPlayerCard({
     `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
   const firstName = player.first_name || "Άγνωστος";
 
+  // Treat placeholder as "no real photo"
+  const isPlaceholderPhoto =
+    !player.photo || player.photo === "/player-placeholder.jpg";
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -175,22 +181,23 @@ function RosterPlayerCard({
         type: "spring",
         stiffness: 200,
       }}
+      // Hover on the card, not on the image itself
       whileHover={{ scale: 1.08, y: -8 }}
       className="group cursor-pointer"
     >
       <div
-        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-all hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
+        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-shadow hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
         style={{ width: "140px" }}
       >
         {/* Player Photo or Team Logo */}
         <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
-          {player.photo ? (
+          {!isPlaceholderPhoto ? (
             <PlayerImage
-              src={player.photo}
+              src={player.photo!}
               alt={playerName}
               width={96}
               height={96}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+              className="block h-full w-full object-cover object-center"
             />
           ) : teamLogo ? (
             <div className="relative h-full w-full p-3">
@@ -200,15 +207,13 @@ function RosterPlayerCard({
                 fill
                 objectFit="contain"
                 sizes="96px"
-                className="transition-transform duration-300 group-hover:scale-110"
+                className="block h-full w-full object-contain object-center"
               />
             </div>
           ) : null}
 
-          {/* Hover glow effect */}
-          <div
-            className="absolute inset-0 bg-gradient-to-t from-red-500/30 to-transparent opacity-0 transition-opacity group-hover:opacity-100"
-          />
+          {/* Hover glow effect (non-blocking) */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-red-500/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
         </div>
 
         {/* Player Name - Centered */}
@@ -216,7 +221,8 @@ function RosterPlayerCard({
           <div
             className="mb-1 text-sm font-bold text-white"
             style={{
-              textShadow: '1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
+              textShadow:
+                "1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000",
             }}
           >
             {firstName}
@@ -225,7 +231,7 @@ function RosterPlayerCard({
             <div
               className="text-xs text-white/80"
               style={{
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
               }}
             >
               {player.last_name}
@@ -233,7 +239,7 @@ function RosterPlayerCard({
           )}
         </div>
 
-        {/* Decorative star on hover */}
+        {/* Decorative star on hover (still optional) */}
         <motion.div
           initial={{ opacity: 0, scale: 0 }}
           whileHover={{ opacity: 1, scale: 1 }}
@@ -245,3 +251,9 @@ function RosterPlayerCard({
     </motion.div>
   );
 }
+
+
+
+
+
+

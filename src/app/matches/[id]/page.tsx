@@ -1,8 +1,6 @@
 // src/app/matches/[id]/page.tsx (OPTIMIZED - No Signing)
 export const revalidate = 0;
 
-import TeamBadge from "./TeamBadge";
-import ParticipantsStats from "./MatchStats";
 import StatsEditor from "./StatsEditor";
 import { saveAllStatsAction } from "./actions";
 import {

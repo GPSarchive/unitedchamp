@@ -180,7 +180,7 @@ function StandingRowDesktop({
         </div>
       </td>
       <td className="py-4 pl-2">
-        <Link href={`/omada/${standing.team_id}`} className="block">
+        <Link href={`/OMADA/${standing.team_id}`} className="block">
           <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
             <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/20 bg-black/50 ring-1 ring-white/10">
               {standing.team.logo ? (
