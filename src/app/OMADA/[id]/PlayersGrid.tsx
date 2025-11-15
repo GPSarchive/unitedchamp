@@ -4,12 +4,10 @@ import {
   FaBirthdayCake,
   FaFutbol,
   FaHandsHelping,
-  FaExclamationTriangle,
-  FaTimesCircle,
-  FaCircle,
   FaUsers,
 } from "react-icons/fa";
 import AvatarImage from "./AvatarImage";
+import RefCard from "./RefCard";
 import { PlayerAssociation } from "@/app/lib/types";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
@@ -124,16 +122,16 @@ export default function PlayersGrid({
                       <FaHandsHelping className="text-[10px]" />
                       <span className="font-semibold text-white">{stats.total_assists ?? 0}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-yellow-400">
-                      <FaExclamationTriangle className="text-[10px]" />
+                    <div className="flex items-center gap-1">
+                      <RefCard color="yellow" />
                       <span className="font-semibold text-white">{stats.yellow_cards ?? 0}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-red-400">
-                      <FaTimesCircle className="text-[10px]" />
+                    <div className="flex items-center gap-1">
+                      <RefCard color="red" />
                       <span className="font-semibold text-white">{stats.red_cards ?? 0}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-blue-400">
-                      <FaCircle className="text-[10px]" />
+                    <div className="flex items-center gap-1">
+                      <RefCard color="blue" />
                       <span className="font-semibold text-white">{stats.blue_cards ?? 0}</span>
                     </div>
                   </div>
