@@ -106,23 +106,24 @@ export default function PlayersClient({
       // ✅ Update client state immediately for instant UI response
       setClientSort(v);
 
+      // ✅ Preserve tournament filter across all sort modes
       // Only fetch from server if switching to tournament_goals (needs additional data)
       if (v === "tournament_goals") {
         updateQuery({
           sort: v,
-          tournament_id: selectedTournamentId ?? "",
+          tournament_id: clientTournamentId ?? "",
           page: 1,
         });
       } else {
-        // For other sorts, just update URL without server fetch
+        // For other sorts, keep tournament filter if one is selected
         updateQuery({
           sort: v,
-          tournament_id: null,
+          tournament_id: clientTournamentId ?? undefined,
           page: 1,
         });
       }
     },
-    [updateQuery, selectedTournamentId]
+    [updateQuery, clientTournamentId]
   );
 
   const onTournamentChange = useCallback(
