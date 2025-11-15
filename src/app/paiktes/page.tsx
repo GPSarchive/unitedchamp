@@ -53,6 +53,20 @@ type MatchWinnerRow = {
 type MatchIdRow = { id: number };
 type MpsGoalsRow = { player_id: number; goals: number | null; match_id: number };
 
+// Type for tournament stats match_player_stats rows
+type TournamentMPSRow = {
+  match_id: number;
+  player_id: number;
+  team_id: number;
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  blue_cards: number | null;
+  mvp: boolean | null;
+  best_goalkeeper: boolean | null;
+};
+
 type SP = { 
   sort?: string; 
   tournament_id?: string; 
@@ -313,6 +327,8 @@ export default async function PaiktesPage({
         )
         .in("match_id", tMatchIds);
 
+      const typedMpsRows = (mpsRows ?? []) as TournamentMPSRow[];
+
       type TStats = {
         matches: number;
         goals: number;
@@ -349,25 +365,25 @@ export default async function PaiktesPage({
       // Track unique matches per player
       const matchesByTPlayer = new Map<number, Set<number>>();
 
-      for (const r of mpsRows ?? []) {
-        const pid = r.player_id as number;
+      for (const r of typedMpsRows) {
+        const pid = r.player_id;
         const s = ensure(pid);
 
         // Track unique matches
         if (!matchesByTPlayer.has(pid)) {
           matchesByTPlayer.set(pid, new Set());
         }
-        matchesByTPlayer.get(pid)!.add(r.match_id as number);
+        matchesByTPlayer.get(pid)!.add(r.match_id);
 
-        s.goals += (r.goals as number) ?? 0;
-        s.assists += (r.assists as number) ?? 0;
-        s.yellow_cards += (r.yellow_cards as number) ?? 0;
-        s.red_cards += (r.red_cards as number) ?? 0;
-        s.blue_cards += (r.blue_cards as number) ?? 0;
+        s.goals += r.goals ?? 0;
+        s.assists += r.assists ?? 0;
+        s.yellow_cards += r.yellow_cards ?? 0;
+        s.red_cards += r.red_cards ?? 0;
+        s.blue_cards += r.blue_cards ?? 0;
         s.mvp += r.mvp ? 1 : 0;
         s.best_gk += r.best_goalkeeper ? 1 : 0;
 
-        const winnerTeamId = winnerByMatch.get(r.match_id as number);
+        const winnerTeamId = winnerByMatch.get(r.match_id);
         if (winnerTeamId && winnerTeamId === r.team_id) {
           s.wins += 1;
         }
