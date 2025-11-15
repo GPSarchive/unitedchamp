@@ -86,11 +86,49 @@ export default async function PaiktesPage({
   }[];
 
   const offset = (page - 1) * pageSize;
-  
-  // Fetch paginated players with count
-  const { data: players, error: pErr, count: totalCount } = await supabaseAdmin
+
+  // ✅ FILTER BY TOURNAMENT: If tournament is selected, get only players who played in that tournament
+  let tournamentPlayerIds: number[] | null = null;
+  if (Number.isFinite(tournamentId)) {
+    // Get all matches for this tournament
+    const { data: tournamentMatches } = await supabaseAdmin
+      .from("matches")
+      .select("id")
+      .eq("tournament_id", tournamentId as number);
+
+    const tMatchIds = (tournamentMatches ?? []).map((m) => (m as MatchIdRow).id);
+
+    if (tMatchIds.length > 0) {
+      // Get all player IDs who played in those matches
+      const { data: tournamentMps } = await supabaseAdmin
+        .from("match_player_stats")
+        .select("player_id")
+        .in("match_id", tMatchIds);
+
+      const playerIdSet = new Set((tournamentMps ?? []).map((r: { player_id: number }) => r.player_id));
+      tournamentPlayerIds = Array.from(playerIdSet);
+    } else {
+      // No matches in this tournament = no players
+      tournamentPlayerIds = [];
+    }
+  }
+
+  // Fetch paginated players with count, filtered by tournament if needed
+  let playersQuery = supabaseAdmin
     .from("player")
-    .select("id, first_name, last_name, photo, position, height_cm, birth_date", { count: "exact" })
+    .select("id, first_name, last_name, photo, position, height_cm, birth_date", { count: "exact" });
+
+  // ✅ Apply tournament filter if tournament is selected
+  if (tournamentPlayerIds !== null) {
+    if (tournamentPlayerIds.length === 0) {
+      // No players in this tournament, return empty result
+      playersQuery = playersQuery.in("id", [-1]); // Query that returns no results
+    } else {
+      playersQuery = playersQuery.in("id", tournamentPlayerIds);
+    }
+  }
+
+  const { data: players, error: pErr, count: totalCount } = await playersQuery
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true })
     .range(offset, offset + pageSize - 1);
