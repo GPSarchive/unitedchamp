@@ -85,6 +85,10 @@ export default function PlayersClient({
     : null;
   const top = sp?.get("top") ? Number(sp.get("top")) : null;
 
+  // ✅ Client-side sort mode state for instant responsiveness
+  const [clientSort, setClientSort] = useState(selectedSort);
+  const [clientTournamentId, setClientTournamentId] = useState(selectedTournamentId);
+
   const updateQuery = useCallback(
     (patch: Record<string, string | number | null | undefined>) => {
       const next = new URLSearchParams(sp?.toString() ?? "");
@@ -99,12 +103,24 @@ export default function PlayersClient({
 
   const onSortChange = useCallback(
     (v: string) => {
-      updateQuery({
-        sort: v,
-        tournament_id:
-          v === "tournament_goals" ? selectedTournamentId ?? "" : null,
-        page: 1, // Reset to page 1 on sort change
-      });
+      // ✅ Update client state immediately for instant UI response
+      setClientSort(v);
+
+      // Only fetch from server if switching to tournament_goals (needs additional data)
+      if (v === "tournament_goals") {
+        updateQuery({
+          sort: v,
+          tournament_id: selectedTournamentId ?? "",
+          page: 1,
+        });
+      } else {
+        // For other sorts, just update URL without server fetch
+        updateQuery({
+          sort: v,
+          tournament_id: null,
+          page: 1,
+        });
+      }
     },
     [updateQuery, selectedTournamentId]
   );
@@ -112,6 +128,11 @@ export default function PlayersClient({
   const onTournamentChange = useCallback(
     (idStr: string) => {
       const id = Number(idStr);
+      // ✅ Update client state immediately
+      setClientTournamentId(Number.isFinite(id) ? id : null);
+      setClientSort("tournament_goals");
+
+      // Fetch from server with new tournament filter
       updateQuery({
         sort: "tournament_goals",
         tournament_id: Number.isFinite(id) ? id : null,
@@ -146,18 +167,65 @@ export default function PlayersClient({
     if (isXL) setDetailOpen(false);
   }, [isXL]);
 
-  // Filter + search (client-side within current page)
+  // ✅ Sync client state with URL params (e.g., on mount or browser back/forward)
+  useEffect(() => {
+    setClientSort(selectedSort);
+    setClientTournamentId(selectedTournamentId);
+  }, [selectedSort, selectedTournamentId]);
+
+  // Filter + search + sort (client-side for instant response)
   // ✅ Use debounced query to prevent excessive filtering while typing
   const players = useMemo(() => {
+    // Step 1: Filter by search query
     const needle = debouncedQ.trim().toLowerCase();
-    if (!needle) return base;
-    return base.filter((p) => {
-      const hay = `${p.first_name} ${p.last_name} ${p.team?.name ?? ""} ${
-        p.position
-      }`.toLowerCase();
-      return hay.includes(needle);
-    });
-  }, [base, debouncedQ]);
+    let filtered = base;
+    if (needle) {
+      filtered = base.filter((p) => {
+        const hay = `${p.first_name} ${p.last_name} ${p.team?.name ?? ""} ${
+          p.position
+        }`.toLowerCase();
+        return hay.includes(needle);
+      });
+    }
+
+    // Step 2: Apply client-side sorting for instant responsiveness
+    const sorted = [...filtered];
+    switch (clientSort) {
+      case "goals":
+        sorted.sort((a, b) => b.goals - a.goals);
+        break;
+      case "matches":
+        sorted.sort((a, b) => b.matches - a.matches);
+        break;
+      case "wins":
+        sorted.sort((a, b) => b.wins - a.wins);
+        break;
+      case "assists":
+        sorted.sort((a, b) => b.assists - a.assists);
+        break;
+      case "mvp":
+        sorted.sort((a, b) => b.mvp - a.mvp);
+        break;
+      case "bestgk":
+        sorted.sort((a, b) => b.best_gk - a.best_gk);
+        break;
+      case "tournament_goals":
+        // Use server-sorted data for tournament goals (requires additional DB queries)
+        // Don't re-sort client-side
+        break;
+      case "alpha":
+      default:
+        // Alphabetical sorting
+        sorted.sort((a, b) => {
+          const aName = `${a.last_name} ${a.first_name}`.toLowerCase();
+          const bName = `${b.last_name} ${b.first_name}`.toLowerCase();
+          return aName.localeCompare(bName);
+        });
+        break;
+    }
+
+    return sorted;
+  }, [base, debouncedQ, clientSort]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -185,6 +253,10 @@ export default function PlayersClient({
   }, []);
 
   const handleReset = useCallback(() => {
+    // ✅ Reset client state immediately for instant UI feedback
+    setClientSort("alpha");
+    setClientTournamentId(null);
+    setQ("");
     router.replace("/paiktes");
   }, [router]);
 
@@ -195,8 +267,9 @@ export default function PlayersClient({
     [isXL]
   );
 
-  const isAlphaSort = selectedSort === "alpha";
-  const showTournamentGoals = selectedSort === "tournament_goals";
+  // ✅ Use client sort state for UI to be instantly responsive
+  const isAlphaSort = clientSort === "alpha";
+  const showTournamentGoals = clientSort === "tournament_goals";
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -250,8 +323,8 @@ export default function PlayersClient({
           
           {/* Filter Header */}
           <PlayersFilterHeader
-            selectedSort={selectedSort}
-            selectedTournamentId={selectedTournamentId}
+            selectedSort={clientSort}
+            selectedTournamentId={clientTournamentId}
             topN={top}
             tournaments={tournaments}
             searchQuery={q}
