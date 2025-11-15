@@ -14,6 +14,7 @@ type Props = {
   onPlayerHover?: (id: number) => void;
   showTournamentGoals?: boolean;
   isAlphaSort?: boolean;
+  isTournamentScoped?: boolean;
 };
 
 // ✅ Helper function to compute display photo (moved outside component)
@@ -32,6 +33,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
   showLetter,
   letter,
   showTournamentGoals,
+  isTournamentScoped,
   onPlayerSelect,
   onPlayerHover,
 }: {
@@ -40,6 +42,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
   showLetter: boolean;
   letter: string;
   showTournamentGoals: boolean;
+  isTournamentScoped: boolean;
   onPlayerSelect: (id: number) => void;
   onPlayerHover?: (id: number) => void;
 }) {
@@ -116,22 +119,26 @@ const PlayerRowItem = memo(function PlayerRowItem({
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats - Tournament-aware */}
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {player.matches}
+            {isTournamentScoped && player.tournament_matches !== undefined
+              ? player.tournament_matches
+              : player.matches}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {player.wins}
+            {isTournamentScoped && player.tournament_wins !== undefined
+              ? player.tournament_wins
+              : player.wins}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {showTournamentGoals && player.tournament_goals !== undefined
+            {isTournamentScoped && player.tournament_goals !== undefined
               ? player.tournament_goals
               : player.goals}
           </span>
@@ -139,19 +146,25 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {player.assists}
+            {isTournamentScoped && player.tournament_assists !== undefined
+              ? player.tournament_assists
+              : player.assists}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {player.mvp}
+            {isTournamentScoped && player.tournament_mvp !== undefined
+              ? player.tournament_mvp
+              : player.mvp}
           </span>
         </div>
 
         <div className="flex items-center justify-center">
           <span className="text-white font-mono text-xs md:text-base">
-            {player.best_gk}
+            {isTournamentScoped && player.tournament_best_gk !== undefined
+              ? player.tournament_best_gk
+              : player.best_gk}
           </span>
         </div>
       </div>
@@ -166,6 +179,7 @@ function PlayersListComponent({
   onPlayerHover,
   showTournamentGoals = false,
   isAlphaSort = false,
+  isTournamentScoped = false,
 }: Props) {
   const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   
@@ -197,6 +211,7 @@ function PlayersListComponent({
                   showLetter={showLetter}
                   letter={letter}
                   showTournamentGoals={showTournamentGoals}
+                  isTournamentScoped={isTournamentScoped}
                   onPlayerSelect={onPlayerSelect}
                   onPlayerHover={onPlayerHover}
                 />

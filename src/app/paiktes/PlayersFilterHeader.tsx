@@ -137,31 +137,40 @@ function PlayersFilterHeaderComponent({
             </select>
           </div>
 
-          {/* Top N and Reset - Side by side on mobile */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-white/50 font-medium mb-2 uppercase tracking-wider">
-                Εμφάνιση Top
-              </label>
-              <input
-                type="number"
-                min={1}
-                placeholder="π.χ. 20"
-                defaultValue={topN ?? ""}
-                onBlur={handleTopBlur}
-                onKeyDown={handleTopKeyDown}
-                className="w-full bg-white/5 text-white border border-white/10 px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
-              />
-            </div>
+          {/* Top N Input - Full width on mobile */}
+          <div className="w-full">
+            <label className="block text-xs text-white/50 font-medium mb-2 uppercase tracking-wider">
+              Εμφάνιση Top
+            </label>
+            <input
+              type="number"
+              min={1}
+              placeholder="π.χ. 20"
+              defaultValue={topN ?? ""}
+              onBlur={handleTopBlur}
+              onKeyDown={handleTopKeyDown}
+              className="w-full bg-white/5 text-white border border-white/10 px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
+            />
+          </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={onReset}
-                className="w-full px-3 py-2.5 bg-white/5 text-white/70 text-sm font-medium border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded-md"
-              >
-                Επαναφορά
-              </button>
-            </div>
+          {/* Action Buttons - Εύρεση and Reset side by side */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                // Trigger a re-render by scrolling to top - filters are already applied
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="w-full px-3 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold border border-cyan-500 hover:border-cyan-600 transition-all rounded-md shadow-lg shadow-cyan-500/20"
+            >
+              Εύρεση
+            </button>
+
+            <button
+              onClick={onReset}
+              className="w-full px-3 py-2.5 bg-white/5 text-white/70 text-sm font-medium border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded-md"
+            >
+              Επαναφορά
+            </button>
           </div>
         </div>
 

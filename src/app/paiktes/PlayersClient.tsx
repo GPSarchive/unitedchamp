@@ -106,23 +106,24 @@ export default function PlayersClient({
       // ✅ Update client state immediately for instant UI response
       setClientSort(v);
 
+      // ✅ Preserve tournament filter across all sort modes
       // Only fetch from server if switching to tournament_goals (needs additional data)
       if (v === "tournament_goals") {
         updateQuery({
           sort: v,
-          tournament_id: selectedTournamentId ?? "",
+          tournament_id: clientTournamentId ?? "",
           page: 1,
         });
       } else {
-        // For other sorts, just update URL without server fetch
+        // For other sorts, keep tournament filter if one is selected
         updateQuery({
           sort: v,
-          tournament_id: null,
+          tournament_id: clientTournamentId ?? undefined,
           page: 1,
         });
       }
     },
-    [updateQuery, selectedTournamentId]
+    [updateQuery, clientTournamentId]
   );
 
   const onTournamentChange = useCallback(
@@ -270,6 +271,7 @@ export default function PlayersClient({
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
+  const isTournamentScoped = !!clientTournamentId;
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -306,7 +308,7 @@ export default function PlayersClient({
               Πίσω
             </button>
             <div className="pt-16 px-4 pb-8">
-              <PlayerProfileCard player={active} />
+              <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
           </div>
         </div>
@@ -346,6 +348,7 @@ export default function PlayersClient({
                 onPlayerHover={handlePlayerHover}
                 showTournamentGoals={showTournamentGoals}
                 isAlphaSort={isAlphaSort}
+                isTournamentScoped={isTournamentScoped}
               />
             </div>
 
@@ -415,7 +418,7 @@ export default function PlayersClient({
           <div className="flex-1 overflow-y-auto p-6">
             {active ? (
               <div className="sticky top-0">
-                <PlayerProfileCard player={active} />
+                <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">
