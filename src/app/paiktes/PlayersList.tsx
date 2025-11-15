@@ -109,8 +109,8 @@ const PlayerRowItem = memo(function PlayerRowItem({
             )}
             {player.height_cm && (
               <>
-                <span className="text-white/30 hidden md:inline">•</span>
-                <span className="hidden md:inline">{player.height_cm}cm</span>
+                <span className="text-white/30 hidden sm:inline">•</span>
+                <span className="hidden sm:inline">{player.height_cm}cm</span>
               </>
             )}
           </div>
