@@ -1,5 +1,4 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-side Supabase client
-import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
 import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
 import TeamHeader from "./TeamHeader";
@@ -38,28 +37,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
       </div>
     );
   }
-
-  // ── Tournament membership (this team in tournaments) ───────────────────────────
-  const { data: tournamentMembership, error: membershipErr } = await supabaseAdmin
-    .from("tournament_teams")
-    .select(
-      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
-    )
-    .eq("team_id", teamId)
-    .order("tournament_id", { ascending: false });
-
-  const tournaments =
-    (tournamentMembership ?? [])
-      .map((r: any) => r.tournament)
-      .filter(Boolean) ?? [];
-
-  // ── Tournament wins (championships) ────────────────────────────────────────────
-  const { data: winsList, error: winsErr } = await supabaseAdmin
-    .from("tournaments")
-    .select("id, name, season")
-    .eq("winner_team_id", teamId);
-
-  const wins = winsList ?? [];
 
   // ── Players: include master data + 1 latest statistics row ─────────────────────
   const { data: playerAssociationsData, error: playersError } = await supabaseAdmin
@@ -139,29 +116,18 @@ export default async function TeamPage({ params }: TeamPageProps) {
         <div className="space-y-8">
           <TeamHeader team={team as Team} />
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_1fr]">
-            {/* Left Sidebar: Logo + Basic Info */}
-            <TeamSidebar
-              team={team as Team}
-              tournaments={tournaments}
-              wins={wins}
-              errors={{ membership: membershipErr?.message, wins: winsErr?.message }}
+          <div className="space-y-8">
+            <PlayersGrid
+              playerAssociations={playerAssociations}
+              seasonStatsByPlayer={seasonStatsByPlayer}
+              errorMessage={playersError?.message || pssErr?.message}
+              teamLogo={team.logo}
             />
-
-            {/* Right Content: Players + Matches */}
-            <div className="space-y-8">
-              <PlayersGrid
-                playerAssociations={playerAssociations}
-                seasonStatsByPlayer={seasonStatsByPlayer}
-                errorMessage={playersError?.message || pssErr?.message}
-                teamLogo={team.logo}
-              />
-              <TeamMatchesTimeline
-                matches={matches}
-                teamId={teamId}
-                errorMessage={matchesError?.message}
-              />
-            </div>
+            <TeamMatchesTimeline
+              matches={matches}
+              teamId={teamId}
+              errorMessage={matchesError?.message}
+            />
           </div>
         </div>
       </div>
