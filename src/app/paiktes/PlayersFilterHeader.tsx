@@ -30,6 +30,17 @@ const SORT_OPTIONS = [
   { value: "bestgk", label: "Best GK", column: "bestgk" },
 ] as const;
 
+const EXTRA_SORT_LABELS: Record<string, string> = {
+  alpha: "Αλφαβητικά",
+  tournament_goals: "Γκολ Τουρνουά",
+};
+
+function resolveSortLabel(value: string) {
+  const known = SORT_OPTIONS.find((opt) => opt.value === value)?.label;
+  if (known) return known;
+  return EXTRA_SORT_LABELS[value] ?? value;
+}
+
 function PlayersFilterHeaderComponent({
   selectedSort,
   selectedTournamentId,
@@ -87,6 +98,23 @@ function PlayersFilterHeaderComponent({
     },
     [onTopInputChange]
   );
+
+  const summaryParts: string[] = [];
+
+  const sortLabel = resolveSortLabel(selectedSort);
+  if (sortLabel) summaryParts.push(`Ταξινόμηση: ${sortLabel}`);
+
+  const tournamentName = selectedTournamentId
+    ? tournaments.find((t) => t.id === selectedTournamentId)?.name
+    : null;
+  if (tournamentName) summaryParts.push(`Τουρνουά: ${tournamentName}`);
+
+  if (topInputValue) summaryParts.push(`Top: ${topInputValue}`);
+  if (searchQuery.trim()) summaryParts.push(`Αναζήτηση: “${searchQuery.trim()}”`);
+
+  const summaryText = summaryParts.length
+    ? summaryParts.join(" • ")
+    : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
     <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10">
@@ -233,6 +261,15 @@ function PlayersFilterHeaderComponent({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Active filter summary */}
+      <div
+        className="px-4 md:px-6 py-2 text-[11px] md:text-xs text-white/60 bg-white/[0.04] border-b border-white/5"
+        aria-live="polite"
+      >
+        <span className="font-semibold text-white/70 mr-1">Ενεργά φίλτρα:</span>
+        <span>{summaryText}</span>
       </div>
 
       {/* Sort Buttons Row */}

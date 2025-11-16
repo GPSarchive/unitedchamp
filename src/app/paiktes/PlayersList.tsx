@@ -17,6 +17,21 @@ type Props = {
   isTournamentScoped?: boolean;
 };
 
+const GRID_TEMPLATE =
+  "grid grid-cols-[70px_1fr_70px_70px_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
+const GRID_GAPS = "gap-2 md:gap-4";
+
+const COLUMN_HEADERS = [
+  { key: "photo", label: "Φωτογραφία", align: "text-left" },
+  { key: "player", label: "Παίκτης / Ομάδα", align: "text-left" },
+  { key: "matches", label: "Αγώνες", align: "text-center" },
+  { key: "wins", label: "Νίκες", align: "text-center" },
+  { key: "goals", label: "Γκολ", align: "text-center" },
+  { key: "assists", label: "Ασίστ", align: "text-center" },
+  { key: "mvp", label: "Βραβεία MVP", align: "text-center" },
+  { key: "best_gk", label: "Καλύτερος GK", align: "text-center" },
+];
+
 // ✅ Helper function to compute display photo (moved outside component)
 function getDisplayPhoto(player: PlayerRow): string {
   if (player.photo && player.photo !== "/player-placeholder.jpg") {
@@ -60,7 +75,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="sticky top-0 z-[9] bg-zinc-900 border-y border-white/10 px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-white/70 tracking-widest">
+        <div className="sticky top-[70px] md:top-[66px] lg:top-[64px] z-10 bg-zinc-900 border-y border-white/10 px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-white/70 tracking-widest">
           {letter}
         </div>
       )}
@@ -71,7 +86,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
         onMouseEnter={handleMouseEnter}
         onClick={handleClick}
         className={`
-          grid grid-cols-[60px_1fr_60px_60px_60px_60px_60px_60px] md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-2 md:gap-4
+          ${GRID_TEMPLATE} ${GRID_GAPS}
           px-3 md:px-6 py-3 md:py-4
           border-b border-white/5
           cursor-pointer
@@ -182,7 +197,7 @@ function PlayersListComponent({
   isTournamentScoped = false,
 }: Props) {
   const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
@@ -191,32 +206,49 @@ function PlayersListComponent({
             Δεν βρέθηκαν παίκτες
           </div>
         ) : (
-          <div>
-            {players.map((player, idx) => {
-              const prev = players[idx - 1];
-              const letter = (player.last_name || player.first_name || "?")
-                .charAt(0)
-                .toUpperCase();
-              const prevLetter = (prev?.last_name || prev?.first_name || "")
-                .charAt(0)
-                .toUpperCase();
-              const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
-              const isActive = activeId === player.id;
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[760px]">
+              <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-[0_8px_18px_rgba(0,0,0,0.45)]">
+                <div
+                  className={`${GRID_TEMPLATE} ${GRID_GAPS} px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-xs font-semibold uppercase tracking-[0.2em] text-white/60`}
+                >
+                  {COLUMN_HEADERS.map((col) => (
+                    <div key={col.key} className={`${col.align} ${col.key === "photo" ? "pr-4" : ""}`}>
+                      {col.label}
+                    </div>
+                  ))}
+                </div>
+                <div className="md:hidden px-3 py-1 text-[10px] text-white/40 border-t border-white/5">
+                  Σύρε οριζόντια για να δεις όλα τα στατιστικά πεδία
+                </div>
+              </div>
 
-              return (
-                <PlayerRowItem
-                  key={player.id}
-                  player={player}
-                  isActive={isActive}
-                  showLetter={showLetter}
-                  letter={letter}
-                  showTournamentGoals={showTournamentGoals}
-                  isTournamentScoped={isTournamentScoped}
-                  onPlayerSelect={onPlayerSelect}
-                  onPlayerHover={onPlayerHover}
-                />
-              );
-            })}
+              {players.map((player, idx) => {
+                const prev = players[idx - 1];
+                const letter = (player.last_name || player.first_name || "?")
+                  .charAt(0)
+                  .toUpperCase();
+                const prevLetter = (prev?.last_name || prev?.first_name || "")
+                  .charAt(0)
+                  .toUpperCase();
+                const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
+                const isActive = activeId === player.id;
+
+                return (
+                  <PlayerRowItem
+                    key={player.id}
+                    player={player}
+                    isActive={isActive}
+                    showLetter={showLetter}
+                    letter={letter}
+                    showTournamentGoals={showTournamentGoals}
+                    isTournamentScoped={isTournamentScoped}
+                    onPlayerSelect={onPlayerSelect}
+                    onPlayerHover={onPlayerHover}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
