@@ -8,13 +8,14 @@ type Tournament = { id: number; name: string; season: string | null };
 type Props = {
   selectedSort: string;
   selectedTournamentId: number | null;
-  topN: number | null;
+  topInputValue: string;
   tournaments: Tournament[];
   searchQuery: string;
   playerCount: number;
   onSortChange: (sort: string) => void;
   onTournamentChange: (tournamentId: string) => void;
   onTopChange: (top: string) => void;
+  onTopInputChange: (value: string) => void;
   onSearchChange: (query: string) => void;
   onReset: () => void;
 };
@@ -32,13 +33,14 @@ const SORT_OPTIONS = [
 function PlayersFilterHeaderComponent({
   selectedSort,
   selectedTournamentId,
-  topN,
+  topInputValue,
   tournaments,
   searchQuery,
   playerCount,
   onSortChange,
   onTournamentChange,
   onTopChange,
+  onTopInputChange,
   onSearchChange,
   onReset,
 }: Props) {
@@ -77,6 +79,13 @@ function PlayersFilterHeaderComponent({
       }
     },
     [onTopChange]
+  );
+
+  const handleTopInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onTopInputChange(e.target.value);
+    },
+    [onTopInputChange]
   );
 
   return (
@@ -146,7 +155,8 @@ function PlayersFilterHeaderComponent({
               type="number"
               min={1}
               placeholder="π.χ. 20"
-              defaultValue={topN ?? ""}
+              value={topInputValue}
+              onChange={handleTopInputChange}
               onBlur={handleTopBlur}
               onKeyDown={handleTopKeyDown}
               className="w-full bg-white/5 text-white border border-white/10 px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
@@ -205,7 +215,8 @@ function PlayersFilterHeaderComponent({
               type="number"
               min={1}
               placeholder="π.χ. 20"
-              defaultValue={topN ?? ""}
+              value={topInputValue}
+              onChange={handleTopInputChange}
               onBlur={handleTopBlur}
               onKeyDown={handleTopKeyDown}
               className="w-full bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"

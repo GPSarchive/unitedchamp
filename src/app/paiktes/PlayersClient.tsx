@@ -57,6 +57,7 @@ export default function PlayersClient({
   currentPage = 1,
   pageSize = 50,
   usePagination = true,
+  initialSearchQuery = "",
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
@@ -64,10 +65,11 @@ export default function PlayersClient({
   currentPage?: number;
   pageSize?: number;
   usePagination?: boolean;
+  initialSearchQuery?: string;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialSearchQuery ?? "");
   // ✅ Debounce search query to reduce rerenders while typing
   const debouncedQ = useDebounce(q, 300);
 
@@ -88,11 +90,19 @@ export default function PlayersClient({
   const selectedTournamentId = sp?.get("tournament_id")
     ? Number(sp.get("tournament_id"))
     : null;
-  const top = sp?.get("top") ? Number(sp.get("top")) : null;
+  const rawTop = sp?.get("top");
+  const parsedTop = rawTop ? Number(rawTop) : NaN;
+  const topLimit =
+    Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
+  const rawSearchParam = sp?.get("q") ?? "";
+  const normalizedSearchParam = rawSearchParam.trim();
 
   // ✅ Client-side sort mode state for instant responsiveness
   const [clientSort, setClientSort] = useState(selectedSort);
   const [clientTournamentId, setClientTournamentId] = useState(selectedTournamentId);
+  const [clientTopInput, setClientTopInput] = useState(
+    topLimit != null ? String(topLimit) : ""
+  );
 
   const updateQuery = useCallback(
     (patch: Record<string, string | number | null | undefined>) => {
@@ -153,10 +163,14 @@ export default function PlayersClient({
 
   const onTopChange = useCallback(
     (val: string) => {
-      const n = Number(val);
+      const normalized = val.trim();
+      const n = Number(normalized);
+      const nextValue =
+        Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : "";
+      setClientTopInput(nextValue);
       setIsLoading(true);
       updateQuery({
-        top: Number.isFinite(n) && n > 0 ? n : null,
+        top: nextValue ? Number(nextValue) : null,
         page: 1,
       });
     },
@@ -182,7 +196,21 @@ export default function PlayersClient({
   useEffect(() => {
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
-  }, [selectedSort, selectedTournamentId]);
+    setClientTopInput(topLimit != null ? String(topLimit) : "");
+  }, [selectedSort, selectedTournamentId, topLimit]);
+
+  // ✅ Keep the search input in sync with server-rendered search term
+  useEffect(() => {
+    setQ(initialSearchQuery ?? "");
+  }, [initialSearchQuery]);
+
+  // ✅ Mirror debounced search term to the URL so the server fetch knows about it
+  useEffect(() => {
+    const normalized = debouncedQ.trim();
+    if (normalized === normalizedSearchParam) return;
+    setIsLoading(true);
+    updateQuery({ q: normalized === "" ? null : normalized, page: 1 });
+  }, [debouncedQ, normalizedSearchParam, updateQuery]);
 
   // ✅ Clear loading state when new data arrives
   useEffect(() => {
@@ -276,8 +304,8 @@ export default function PlayersClient({
         break;
     }
 
-    return sorted;
-  }, [base, debouncedQ, clientSort, clientTournamentId]);
+    return topLimit != null ? sorted.slice(0, topLimit) : sorted;
+  }, [base, debouncedQ, clientSort, clientTournamentId, topLimit]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -309,6 +337,7 @@ export default function PlayersClient({
     setClientSort("alpha");
     setClientTournamentId(null);
     setQ("");
+    setClientTopInput("");
     setIsLoading(true);
     router.replace("/paiktes");
   }, [router]);
@@ -379,13 +408,14 @@ export default function PlayersClient({
           <PlayersFilterHeader
             selectedSort={clientSort}
             selectedTournamentId={clientTournamentId}
-            topN={top}
+            topInputValue={clientTopInput}
             tournaments={tournaments}
             searchQuery={q}
             playerCount={players.length}
             onSortChange={onSortChange}
             onTournamentChange={onTournamentChange}
             onTopChange={onTopChange}
+            onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
           />

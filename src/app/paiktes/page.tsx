@@ -72,6 +72,7 @@ type SP = {
   tournament_id?: string;
   top?: string;
   page?: string;
+  q?: string;
 };
 
 export default async function PaiktesPage({
@@ -82,25 +83,23 @@ export default async function PaiktesPage({
   const sp = await searchParams;
   const sortMode = (sp?.sort ?? "alpha").toLowerCase();
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
-  const topN = sp?.top ? Number(sp.top) : null;
+  const parsedTop = sp?.top ? Number(sp.top) : NaN;
+  const topN = Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
+  const searchTerm = sp?.q ? sp.q.trim() : "";
 
   // ✅ HYBRID PAGINATION: Load ALL data when filters are active
-  // When user applies filters (sort, tournament), load everything for accurate results
+  // When user applies filters (sort, tournament, search, top N), load everything for accurate results
   // Only use pagination for default alphabetical view
-  // If topN is set, load exactly topN results (no pagination)
-  const hasFilters = sortMode !== "alpha" || tournamentId !== null;
-  const usePagination = !hasFilters && topN === null;
+  const hasFilters =
+    sortMode !== "alpha" ||
+    tournamentId !== null ||
+    searchTerm.length > 0 ||
+    topN !== null;
+  const usePagination = !hasFilters;
 
   // Determine how many rows to fetch
-  let pageSize: number;
-  if (topN !== null) {
-    pageSize = topN; // Load exactly topN results
-  } else if (usePagination) {
-    pageSize = DEFAULT_PAGE_SIZE; // Paginated view
-  } else {
-    pageSize = 999999; // Load all for filtering/sorting
-  }
+  const pageSize = usePagination ? DEFAULT_PAGE_SIZE : 999999;
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -503,6 +502,7 @@ export default async function PaiktesPage({
         currentPage={page}
         pageSize={pageSize}
         usePagination={usePagination}
+        initialSearchQuery={searchTerm}
       />
     </div>
   );
