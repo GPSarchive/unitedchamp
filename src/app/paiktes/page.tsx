@@ -82,25 +82,19 @@ export default async function PaiktesPage({
   const sp = await searchParams;
   const sortMode = (sp?.sort ?? "alpha").toLowerCase();
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
-  const topN = sp?.top ? Number(sp.top) : null;
+  const topValue = sp?.top ? Number(sp.top) : NaN;
+  const topN = Number.isFinite(topValue) && topValue > 0 ? topValue : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
 
   // ✅ HYBRID PAGINATION: Load ALL data when filters are active
   // When user applies filters (sort, tournament), load everything for accurate results
   // Only use pagination for default alphabetical view
-  // If topN is set, load exactly topN results (no pagination)
+  // If topN is set, load all data (no pagination) and slice after sorting
   const hasFilters = sortMode !== "alpha" || tournamentId !== null;
   const usePagination = !hasFilters && topN === null;
 
   // Determine how many rows to fetch
-  let pageSize: number;
-  if (topN !== null) {
-    pageSize = topN; // Load exactly topN results
-  } else if (usePagination) {
-    pageSize = DEFAULT_PAGE_SIZE; // Paginated view
-  } else {
-    pageSize = 999999; // Load all for filtering/sorting
-  }
+  const pageSize = usePagination ? DEFAULT_PAGE_SIZE : 999999;
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -158,10 +152,17 @@ export default async function PaiktesPage({
     }
   }
 
-  const { data: players, error: pErr, count: totalCount } = await playersQuery
+  playersQuery = playersQuery
     .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true })
-    .range(offset, offset + pageSize - 1);
+    .order("first_name", { ascending: true });
+
+  if (usePagination) {
+    playersQuery = playersQuery.range(offset, offset + pageSize - 1);
+  } else {
+    playersQuery = playersQuery.limit(pageSize);
+  }
+
+  const { data: players, error: pErr, count: totalCount } = await playersQuery;
 
   if (pErr) console.error("[paiktes] players query error:", pErr.message);
   const p = (players ?? []) as PlayerRow[];
@@ -494,14 +495,21 @@ export default async function PaiktesPage({
       break;
   }
 
+  const shouldLimitToTop = topN !== null;
+  const limitedPlayers = shouldLimitToTop ? enriched.slice(0, topN) : enriched;
+  const clientTotalCount = usePagination
+    ? totalCount ?? limitedPlayers.length
+    : limitedPlayers.length;
+  const clientPageSize = usePagination ? pageSize : limitedPlayers.length || 1;
+
   return (
     <div className="h-screen bg-black overflow-hidden">
       <PlayersClient
-        initialPlayers={enriched}
+        initialPlayers={limitedPlayers}
         tournaments={tournaments}
-        totalCount={totalCount ?? 0}
+        totalCount={clientTotalCount}
         currentPage={page}
-        pageSize={pageSize}
+        pageSize={clientPageSize}
         usePagination={usePagination}
       />
     </div>
