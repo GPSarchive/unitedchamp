@@ -3,7 +3,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { imageConfig } from "@/app/lib/image-config"; // ✅ Use image config
+import { ImageType } from "@/app/lib/image-config";
+import { useImageUrl } from "@/app/lib/OptimizedImage";
 
 type MaskStyle = CSSProperties & {
   WebkitMaskImage?: string;
@@ -16,15 +17,6 @@ type MaskStyle = CSSProperties & {
   maskPosition?: string;
   maskMode?: "match-source" | "luminance" | "alpha";
 };
-
-// ✅ SIMPLIFIED: Direct URL resolution (no signing!)
-function resolveImageUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  
-  // Use the same logic as OptimizedImage
-  const resolved = imageConfig.resolve(path);
-  return resolved || imageConfig.getPlaceholder(imageConfig.bucketName as any);
-}
 
 // Optional: lightweight alpha detection
 function useHasAlpha(imageUrl: string | null) {
@@ -98,9 +90,11 @@ export default function GlossOverlay({
   intensity?: number;
   disableIfOpaque?: boolean;
 }) {
-  // ✅ SIMPLIFIED: Direct resolution (no API calls!)
-  const imageUrl = useMemo(() => resolveImageUrl(src), [src]);
-  const maskUrl = useMemo(() => resolveImageUrl(maskSrc ?? src), [maskSrc, src]);
+  const resolvedSrc = useImageUrl(src, ImageType.PLAYER);
+  const resolvedMaskSrc = useImageUrl(maskSrc ?? src, ImageType.PLAYER);
+
+  const imageUrl = src ? resolvedSrc : null;
+  const maskUrl = maskSrc || src ? resolvedMaskSrc : null;
 
   const reduce = useReducedMotion();
   const hasAlpha = useHasAlpha(maskUrl);
