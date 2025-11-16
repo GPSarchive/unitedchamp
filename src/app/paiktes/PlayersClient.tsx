@@ -92,13 +92,17 @@ export default function PlayersClient({
     : null;
   const rawTop = sp?.get("top");
   const parsedTop = rawTop ? Number(rawTop) : NaN;
-  const topLimit = Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
+  const topLimit =
+    Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
   const rawSearchParam = sp?.get("q") ?? "";
   const normalizedSearchParam = rawSearchParam.trim();
 
   // ✅ Client-side sort mode state for instant responsiveness
   const [clientSort, setClientSort] = useState(selectedSort);
   const [clientTournamentId, setClientTournamentId] = useState(selectedTournamentId);
+  const [clientTopInput, setClientTopInput] = useState(
+    topLimit != null ? String(topLimit) : ""
+  );
 
   const updateQuery = useCallback(
     (patch: Record<string, string | number | null | undefined>) => {
@@ -159,10 +163,14 @@ export default function PlayersClient({
 
   const onTopChange = useCallback(
     (val: string) => {
-      const n = Number(val);
+      const normalized = val.trim();
+      const n = Number(normalized);
+      const nextValue =
+        Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : "";
+      setClientTopInput(nextValue);
       setIsLoading(true);
       updateQuery({
-        top: Number.isFinite(n) && n > 0 ? n : null,
+        top: nextValue ? Number(nextValue) : null,
         page: 1,
       });
     },
@@ -188,7 +196,8 @@ export default function PlayersClient({
   useEffect(() => {
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
-  }, [selectedSort, selectedTournamentId]);
+    setClientTopInput(topLimit != null ? String(topLimit) : "");
+  }, [selectedSort, selectedTournamentId, topLimit]);
 
   // ✅ Keep the search input in sync with server-rendered search term
   useEffect(() => {
@@ -328,6 +337,7 @@ export default function PlayersClient({
     setClientSort("alpha");
     setClientTournamentId(null);
     setQ("");
+    setClientTopInput("");
     setIsLoading(true);
     router.replace("/paiktes");
   }, [router]);
