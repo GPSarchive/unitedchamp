@@ -56,12 +56,14 @@ export default function PlayersClient({
   totalCount = 0,
   currentPage = 1,
   pageSize = 50,
+  usePagination = true,
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
+  usePagination?: boolean;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
@@ -72,6 +74,9 @@ export default function PlayersClient({
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
   );
+
+  // ✅ Loading state for when data is being fetched
+  const [isLoading, setIsLoading] = useState(false);
 
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
@@ -105,6 +110,8 @@ export default function PlayersClient({
     (v: string) => {
       // ✅ Update client state immediately for instant UI response
       setClientSort(v);
+      // ✅ Show loading state since this triggers server fetch
+      setIsLoading(true);
 
       // ✅ Preserve tournament filter across all sort modes
       // Only fetch from server if switching to tournament_goals (needs additional data)
@@ -132,6 +139,7 @@ export default function PlayersClient({
       // ✅ Update client state immediately
       setClientTournamentId(Number.isFinite(id) ? id : null);
       setClientSort("tournament_goals");
+      setIsLoading(true);
 
       // Fetch from server with new tournament filter
       updateQuery({
@@ -146,6 +154,7 @@ export default function PlayersClient({
   const onTopChange = useCallback(
     (val: string) => {
       const n = Number(val);
+      setIsLoading(true);
       updateQuery({
         top: Number.isFinite(n) && n > 0 ? n : null,
         page: 1,
@@ -156,6 +165,7 @@ export default function PlayersClient({
 
   const onPageChange = useCallback(
     (newPage: number) => {
+      setIsLoading(true);
       updateQuery({ page: newPage });
       // Scroll to top when changing pages
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -173,6 +183,11 @@ export default function PlayersClient({
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
   }, [selectedSort, selectedTournamentId]);
+
+  // ✅ Clear loading state when new data arrives
+  useEffect(() => {
+    setIsLoading(false);
+  }, [initialPlayers]);
 
   // Filter + search + sort (client-side for instant response)
   // ✅ Use debounced query to prevent excessive filtering while typing
@@ -258,6 +273,7 @@ export default function PlayersClient({
     setClientSort("alpha");
     setClientTournamentId(null);
     setQ("");
+    setIsLoading(true);
     router.replace("/paiktes");
   }, [router]);
 
@@ -275,7 +291,7 @@ export default function PlayersClient({
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
-  const showPagination = totalPages > 1;
+  const showPagination = usePagination && totalPages > 1;
 
   return (
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
@@ -339,7 +355,17 @@ export default function PlayersClient({
           />
 
           {/* Players List */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col relative">
+            {/* ✅ Loading Overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                  <div className="text-white/70 text-sm font-medium">Φόρτωση παικτών...</div>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto">
               <PlayersList
                 players={players}
