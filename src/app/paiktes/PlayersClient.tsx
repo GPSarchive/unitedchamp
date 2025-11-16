@@ -90,7 +90,9 @@ export default function PlayersClient({
   const selectedTournamentId = sp?.get("tournament_id")
     ? Number(sp.get("tournament_id"))
     : null;
-  const top = sp?.get("top") ? Number(sp.get("top")) : null;
+  const rawTop = sp?.get("top");
+  const parsedTop = rawTop ? Number(rawTop) : NaN;
+  const topLimit = Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
   const rawSearchParam = sp?.get("q") ?? "";
   const normalizedSearchParam = rawSearchParam.trim();
 
@@ -293,8 +295,8 @@ export default function PlayersClient({
         break;
     }
 
-    return sorted;
-  }, [base, debouncedQ, clientSort, clientTournamentId]);
+    return topLimit != null ? sorted.slice(0, topLimit) : sorted;
+  }, [base, debouncedQ, clientSort, clientTournamentId, topLimit]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -396,7 +398,7 @@ export default function PlayersClient({
           <PlayersFilterHeader
             selectedSort={clientSort}
             selectedTournamentId={clientTournamentId}
-            topN={top}
+            topN={topLimit}
             tournaments={tournaments}
             searchQuery={q}
             playerCount={players.length}
