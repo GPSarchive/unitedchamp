@@ -204,30 +204,66 @@ export default function PlayersClient({
       });
     }
 
-    // Step 2: Apply client-side sorting for instant responsiveness
+    // Step 2: Apply tournament-aware sorting
+    // ✅ Helper to get the correct metric (tournament-scoped or global)
+    const isTournamentScoped = !!clientTournamentId;
+    const getMetric = (
+      player: PLWithTGoals,
+      globalField: keyof PLWithTGoals,
+      tournamentField: keyof PLWithTGoals
+    ): number => {
+      if (isTournamentScoped) {
+        const tValue = player[tournamentField];
+        if (typeof tValue === "number") return tValue;
+      }
+      const gValue = player[globalField];
+      return typeof gValue === "number" ? gValue : 0;
+    };
+
     const sorted = [...filtered];
     switch (clientSort) {
       case "goals":
-        sorted.sort((a, b) => b.goals - a.goals);
+      case "tournament_goals":
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "goals", "tournament_goals") -
+            getMetric(a, "goals", "tournament_goals")
+        );
         break;
       case "matches":
-        sorted.sort((a, b) => b.matches - a.matches);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "matches", "tournament_matches") -
+            getMetric(a, "matches", "tournament_matches")
+        );
         break;
       case "wins":
-        sorted.sort((a, b) => b.wins - a.wins);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "wins", "tournament_wins") -
+            getMetric(a, "wins", "tournament_wins")
+        );
         break;
       case "assists":
-        sorted.sort((a, b) => b.assists - a.assists);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "assists", "tournament_assists") -
+            getMetric(a, "assists", "tournament_assists")
+        );
         break;
       case "mvp":
-        sorted.sort((a, b) => b.mvp - a.mvp);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "mvp", "tournament_mvp") -
+            getMetric(a, "mvp", "tournament_mvp")
+        );
         break;
       case "bestgk":
-        sorted.sort((a, b) => b.best_gk - a.best_gk);
-        break;
-      case "tournament_goals":
-        // Use server-sorted data for tournament goals (requires additional DB queries)
-        // Don't re-sort client-side
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "best_gk", "tournament_best_gk") -
+            getMetric(a, "best_gk", "tournament_best_gk")
+        );
         break;
       case "alpha":
       default:
@@ -241,7 +277,7 @@ export default function PlayersClient({
     }
 
     return sorted;
-  }, [base, debouncedQ, clientSort]);
+  }, [base, debouncedQ, clientSort, clientTournamentId]);
 
   // Quick lookup for card
   const byId = useMemo(
