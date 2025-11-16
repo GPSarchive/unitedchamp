@@ -148,27 +148,27 @@ export default function PlayersClient({
       // ✅ Update client state immediately
       setClientTournamentId(isSelectingTournament ? id : null);
 
-      // Only change sort mode when SELECTING a tournament, not when clearing
       if (isSelectingTournament) {
+        // Selecting a tournament → Set sort to tournament_goals
         setClientSort("tournament_goals");
-        // Fetch from server with tournament filter and tournament_goals sort
         updateQuery({
           sort: "tournament_goals",
           tournament_id: id,
           page: 1,
         });
       } else {
-        // Clearing tournament - reset to alphabetical sort
-        setClientSort("alpha");
-        // Fetch from server with no tournament filter
+        // Clearing tournament → Preserve sort mode if it's a valid global sort
+        // Convert tournament_goals to goals for global stats
+        const globalSort = clientSort === "tournament_goals" ? "goals" : clientSort;
+        setClientSort(globalSort);
         updateQuery({
-          sort: "alpha",
+          sort: globalSort,
           tournament_id: null,
           page: 1,
         });
       }
     },
-    [updateQuery]
+    [updateQuery, clientSort]
   );
 
   const onTopChange = useCallback(
