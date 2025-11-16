@@ -3,7 +3,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { imageConfig } from "@/app/lib/image-config"; // ✅ Use image config
+import { ImageType } from "@/app/lib/image-config";
+import { useImageUrl } from "@/app/lib/OptimizedImage";
 
 type MaskStyle = CSSProperties & {
   WebkitMaskImage?: string;
@@ -16,15 +17,6 @@ type MaskStyle = CSSProperties & {
   maskPosition?: string;
   maskMode?: "match-source" | "luminance" | "alpha";
 };
-
-// ✅ SIMPLIFIED: Direct URL resolution (no signing!)
-function resolveImageUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  
-  // Use the same logic as OptimizedImage
-  const resolved = imageConfig.resolve(path);
-  return resolved || imageConfig.getPlaceholder(imageConfig.bucketName as any);
-}
 
 // Optional: lightweight alpha detection
 function useHasAlpha(imageUrl: string | null) {
@@ -98,9 +90,11 @@ export default function GlossOverlay({
   intensity?: number;
   disableIfOpaque?: boolean;
 }) {
-  // ✅ SIMPLIFIED: Direct resolution (no API calls!)
-  const imageUrl = useMemo(() => resolveImageUrl(src), [src]);
-  const maskUrl = useMemo(() => resolveImageUrl(maskSrc ?? src), [maskSrc, src]);
+  const resolvedSrc = useImageUrl(src, ImageType.PLAYER);
+  const resolvedMaskSrc = useImageUrl(maskSrc ?? src, ImageType.PLAYER);
+
+  const imageUrl = src ? resolvedSrc : null;
+  const maskUrl = maskSrc || src ? resolvedMaskSrc : null;
 
   const reduce = useReducedMotion();
   const hasAlpha = useHasAlpha(maskUrl);
@@ -122,8 +116,9 @@ export default function GlossOverlay({
             WebkitMaskPosition: "center",
             maskPosition: "center",
             maskMode: "alpha",
-            zIndex: 1,
+            zIndex: 3,
             borderRadius: "inherit",
+            mixBlendMode: "screen",
           }
         : {},
     [maskUrl]
@@ -134,49 +129,72 @@ export default function GlossOverlay({
 
   if (!shouldRender) return null;
 
+  const energy = clamp(intensity, 0, 2.2);
+
   return (
     <div className="pointer-events-none absolute inset-0" style={clipStyle}>
-      {/* Static subtle gloss */}
+      {/* Static base sheen */}
       <div
         className="absolute inset-0"
         style={{
-          mixBlendMode: "screen",
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0) 70%)",
-          opacity: 0.6 * clamp(intensity),
+          backgroundImage:
+            "linear-gradient(120deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.15) 30%, rgba(255,255,255,0.04) 65%, rgba(255,255,255,0) 100%)",
+          opacity: 0.85 * energy,
+          filter: "saturate(1.2)",
         }}
       />
-      
+
+      {/* Caustic bloom to make the gloss pop */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 25% 20%, rgba(255,255,200,0.4), transparent 45%), radial-gradient(circle at 80% 10%, rgba(255,255,255,0.28), transparent 40%)",
+          opacity: 0.6 * energy,
+          mixBlendMode: "soft-light",
+        }}
+      />
+
       {/* Sweeping specular line */}
       <motion.div
-        className="absolute -inset-[20%]"
+        className="absolute -inset-[30%]"
         style={{ transform: `rotate(${angle}deg)` }}
         initial={false}
-        animate={active ? { x: ["-40%", "140%"] } : { x: "-40%" }}
+        animate={active ? { x: ["-50%", "150%"] } : { x: "-50%" }}
         transition={{ duration, ease: "linear", repeat: active ? Infinity : 0 }}
       >
         <div
           style={{
             width: thickness,
-            height: "140%",
+            height: "160%",
             margin: "0 auto",
             background:
-              "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.26) 50%, rgba(255,255,255,0) 100%)",
-            filter: "blur(0.6px)",
-            mixBlendMode: "screen",
-            opacity: 0.8 * clamp(intensity),
+              "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0) 100%)",
+            boxShadow: "0 0 45px rgba(255,255,255,0.5)",
+            filter: "blur(0.3px)",
+            mixBlendMode: "color-dodge",
+            opacity: 1.1 * energy,
           }}
         />
       </motion.div>
-      
+
       {/* Micro clearcoat */}
       <div
         className="absolute inset-0"
         style={{
-          mixBlendMode: "screen",
           backgroundImage:
-            "repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(255,255,255,0) 2px)",
-          opacity: 0.14 * clamp(intensity),
+            "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, rgba(255,255,255,0) 2px)",
+          opacity: 0.28 * energy,
+        }}
+      />
+
+      {/* Rim light to emphasize silhouette */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 15% 20%, rgba(255,255,255,0.5), transparent 45%), radial-gradient(circle at 85% 15%, rgba(255,255,255,0.3), transparent 40%), radial-gradient(circle at 50% 0%, rgba(255,255,255,0.35), transparent 60%)",
+          opacity: 0.65 * energy,
         }}
       />
     </div>
