@@ -408,13 +408,14 @@ export default function PlayersClient({
           <PlayersFilterHeader
             selectedSort={clientSort}
             selectedTournamentId={clientTournamentId}
-            topN={topLimit}
+            topInputValue={clientTopInput}
             tournaments={tournaments}
             searchQuery={q}
             playerCount={players.length}
             onSortChange={onSortChange}
             onTournamentChange={onTournamentChange}
             onTopChange={onTopChange}
+            onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
           />
