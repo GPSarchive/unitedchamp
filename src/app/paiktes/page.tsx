@@ -67,9 +67,9 @@ type TournamentMPSRow = {
   best_goalkeeper: boolean | null;
 };
 
-type SP = { 
-  sort?: string; 
-  tournament_id?: string; 
+type SP = {
+  sort?: string;
+  tournament_id?: string;
   top?: string;
   page?: string;
 };
@@ -84,7 +84,23 @@ export default async function PaiktesPage({
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
   const topN = sp?.top ? Number(sp.top) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
-  const pageSize = topN ?? DEFAULT_PAGE_SIZE;
+
+  // ✅ HYBRID PAGINATION: Load ALL data when filters are active
+  // When user applies filters (sort, tournament), load everything for accurate results
+  // Only use pagination for default alphabetical view
+  // If topN is set, load exactly topN results (no pagination)
+  const hasFilters = sortMode !== "alpha" || tournamentId !== null;
+  const usePagination = !hasFilters && topN === null;
+
+  // Determine how many rows to fetch
+  let pageSize: number;
+  if (topN !== null) {
+    pageSize = topN; // Load exactly topN results
+  } else if (usePagination) {
+    pageSize = DEFAULT_PAGE_SIZE; // Paginated view
+  } else {
+    pageSize = 999999; // Load all for filtering/sorting
+  }
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -99,7 +115,7 @@ export default async function PaiktesPage({
     season: string | null;
   }[];
 
-  const offset = (page - 1) * pageSize;
+  const offset = usePagination ? (page - 1) * pageSize : 0;
 
   // ✅ FILTER BY TOURNAMENT: If tournament is selected, get only players who played in that tournament
   let tournamentPlayerIds: number[] | null = null;
@@ -480,12 +496,13 @@ export default async function PaiktesPage({
 
   return (
     <div className="h-screen bg-black overflow-hidden">
-      <PlayersClient 
-        initialPlayers={enriched} 
+      <PlayersClient
+        initialPlayers={enriched}
         tournaments={tournaments}
         totalCount={totalCount ?? 0}
         currentPage={page}
         pageSize={pageSize}
+        usePagination={usePagination}
       />
     </div>
   );
