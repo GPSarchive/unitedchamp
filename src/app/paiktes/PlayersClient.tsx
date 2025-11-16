@@ -57,6 +57,7 @@ export default function PlayersClient({
   currentPage = 1,
   pageSize = 50,
   usePagination = true,
+  initialSearchQuery = "",
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
@@ -64,10 +65,11 @@ export default function PlayersClient({
   currentPage?: number;
   pageSize?: number;
   usePagination?: boolean;
+  initialSearchQuery?: string;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialSearchQuery ?? "");
   // ✅ Debounce search query to reduce rerenders while typing
   const debouncedQ = useDebounce(q, 300);
 
@@ -89,6 +91,8 @@ export default function PlayersClient({
     ? Number(sp.get("tournament_id"))
     : null;
   const top = sp?.get("top") ? Number(sp.get("top")) : null;
+  const rawSearchParam = sp?.get("q") ?? "";
+  const normalizedSearchParam = rawSearchParam.trim();
 
   // ✅ Client-side sort mode state for instant responsiveness
   const [clientSort, setClientSort] = useState(selectedSort);
@@ -183,6 +187,19 @@ export default function PlayersClient({
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
   }, [selectedSort, selectedTournamentId]);
+
+  // ✅ Keep the search input in sync with server-rendered search term
+  useEffect(() => {
+    setQ(initialSearchQuery ?? "");
+  }, [initialSearchQuery]);
+
+  // ✅ Mirror debounced search term to the URL so the server fetch knows about it
+  useEffect(() => {
+    const normalized = debouncedQ.trim();
+    if (normalized === normalizedSearchParam) return;
+    setIsLoading(true);
+    updateQuery({ q: normalized === "" ? null : normalized, page: 1 });
+  }, [debouncedQ, normalizedSearchParam, updateQuery]);
 
   // ✅ Clear loading state when new data arrives
   useEffect(() => {

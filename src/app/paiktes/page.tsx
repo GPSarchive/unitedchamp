@@ -72,6 +72,7 @@ type SP = {
   tournament_id?: string;
   top?: string;
   page?: string;
+  q?: string;
 };
 
 export default async function PaiktesPage({
@@ -84,12 +85,14 @@ export default async function PaiktesPage({
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
   const topN = sp?.top ? Number(sp.top) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
+  const searchTerm = sp?.q ? sp.q.trim() : "";
 
   // ✅ HYBRID PAGINATION: Load ALL data when filters are active
   // When user applies filters (sort, tournament), load everything for accurate results
   // Only use pagination for default alphabetical view
   // If topN is set, load exactly topN results (no pagination)
-  const hasFilters = sortMode !== "alpha" || tournamentId !== null;
+  const hasFilters =
+    sortMode !== "alpha" || tournamentId !== null || searchTerm.length > 0;
   const usePagination = !hasFilters && topN === null;
 
   // Determine how many rows to fetch
@@ -503,6 +506,7 @@ export default async function PaiktesPage({
         currentPage={page}
         pageSize={pageSize}
         usePagination={usePagination}
+        initialSearchQuery={searchTerm}
       />
     </div>
   );
