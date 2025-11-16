@@ -116,7 +116,7 @@ export default function GlossOverlay({
             WebkitMaskPosition: "center",
             maskPosition: "center",
             maskMode: "alpha",
-            zIndex: 1,
+            zIndex: 2,
             borderRadius: "inherit",
           }
         : {},
@@ -135,9 +135,9 @@ export default function GlossOverlay({
         className="absolute inset-0"
         style={{
           mixBlendMode: "screen",
-          background:
-            "linear-gradient(to bottom, rgba(255,255,255,0.08), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0) 70%)",
-          opacity: 0.6 * clamp(intensity),
+          backgroundImage:
+            "linear-gradient(130deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 35%, rgba(255,255,255,0.02) 70%, rgba(255,255,255,0) 100%)",
+          opacity: 0.75 * clamp(intensity),
         }}
       />
       
@@ -155,14 +155,15 @@ export default function GlossOverlay({
             height: "140%",
             margin: "0 auto",
             background:
-              "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.26) 50%, rgba(255,255,255,0) 100%)",
-            filter: "blur(0.6px)",
-            mixBlendMode: "screen",
-            opacity: 0.8 * clamp(intensity),
+              "linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.65) 50%, rgba(255,255,255,0) 100%)",
+            boxShadow: "0 0 25px rgba(255,255,255,0.35)",
+            filter: "blur(0.4px)",
+            mixBlendMode: "color-dodge",
+            opacity: 0.95 * clamp(intensity, 0, 2),
           }}
         />
       </motion.div>
-      
+
       {/* Micro clearcoat */}
       <div
         className="absolute inset-0"
@@ -170,7 +171,18 @@ export default function GlossOverlay({
           mixBlendMode: "screen",
           backgroundImage:
             "repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(255,255,255,0) 2px)",
-          opacity: 0.14 * clamp(intensity),
+          opacity: 0.2 * clamp(intensity),
+        }}
+      />
+
+      {/* Rim light to emphasize silhouette */}
+      <div
+        className="absolute inset-0"
+        style={{
+          mixBlendMode: "screen",
+          background:
+            "radial-gradient(circle at 20% 20%, rgba(255,255,255,0.25), transparent 50%), radial-gradient(circle at 80% 10%, rgba(255,255,255,0.2), transparent 45%), radial-gradient(circle at 50% 0%, rgba(255,255,255,0.25), transparent 55%)",
+          opacity: 0.5 * clamp(intensity),
         }}
       />
     </div>
