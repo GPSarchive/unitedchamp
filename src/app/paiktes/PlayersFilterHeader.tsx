@@ -275,30 +275,34 @@ function PlayersFilterHeaderComponent({
       {/* Sort Buttons Row */}
       <div className="border-b border-white/5">
         {/* Mobile: Horizontal scroll */}
-        <div className="md:hidden overflow-x-auto scrollbar-hide">
-          <div className="flex min-w-max gap-0 px-4">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => onSortChange(opt.value)}
-                className={`
-                  flex-shrink-0 px-4 py-3 text-xs font-semibold uppercase tracking-wider
-                  transition-all duration-200
-                  border-b-2
-                  text-center
-                  ${
-                    selectedSort === opt.value
-                      ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
-                      : "text-white/50 border-transparent hover:text-white/80 hover:bg-white/5"
-                  }
-                `}
-              >
-                {opt.label}
-                {selectedSort === opt.value && (
-                  <span className="ml-1 text-cyan-400">▼</span>
-                )}
-              </button>
-            ))}
+        <div className="md:hidden">
+          <div className="px-4 pt-4 pb-2 text-[11px] font-semibold tracking-[0.3em] uppercase text-white/40">
+            Α "Αναζήτηση για"
+          </div>
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex min-w-max gap-3 px-4 pb-4">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onSortChange(opt.value)}
+                  className={`
+                    flex-shrink-0 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em]
+                    transition-all duration-200 rounded-full border
+                    text-center shadow-sm backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
+                    ${
+                      selectedSort === opt.value
+                        ? "text-orange-200 border-orange-400/80 bg-gradient-to-r from-orange-500/30 to-amber-400/20 shadow-orange-500/30"
+                        : "text-white/70 border-white/15 bg-white/5 hover:text-white hover:border-orange-400 hover:bg-orange-500/10 hover:shadow-orange-500/20"
+                    }
+                  `}
+                >
+                  {opt.label}
+                  {selectedSort === opt.value && (
+                    <span className="ml-1 text-orange-200">▼</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -316,21 +320,19 @@ function PlayersFilterHeaderComponent({
               <button
                 key={opt.value}
                 onClick={() => onSortChange(opt.value)}
-                className={`
-                  px-2 py-2 text-xs font-semibold uppercase tracking-wider
-                  transition-all duration-200
-                  border-b-2
-                  text-center
+                  className={`
+                  px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em]
+                  transition-all duration-200 rounded-lg border text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
                   ${
                     selectedSort === opt.value
-                      ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
-                      : "text-white/50 border-transparent hover:text-white/80 hover:bg-white/5"
+                      ? "text-orange-200 border-orange-400/80 bg-orange-500/15 shadow-orange-500/25 shadow"
+                      : "text-white/60 border-transparent hover:text-white hover:border-orange-400/70 hover:bg-orange-500/10"
                   }
                 `}
               >
                 {opt.label}
                 {selectedSort === opt.value && (
-                  <span className="ml-1 text-cyan-400">▼</span>
+                  <span className="ml-1 text-orange-200">▼</span>
                 )}
               </button>
             ))}
