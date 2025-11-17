@@ -1,8 +1,7 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-side Supabase client
-import TeamSidebar from "./TeamSidebar";
 import PlayersGrid from "./PlayersGrid";
 import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
+import TeamHeader from "./TeamHeader";
 import {
   type Team,
   type PlayerAssociation,
@@ -38,28 +37,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
       </div>
     );
   }
-
-  // ── Tournament membership (this team in tournaments) ───────────────────────────
-  const { data: tournamentMembership, error: membershipErr } = await supabaseAdmin
-    .from("tournament_teams")
-    .select(
-      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
-    )
-    .eq("team_id", teamId)
-    .order("tournament_id", { ascending: false });
-
-  const tournaments =
-    (tournamentMembership ?? [])
-      .map((r: any) => r.tournament)
-      .filter(Boolean) ?? [];
-
-  // ── Tournament wins (championships) ────────────────────────────────────────────
-  const { data: winsList, error: winsErr } = await supabaseAdmin
-    .from("tournaments")
-    .select("id, name, season")
-    .eq("winner_team_id", teamId);
-
-  const wins = winsList ?? [];
 
   // ── Players: include master data + 1 latest statistics row ─────────────────────
   const { data: playerAssociationsData, error: playersError } = await supabaseAdmin
@@ -132,29 +109,19 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <div className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Vanta background (client-only), positioned behind everything */}
-      <VantaBg className="absolute inset-0 -z-10" />
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-[#12040c] via-[#1a0505] to-black text-slate-50">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(255,110,64,0.22),transparent_55%),radial-gradient(circle_at_bottom,rgba(255,60,120,0.18),transparent_60%)]" />
 
-      {/* Optional: a very subtle warm overlay to help contrast */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+      <div className="container mx-auto max-w-7xl px-4 py-10">
+        <div className="space-y-8">
+          <TeamHeader team={team as Team} />
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
-          {/* Left Sidebar: Logo + Basic Info */}
-          <TeamSidebar
-            team={team as Team}
-            tournaments={tournaments}
-            wins={wins}
-            errors={{ membership: membershipErr?.message, wins: winsErr?.message }}
-          />
-
-          {/* Right Content: Players + Matches */}
           <div className="space-y-8">
             <PlayersGrid
               playerAssociations={playerAssociations}
               seasonStatsByPlayer={seasonStatsByPlayer}
               errorMessage={playersError?.message || pssErr?.message}
+              teamLogo={team.logo}
             />
             <TeamMatchesTimeline
               matches={matches}
