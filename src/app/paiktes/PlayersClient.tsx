@@ -56,22 +56,29 @@ export default function PlayersClient({
   totalCount = 0,
   currentPage = 1,
   pageSize = 50,
+  usePagination = true,
+  initialSearchQuery = "",
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
   totalCount?: number;
   currentPage?: number;
   pageSize?: number;
+  usePagination?: boolean;
+  initialSearchQuery?: string;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialSearchQuery ?? "");
   // ✅ Debounce search query to reduce rerenders while typing
   const debouncedQ = useDebounce(q, 300);
 
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
   );
+
+  // ✅ Loading state for when data is being fetched
+  const [isLoading, setIsLoading] = useState(false);
 
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
@@ -83,11 +90,19 @@ export default function PlayersClient({
   const selectedTournamentId = sp?.get("tournament_id")
     ? Number(sp.get("tournament_id"))
     : null;
-  const top = sp?.get("top") ? Number(sp.get("top")) : null;
+  const rawTop = sp?.get("top");
+  const parsedTop = rawTop ? Number(rawTop) : NaN;
+  const topLimit =
+    Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
+  const rawSearchParam = sp?.get("q") ?? "";
+  const normalizedSearchParam = rawSearchParam.trim();
 
   // ✅ Client-side sort mode state for instant responsiveness
   const [clientSort, setClientSort] = useState(selectedSort);
   const [clientTournamentId, setClientTournamentId] = useState(selectedTournamentId);
+  const [clientTopInput, setClientTopInput] = useState(
+    topLimit != null ? String(topLimit) : ""
+  );
 
   const updateQuery = useCallback(
     (patch: Record<string, string | number | null | undefined>) => {
@@ -105,6 +120,8 @@ export default function PlayersClient({
     (v: string) => {
       // ✅ Update client state immediately for instant UI response
       setClientSort(v);
+      // ✅ Show loading state since this triggers server fetch
+      setIsLoading(true);
 
       // ✅ Preserve tournament filter across all sort modes
       // Only fetch from server if switching to tournament_goals (needs additional data)
@@ -132,6 +149,7 @@ export default function PlayersClient({
       // ✅ Update client state immediately
       setClientTournamentId(Number.isFinite(id) ? id : null);
       setClientSort("tournament_goals");
+      setIsLoading(true);
 
       // Fetch from server with new tournament filter
       updateQuery({
@@ -145,9 +163,14 @@ export default function PlayersClient({
 
   const onTopChange = useCallback(
     (val: string) => {
-      const n = Number(val);
+      const normalized = val.trim();
+      const n = Number(normalized);
+      const nextValue =
+        Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : "";
+      setClientTopInput(nextValue);
+      setIsLoading(true);
       updateQuery({
-        top: Number.isFinite(n) && n > 0 ? n : null,
+        top: nextValue ? Number(nextValue) : null,
         page: 1,
       });
     },
@@ -156,6 +179,7 @@ export default function PlayersClient({
 
   const onPageChange = useCallback(
     (newPage: number) => {
+      setIsLoading(true);
       updateQuery({ page: newPage });
       // Scroll to top when changing pages
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -172,7 +196,26 @@ export default function PlayersClient({
   useEffect(() => {
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
-  }, [selectedSort, selectedTournamentId]);
+    setClientTopInput(topLimit != null ? String(topLimit) : "");
+  }, [selectedSort, selectedTournamentId, topLimit]);
+
+  // ✅ Keep the search input in sync with server-rendered search term
+  useEffect(() => {
+    setQ(initialSearchQuery ?? "");
+  }, [initialSearchQuery]);
+
+  // ✅ Mirror debounced search term to the URL so the server fetch knows about it
+  useEffect(() => {
+    const normalized = debouncedQ.trim();
+    if (normalized === normalizedSearchParam) return;
+    setIsLoading(true);
+    updateQuery({ q: normalized === "" ? null : normalized, page: 1 });
+  }, [debouncedQ, normalizedSearchParam, updateQuery]);
+
+  // ✅ Clear loading state when new data arrives
+  useEffect(() => {
+    setIsLoading(false);
+  }, [initialPlayers]);
 
   // Filter + search + sort (client-side for instant response)
   // ✅ Use debounced query to prevent excessive filtering while typing
@@ -189,30 +232,66 @@ export default function PlayersClient({
       });
     }
 
-    // Step 2: Apply client-side sorting for instant responsiveness
+    // Step 2: Apply tournament-aware sorting
+    // ✅ Helper to get the correct metric (tournament-scoped or global)
+    const isTournamentScoped = !!clientTournamentId;
+    const getMetric = (
+      player: PLWithTGoals,
+      globalField: keyof PLWithTGoals,
+      tournamentField: keyof PLWithTGoals
+    ): number => {
+      if (isTournamentScoped) {
+        const tValue = player[tournamentField];
+        if (typeof tValue === "number") return tValue;
+      }
+      const gValue = player[globalField];
+      return typeof gValue === "number" ? gValue : 0;
+    };
+
     const sorted = [...filtered];
     switch (clientSort) {
       case "goals":
-        sorted.sort((a, b) => b.goals - a.goals);
+      case "tournament_goals":
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "goals", "tournament_goals") -
+            getMetric(a, "goals", "tournament_goals")
+        );
         break;
       case "matches":
-        sorted.sort((a, b) => b.matches - a.matches);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "matches", "tournament_matches") -
+            getMetric(a, "matches", "tournament_matches")
+        );
         break;
       case "wins":
-        sorted.sort((a, b) => b.wins - a.wins);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "wins", "tournament_wins") -
+            getMetric(a, "wins", "tournament_wins")
+        );
         break;
       case "assists":
-        sorted.sort((a, b) => b.assists - a.assists);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "assists", "tournament_assists") -
+            getMetric(a, "assists", "tournament_assists")
+        );
         break;
       case "mvp":
-        sorted.sort((a, b) => b.mvp - a.mvp);
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "mvp", "tournament_mvp") -
+            getMetric(a, "mvp", "tournament_mvp")
+        );
         break;
       case "bestgk":
-        sorted.sort((a, b) => b.best_gk - a.best_gk);
-        break;
-      case "tournament_goals":
-        // Use server-sorted data for tournament goals (requires additional DB queries)
-        // Don't re-sort client-side
+        sorted.sort(
+          (a, b) =>
+            getMetric(b, "best_gk", "tournament_best_gk") -
+            getMetric(a, "best_gk", "tournament_best_gk")
+        );
         break;
       case "alpha":
       default:
@@ -225,8 +304,8 @@ export default function PlayersClient({
         break;
     }
 
-    return sorted;
-  }, [base, debouncedQ, clientSort]);
+    return topLimit != null ? sorted.slice(0, topLimit) : sorted;
+  }, [base, debouncedQ, clientSort, clientTournamentId, topLimit]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -258,6 +337,8 @@ export default function PlayersClient({
     setClientSort("alpha");
     setClientTournamentId(null);
     setQ("");
+    setClientTopInput("");
+    setIsLoading(true);
     router.replace("/paiktes");
   }, [router]);
 
@@ -275,7 +356,7 @@ export default function PlayersClient({
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
-  const showPagination = totalPages > 1;
+  const showPagination = usePagination && totalPages > 1;
 
   return (
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
@@ -327,19 +408,30 @@ export default function PlayersClient({
           <PlayersFilterHeader
             selectedSort={clientSort}
             selectedTournamentId={clientTournamentId}
-            topN={top}
+            topInputValue={clientTopInput}
             tournaments={tournaments}
             searchQuery={q}
             playerCount={players.length}
             onSortChange={onSortChange}
             onTournamentChange={onTournamentChange}
             onTopChange={onTopChange}
+            onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
           />
 
           {/* Players List */}
-          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-hidden flex flex-col relative">
+            {/* ✅ Loading Overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                  <div className="text-white/70 text-sm font-medium">Φόρτωση παικτών...</div>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto">
               <PlayersList
                 players={players}

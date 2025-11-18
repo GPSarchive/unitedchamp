@@ -1,5 +1,11 @@
+export type TeamLite = {
+  id: number;
+  name: string;
+  logo: string | null;
+};
+
 export type PlayerLite = {
-  id: number; // Changed from 'Id' to 'number'
+  id: number;
   first_name: string;
   last_name: string;
   photo: string;
@@ -7,18 +13,23 @@ export type PlayerLite = {
   height_cm: number | null;
   birth_date: string | null;
   age: number | null;
-  teams?: { id: number; name: string; logo: string | null }[]; // Array for multiple teams (replaces singular 'team')
-  team?: TeamLite | null; // Deprecated/optional: Keep for backward compat, but prefer 'teams'
+
+  // Team membership
+  // - teams: up to 3 current teams, sorted by matches played (main team first)
+  // - team: main team (most matches among current memberships), used in list views/headings
+  teams?: { id: number; name: string; logo: string | null }[];
+  team?: TeamLite | null;
+
   // Global stats (all-time)
-  matches: number; // Matches played
-  goals: number; // All-time total goals (alias for total_goals)
-  assists: number; // All-time total assists
+  matches: number; // matches played (all competitions)
+  goals: number; // total goals
+  assists: number; // total assists
   yellow_cards: number;
   red_cards: number;
   blue_cards: number;
   mvp: number; // MVP awards
-  best_gk: number; // Best goalkeeper awards (display if >=1)
-  wins: number;
+  best_gk: number; // Best goalkeeper awards
+  wins: number; // matches won
 
   // Tournament-scoped stats (present only when filtering by a tournament)
   tournament_matches?: number;
@@ -30,10 +41,4 @@ export type PlayerLite = {
   tournament_mvp?: number;
   tournament_best_gk?: number;
   tournament_wins?: number;
-};
-
-export type TeamLite = {
-  id: number;
-  name: string;
-  logo: string | null;
 };

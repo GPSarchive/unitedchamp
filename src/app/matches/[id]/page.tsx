@@ -2,6 +2,7 @@
 export const revalidate = 0;
 
 import StatsEditor from "./StatsEditor";
+import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import { saveAllStatsAction } from "./actions";
 import {
   fetchMatch,
@@ -17,16 +18,15 @@ import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 
 import VantaSection from "@/app/home/VantaSection";
 import ShinyText from "./ShinyText";
-import { TournamentImage } from "@/app/lib/OptimizedImage"; // ✅ UPDATED
+import { TournamentImage } from "@/app/lib/OptimizedImage";
 
-// ✅ NEW COMPONENTS
+// NEW COMPONENTS
 import WelcomeMessage from "./WelcomeMessage";
 import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
 import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
-
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -59,21 +59,18 @@ export default async function Page({
   const match = await fetchMatch(id);
   if (!match) return notFound();
 
-  // ✅ NO SIGNING - Keep raw path
+  // NO SIGNING - Keep raw path
   const tournamentLogo = match.tournament?.logo ?? null;
 
   // Debug: log match stage_id
-  console.log('[Match Page] Match ID:', match.id, 'Stage ID:', match.stage_id, 'Group ID:', match.group_id);
+  console.log("[Match Page] Match ID:", match.id, "Stage ID:", match.stage_id, "Group ID:", match.group_id);
 
   const [aRes, bRes, statsRes, partsRes, standingsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
-    // Fetch all standings for the stage
-    match.stage_id
-      ? fetchStandingsByStage(match.stage_id)
-      : Promise.resolve([]),
+    match.stage_id ? fetchStandingsByStage(match.stage_id) : Promise.resolve([]),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -88,10 +85,10 @@ export default async function Page({
     standingsRes.status === "fulfilled" ? standingsRes.value : [];
 
   // Debug: log standings data
-  console.log('[Match Page] Standings result:', {
+  console.log("[Match Page] Standings result:", {
     status: standingsRes.status,
     count: standings.length,
-    data: standings
+    data: standings,
   });
 
   const dataLoadErrors: string[] = [];
@@ -106,9 +103,10 @@ export default async function Page({
   if (standingsRes.status === "rejected")
     dataLoadErrors.push(`Standings: ${errMsg(standingsRes.reason)}`);
 
-  // ✅ NO PHOTO SIGNING - Players already have raw paths
-
-  const videoId = extractYouTubeId(video ?? null);
+  // Video: prefer query param override, else DB column, and hide section when none
+  const dbVideoRaw = match.video_url ?? null;
+  const effectiveVideoInput = video ?? dbVideoRaw;
+  const videoId = effectiveVideoInput ? extractYouTubeId(effectiveVideoInput) : null;
 
   const dateLabel = match.match_date
     ? new Date(match.match_date).toLocaleString(undefined, {
@@ -125,7 +123,7 @@ export default async function Page({
   const bIsWinner =
     match.winner_team_id && match.winner_team_id === match.team_b.id;
 
-  // ✅ Prepare data for new components
+  // Prepare data for new components
   const isScheduled = match.status === "scheduled";
   const hasParticipants = participants.size > 0;
   const hasScores = match.team_a_score !== null && match.team_b_score !== null;
@@ -193,10 +191,9 @@ export default async function Page({
   ];
 
   return (
-
     <div className="relative min-h-dvh overflow-x-visible bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-    {/* ✅ Simple gradient background instead of VantaBg */}
-    <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+      {/* Simple gradient background instead of VantaBg */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
@@ -219,10 +216,10 @@ export default async function Page({
           </div>
         )}
 
-        {/* ✅ NEW: Welcome Message for Unplayed Matches */}
+        {/* Welcome Message for Unplayed Matches */}
         {showWelcomeMessage && <WelcomeMessage matchDate={match.match_date} />}
 
-        {/* ✅ NEW: Team vs Score Display with Scorers */}
+        {/* Team vs Score Display with Scorers */}
         <TeamVersusScore
           teamA={match.team_a}
           teamB={match.team_b}
@@ -235,7 +232,7 @@ export default async function Page({
           scorers={scorers}
         />
 
-        {/* ✅ NEW: Show full rosters for scheduled matches, participants for finished matches */}
+        {/* Show full rosters for scheduled matches, participants for finished matches */}
         {isScheduled && rosterData.length > 0 ? (
           <TeamRostersDisplay
             teamAId={match.team_a.id}
@@ -258,9 +255,18 @@ export default async function Page({
           />
         ) : null}
 
-        <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
-          <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Match Video</h2>
-          {videoId ? (
+        {/* Match Video - only show if there is a valid videoId (DB or ?video= override) */}
+        {videoId && (
+          <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
+            <h2
+              className="mb-3 text-lg font-semibold text-white"
+              style={{
+                textShadow:
+                  "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+              }}
+            >
+              Match Video
+            </h2>
             <div className="aspect-video w-full overflow-hidden rounded-xl">
               <iframe
                 className="h-full w-full"
@@ -270,55 +276,65 @@ export default async function Page({
                 allowFullScreen
               />
             </div>
-          ) : (
-            <div className="text-sm text-white/70">
-              <p>
-                No video provided. Append <code>?video=YOUTUBE_ID_OR_URL</code> to the page URL.
-              </p>
-            </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* ✅ NEW: Tournament Standings - After Video - Always shows, displays empty state if no data */}
+        {/* Tournament Standings - After Video - Always shows, displays empty state if no data */}
         <TournamentStandings standings={standings} />
 
         {isAdmin ? (
-          <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
-            <h2 className="mb-3 text-lg font-semibold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>Admin: Match Player Stats</h2>
-            <p className="mb-4 text-xs text-white/70">
-              Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
-              στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
-            </p>
+          <>
+            <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
+              <h2
+                className="mb-3 text-lg font-semibold text-white"
+                style={{
+                  textShadow:
+                    "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                }}
+              >
+                Admin: Match Player Stats
+              </h2>
+              <p className="mb-4 text-xs text-white/70">
+                Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
+                στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
+              </p>
 
-            <form id="stats-form" action={saveAllStatsAction}>
-              <input type="hidden" name="match_id" value={String(match.id)} />
-              <div className="grid grid-cols-1 gap-6">
-                <StatsEditor
-                  teamId={match.team_a.id}
-                  teamName={match.team_a.name}
-                  associations={teamAPlayers}
-                  existing={existingStats}
-                  participants={participants}
-                />
-                <StatsEditor
-                  teamId={match.team_b.id}
-                  teamName={match.team_b.name}
-                  associations={teamBPlayers}
-                  existing={existingStats}
-                  participants={participants}
-                />
-              </div>
+              <form id="stats-form" action={saveAllStatsAction}>
+                <input type="hidden" name="match_id" value={String(match.id)} />
+                <div className="grid grid-cols-1 gap-6">
+                  <StatsEditor
+                    teamId={match.team_a.id}
+                    teamName={match.team_a.name}
+                    associations={teamAPlayers}
+                    existing={existingStats}
+                    participants={participants}
+                  />
+                  <StatsEditor
+                    teamId={match.team_b.id}
+                    teamName={match.team_b.name}
+                    associations={teamBPlayers}
+                    existing={existingStats}
+                    participants={participants}
+                  />
+                </div>
 
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="submit"
-                  className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
-                >
-                  Save all
-                </button>
-              </div>
-            </form>
-          </section>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="submit"
+                    className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+                  >
+                    Save all
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* Admin: Match video CRUD, at the very bottom */}
+            <MatchVideoAdminForm
+              matchId={match.id}
+              initialVideoUrl={match.video_url ?? null}
+            />
+          </>
         ) : null}
       </div>
     </div>

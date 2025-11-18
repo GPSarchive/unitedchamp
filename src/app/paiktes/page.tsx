@@ -1,4 +1,4 @@
-// src/app/paiktes/page.tsx (FIXED - NO SIGNING)
+// src/app/paiktes/page.tsx (FIXED - NO SIGNING, MAIN + SECONDARY TEAMS BY PARTICIPATION)
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite } from "./types";
@@ -67,11 +67,12 @@ type TournamentMPSRow = {
   best_goalkeeper: boolean | null;
 };
 
-type SP = { 
-  sort?: string; 
-  tournament_id?: string; 
+type SP = {
+  sort?: string;
+  tournament_id?: string;
   top?: string;
   page?: string;
+  q?: string;
 };
 
 export default async function PaiktesPage({
@@ -82,9 +83,21 @@ export default async function PaiktesPage({
   const sp = await searchParams;
   const sortMode = (sp?.sort ?? "alpha").toLowerCase();
   const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
-  const topN = sp?.top ? Number(sp.top) : null;
+  const parsedTop = sp?.top ? Number(sp.top) : NaN;
+  const topN =
+    Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
-  const pageSize = topN ?? DEFAULT_PAGE_SIZE;
+  const searchTerm = sp?.q ? sp.q.trim() : "";
+
+  // HYBRID PAGINATION
+  const hasFilters =
+    sortMode !== "alpha" ||
+    tournamentId !== null ||
+    searchTerm.length > 0 ||
+    topN !== null;
+  const usePagination = !hasFilters;
+
+  const pageSize = usePagination ? DEFAULT_PAGE_SIZE : 999999;
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -99,50 +112,55 @@ export default async function PaiktesPage({
     season: string | null;
   }[];
 
-  const offset = (page - 1) * pageSize;
+  const offset = usePagination ? (page - 1) * pageSize : 0;
 
-  // ✅ FILTER BY TOURNAMENT: If tournament is selected, get only players who played in that tournament
+  // TOURNAMENT FILTER → player ids
   let tournamentPlayerIds: number[] | null = null;
   if (Number.isFinite(tournamentId)) {
-    // Get all matches for this tournament
     const { data: tournamentMatches } = await supabaseAdmin
       .from("matches")
       .select("id")
       .eq("tournament_id", tournamentId as number);
 
-    const tMatchIds = (tournamentMatches ?? []).map((m) => (m as MatchIdRow).id);
+    const tMatchIds = (tournamentMatches ?? []).map(
+      (m) => (m as MatchIdRow).id
+    );
 
     if (tMatchIds.length > 0) {
-      // Get all player IDs who played in those matches
       const { data: tournamentMps } = await supabaseAdmin
         .from("match_player_stats")
         .select("player_id")
         .in("match_id", tMatchIds);
 
-      const playerIdSet = new Set((tournamentMps ?? []).map((r: { player_id: number }) => r.player_id));
+      const playerIdSet = new Set(
+        (tournamentMps ?? []).map((r: { player_id: number }) => r.player_id)
+      );
       tournamentPlayerIds = Array.from(playerIdSet);
     } else {
-      // No matches in this tournament = no players
       tournamentPlayerIds = [];
     }
   }
 
-  // Fetch paginated players with count, filtered by tournament if needed
+  // Fetch players
   let playersQuery = supabaseAdmin
     .from("player")
-    .select("id, first_name, last_name, photo, position, height_cm, birth_date", { count: "exact" });
+    .select("id, first_name, last_name, photo, position, height_cm, birth_date", {
+      count: "exact",
+    });
 
-  // ✅ Apply tournament filter if tournament is selected
   if (tournamentPlayerIds !== null) {
     if (tournamentPlayerIds.length === 0) {
-      // No players in this tournament, return empty result
-      playersQuery = playersQuery.in("id", [-1]); // Query that returns no results
+      playersQuery = playersQuery.in("id", [-1]);
     } else {
       playersQuery = playersQuery.in("id", tournamentPlayerIds);
     }
   }
 
-  const { data: players, error: pErr, count: totalCount } = await playersQuery
+  const {
+    data: players,
+    error: pErr,
+    count: totalCount,
+  } = await playersQuery
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true })
     .range(offset, offset + pageSize - 1);
@@ -151,7 +169,7 @@ export default async function PaiktesPage({
   const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
-  // Fetch player_teams
+  // Fetch player_teams (membership source)
   const { data: ptRows, error: ptErr } = await supabaseAdmin
     .from("player_teams")
     .select("player_id, team_id, created_at, updated_at")
@@ -172,17 +190,18 @@ export default async function PaiktesPage({
     ? await supabaseAdmin.from("teams").select("id, name, logo").in("id", allTeamIds)
     : { data: [] as TeamRow[] };
 
-  // ✅ NO SIGNING - Just build team map with raw paths
-  const teamMap: Record<number, { id: number; name: string; logo: string | null }> = {};
+  const teamMap: Record<number, { id: number; name: string; logo: string | null }> =
+    {};
   for (const t of (teams ?? [])) {
     teamMap[t.id] = {
       id: t.id,
       name: t.name ?? "",
-      logo: t.logo, // ✅ Raw path
+      logo: t.logo,
     };
   }
 
-  const teamsByPlayer = new Map<  // ✅ Add < here
+  // Membership: which teams each player currently belongs to
+  const teamsByPlayer = new Map<
     number,
     { id: number; name: string; logo: string | null }[]
   >();
@@ -194,7 +213,7 @@ export default async function PaiktesPage({
     }
   }
 
-  // Fetch player statistics
+  // Fetch player_statistics (global totals)
   const { data: statsRows } = playerIds.length
     ? await supabaseAdmin
         .from("player_statistics")
@@ -208,7 +227,7 @@ export default async function PaiktesPage({
   for (const r of (statsRows ?? []) as PlayerStatsRow[])
     totalsByPlayer.set(r.player_id, r);
 
-  // Fetch match player stats
+  // Fetch match_player_stats (source for participation + MVP/GK)
   const { data: mps } = playerIds.length
     ? await supabaseAdmin
         .from("match_player_stats")
@@ -218,17 +237,35 @@ export default async function PaiktesPage({
 
   const mpsRows = (mps ?? []) as MPSRow[];
 
+  // Global matches per player (for "matches" column)
   const matchesByPlayer = new Map<number, Set<number>>();
+
+  // Matches per (player, team) for ranking memberships
+  const matchesByPlayerTeam = new Map<string, Set<number>>();
+
   const mvpByPlayer = new Map<number, number>();
   const gkByPlayer = new Map<number, number>();
 
   for (const r of mpsRows) {
+    // total matches per player
     if (!matchesByPlayer.has(r.player_id))
       matchesByPlayer.set(r.player_id, new Set());
     matchesByPlayer.get(r.player_id)!.add(r.match_id);
-    if (r.mvp) mvpByPlayer.set(r.player_id, (mvpByPlayer.get(r.player_id) ?? 0) + 1);
+
+    // matches per player+team (only used later for membership teams)
+    const key = `${r.player_id}:${r.team_id}`;
+    if (!matchesByPlayerTeam.has(key)) {
+      matchesByPlayerTeam.set(key, new Set());
+    }
+    matchesByPlayerTeam.get(key)!.add(r.match_id);
+
+    if (r.mvp)
+      mvpByPlayer.set(r.player_id, (mvpByPlayer.get(r.player_id) ?? 0) + 1);
     if (r.best_goalkeeper)
-      gkByPlayer.set(r.player_id, (gkByPlayer.get(r.player_id) ?? 0) + 1);
+      gkByPlayer.set(
+        r.player_id,
+        (gkByPlayer.get(r.player_id) ?? 0) + 1
+      );
   }
 
   // Calculate wins
@@ -253,8 +290,8 @@ export default async function PaiktesPage({
     }
   }
 
-  // ✅ NO SIGNING - Pass raw paths
   const now = new Date();
+
   const enriched: PLWithTGoals[] = p.map((pl) => {
     const age = pl.birth_date
       ? Math.floor(
@@ -263,7 +300,42 @@ export default async function PaiktesPage({
         )
       : null;
 
-    const playerTeams = teamsByPlayer.get(pl.id) ?? [];
+    // Membership teams for this player
+    const membershipTeams =
+      teamsByPlayer.get(pl.id) ?? [];
+
+    // Rank membership teams by matches played for that team
+    type TeamWithMatches = {
+      id: number;
+      name: string;
+      logo: string | null;
+      matchesForTeam: number;
+    };
+
+    const rankedTeams: TeamWithMatches[] = membershipTeams
+      .map((t) => {
+        const key = `${pl.id}:${t.id}`;
+        const matchSet = matchesByPlayerTeam.get(key);
+        const matchesForTeam = matchSet ? matchSet.size : 0;
+        return { ...t, matchesForTeam };
+      })
+      .sort((a, b) => {
+        // Primary: more matches first
+        if (b.matchesForTeam !== a.matchesForTeam) {
+          return b.matchesForTeam - a.matchesForTeam;
+        }
+        // Tie-breaker: name, then id for determinism
+        if (a.name !== b.name) {
+          return a.name.localeCompare(b.name);
+        }
+        return a.id - b.id;
+      });
+
+    // Main + up to 2 secondary teams
+    const topTeams = rankedTeams
+      .slice(0, 3)
+      .map(({ matchesForTeam, ...rest }) => rest);
+
     const totals = totalsByPlayer.get(pl.id);
     const matches = matchesByPlayer.get(pl.id)?.size ?? 0;
     const mvp = mvpByPlayer.get(pl.id) ?? 0;
@@ -274,13 +346,14 @@ export default async function PaiktesPage({
       id: pl.id,
       first_name: pl.first_name ?? "",
       last_name: pl.last_name ?? "",
-      photo: pl.photo ?? "/player-placeholder.jpg", 
+      photo: pl.photo ?? "/player-placeholder.jpg",
       position: pl.position ?? "",
       height_cm: pl.height_cm ?? null,
       birth_date: pl.birth_date ?? null,
       age,
-      teams: playerTeams,
-      team: playerTeams[0] ?? null,
+      // membership-based team fields:
+      teams: topTeams, // up to 3 current teams, sorted by matches played
+      team: topTeams[0] ?? null, // main team = most matches among membership teams
       matches,
       goals: totals?.total_goals ?? 0,
       assists: totals?.total_assists ?? 0,
@@ -293,7 +366,7 @@ export default async function PaiktesPage({
     };
   });
 
-  // ✅ TOURNAMENT-SCOPED STATS: Compute all tournament stats when tournament is selected
+  // TOURNAMENT-SCOPED STATS
   if (tournamentId) {
     const { data: matchRows } = await supabaseAdmin
       .from("matches")
@@ -362,14 +435,12 @@ export default async function PaiktesPage({
         return s;
       };
 
-      // Track unique matches per player
       const matchesByTPlayer = new Map<number, Set<number>>();
 
       for (const r of typedMpsRows) {
         const pid = r.player_id;
         const s = ensure(pid);
 
-        // Track unique matches
         if (!matchesByTPlayer.has(pid)) {
           matchesByTPlayer.set(pid, new Set());
         }
@@ -389,7 +460,6 @@ export default async function PaiktesPage({
         }
       }
 
-      // Set match counts based on unique matches
       for (const [playerId, matchSet] of matchesByTPlayer) {
         const s = tStatsByPlayer.get(playerId);
         if (s) {
@@ -397,7 +467,6 @@ export default async function PaiktesPage({
         }
       }
 
-      // Apply tournament stats to enriched players
       for (const pl of enriched) {
         const s = tStatsByPlayer.get(pl.id);
         if (!s) continue;
@@ -415,7 +484,7 @@ export default async function PaiktesPage({
     }
   }
 
-  // ✅ TOURNAMENT-AWARE SORTING: Helper function to get the right metric
+  // TOURNAMENT-AWARE SORTING
   const hasTournament = !!tournamentId;
 
   function metric(
@@ -431,7 +500,6 @@ export default async function PaiktesPage({
     return typeof g === "number" ? g : 0;
   }
 
-  // Apply sorting (tournament-aware when tournament is selected)
   switch (sortMode) {
     case "goals":
     case "tournament_goals":
@@ -480,12 +548,14 @@ export default async function PaiktesPage({
 
   return (
     <div className="h-screen bg-black overflow-hidden">
-      <PlayersClient 
-        initialPlayers={enriched} 
+      <PlayersClient
+        initialPlayers={enriched}
         tournaments={tournaments}
         totalCount={totalCount ?? 0}
         currentPage={page}
         pageSize={pageSize}
+        usePagination={usePagination}
+        initialSearchQuery={searchTerm}
       />
     </div>
   );

@@ -8,13 +8,14 @@ type Tournament = { id: number; name: string; season: string | null };
 type Props = {
   selectedSort: string;
   selectedTournamentId: number | null;
-  topN: number | null;
+  topInputValue: string;
   tournaments: Tournament[];
   searchQuery: string;
   playerCount: number;
   onSortChange: (sort: string) => void;
   onTournamentChange: (tournamentId: string) => void;
   onTopChange: (top: string) => void;
+  onTopInputChange: (value: string) => void;
   onSearchChange: (query: string) => void;
   onReset: () => void;
 };
@@ -29,16 +30,28 @@ const SORT_OPTIONS = [
   { value: "bestgk", label: "Best GK", column: "bestgk" },
 ] as const;
 
+const EXTRA_SORT_LABELS: Record<string, string> = {
+  alpha: "Αλφαβητικά",
+  tournament_goals: "Γκολ Τουρνουά",
+};
+
+function resolveSortLabel(value: string) {
+  const known = SORT_OPTIONS.find((opt) => opt.value === value)?.label;
+  if (known) return known;
+  return EXTRA_SORT_LABELS[value] ?? value;
+}
+
 function PlayersFilterHeaderComponent({
   selectedSort,
   selectedTournamentId,
-  topN,
+  topInputValue,
   tournaments,
   searchQuery,
   playerCount,
   onSortChange,
   onTournamentChange,
   onTopChange,
+  onTopInputChange,
   onSearchChange,
   onReset,
 }: Props) {
@@ -78,6 +91,30 @@ function PlayersFilterHeaderComponent({
     },
     [onTopChange]
   );
+
+  const handleTopInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onTopInputChange(e.target.value);
+    },
+    [onTopInputChange]
+  );
+
+  const summaryParts: string[] = [];
+
+  const sortLabel = resolveSortLabel(selectedSort);
+  if (sortLabel) summaryParts.push(`Ταξινόμηση: ${sortLabel}`);
+
+  const tournamentName = selectedTournamentId
+    ? tournaments.find((t) => t.id === selectedTournamentId)?.name
+    : null;
+  if (tournamentName) summaryParts.push(`Τουρνουά: ${tournamentName}`);
+
+  if (topInputValue) summaryParts.push(`Top: ${topInputValue}`);
+  if (searchQuery.trim()) summaryParts.push(`Αναζήτηση: “${searchQuery.trim()}”`);
+
+  const summaryText = summaryParts.length
+    ? summaryParts.join(" • ")
+    : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
     <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10">
@@ -146,7 +183,8 @@ function PlayersFilterHeaderComponent({
               type="number"
               min={1}
               placeholder="π.χ. 20"
-              defaultValue={topN ?? ""}
+              value={topInputValue}
+              onChange={handleTopInputChange}
               onBlur={handleTopBlur}
               onKeyDown={handleTopKeyDown}
               className="w-full bg-white/5 text-white border border-white/10 px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07] rounded-md"
@@ -205,7 +243,8 @@ function PlayersFilterHeaderComponent({
               type="number"
               min={1}
               placeholder="π.χ. 20"
-              defaultValue={topN ?? ""}
+              value={topInputValue}
+              onChange={handleTopInputChange}
               onBlur={handleTopBlur}
               onKeyDown={handleTopKeyDown}
               className="w-full bg-white/5 text-white border border-white/10 px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all hover:bg-white/[0.07]"
@@ -224,33 +263,46 @@ function PlayersFilterHeaderComponent({
         </div>
       </div>
 
+      {/* Active filter summary */}
+      <div
+        className="px-4 md:px-6 py-2 text-[11px] md:text-xs text-white/60 bg-white/[0.04] border-b border-white/5"
+        aria-live="polite"
+      >
+        <span className="font-semibold text-white/70 mr-1">Ενεργά φίλτρα:</span>
+        <span>{summaryText}</span>
+      </div>
+
       {/* Sort Buttons Row */}
       <div className="border-b border-white/5">
         {/* Mobile: Horizontal scroll */}
-        <div className="md:hidden overflow-x-auto scrollbar-hide">
-          <div className="flex min-w-max gap-0 px-4">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => onSortChange(opt.value)}
-                className={`
-                  flex-shrink-0 px-4 py-3 text-xs font-semibold uppercase tracking-wider
-                  transition-all duration-200
-                  border-b-2
-                  text-center
-                  ${
-                    selectedSort === opt.value
-                      ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
-                      : "text-white/50 border-transparent hover:text-white/80 hover:bg-white/5"
-                  }
-                `}
-              >
-                {opt.label}
-                {selectedSort === opt.value && (
-                  <span className="ml-1 text-cyan-400">▼</span>
-                )}
-              </button>
-            ))}
+        <div className="md:hidden">
+          <div className="px-4 pt-4 pb-2 text-[11px] font-semibold tracking-[0.3em] uppercase text-white/40">
+            Α "Αναζήτηση για"
+          </div>
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex min-w-max gap-3 px-4 pb-4">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onSortChange(opt.value)}
+                  className={`
+                    flex-shrink-0 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em]
+                    transition-all duration-200 rounded-full border
+                    text-center shadow-sm backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
+                    ${
+                      selectedSort === opt.value
+                        ? "text-orange-200 border-orange-400/80 bg-gradient-to-r from-orange-500/30 to-amber-400/20 shadow-orange-500/30"
+                        : "text-white/70 border-white/15 bg-white/5 hover:text-white hover:border-orange-400 hover:bg-orange-500/10 hover:shadow-orange-500/20"
+                    }
+                  `}
+                >
+                  {opt.label}
+                  {selectedSort === opt.value && (
+                    <span className="ml-1 text-orange-200">▼</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -268,21 +320,19 @@ function PlayersFilterHeaderComponent({
               <button
                 key={opt.value}
                 onClick={() => onSortChange(opt.value)}
-                className={`
-                  px-2 py-2 text-xs font-semibold uppercase tracking-wider
-                  transition-all duration-200
-                  border-b-2
-                  text-center
+                  className={`
+                  px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em]
+                  transition-all duration-200 rounded-lg border text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
                   ${
                     selectedSort === opt.value
-                      ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
-                      : "text-white/50 border-transparent hover:text-white/80 hover:bg-white/5"
+                      ? "text-orange-200 border-orange-400/80 bg-orange-500/15 shadow-orange-500/25 shadow"
+                      : "text-white/60 border-transparent hover:text-white hover:border-orange-400/70 hover:bg-orange-500/10"
                   }
                 `}
               >
                 {opt.label}
                 {selectedSort === opt.value && (
-                  <span className="ml-1 text-cyan-400">▼</span>
+                  <span className="ml-1 text-orange-200">▼</span>
                 )}
               </button>
             ))}

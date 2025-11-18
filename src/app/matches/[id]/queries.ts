@@ -1,5 +1,6 @@
 // app/tournoua/match/[id]/queries.ts
-'use server'
+'use server';
+
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   normalizeTeamPlayers,
@@ -16,7 +17,7 @@ export type { MatchPlayerStatRow } from "@/app/lib/types";
 type TournamentLite = {
   id: number;
   name: string;
-  logo: string | null; // ✅ Added logo field
+  logo: string | null; // ✅ logo field
 };
 
 // Your existing type, augmented with an optional tournament
@@ -24,6 +25,7 @@ export type MatchWithTournament = MatchWithTeams & {
   tournament: TournamentLite | null;
   stage_id: number | null;
   group_id: number | null;
+  video_url: string | null; // ✅ NEW: per-match YouTube URL/ID
 };
 
 export async function fetchMatch(id: Id) {
@@ -40,10 +42,11 @@ export async function fetchMatch(id: Id) {
         "referee",
         "stage_id",
         "group_id",
+        "video_url", // ✅ NEW: load from DB
         // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
-        // Tournament (UPDATED - added logo field)
+        // Tournament (has logo)
         "tournament:tournaments(id,name,logo)",
         // If inference doesn't work in your project, swap the line above with:
         // "tournament:tournaments!matches_tournament_id_fkey(id,name,logo)",

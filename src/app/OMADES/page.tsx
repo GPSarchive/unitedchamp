@@ -170,7 +170,7 @@ export default async function TeamsPage({
             {teamsForGrid.map((team) => (
               <a
                 key={team.id}
-                href={`/OMADES/teams/${team.id}`}
+                href={`/OMADA/${team.id}`}
                 className="group relative aspect-square
                          bg-black rounded-lg
                          border border-white/5

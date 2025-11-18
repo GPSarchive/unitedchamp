@@ -421,29 +421,48 @@ function ProfileCardComponent({
               <div className={styles["pc-user-info"]}>
                 {/* Team logos - MUCH BIGGER */}
                 {teams.length > 0 && (
-                  <div className={styles["pc-team-logos-row"]}>
-                    {teams.map((team) => (
-                      <div key={team.id} className={styles["pc-panel-team-logo"]}>
-                        {team.logo ? (
-                          <PlayerImage
-                            src={team.logo}
-                            alt={team.name}
-                            width={80}
-                            height={80}
-                            className={styles["pc-team-logo-img"]}
-                          />
-                        ) : (
-                          <div className={styles["pc-team-logo-placeholder"]} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+  <div className={styles["pc-team-logos-row"]}>
+    {teams.map((team, index) => {
+      const isMain = index === 0; // first = main team
+
+      return (
+        <div
+          key={team.id}
+          className={`${styles["pc-panel-team-logo"]} ${
+            isMain
+              ? styles["pc-panel-team-logo-main"]
+              : styles["pc-panel-team-logo-secondary"]
+          }`}
+        >
+          {team.logo ? (
+            <PlayerImage
+              src={team.logo}
+              alt={team.name}
+              width={80}
+              height={80}
+              className={`${styles["pc-team-logo-img"]} ${
+                isMain
+                  ? styles["pc-team-logo-img-main"]
+                  : styles["pc-team-logo-img-secondary"]
+              }`}
+            />
+          ) : (
+            <div className={styles["pc-team-logo-placeholder"]} />
+          )}
+        </div>
+      );
+    })}
+  </div>
+)}
 
                 {showStats && (
                   <div className={styles["pc-stats"]}>
                     {/* Stats container - COMPACT GRID */}
                     <div className={styles["pc-stats-container"]}>
+                    <div className={styles["pc-stat-item"]}>
+                        <span className={styles["pc-stat-field"]}>Matches</span>
+                        <span className={styles["pc-stat-value"]}>{matchesPlayed}</span>
+                      </div>
                       <div className={styles["pc-stat-item"]}>
                         <span className={styles["pc-stat-field"]}>Goals</span>
                         <span className={styles["pc-stat-value"]}>{totalGoals}</span>
@@ -466,10 +485,7 @@ function ProfileCardComponent({
                         </div>
                       )}
 
-                      <div className={styles["pc-stat-item"]}>
-                        <span className={styles["pc-stat-field"]}>Matches</span>
-                        <span className={styles["pc-stat-value"]}>{matchesPlayed}</span>
-                      </div>
+                      
                     </div>
                   </div>
                 )}

@@ -147,7 +147,7 @@ async function fetchSignedUrl(path: string): Promise<string | null> {
 // Hook: Get image URL (public or signed)
 // ============================================================================
 
-function useImageUrl(
+export function useImageUrl(
   src: string | null | undefined,
   type: ImageType
 ): string | null {

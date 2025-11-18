@@ -1,5 +1,6 @@
 // src/app/matches/[id]/actions.ts
-'use server' 
+'use server';
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
@@ -458,5 +459,27 @@ export async function markScheduledAction(formData: FormData) {
     .eq('id', matchId);
 
   if (error) throw error;
+  revalidatePath(`/matches/${matchId}`);
+}
+
+/** --------------------------------
+ *  NEW: update match video URL (CRUD)
+ *  -------------------------------- */
+export async function updateMatchVideoAction(formData: FormData) {
+  const supabase = await assertAdmin();
+
+  const matchId = Number(formData.get('match_id'));
+  if (!Number.isFinite(matchId)) throw new Error('Bad match id');
+
+  const raw = (formData.get('video_url') as string | null) ?? null;
+  const value = raw && raw.trim().length ? raw.trim() : null; // empty => NULL (delete)
+
+  const { error } = await supabase
+    .from('matches')
+    .update({ video_url: value })
+    .eq('id', matchId);
+
+  if (error) throw error;
+
   revalidatePath(`/matches/${matchId}`);
 }
