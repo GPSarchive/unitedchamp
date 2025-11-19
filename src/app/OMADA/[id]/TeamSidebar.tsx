@@ -12,7 +12,6 @@ import {
 } from "react-icons/fa";
 import type { Team } from "@/app/lib/types";
 import LightRays from "./react-bits/LightRays";
-import OptimizedImage from "@/app/lib/OptimizedImage"; // Import OptimizedImage
 
 type TournamentLight = {
   id: number;
@@ -38,6 +37,35 @@ type StatTileProps = {
   value: string | number;
   highlight?: boolean;
 };
+
+/**
+ * Transform external logo URLs to use local CORS-enabled proxy.
+ * External URLs (e.g., https://www.ultrachamp.gr/api/public/team-logo/...)
+ * need to be proxied through our API to enable CORS for WebGL.
+ */
+function getProxiedLogoUrl(logoUrl: string | null | undefined): string {
+  if (!logoUrl) return "/placeholder-logo.png";
+
+  // If already a relative URL or local, return as-is
+  if (logoUrl.startsWith("/")) return logoUrl;
+
+  try {
+    const url = new URL(logoUrl);
+    // If it's an external ultrachamp.gr URL, extract the path and use local proxy
+    if (url.hostname === "www.ultrachamp.gr" || url.hostname === "ultrachamp.gr") {
+      // Extract path after /api/public/team-logo/
+      const match = url.pathname.match(/\/api\/public\/team-logo\/(.+)/);
+      if (match && match[1]) {
+        return `/api/public/team-logo/${match[1]}`;
+      }
+    }
+    // For other external URLs, return as-is (might need proxy in future)
+    return logoUrl;
+  } catch {
+    // Invalid URL, return as-is
+    return logoUrl;
+  }
+}
 
 function StatTile({ icon, label, value, highlight }: StatTileProps) {
   return (
@@ -94,7 +122,7 @@ export default function TeamSidebar({
         <div className="flex justify-center md:justify-start md:flex-shrink-0">
           <div className="relative h-28 w-28 md:h-40 md:w-40">
             <div className="absolute inset-0 rounded-full bg-black/70 border border-white/15 shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden">
-              {/* Render OptimizedImage as the child of LightRays */}
+              {/* Light rays with team logo */}
               <LightRays
                 className="h-full w-full rounded-full"
                 raysOrigin="top-center"
@@ -106,6 +134,7 @@ export default function TeamSidebar({
                 mouseInfluence={0.16}
                 noiseAmount={0.08}
                 distortion={0.03}
+                logoSrc={getProxiedLogoUrl(team.logo)}
                 logoStrength={4}
                 logoFit="cover"
                 logoScale={1.0}
@@ -113,16 +142,7 @@ export default function TeamSidebar({
                 popDuration={800}
                 popDelay={100}
                 popScaleFrom={0.85}
-              >
-                <OptimizedImage
-                  src={team.logo ?? "/placeholder-logo.png"} // Team logo URL
-                  alt={`${team.name} logo`}
-                  width={160} // Example width
-                  height={160} // Example height
-                  objectFit="cover"
-                  priority
-                />
-              </LightRays>
+              />
             </div>
           </div>
         </div>
