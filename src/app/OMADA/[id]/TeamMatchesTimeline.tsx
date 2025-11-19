@@ -175,7 +175,7 @@ export default function TeamMatchesTimeline({
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                     {/* My Team */}
                     <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
-                      <Image
+                    <Image
                         src={myLogo}
                         alt={myName}
                         width={48}

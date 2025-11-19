@@ -1,7 +1,6 @@
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";  // Server-side Supabase client
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
 import TeamSidebar from "./TeamSidebar";
-import PlayersGrid from "./PlayersGrid";
-import TeamMatchesTimeline from "./TeamMatchesTimeline";  // Use the new client-side component
+import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
 import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
@@ -10,6 +9,7 @@ import {
   normalizeTeamPlayers,
   type TeamPlayersRowRaw,
 } from "@/app/lib/types";
+import TeamRosterShowcase from "./TeamRosterShowcase";
 
 type TeamPageProps = {
   params: Promise<{ id: string }>;
@@ -40,13 +40,14 @@ export default async function TeamPage({ params }: TeamPageProps) {
   }
 
   // ── Tournament membership (this team in tournaments) ───────────────────────────
-  const { data: tournamentMembership, error: membershipErr } = await supabaseAdmin
-    .from("tournament_teams")
-    .select(
-      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
-    )
-    .eq("team_id", teamId)
-    .order("tournament_id", { ascending: false });
+  const { data: tournamentMembership, error: membershipErr } =
+    await supabaseAdmin
+      .from("tournament_teams")
+      .select(
+        `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
+      )
+      .eq("team_id", teamId)
+      .order("tournament_id", { ascending: false });
 
   const tournaments =
     (tournamentMembership ?? [])
@@ -62,18 +63,41 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const wins = winsList ?? [];
 
   // ── Players: include master data + 1 latest statistics row ─────────────────────
-  const { data: playerAssociationsData, error: playersError } = await supabaseAdmin
-    .from("player_teams")
-    .select(
-      `
+  const { data: playerAssociationsData, error: playersError } =
+    await supabaseAdmin
+      .from("player_teams")
+      .select(
+        `
         id,
-        player:player_id (id, first_name, last_name, photo, height_cm, position, birth_date, player_statistics (id, age, total_goals, total_assists, yellow_cards, red_cards, blue_cards, created_at, updated_at))
+        player:player_id (
+          id,
+          first_name,
+          last_name,
+          photo,
+          height_cm,
+          position,
+          birth_date,
+          player_statistics (
+            id,
+            age,
+            total_goals,
+            total_assists,
+            yellow_cards,
+            red_cards,
+            blue_cards,
+            created_at,
+            updated_at
+          )
+        )
       `
-    )
-    .eq("team_id", teamId)
-    .order("player_id", { ascending: true })
-    .order("id", { foreignTable: "player.player_statistics", ascending: false })
-    .limit(1, { foreignTable: "player.player_statistics" });
+      )
+      .eq("team_id", teamId)
+      .order("player_id", { ascending: true })
+      .order("id", {
+        foreignTable: "player.player_statistics",
+        ascending: false,
+      })
+      .limit(1, { foreignTable: "player.player_statistics" });
 
   const playerAssociations: PlayerAssociation[] =
     playersError || !playerAssociationsData
@@ -132,38 +156,44 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <div className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Vanta background (client-only), positioned behind everything */}
-      <VantaBg className="absolute inset-0 -z-10" />
+    <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
+      {/* Vanta background: fixed to viewport only */}
+      <div className="fixed inset-0 -z-20 h-screen w-screen">
+        <VantaBg className="h-full w-full" />
+      </div>
 
-      {/* Optional: a very subtle warm overlay to help contrast */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+      {/* Subtle overlay for contrast */}
+      <div className="fixed inset-0 -z-10 pointer-events-none bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
-          {/* Left Sidebar: Logo + Basic Info */}
+      {/* Page content scrolling over the fixed background */}
+      <div className="relative z-10">
+        <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
+          {/* Top: team hero */}
           <TeamSidebar
             team={team as Team}
             tournaments={tournaments}
             wins={wins}
-            errors={{ membership: membershipErr?.message, wins: winsErr?.message }}
+            errors={{
+              membership: membershipErr?.message,
+              wins: winsErr?.message,
+            }}
           />
 
-          {/* Right Content: Players + Matches */}
-          <div className="space-y-8">
-            <PlayersGrid
-              playerAssociations={playerAssociations}
-              seasonStatsByPlayer={seasonStatsByPlayer}
-              errorMessage={playersError?.message || pssErr?.message}
-            />
-            <TeamMatchesTimeline
-              matches={matches}
-              teamId={teamId}
-              errorMessage={matchesError?.message}
-            />
-          </div>
+          {/* Middle: roster */}
+          <TeamRosterShowcase
+            playerAssociations={playerAssociations}
+            seasonStatsByPlayer={seasonStatsByPlayer}
+            errorMessage={playersError?.message || pssErr?.message}
+          />
+
+          {/* Bottom: matches timeline */}
+          <TeamMatchesTimeline
+            matches={matches}
+            teamId={teamId}
+            errorMessage={matchesError?.message}
+          />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

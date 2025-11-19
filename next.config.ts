@@ -1,4 +1,3 @@
-// next.config.ts
 import type { NextConfig } from "next";
 import type { RemotePattern } from "next/dist/shared/lib/image-config";
 
@@ -36,19 +35,20 @@ if (appHost && appProtocol) {
     pathname: "/api/public/team-logo/**",
   });
 }
-// Explicit Vercel prod host
+// Explicit Vercel prod host for team logos
 remotePatterns.push({
   protocol: "https",
   hostname: "unitedchamp.vercel.app",
   pathname: "/api/public/team-logo/**",
 });
-// Dev/local
+// Dev/local for team logos
 remotePatterns.push(
   { protocol: "http", hostname: "localhost", port: "3000", pathname: "/api/public/team-logo/**" },
   { protocol: "http", hostname: "127.0.0.1", port: "3000", pathname: "/api/public/team-logo/**" },
 );
-const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN;
 
+// CDN for player images and other media
+const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN;
 if (CDN_DOMAIN) {
   remotePatterns.push({
     protocol: "https",
@@ -56,14 +56,6 @@ if (CDN_DOMAIN) {
     pathname: "/**",
   });
 }
-/**
- * 2b) Public team-logo host served from ultrachamp.gr
- * (covers both www and apex domains)
- */
-remotePatterns.push(
-  { protocol: "https", hostname: "www.ultrachamp.gr", pathname: "/api/public/team-logo/**" },
-  { protocol: "https", hostname: "ultrachamp.gr", pathname: "/api/public/team-logo/**" },
-);
 
 /**
  * 3) Player image proxy (private bucket via same-origin API)
@@ -94,9 +86,7 @@ remotePatterns.push(
   { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
 );
 
-/**
- * Domains allowlist (kept for compatibility with older Next behavior)
- */
+// Domains allowlist (kept for compatibility with older Next behavior)
 const domains = Array.from(
   new Set(
     [
@@ -119,6 +109,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns,
     domains,
+    // Add additional configurations if needed
     // dangerouslyAllowSVG: true,
     // contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },

@@ -1,11 +1,18 @@
-// app/OMADA/[id]/TeamSidebar.tsx
-'use client';
+"use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap"; // Assume gsap is installed for animations
-import { FaTrophy, FaUsers, FaHashtag, FaChartLine, FaCalendarAlt, FaAward } from "react-icons/fa";
-import { Team } from "@/app/lib/types";
+import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import {
+  FaTrophy,
+  FaUsers,
+  FaHashtag,
+  FaChartLine,
+  FaCalendarAlt,
+  FaAward,
+} from "react-icons/fa";
+import type { Team } from "@/app/lib/types";
 import LightRays from "./react-bits/LightRays";
+import OptimizedImage from "@/app/lib/OptimizedImage"; // Import OptimizedImage
 
 type TournamentLight = {
   id: number;
@@ -15,157 +22,266 @@ type TournamentLight = {
   winner_team_id?: number | null;
 };
 
+type TeamSidebarProps = {
+  team: Team;
+  tournaments: TournamentLight[];
+  wins: { id: number; name: string | null; season: string | null }[];
+  errors?: {
+    membership?: string;
+    wins?: string;
+  };
+};
+
+type StatTileProps = {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+};
+
+function StatTile({ icon, label, value, highlight }: StatTileProps) {
+  return (
+    <div
+      className={[
+        "flex flex-col items-center justify-center rounded-2xl px-3 py-2 bg-black/45 border text-center transition-all",
+        highlight
+          ? "border-amber-400/80 shadow-[0_0_18px_rgba(251,191,36,0.4)]"
+          : "border-white/10",
+      ].join(" ")}
+    >
+      <div className="mb-1 text-base text-red-400">{icon}</div>
+      <span className="text-[9px] uppercase tracking-[0.16em] text-white/55">
+        {label}
+      </span>
+      <span className="mt-0.5 text-sm font-semibold text-white tabular-nums">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export default function TeamSidebar({
   team,
   tournaments,
   wins,
   errors,
-}: {
-  team: Team;
-  tournaments: TournamentLight[];
-  wins: { id: number; name: string | null; season: string | null }[];
-  errors?: { membership?: string; wins?: string };
-}) {
-  const sidebarRef = useRef<HTMLDivElement>(null);
+}: TeamSidebarProps) {
   const membershipCount = tournaments.length;
   const winsCount = wins.length;
 
-  useEffect(() => {
-    if (sidebarRef.current) {
-      gsap.fromTo(
-        sidebarRef.current.children,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, stagger: 0.1, duration: 0.6, ease: "power3.out" }
-      );
-    }
-  }, []);
+  const establishedYear = team.created_at
+    ? new Date(team.created_at).getFullYear()
+    : null;
 
   return (
-    <div
-      ref={sidebarRef}
-      className="sticky top-8 h-fit space-y-6 rounded-2xl bg-gradient-to-b from-stone-800/50 to-stone-900/50 p-6 border border-amber-500/20 shadow-2xl backdrop-blur-md"
+    <section
+      className={[
+        "relative overflow-hidden rounded-2xl border border-white/12 bg-black/55",
+        "shadow-[0_24px_60px_rgba(0,0,0,0.9)] backdrop-blur-xl px-5 py-6 md:px-8 md:py-7",
+        "bg-[radial-gradient(circle_at_0_0,rgba(248,250,252,0.18),transparent_55%),radial-gradient(circle_at_100%_100%,rgba(239,68,68,0.33),transparent_55%)]",
+      ].join(" ")}
     >
-      {/* Logo with LightRays */}
-     <div className="relative mx-auto w-64 h-64 overflow-hidden rounded-full border-4 border-amber-400/30 shadow-lg ring-1 ring-amber-300/20 group">
+      {/* Subtle glow at the top, same vibe as the stats modal */}
+      <div className="pointer-events-none absolute inset-x-8 -top-8 h-10 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.7),transparent_60%)] opacity-50" />
 
-        <LightRays
-          className="absolute inset-0 h-full w-full rounded-full pointer-events-none mix-blend-screen"
-          raysOrigin="top-center"
-          raysColor="#fff7e6"
-          raysSpeed={1.2}
-          lightSpread={0.9}
-          rayLength={1.5}
-          followMouse
-          mouseInfluence={0.15}
-          noiseAmount={0.08}
-          distortion={0.03}
-          logoSrc={team.logo ?? "/placeholder-logo.png"}
-          logoStrength={4}
-          logoFit="cover"
-          logoScale={1.0}
-          popIn
-          popDuration={800}
-          popDelay={100}
-          popScaleFrom={0.85}
-        />
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: -18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative flex flex-col gap-6 md:flex-row md:items-center"
+      >
+        {/* Logo + light rays halo */}
+        <div className="flex justify-center md:justify-start md:flex-shrink-0">
+          <div className="relative h-28 w-28 md:h-40 md:w-40">
+            <div className="absolute inset-0 rounded-full bg-black/70 border border-white/15 shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden">
+              {/* Render OptimizedImage as the child of LightRays */}
+              <LightRays
+                className="h-full w-full rounded-full"
+                raysOrigin="top-center"
+                raysColor="#ffffff"
+                raysSpeed={1.2}
+                lightSpread={0.9}
+                rayLength={1.5}
+                followMouse
+                mouseInfluence={0.16}
+                noiseAmount={0.08}
+                distortion={0.03}
+                logoStrength={4}
+                logoFit="cover"
+                logoScale={1.0}
+                popIn
+                popDuration={800}
+                popDelay={100}
+                popScaleFrom={0.85}
+              >
+                <OptimizedImage
+                  src={team.logo ?? "/placeholder-logo.png"} // Team logo URL
+                  alt={`${team.name} logo`}
+                  width={160} // Example width
+                  height={160} // Example height
+                  objectFit="cover"
+                  priority
+                />
+              </LightRays>
+            </div>
+          </div>
+        </div>
 
-      {/* Name and Established */}
-      <div className="text-center">
-      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400">
-          {team.name}
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Established: {team.created_at ? new Date(team.created_at).toLocaleDateString() : "Unknown"}
+        {/* Main text + quick stats */}
+        <div className="flex-1 space-y-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-black/60 border border-white/15 px-3 py-1 mb-2">
+              <FaUsers className="h-3 w-3 text-red-400" />
+              <span className="text-[10px] tracking-[0.18em] uppercase text-white/70">
+                Προφίλ Ομάδας
+              </span>
+            </div>
+
+            <h1
+              className="text-3xl md:text-4xl font-extrabold text-white"
+              style={{
+                textShadow:
+                  "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+              }}
+            >
+              {team.name}
+            </h1>
+
+            <p
+              className="mt-1 text-sm text-white/80"
+              style={{
+                textShadow: "1px 1px 3px rgba(0,0,0,0.85)",
+              }}
+            >
+              Επίσημο προφίλ ομάδας, συμμετοχές σε τουρνουά και τίτλοι.
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-zinc-200">
+              {establishedYear && (
+                <span className="inline-flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded-full border border-white/10">
+                  <FaCalendarAlt className="h-3 w-3 text-red-400" />
+                  Ίδρυση {establishedYear}
+                </span>
+              )}
+              {typeof team.am !== "undefined" && team.am !== null && (
+                <span className="inline-flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded-full border border-white/10">
+                  <FaHashtag className="h-3 w-3 text-red-400" />
+                  AM: {team.am}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Stat tiles – styled like StatPill but larger */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StatTile
+              icon={<FaHashtag className="h-4 w-4" />}
+              label="ΚΩΔΙΚΟΣ"
+              value={team.id}
+            />
+            <StatTile
+              icon={<FaChartLine className="h-4 w-4" />}
+              label="SEASON SCORE"
+              value={team.season_score ?? 0}
+              highlight
+            />
+            <StatTile
+              icon={<FaUsers className="h-4 w-4" />}
+              label="ΤΟΥΡΝΟΥΑ"
+              value={membershipCount}
+            />
+            <StatTile
+              icon={<FaTrophy className="h-4 w-4" />}
+              label="ΤΙΤΛΟΙ"
+              value={winsCount}
+              highlight={winsCount > 0}
+            />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Bottom lists – same glassy cards as player stats modal */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.15 }}
+        className="relative mt-6 grid gap-5 md:grid-cols-2"
+      >
+        {membershipCount > 0 && (
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <FaCalendarAlt className="h-4 w-4 text-red-400" />
+              <h2
+                className="text-sm font-semibold text-white"
+                style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.9)" }}
+              >
+                Συμμετοχές σε Τουρνουά
+              </h2>
+            </div>
+            <ul className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {tournaments.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between rounded-xl border border-white/10 bg-black/45 px-3 py-1.5 text-xs text-zinc-100 hover:border-red-400/80 hover:bg-black/70 transition-colors"
+                >
+                  <span className="truncate">
+                    {t.name ?? "Άγνωστο τουρνουά"}
+                  </span>
+                  {t.season && (
+                    <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-full bg-red-900/40 border border-red-500/60 px-2 py-0.5 text-[10px] text-red-100">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                      {t.season}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {winsCount > 0 && (
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <FaAward className="h-4 w-4 text-amber-400" />
+              <h2
+                className="text-sm font-semibold text-white"
+                style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.9)" }}
+              >
+                Κατακτήσεις Τίτλων
+              </h2>
+            </div>
+            <ul className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {wins.map((w) => (
+                <li
+                  key={w.id}
+                  className="flex items-center justify-between rounded-xl border border-amber-400/60 bg-black/55 px-3 py-1.5 text-xs text-amber-50 shadow-[0_0_15px_rgba(251,191,36,0.35)]"
+                >
+                  <span className="truncate">
+                    {w.name || "Πρωταθλητής"}
+                  </span>
+                  {w.season && (
+                    <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/20 border border-amber-300/80 px-2 py-0.5 text-[10px] text-amber-50">
+                      <FaTrophy className="h-3 w-3" />
+                      {w.season}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </motion.div>
+
+      {errors?.membership && (
+        <p className="mt-3 text-xs text-red-300/90">
+          Σφάλμα φόρτωσης συμμετοχών: {errors.membership}
         </p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-      <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-      <FaHashtag className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Team ID</p>
-          <p className="text-xl font-bold text-white">{team.am ?? "—"}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-          <FaChartLine className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Season Score</p>
-          <p className="text-xl font-bold text-white">{team.season_score ?? 0}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-          <FaUsers className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Tournaments</p>
-          <p className="text-xl font-bold text-white">{membershipCount}</p>
-        </div>
-        <div className="p-4 rounded-xl bg-slate-800/50 border border-amber-600/30 text-center">
-          <FaTrophy className="mx-auto text-amber-400 mb-2" />
-          <p className="text-sm text-slate-400">Championships</p>
-          <p className="text-xl font-bold text-white">{winsCount}</p>
-        </div>
-      </div>
-
-      {/* Tournaments List */}
-{membershipCount > 0 && (
-  <div>
-    <h3
-      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-2 flex items-center gap-2"
-      title="Tournaments the team has participated in"
-    >
-      <FaCalendarAlt className="text-amber-400" /> Tournaments
-    </h3>
-    <ul className="space-y-2">
-      {tournaments.map((t) => (
-        <li
-          key={t.id}
-          className="text-sm text-slate-200 bg-slate-900/40 border border-amber-600/30 hover:border-amber-400/50 hover:shadow-md hover:shadow-orange-500/10 transition-colors rounded-lg px-3 py-2 flex items-center justify-between"
-        >
-          <span className="truncate">{t.name ?? "—"}</span>
-
-          {t.season ? (
-            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-orange-900/25 px-2 py-0.5 text-amber-200 text-xs">
-              <span className="size-1.5 rounded-full bg-amber-400/80" />
-              {t.season}
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-{/* Wins List */}
-{winsCount > 0 && (
-  <div>
-    <h3
-      className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400 mb-2 flex items-center gap-2"
-      title="Championships the team has won"
-    >
-      <FaAward className="text-amber-400" /> Championships
-    </h3>
-    <ul className="space-y-2">
-      {wins.map((w) => (
-        <li
-          key={w.id}
-          className="text-sm text-slate-200 bg-slate-900/40 border border-amber-600/30 hover:border-amber-400/50 hover:shadow-md hover:shadow-orange-500/10 transition-colors rounded-lg px-3 py-2 flex items-center justify-between"
-        >
-          <span className="truncate">{w.name ?? "Champion"}</span>
-
-          {w.season ? (
-            <span className="ml-3 shrink-0 inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-900/20 px-2 py-0.5 text-red-200 text-xs">
-              <span className="size-1.5 rounded-full bg-red-400/80" />
-              {w.season}
-            </span>
-          ) : null}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-
-{errors?.membership && (
-  <p className="text-red-400/90 text-sm">Error: {errors.membership}</p>
-)}
-{errors?.wins && <p className="text-red-400/90 text-sm">Error: {errors.wins}</p>}
-    </div>
+      )}
+      {errors?.wins && (
+        <p className="mt-1 text-xs text-red-300/90">
+          Σφάλμα φόρτωσης τίτλων: {errors.wins}
+        </p>
+      )}
+    </section>
   );
 }

@@ -1,5 +1,6 @@
 // app/OMADA/[id]/react-bits/LightRays.tsx
 'use client';
+import { ReactNode } from 'react';
 
 import { useRef, useEffect, useState } from 'react';
 import './LightRays.css';
@@ -22,6 +23,7 @@ type RaysOrigin =
 type LogoFit = 'contain' | 'cover' | 'stretch';
 
 interface LightRaysProps {
+  children?: ReactNode; // Add this line to allow children
   raysOrigin?: RaysOrigin;
   raysColor?: string;
   raysSpeed?: number;
@@ -50,10 +52,10 @@ interface LightRaysProps {
   logoOnTop?: boolean;
   logoOpacity?: number;
 
-  /** 🔧 Performance controls */
-  maxDpr?: number;      // cap device pixel ratio (default: 1.0 desktop / 0.85 touch)
-  maxFps?: number;      // cap animation FPS (default: 45)
-  idleDelayMs?: number; // delay init slightly to let main content paint (default: 60)
+  // 🔧 Performance controls
+  maxDpr?: number;
+  maxFps?: number;
+  idleDelayMs?: number;
 }
 
 /** ---- Small utils ---- */
