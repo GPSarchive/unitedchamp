@@ -12,7 +12,6 @@ import {
 } from "react-icons/fa";
 import type { Team } from "@/app/lib/types";
 import LightRays from "./react-bits/LightRays";
-import OptimizedImage from "@/app/lib/OptimizedImage"; // Import OptimizedImage
 
 type TournamentLight = {
   id: number;
@@ -94,7 +93,7 @@ export default function TeamSidebar({
         <div className="flex justify-center md:justify-start md:flex-shrink-0">
           <div className="relative h-28 w-28 md:h-40 md:w-40">
             <div className="absolute inset-0 rounded-full bg-black/70 border border-white/15 shadow-[0_0_30px_rgba(0,0,0,0.9)] overflow-hidden">
-              {/* Render OptimizedImage as the child of LightRays */}
+              {/* Light rays with team logo */}
               <LightRays
                 className="h-full w-full rounded-full"
                 raysOrigin="top-center"
@@ -106,6 +105,7 @@ export default function TeamSidebar({
                 mouseInfluence={0.16}
                 noiseAmount={0.08}
                 distortion={0.03}
+                logoSrc={team.logo ?? "/placeholder-logo.png"}
                 logoStrength={4}
                 logoFit="cover"
                 logoScale={1.0}
@@ -113,16 +113,7 @@ export default function TeamSidebar({
                 popDuration={800}
                 popDelay={100}
                 popScaleFrom={0.85}
-              >
-                <OptimizedImage
-                  src={team.logo ?? "/placeholder-logo.png"} // Team logo URL
-                  alt={`${team.name} logo`}
-                  width={160} // Example width
-                  height={160} // Example height
-                  objectFit="cover"
-                  priority
-                />
-              </LightRays>
+              />
             </div>
           </div>
         </div>
