@@ -38,6 +38,35 @@ type StatTileProps = {
   highlight?: boolean;
 };
 
+/**
+ * Transform external logo URLs to use local CORS-enabled proxy.
+ * External URLs (e.g., https://www.ultrachamp.gr/api/public/team-logo/...)
+ * need to be proxied through our API to enable CORS for WebGL.
+ */
+function getProxiedLogoUrl(logoUrl: string | null | undefined): string {
+  if (!logoUrl) return "/placeholder-logo.png";
+
+  // If already a relative URL or local, return as-is
+  if (logoUrl.startsWith("/")) return logoUrl;
+
+  try {
+    const url = new URL(logoUrl);
+    // If it's an external ultrachamp.gr URL, extract the path and use local proxy
+    if (url.hostname === "www.ultrachamp.gr" || url.hostname === "ultrachamp.gr") {
+      // Extract path after /api/public/team-logo/
+      const match = url.pathname.match(/\/api\/public\/team-logo\/(.+)/);
+      if (match && match[1]) {
+        return `/api/public/team-logo/${match[1]}`;
+      }
+    }
+    // For other external URLs, return as-is (might need proxy in future)
+    return logoUrl;
+  } catch {
+    // Invalid URL, return as-is
+    return logoUrl;
+  }
+}
+
 function StatTile({ icon, label, value, highlight }: StatTileProps) {
   return (
     <div
@@ -105,7 +134,7 @@ export default function TeamSidebar({
                 mouseInfluence={0.16}
                 noiseAmount={0.08}
                 distortion={0.03}
-                logoSrc={team.logo ?? "/placeholder-logo.png"}
+                logoSrc={getProxiedLogoUrl(team.logo)}
                 logoStrength={4}
                 logoFit="cover"
                 logoScale={1.0}
