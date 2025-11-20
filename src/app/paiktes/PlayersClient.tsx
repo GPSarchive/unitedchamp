@@ -364,7 +364,7 @@ export default function PlayersClient({
       {!isXL && detailOpen && active && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
           {/* Header with back button */}
-          <div className="sticky top-0 z-10 bg-zinc-950 border-b border-white/10 px-4 py-3">
+          <div className="sticky top-0 z-10 bg-zinc-950 border-b border-white/10 px-4 py-3 flex-shrink-0">
             <button
               type="button"
               onClick={closeDetailOnMobile}
@@ -392,8 +392,8 @@ export default function PlayersClient({
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 pb-8">
+          <div className="flex-1 overflow-y-auto overscroll-contain">
+            <div className="p-4 pb-8 min-h-0">
               <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
           </div>
