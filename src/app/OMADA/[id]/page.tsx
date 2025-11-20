@@ -92,12 +92,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
       `
       )
       .eq("team_id", teamId)
-      .order("player_id", { ascending: true })
-      .order("id", {
-        foreignTable: "player.player_statistics",
-        ascending: false,
-      })
-      .limit(1, { foreignTable: "player.player_statistics" });
+      .order("player_id", { ascending: true });
 
   const playerAssociations: PlayerAssociation[] =
     playersError || !playerAssociationsData
