@@ -62,40 +62,56 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
   const wins = winsList ?? [];
 
-  // ── Players: include master data + 1 latest statistics row ─────────────────────
-  const { data: playerAssociationsData, error: playersError } =
+  // ── Players: Fetch player_teams first ─────────────────────────────────────────
+  const { data: playerTeamsData, error: playerTeamsError } =
     await supabaseAdmin
       .from("player_teams")
-      .select(
-        `
-        id,
-        player:player_id (
-          id,
-          first_name,
-          last_name,
-          photo,
-          height_cm,
-          position,
-          birth_date,
-          player_statistics (
-            id,
-            age,
-            total_goals,
-            total_assists,
-            yellow_cards,
-            red_cards,
-            blue_cards,
-            created_at,
-            updated_at
-          )
-        )
-      `
-      )
+      .select("id, player_id")
       .eq("team_id", teamId)
       .order("player_id", { ascending: true });
 
+  const playerIds = (playerTeamsData ?? []).map((pt: any) => pt.player_id);
+
+  // ── Fetch player basic info ────────────────────────────────────────────────────
+  const { data: playersData, error: playersError } = playerIds.length
+    ? await supabaseAdmin
+        .from("player")
+        .select("id, first_name, last_name, photo, height_cm, position, birth_date")
+        .in("id", playerIds)
+    : { data: [], error: null };
+
+  // ── Fetch player_statistics separately ─────────────────────────────────────────
+  const { data: statsData, error: statsError } = playerIds.length
+    ? await supabaseAdmin
+        .from("player_statistics")
+        .select(
+          "player_id, age, total_goals, total_assists, yellow_cards, red_cards, blue_cards"
+        )
+        .in("player_id", playerIds)
+    : { data: [], error: null };
+
+  // ── Merge player data with statistics ──────────────────────────────────────────
+  const statsMap = new Map(
+    (statsData ?? []).map((s: any) => [s.player_id, s])
+  );
+
+  const playerAssociationsData = (playerTeamsData ?? []).map((pt: any) => {
+    const player = (playersData ?? []).find((p: any) => p.id === pt.player_id);
+    const stats = statsMap.get(pt.player_id);
+
+    return {
+      id: pt.id,
+      player: player
+        ? {
+            ...player,
+            player_statistics: stats ? [stats] : [],
+          }
+        : null,
+    };
+  });
+
   const playerAssociations: PlayerAssociation[] =
-    playersError || !playerAssociationsData
+    playerTeamsError || playersError || !playerAssociationsData
       ? []
       : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]);
 
@@ -178,7 +194,12 @@ export default async function TeamPage({ params }: TeamPageProps) {
           <TeamRosterShowcase
             playerAssociations={playerAssociations}
             seasonStatsByPlayer={seasonStatsByPlayer}
-            errorMessage={playersError?.message || pssErr?.message}
+            errorMessage={
+              playerTeamsError?.message ||
+              playersError?.message ||
+              statsError?.message ||
+              pssErr?.message
+            }
           />
 
           {/* Bottom: matches timeline */}
