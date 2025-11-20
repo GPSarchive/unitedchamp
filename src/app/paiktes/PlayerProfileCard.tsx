@@ -134,6 +134,45 @@ function PlayerProfileCardComponent({
 
   return (
     <div className="relative flex flex-col gap-3 sm:gap-4">
+      {/* Premium background behind card */}
+      <div className="absolute inset-0 -z-10 overflow-hidden rounded-[40px]">
+        {/* Radial glow effect */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(212,175,55,0.15)_0%,_rgba(140,108,0,0.08)_25%,_transparent_60%)]" />
+
+        {/* Animated mesh gradient */}
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            background: `
+              radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.2) 0%, transparent 40%),
+              radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.15) 0%, transparent 40%),
+              radial-gradient(circle at 40% 80%, rgba(140, 108, 0, 0.25) 0%, transparent 50%),
+              radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.18) 0%, transparent 45%)
+            `,
+            animation: 'meshMove 20s ease-in-out infinite',
+          }}
+        />
+
+        {/* Subtle grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(212, 175, 55, 0.3) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(212, 175, 55, 0.3) 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px',
+          }}
+        />
+
+        {/* Spotlight effect from top */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[40%] bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.08)_0%,_transparent_60%)] blur-2xl" />
+
+        {/* Corner accents */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[radial-gradient(circle_at_top_right,_rgba(212,175,55,0.2)_0%,_transparent_70%)] blur-xl" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[radial-gradient(circle_at_bottom_left,_rgba(212,175,55,0.2)_0%,_transparent_70%)] blur-xl" />
+      </div>
+
       {/* Card itself – stats turned off */}
       <ProfileCard
         avatarUrl={player.photo}
