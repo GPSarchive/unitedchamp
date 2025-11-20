@@ -362,9 +362,64 @@ export default function PlayersClient({
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
       {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
       {!isXL && detailOpen && active && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
+          {/* Premium background layers (same as desktop) */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Diagonal stripes pattern */}
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage: `repeating-linear-gradient(
+                  45deg,
+                  rgba(212, 175, 55, 0.4) 0px,
+                  rgba(212, 175, 55, 0.4) 2px,
+                  transparent 2px,
+                  transparent 12px
+                )`
+              }}
+            />
+
+            {/* Hexagon pattern overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage: `
+                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.6) 0%, transparent 50%)
+                `,
+                backgroundSize: '100px 100px',
+                backgroundPosition: '0 0, 50px 50px, 25px 75px'
+              }}
+            />
+
+            {/* Animated gradient orbs */}
+            <div className="absolute inset-0">
+              <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(212,175,55,0.12)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+              <div className="absolute bottom-[20%] left-[10%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(255,193,7,0.1)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+            </div>
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.02] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Noise texture for premium feel */}
+            <div
+              className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'repeat'
+              }}
+            />
+          </div>
+
           {/* Header with back button */}
-          <div className="sticky top-0 z-10 bg-zinc-950 border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+          <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-sm border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
             <button
               type="button"
               onClick={closeDetailOnMobile}
@@ -392,7 +447,7 @@ export default function PlayersClient({
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain relative z-10">
             <div className="p-3 sm:p-4 pb-6 sm:pb-8 min-h-0 max-w-2xl mx-auto">
               <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
@@ -543,8 +598,65 @@ export default function PlayersClient({
         </div>
 
         {/* RIGHT PANEL - Player Card (Desktop Only) */}
-        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col bg-zinc-950/50">
-          <div className="flex-1 overflow-y-auto p-4 xl:p-6">
+        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col relative overflow-hidden">
+          {/* Premium background layers */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Diagonal stripes pattern */}
+            <div
+              className="absolute inset-0 opacity-[0.07]"
+              style={{
+                backgroundImage: `repeating-linear-gradient(
+                  45deg,
+                  rgba(212, 175, 55, 0.4) 0px,
+                  rgba(212, 175, 55, 0.4) 2px,
+                  transparent 2px,
+                  transparent 12px
+                )`
+              }}
+            />
+
+            {/* Hexagon pattern overlay */}
+            <div
+              className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage: `
+                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.6) 0%, transparent 50%)
+                `,
+                backgroundSize: '100px 100px',
+                backgroundPosition: '0 0, 50px 50px, 25px 75px'
+              }}
+            />
+
+            {/* Animated gradient orbs */}
+            <div className="absolute inset-0">
+              <div className="absolute top-[10%] right-[15%] w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(212,175,55,0.12)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+              <div className="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(255,193,7,0.1)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+              <div className="absolute top-[50%] left-[5%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(140,108,0,0.15)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
+            </div>
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.02] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Noise texture for premium feel */}
+            <div
+              className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'repeat'
+              }}
+            />
+          </div>
+
+          {/* Content on top of background */}
+          <div className="flex-1 overflow-y-auto p-4 xl:p-6 relative z-10">
             {active ? (
               <div className="sticky top-0 max-w-xl mx-auto">
                 <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
