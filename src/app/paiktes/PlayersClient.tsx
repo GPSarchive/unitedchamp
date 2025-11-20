@@ -368,52 +368,32 @@ export default function PlayersClient({
             {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
 
-            {/* Diagonal stripes pattern */}
+            {/* Animated mesh gradient - 4 moving spots */}
             <div
-              className="absolute inset-0 opacity-20"
+              className="absolute inset-0"
               style={{
-                backgroundImage: `repeating-linear-gradient(
-                  45deg,
-                  rgba(212, 175, 55, 0.5) 0px,
-                  rgba(212, 175, 55, 0.5) 2px,
-                  transparent 2px,
-                  transparent 12px
-                )`
-              }}
-            />
-
-            {/* Hexagon pattern overlay */}
-            <div
-              className="absolute inset-0 opacity-[0.15]"
-              style={{
-                backgroundImage: `
-                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
-                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
-                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.8) 0%, transparent 50%)
+                background: `
+                  radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 80%, rgba(140, 108, 0, 0.18) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.14) 0%, transparent 50%)
                 `,
-                backgroundSize: '100px 100px',
-                backgroundPosition: '0 0, 50px 50px, 25px 75px'
+                backgroundSize: '200% 200%',
+                animation: 'meshGradient 20s ease-in-out infinite',
               }}
             />
-
-            {/* Animated gradient orbs */}
-            <div className="absolute inset-0">
-              <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(212,175,55,0.25)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-              <div className="absolute bottom-[20%] left-[10%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(255,193,7,0.2)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
-            </div>
 
             {/* Spotlight from top */}
-            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.02] to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
 
             {/* Vignette effect */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
 
-            {/* Noise texture for premium feel */}
+            {/* Subtle noise texture for depth */}
             <div
-              className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'repeat'
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
               }}
             />
           </div>
@@ -604,53 +584,32 @@ export default function PlayersClient({
             {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
 
-            {/* Diagonal stripes pattern */}
+            {/* Animated mesh gradient - 4 moving spots */}
             <div
-              className="absolute inset-0 opacity-20"
+              className="absolute inset-0"
               style={{
-                backgroundImage: `repeating-linear-gradient(
-                  45deg,
-                  rgba(212, 175, 55, 0.5) 0px,
-                  rgba(212, 175, 55, 0.5) 2px,
-                  transparent 2px,
-                  transparent 12px
-                )`
-              }}
-            />
-
-            {/* Hexagon pattern overlay */}
-            <div
-              className="absolute inset-0 opacity-[0.15]"
-              style={{
-                backgroundImage: `
-                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
-                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
-                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.8) 0%, transparent 50%)
+                background: `
+                  radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 40% 80%, rgba(140, 108, 0, 0.18) 0%, transparent 50%),
+                  radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.14) 0%, transparent 50%)
                 `,
-                backgroundSize: '100px 100px',
-                backgroundPosition: '0 0, 50px 50px, 25px 75px'
+                backgroundSize: '200% 200%',
+                animation: 'meshGradient 20s ease-in-out infinite',
               }}
             />
-
-            {/* Animated gradient orbs */}
-            <div className="absolute inset-0">
-              <div className="absolute top-[10%] right-[15%] w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(212,175,55,0.25)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-              <div className="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(255,193,7,0.2)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
-              <div className="absolute top-[50%] left-[5%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(140,108,0,0.3)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
-            </div>
 
             {/* Spotlight from top */}
-            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.02] to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
 
             {/* Vignette effect */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
 
-            {/* Noise texture for premium feel */}
+            {/* Subtle noise texture for depth */}
             <div
-              className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-                backgroundRepeat: 'repeat'
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
               }}
             />
           </div>

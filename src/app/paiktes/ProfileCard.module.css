@@ -695,6 +695,26 @@
   }
 }
 
+/* GPU-light mesh gradient animation */
+@keyframes meshGradient {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%, 0% 100%, 100% 0%;
+    opacity: 0.35;
+  }
+  25% {
+    background-position: 10% 5%, 95% 90%, 5% 95%, 90% 10%;
+    opacity: 0.5;
+  }
+  50% {
+    background-position: 5% 10%, 90% 85%, 10% 90%, 85% 5%;
+    opacity: 0.4;
+  }
+  75% {
+    background-position: 8% 12%, 88% 92%, 12% 88%, 92% 8%;
+    opacity: 0.45;
+  }
+}
+
 /* ========================================
   RESPONSIVE (INITIAL)
   ======================================== */
