@@ -368,18 +368,31 @@ export default function PlayersClient({
             {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
 
-            {/* Animated mesh gradient - 4 moving spots */}
+            {/* Topographic contour lines pattern */}
             <div
-              className="absolute inset-0"
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
               style={{
                 background: `
-                  radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.12) 0%, transparent 50%),
-                  radial-gradient(circle at 40% 80%, rgba(140, 108, 0, 0.18) 0%, transparent 50%),
-                  radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.14) 0%, transparent 50%)
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
                 `,
-                backgroundSize: '200% 200%',
                 animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
               }}
             />
 
@@ -584,18 +597,31 @@ export default function PlayersClient({
             {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
 
-            {/* Animated mesh gradient - 4 moving spots */}
+            {/* Topographic contour lines pattern */}
             <div
-              className="absolute inset-0"
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
               style={{
                 background: `
-                  radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 70%, rgba(255, 193, 7, 0.12) 0%, transparent 50%),
-                  radial-gradient(circle at 40% 80%, rgba(140, 108, 0, 0.18) 0%, transparent 50%),
-                  radial-gradient(circle at 90% 20%, rgba(212, 175, 55, 0.14) 0%, transparent 50%)
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
                 `,
-                backgroundSize: '200% 200%',
                 animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
               }}
             />
 
