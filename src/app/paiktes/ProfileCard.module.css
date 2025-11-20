@@ -154,6 +154,145 @@
   transform: translate3d(0, 0, 0.01px);
 }
 
+/* Premium texture overlay - carbon fiber + brushed metal */
+.pc-inside::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.18;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+
+  /* Carbon fiber pattern */
+  background-image:
+    /* Brushed metal horizontal lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(212, 175, 55, 0.04) 1px,
+      rgba(212, 175, 55, 0.04) 2px
+    ),
+    /* Carbon fiber weave - vertical */
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.5) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(50, 50, 50, 0.35) 4px,
+      rgba(0, 0, 0, 0.5) 6px,
+      rgba(0, 0, 0, 0.5) 8px
+    ),
+    /* Carbon fiber weave - horizontal */
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.5) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(50, 50, 50, 0.35) 4px,
+      rgba(0, 0, 0, 0.5) 6px,
+      rgba(0, 0, 0, 0.5) 8px
+    ),
+    /* Subtle diagonal gold accent lines */
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(212, 175, 55, 0.03) 8px,
+      rgba(212, 175, 55, 0.03) 10px
+    ),
+    /* Base gradient with gold shimmer */
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(212, 175, 55, 0.12) 0%,
+      rgba(140, 108, 0, 0.06) 30%,
+      transparent 60%
+    );
+
+  background-size:
+    100% 2px,
+    8px 8px,
+    8px 8px,
+    20px 20px,
+    100% 100%;
+
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    center;
+
+  mix-blend-mode: overlay;
+}
+
+/* Enhanced texture on hover */
+.pc-card:hover .pc-inside::before,
+.pc-card.active .pc-inside::before {
+  opacity: 0.25;
+}
+
+/* Leather grain texture overlay */
+.pc-inside::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0.12;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+
+  /* Leather grain pattern */
+  background-image:
+    /* Fine grain noise */
+    radial-gradient(circle at 20% 30%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 60% 70%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 80% 10%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 40% 80%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 10% 60%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    /* Leather pores pattern */
+    radial-gradient(ellipse at 15% 45%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 65% 25%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 85% 65%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 35% 90%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    /* Gold accent micro-details */
+    radial-gradient(circle at 25% 55%, rgba(212, 175, 55, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 75% 35%, rgba(212, 175, 55, 0.08) 0%, transparent 30%);
+
+  background-size:
+    200px 200px,
+    180px 180px,
+    220px 220px,
+    190px 190px,
+    210px 210px,
+    50px 50px,
+    60px 60px,
+    55px 55px,
+    65px 65px,
+    120px 120px,
+    140px 140px;
+
+  background-position:
+    0 0,
+    50px 50px,
+    100px 0,
+    150px 100px,
+    75px 150px,
+    0 0,
+    30px 30px,
+    60px 10px,
+    20px 60px,
+    40px 80px,
+    90px 40px;
+
+  mix-blend-mode: multiply;
+}
+
+/* Enhanced leather texture on hover */
+.pc-card:hover .pc-inside::after,
+.pc-card.active .pc-inside::after {
+  opacity: 0.15;
+}
+
 .pc-shine {
   mask-image: var(--icon);
   mask-mode: luminance;
