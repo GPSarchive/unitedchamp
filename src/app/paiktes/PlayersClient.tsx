@@ -370,12 +370,12 @@ export default function PlayersClient({
 
             {/* Diagonal stripes pattern */}
             <div
-              className="absolute inset-0 opacity-[0.07]"
+              className="absolute inset-0 opacity-20"
               style={{
                 backgroundImage: `repeating-linear-gradient(
                   45deg,
-                  rgba(212, 175, 55, 0.4) 0px,
-                  rgba(212, 175, 55, 0.4) 2px,
+                  rgba(212, 175, 55, 0.5) 0px,
+                  rgba(212, 175, 55, 0.5) 2px,
                   transparent 2px,
                   transparent 12px
                 )`
@@ -384,12 +384,12 @@ export default function PlayersClient({
 
             {/* Hexagon pattern overlay */}
             <div
-              className="absolute inset-0 opacity-[0.04]"
+              className="absolute inset-0 opacity-[0.15]"
               style={{
                 backgroundImage: `
-                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
-                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
-                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.6) 0%, transparent 50%)
+                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.8) 0%, transparent 50%)
                 `,
                 backgroundSize: '100px 100px',
                 backgroundPosition: '0 0, 50px 50px, 25px 75px'
@@ -398,8 +398,8 @@ export default function PlayersClient({
 
             {/* Animated gradient orbs */}
             <div className="absolute inset-0">
-              <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(212,175,55,0.12)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-              <div className="absolute bottom-[20%] left-[10%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(255,193,7,0.1)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+              <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(212,175,55,0.25)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+              <div className="absolute bottom-[20%] left-[10%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(255,193,7,0.2)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
             </div>
 
             {/* Spotlight from top */}
@@ -606,12 +606,12 @@ export default function PlayersClient({
 
             {/* Diagonal stripes pattern */}
             <div
-              className="absolute inset-0 opacity-[0.07]"
+              className="absolute inset-0 opacity-20"
               style={{
                 backgroundImage: `repeating-linear-gradient(
                   45deg,
-                  rgba(212, 175, 55, 0.4) 0px,
-                  rgba(212, 175, 55, 0.4) 2px,
+                  rgba(212, 175, 55, 0.5) 0px,
+                  rgba(212, 175, 55, 0.5) 2px,
                   transparent 2px,
                   transparent 12px
                 )`
@@ -620,12 +620,12 @@ export default function PlayersClient({
 
             {/* Hexagon pattern overlay */}
             <div
-              className="absolute inset-0 opacity-[0.04]"
+              className="absolute inset-0 opacity-[0.15]"
               style={{
                 backgroundImage: `
-                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
-                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.6) 0%, transparent 50%),
-                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.6) 0%, transparent 50%)
+                  radial-gradient(circle at 25% 35%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
+                  radial-gradient(circle at 75% 65%, rgba(212, 175, 55, 0.8) 0%, transparent 50%),
+                  radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.8) 0%, transparent 50%)
                 `,
                 backgroundSize: '100px 100px',
                 backgroundPosition: '0 0, 50px 50px, 25px 75px'
@@ -634,9 +634,9 @@ export default function PlayersClient({
 
             {/* Animated gradient orbs */}
             <div className="absolute inset-0">
-              <div className="absolute top-[10%] right-[15%] w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(212,175,55,0.12)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
-              <div className="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(255,193,7,0.1)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
-              <div className="absolute top-[50%] left-[5%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(140,108,0,0.15)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
+              <div className="absolute top-[10%] right-[15%] w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(212,175,55,0.25)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '8s' }} />
+              <div className="absolute bottom-[20%] left-[10%] w-[300px] h-[300px] bg-[radial-gradient(circle,_rgba(255,193,7,0.2)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+              <div className="absolute top-[50%] left-[5%] w-[250px] h-[250px] bg-[radial-gradient(circle,_rgba(140,108,0,0.3)_0%,_transparent_70%)] blur-3xl animate-pulse" style={{ animationDuration: '10s', animationDelay: '4s' }} />
             </div>
 
             {/* Spotlight from top */}
