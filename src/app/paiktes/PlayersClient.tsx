@@ -362,9 +362,57 @@ export default function PlayersClient({
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
       {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
       {!isXL && detailOpen && active && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
+          {/* Premium background layers (same as desktop) */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Topographic contour lines pattern */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
+                `,
+                animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
+              }}
+            />
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Subtle noise texture for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+          </div>
+
           {/* Header with back button */}
-          <div className="sticky top-0 z-10 bg-zinc-950 border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+          <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-sm border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
             <button
               type="button"
               onClick={closeDetailOnMobile}
@@ -392,7 +440,7 @@ export default function PlayersClient({
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain relative z-10">
             <div className="p-3 sm:p-4 pb-6 sm:pb-8 min-h-0 max-w-2xl mx-auto">
               <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
@@ -543,8 +591,57 @@ export default function PlayersClient({
         </div>
 
         {/* RIGHT PANEL - Player Card (Desktop Only) */}
-        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col bg-zinc-950/50">
-          <div className="flex-1 overflow-y-auto p-4 xl:p-6">
+        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col relative overflow-hidden">
+          {/* Premium background layers */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Topographic contour lines pattern */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
+                `,
+                animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
+              }}
+            />
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Subtle noise texture for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+          </div>
+
+          {/* Content on top of background */}
+          <div className="flex-1 overflow-y-auto p-4 xl:p-6 relative z-10">
             {active ? (
               <div className="sticky top-0 max-w-xl mx-auto">
                 <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />

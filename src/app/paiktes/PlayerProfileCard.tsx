@@ -22,13 +22,13 @@ function StatPill({
   return (
     <div
       className={[
-        "flex flex-col items-center justify-center rounded-xl sm:rounded-2xl px-1.5 sm:px-2.5 py-1.5 sm:py-2 bg-black/45 border transition-all",
+        "flex flex-col items-center justify-center rounded-xl sm:rounded-2xl px-1.5 sm:px-2.5 py-1.5 sm:py-2 bg-white/5 backdrop-blur-sm border transition-all",
         highlight
-          ? "border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
-          : "border-white/10",
+          ? "border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.35)] bg-amber-500/10"
+          : "border-white/20",
       ].join(" ")}
     >
-      <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] sm:tracking-[0.16em] text-white/55 leading-tight">
+      <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] sm:tracking-[0.16em] text-white/70 leading-tight font-bold">
         {label}
       </span>
       <span className="mt-0.5 text-sm sm:text-lg font-semibold text-white tabular-nums">
@@ -152,18 +152,21 @@ function PlayerProfileCardComponent({
         mobileTiltSensitivity={5}
       />
 
-      {/* Stats "modal" under the card */}
+      {/* Stats "modal" under the card - GLASSMORPHISM */}
       <div className="relative -mt-2">
         <div className="mx-auto w-full max-w-md px-1 sm:px-0">
-          <div className="relative rounded-[20px] sm:rounded-[30px] border border-white/10 bg-gradient-to-b from-zinc-950/95 via-zinc-900/95 to-black/98 shadow-[0_18px_45px_rgba(0,0,0,0.85)] overflow-hidden">
+          <div className="relative rounded-[20px] sm:rounded-[30px] border border-white/20 bg-black/20 backdrop-blur-xl shadow-[0_18px_45px_rgba(0,0,0,0.4)] overflow-hidden">
             {/* Glow that follows the card theme (gold / sporty) */}
-            <div className="pointer-events-none absolute inset-x-10 -top-10 h-20 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.7),_transparent_60%)] opacity-70" />
+            <div className="pointer-events-none absolute inset-x-10 -top-10 h-20 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.4),_transparent_60%)] opacity-70" />
+
+            {/* Inner glow for depth */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.05] via-transparent to-black/20" />
 
             <div className="relative px-3 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
               {/* Header row */}
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/60 border border-amber-400/60 px-2 sm:px-3 py-0.5 sm:py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-amber-500/10 backdrop-blur-md border border-amber-400/60 px-2 sm:px-3 py-0.5 sm:py-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
                   <span className="text-[9px] sm:text-[11px] font-semibold tracking-[0.12em] uppercase text-amber-50 flex items-center gap-1">
                     Στατιστικά παίκτη
                     <span aria-hidden>🔥</span>
@@ -172,12 +175,12 @@ function PlayerProfileCardComponent({
 
                 <div className="text-[10px] sm:text-[11px] font-medium text-white/60">
                   {isTournamentScoped ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-400/70 px-2 py-0.5 text-[9px] sm:text-[10px] text-amber-50">
-                      <span className="w-1 h-1 rounded-full bg-amber-300" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 backdrop-blur-sm border border-amber-400/70 px-2 py-0.5 text-[9px] sm:text-[10px] text-amber-50">
+                      <span className="w-1 h-1 rounded-full bg-amber-300 shadow-[0_0_6px_rgba(252,211,77,0.6)]" />
                       Τουρνουά
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/15 px-2 py-0.5 text-[9px] sm:text-[10px] text-white/65">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/25 px-2 py-0.5 text-[9px] sm:text-[10px] text-white/75">
                       All-time
                     </span>
                   )}
