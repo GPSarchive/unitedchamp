@@ -2,6 +2,35 @@
 import { Team } from "@/app/lib/types";
 import LightRays from "./react-bits/LightRays";
 
+/**
+ * Transform external logo URLs to use local CORS-enabled proxy.
+ * External URLs (e.g., https://www.ultrachamp.gr/api/public/team-logo/...)
+ * need to be proxied through our API to enable CORS for WebGL.
+ */
+function getProxiedLogoUrl(logoUrl: string | null | undefined): string {
+  if (!logoUrl) return "/placeholder-logo.png";
+
+  // If already a relative URL or local, return as-is
+  if (logoUrl.startsWith("/")) return logoUrl;
+
+  try {
+    const url = new URL(logoUrl);
+    // If it's an external ultrachamp.gr URL, extract the path and use local proxy
+    if (url.hostname === "www.ultrachamp.gr" || url.hostname === "ultrachamp.gr") {
+      // Extract path after /api/public/team-logo/
+      const match = url.pathname.match(/\/api\/public\/team-logo\/(.+)/);
+      if (match && match[1]) {
+        return `/api/public/team-logo/${match[1]}`;
+      }
+    }
+    // For other external URLs, return as-is (might need proxy in future)
+    return logoUrl;
+  } catch {
+    // Invalid URL, return as-is
+    return logoUrl;
+  }
+}
+
 export default function TeamHeader({ team }: { team: Team }) {
   return (
     <div className="relative mb-8 overflow-hidden rounded-2xl border border-zinc-800/50 bg-gradient-to-br from-orange-900/10 to-zinc-900/50 shadow-xl">
@@ -16,7 +45,7 @@ export default function TeamHeader({ team }: { team: Team }) {
               <div className="relative">
                 <div className="relative aspect-square w-[8rem] md:w-[24rem] 2xl:w-[32rem]">
                   <LightRays
-                    
+
                     className="absolute inset-0 h-full w-full rounded-full pointer-events-none mix-blend-screen"
                     raysOrigin="top-center"
                     raysColor="#ffd700"
@@ -27,18 +56,18 @@ export default function TeamHeader({ team }: { team: Team }) {
                     mouseInfluence={0.15}
                     noiseAmount={0.08}
                     distortion={0.03}
-                    logoSrc={team.logo}
+                    logoSrc={getProxiedLogoUrl(team.logo)}
                     logoStrength={1.8}
                     logoFit="cover"
                     // Note: logoScale in the shader is a zoom-OUT safety (0.1–1). 1.5 will clamp to 1.0.
                     logoScale={1.0}
-                    
+
                     /* New pop-in animation props */
                     popIn
-                    
+
                     popDuration={800}
                     popDelay={100}
-                    
+
                     popScaleFrom={0.85}
                   />
                 </div>

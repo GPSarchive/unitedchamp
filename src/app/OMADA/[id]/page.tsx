@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
 import TeamSidebar from "./TeamSidebar";
 import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
+// import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
   type PlayerAssociation,
@@ -156,14 +156,14 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
+    <section className="relative min-h-screen text-slate-50 overflow-x-hidden bg-black">
       {/* Vanta background: fixed to viewport only */}
-      <div className="fixed inset-0 -z-20 h-screen w-screen">
+      {/* <div className="fixed inset-0 -z-20 h-screen w-screen">
         <VantaBg className="h-full w-full" />
-      </div>
+      </div> */}
 
       {/* Subtle overlay for contrast */}
-      <div className="fixed inset-0 -z-10 pointer-events-none bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+      {/* <div className="fixed inset-0 -z-10 pointer-events-none bg-gradient-to-b from-black/50 via-black/30 to-black/60" /> */}
 
       {/* Page content scrolling over the fixed background */}
       <div className="relative z-10">

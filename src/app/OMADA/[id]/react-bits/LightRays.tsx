@@ -1,6 +1,4 @@
-// app/OMADA/[id]/react-bits/LightRays.tsx
 'use client';
-import { ReactNode } from 'react';
 
 import { useRef, useEffect, useState } from 'react';
 import './LightRays.css';
@@ -23,7 +21,6 @@ type RaysOrigin =
 type LogoFit = 'contain' | 'cover' | 'stretch';
 
 interface LightRaysProps {
-  children?: ReactNode; // Add this line to allow children
   raysOrigin?: RaysOrigin;
   raysColor?: string;
   raysSpeed?: number;
@@ -52,21 +49,17 @@ interface LightRaysProps {
   logoOnTop?: boolean;
   logoOpacity?: number;
 
-  // 🔧 Performance controls
-  maxDpr?: number;
-  maxFps?: number;
-  idleDelayMs?: number;
+  /** 🔧 Performance controls */
+  maxDpr?: number;      // cap device pixel ratio (default: 1.0 desktop / 0.85 touch)
+  maxFps?: number;      // cap animation FPS (default: 45)
+  idleDelayMs?: number; // delay init slightly to let main content paint (default: 60)
 }
 
 /** ---- Small utils ---- */
 const hexToRgb = (hex: string): Vec3 => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return m
-    ? ([
-        parseInt(m[1], 16) / 255,
-        parseInt(m[2], 16) / 255,
-        parseInt(m[3], 16) / 255,
-      ] as Vec3)
+    ? ([parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] as Vec3)
     : [1, 1, 1];
 };
 
@@ -107,7 +100,6 @@ let OGL: {
 
 const rIC: (cb: () => void) => void =
   typeof window !== 'undefined' && 'requestIdleCallback' in window
-    // @ts-ignore
     ? (cb) => window.requestIdleCallback(cb, { timeout: 800 })
     : (cb) => setTimeout(cb, 60);
 
