@@ -336,17 +336,17 @@ function DayModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center p-0 sm:p-4"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={onClose}
       >
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
         <motion.div
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="relative w-full sm:max-w-2xl bg-zinc-900 sm:rounded-2xl shadow-2xl max-h-[85vh] flex flex-col"
+          className="relative w-full max-w-2xl bg-zinc-900 rounded-2xl shadow-2xl max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="sticky top-0 z-10 bg-zinc-900 border-b border-white/10 px-6 py-4 rounded-t-2xl">
