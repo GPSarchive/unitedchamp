@@ -1209,36 +1209,77 @@
 }
 
 /* ========================================
-  FINAL MOBILE OVERRIDES: FULL-SCREEN CARD + PANEL
+  FINAL MOBILE OVERRIDES: CONSTRAINED CARD FOR CONTAINERS
   ======================================== */
 
 @media (max-width: 768px) {
   .pc-card-wrapper {
-    width: 100vw;
-    max-width: 100vw;
+    width: 100%;
+    max-width: 100%;
   }
 
   .pc-card {
-    width: 100vw;
-    height: 100svh;      /* card fills viewport height */
-    max-height: none;
-    border-radius: 0;    /* full-bleed on mobile */
+    width: 100%;
+    height: 60svh;       /* reasonable height that fits with stats modal below */
+    max-height: 500px;
+    border-radius: var(--card-radius);
   }
 
   .pc-inside {
-    inset: 0;            /* inner layer full-bleed */
-    border-radius: 0;
+    inset: 1px;
+    border-radius: var(--card-radius);
   }
 
   .pc-user-info {
-    top: 0;              /* overlay covers entire card */
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: none;    /* remove 35% cap on mobile */
-    padding: 20px 16px;
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    max-height: 35%;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* keep logos/stats towards bottom */
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .pc-card {
+    height: 55svh;
+    max-height: 450px;
+  }
+
+  .pc-player-name-centered {
+    font-size: 20px;
+    top: 20px;
+  }
+
+  .pc-user-info {
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .pc-card {
+    height: 50svh;
+    max-height: 400px;
+  }
+
+  .pc-player-name-centered {
+    font-size: 18px;
+    top: 15px;
+  }
+
+  .pc-panel-team-logo-main {
+    width: 70px;
+    height: 70px;
+  }
+
+  .pc-panel-team-logo-secondary {
+    width: 48px;
+    height: 48px;
   }
 }
