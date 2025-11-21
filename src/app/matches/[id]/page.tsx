@@ -193,7 +193,7 @@ export default async function Page({
   return (
     <div className="relative min-h-dvh overflow-x-visible">
       {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="balanced" />
+      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
