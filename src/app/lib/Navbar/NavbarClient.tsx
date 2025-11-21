@@ -33,7 +33,6 @@ const TILE_CLASS =
 
 /* ===================== Sub-components ===================== */
 
-// Memoized Nav Link Component
 const NavLink = memo(({ href, label, img, isActive, onClick }: {
   href: string;
   label: string;
@@ -64,7 +63,6 @@ const NavLink = memo(({ href, label, img, isActive, onClick }: {
 ));
 NavLink.displayName = "NavLink";
 
-// Memoized Mobile Nav Link
 const MobileNavLink = memo(({ href, label, img, isActive, onClick }: {
   href: string;
   label: string;
@@ -94,7 +92,6 @@ const MobileNavLink = memo(({ href, label, img, isActive, onClick }: {
 ));
 MobileNavLink.displayName = "MobileNavLink";
 
-// Memoized User Avatar Component
 const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean }) => {
   const metadata = user?.user_metadata ?? {};
   const avatarUrl: string | undefined = metadata.avatar_url || metadata.picture;
@@ -136,7 +133,6 @@ const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean })
 });
 UserAvatar.displayName = "UserAvatar";
 
-// Memoized Animated Background
 const AnimatedBackground = memo(() => (
   <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
     <svg className="kintsugi-svg w-full h-full mix-blend-screen" viewBox="0 0 1440 200" preserveAspectRatio="none">
@@ -182,73 +178,6 @@ const AnimatedBackground = memo(() => (
   </div>
 ));
 AnimatedBackground.displayName = "AnimatedBackground";
-
-/* ===================== Custom Hook: Mobile Scroll Hide ===================== */
-type MobileNavStage = "visible" | "peek" | "hidden";
-
-function useMobileNavScroll({
-  mobileOpen,
-  closeMobile,
-  peekThreshold = 80,
-  hideThreshold = 160,
-  scrollDelta = 12,
-}: {
-  mobileOpen: boolean;
-  closeMobile: () => void;
-  peekThreshold?: number;
-  hideThreshold?: number;
-  scrollDelta?: number;
-}) {
-  const [stage, setStage] = useState<MobileNavStage>("visible");
-  const lastScrollY = useRef(0);
-  const scrollDirection = useRef<"up" | "down">("up");
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const delta = currentScrollY - lastScrollY.current;
-
-      // Determine scroll direction (with threshold to avoid jitter)
-      if (delta > scrollDelta) {
-        scrollDirection.current = "down";
-      } else if (delta < -scrollDelta) {
-        scrollDirection.current = "up";
-      }
-
-      // At top - always visible
-      if (currentScrollY < 20) {
-        setStage("visible");
-        lastScrollY.current = currentScrollY;
-        return;
-      }
-
-      // Scrolling behavior
-      if (scrollDirection.current === "down") {
-        // Stage 1: Peek (50% hidden)
-        if (currentScrollY > peekThreshold && currentScrollY <= hideThreshold) {
-          setStage("peek");
-        }
-        // Stage 2: Fully hidden + close mobile menu
-        else if (currentScrollY > hideThreshold) {
-          setStage("hidden");
-          if (mobileOpen) {
-            closeMobile();
-          }
-        }
-      } else {
-        // Scrolling up - show navbar
-        setStage("visible");
-      }
-
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [mobileOpen, closeMobile, peekThreshold, hideThreshold, scrollDelta]);
-
-  return stage;
-}
 
 /* ===================== Custom Hook: Desktop Scroll ===================== */
 function useDesktopNavScroll({
@@ -342,11 +271,28 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
   const toggleMobile = useCallback(() => setMobileOpen(v => !v), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
+  // Mobile menu scroll stage (accordion behavior)
+  const [mobileMenuStage, setMobileMenuStage] = useState<"visible" | "peek" | "hidden">("visible");
+  const menuScrollRef = useRef<HTMLDivElement>(null);
+  const lastMenuScrollY = useRef(0);
+
   // Scroll tracking for glowing scrollbar
   const [isMenuScrolling, setIsMenuScrolling] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track overscroll attempts at bottom
+  const bottomHitCount = useRef(0);
   
+  // Handle menu scroll - accordion behavior + glow effect
   const handleMenuScroll = useCallback(() => {
+    const el = menuScrollRef.current;
+    if (!el) return;
+
+    const currentScrollY = el.scrollTop;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    const delta = currentScrollY - lastMenuScrollY.current;
+
+    // Glow effect
     setIsMenuScrolling(true);
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
@@ -354,7 +300,56 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     scrollTimeoutRef.current = setTimeout(() => {
       setIsMenuScrolling(false);
     }, 150);
-  }, []);
+
+    // Accordion hide behavior based on scroll within menu
+    const scrollPercentage = maxScroll > 0 ? currentScrollY / maxScroll : 0;
+
+    // Scrolling down in menu
+    if (delta > 5) {
+      if (scrollPercentage > 0.3 && scrollPercentage <= 0.7) {
+        setMobileMenuStage("peek");
+      } else if (scrollPercentage > 0.7) {
+        setMobileMenuStage("hidden");
+      }
+    }
+    // Scrolling up in menu
+    else if (delta < -5) {
+      if (scrollPercentage < 0.3) {
+        setMobileMenuStage("visible");
+      } else if (scrollPercentage < 0.7) {
+        setMobileMenuStage("peek");
+      }
+    }
+
+    // Auto-close with lag - require multiple scroll attempts at bottom
+    const isAtBottom = scrollPercentage >= 0.98;
+    
+    if (isAtBottom && delta > 0) {
+      // User is trying to scroll down while at bottom
+      bottomHitCount.current += 1;
+      
+      // Require 3+ scroll attempts at bottom before closing
+      if (bottomHitCount.current >= 3) {
+        setTimeout(() => {
+          closeMobile();
+        }, 150);
+      }
+    } else if (!isAtBottom) {
+      // Reset counter when not at bottom
+      bottomHitCount.current = 0;
+    }
+
+    lastMenuScrollY.current = currentScrollY;
+  }, [closeMobile]);
+
+  // Reset menu stage and counters when menu opens/closes
+  useEffect(() => {
+    if (mobileOpen) {
+      setMobileMenuStage("visible");
+      lastMenuScrollY.current = 0;
+      bottomHitCount.current = 0;
+    }
+  }, [mobileOpen]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -365,19 +360,53 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     };
   }, []);
 
-  // Mobile scroll behavior
-  const mobileStage = useMobileNavScroll({
-    mobileOpen,
-    closeMobile,
-    peekThreshold: 80,
-    hideThreshold: 160,
-  });
-
   // Desktop scroll behavior
   const { stage: desktopStage, scrolled } = useDesktopNavScroll({
     activateAt: 72,
     scrollDelta: 10,
   });
+
+  // Page scroll behavior for mobile (when menu is closed)
+  const [mobilePageStage, setMobilePageStage] = useState<"visible" | "peek" | "hidden">("visible");
+  const lastPageScrollY = useRef(0);
+
+  useEffect(() => {
+    const handlePageScroll = () => {
+      // Only apply page scroll behavior on mobile when menu is closed
+      if (window.innerWidth >= 768) return;
+
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastPageScrollY.current;
+
+      // At top - always visible
+      if (currentScrollY < 20) {
+        setMobilePageStage("visible");
+        lastPageScrollY.current = currentScrollY;
+        return;
+      }
+
+      // Scrolling down
+      if (delta > 12) {
+        if (currentScrollY > 80 && currentScrollY <= 160) {
+          setMobilePageStage("peek");
+        } else if (currentScrollY > 160) {
+          setMobilePageStage("hidden");
+          if (mobileOpen) {
+            closeMobile();
+          }
+        }
+      }
+      // Scrolling up
+      else if (delta < -12) {
+        setMobilePageStage("visible");
+      }
+
+      lastPageScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handlePageScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handlePageScroll);
+  }, [mobileOpen, closeMobile]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -409,7 +438,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
   const loginUrl = useMemo(() => `/login?next=${encodeURIComponent(next)}`, [next]);
 
-  // Determine if we're on mobile (for choosing which scroll behavior to use)
+  // Determine if we're on mobile
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -418,8 +447,10 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Choose motion variant based on device
-  const currentStage = isMobile ? mobileStage : desktopStage;
+  // Choose motion variant based on device and menu state
+  // When menu is open, use menu scroll stage; when closed, use page scroll stage
+  const currentMobileStage = mobileOpen ? mobileMenuStage : mobilePageStage;
+  const currentStage = isMobile ? currentMobileStage : desktopStage;
   const motionVariants = isMobile ? MOBILE_MOTION_VARIANTS : DESKTOP_MOTION_VARIANTS;
 
   return (
@@ -582,6 +613,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             >
               {/* Scrollable content area */}
               <div 
+                ref={menuScrollRef}
                 className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll"
                 onScroll={handleMenuScroll}
               >
@@ -644,8 +676,17 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                   </motion.div>
                 </div>
 
-                {/* Bottom fade gradient */}
-                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-zinc-950/90 to-transparent" />
+                {/* Bottom fade gradient + scroll indicator */}
+                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-zinc-950/95 to-transparent flex items-end justify-center pb-1">
+                  <motion.div
+                    initial={{ opacity: 0.6 }}
+                    animate={{ opacity: [0.6, 1, 0.6], y: [0, 4, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    className="text-white/40 text-xs"
+                  >
+                    ↓ scroll to close
+                  </motion.div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -719,7 +760,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             0 0 12px 2px rgba(255,255,255,0.2);
         }
         
-        /* Firefox doesn't support box-shadow on scrollbars, so we brighten instead */
+        /* Firefox fallback */
         .mobile-menu-container.is-scrolling .mobile-menu-scroll {
           scrollbar-color: rgba(255,255,255,0.7) transparent;
         }
