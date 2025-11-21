@@ -154,6 +154,145 @@
   transform: translate3d(0, 0, 0.01px);
 }
 
+/* Premium texture overlay - carbon fiber + brushed metal */
+.pc-inside::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.18;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+
+  /* Carbon fiber pattern */
+  background-image:
+    /* Brushed metal horizontal lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(212, 175, 55, 0.04) 1px,
+      rgba(212, 175, 55, 0.04) 2px
+    ),
+    /* Carbon fiber weave - vertical */
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.5) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(50, 50, 50, 0.35) 4px,
+      rgba(0, 0, 0, 0.5) 6px,
+      rgba(0, 0, 0, 0.5) 8px
+    ),
+    /* Carbon fiber weave - horizontal */
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.5) 0px,
+      rgba(0, 0, 0, 0.35) 2px,
+      rgba(50, 50, 50, 0.35) 4px,
+      rgba(0, 0, 0, 0.5) 6px,
+      rgba(0, 0, 0, 0.5) 8px
+    ),
+    /* Subtle diagonal gold accent lines */
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(212, 175, 55, 0.03) 8px,
+      rgba(212, 175, 55, 0.03) 10px
+    ),
+    /* Base gradient with gold shimmer */
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(212, 175, 55, 0.12) 0%,
+      rgba(140, 108, 0, 0.06) 30%,
+      transparent 60%
+    );
+
+  background-size:
+    100% 2px,
+    8px 8px,
+    8px 8px,
+    20px 20px,
+    100% 100%;
+
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    center;
+
+  mix-blend-mode: overlay;
+}
+
+/* Enhanced texture on hover */
+.pc-card:hover .pc-inside::before,
+.pc-card.active .pc-inside::before {
+  opacity: 0.25;
+}
+
+/* Leather grain texture overlay */
+.pc-inside::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0.12;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+
+  /* Leather grain pattern */
+  background-image:
+    /* Fine grain noise */
+    radial-gradient(circle at 20% 30%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 60% 70%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 80% 10%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 40% 80%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    radial-gradient(circle at 10% 60%, transparent 18%, rgba(0,0,0,0.25) 40%, transparent 44%),
+    /* Leather pores pattern */
+    radial-gradient(ellipse at 15% 45%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 65% 25%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 85% 65%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    radial-gradient(ellipse at 35% 90%, rgba(0,0,0,0.35) 0%, transparent 38%),
+    /* Gold accent micro-details */
+    radial-gradient(circle at 25% 55%, rgba(212, 175, 55, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 75% 35%, rgba(212, 175, 55, 0.08) 0%, transparent 30%);
+
+  background-size:
+    200px 200px,
+    180px 180px,
+    220px 220px,
+    190px 190px,
+    210px 210px,
+    50px 50px,
+    60px 60px,
+    55px 55px,
+    65px 65px,
+    120px 120px,
+    140px 140px;
+
+  background-position:
+    0 0,
+    50px 50px,
+    100px 0,
+    150px 100px,
+    75px 150px,
+    0 0,
+    30px 30px,
+    60px 10px,
+    20px 60px,
+    40px 80px,
+    90px 40px;
+
+  mix-blend-mode: multiply;
+}
+
+/* Enhanced leather texture on hover */
+.pc-card:hover .pc-inside::after,
+.pc-card.active .pc-inside::after {
+  opacity: 0.15;
+}
+
 .pc-shine {
   mask-image: var(--icon);
   mask-mode: luminance;
@@ -553,6 +692,26 @@
       0 var(--background-y),
       45% 45%,
       center;
+  }
+}
+
+/* GPU-light mesh gradient animation */
+@keyframes meshGradient {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%, 0% 100%, 100% 0%;
+    opacity: 0.35;
+  }
+  25% {
+    background-position: 10% 5%, 95% 90%, 5% 95%, 90% 10%;
+    opacity: 0.5;
+  }
+  50% {
+    background-position: 5% 10%, 90% 85%, 10% 90%, 85% 5%;
+    opacity: 0.4;
+  }
+  75% {
+    background-position: 8% 12%, 88% 92%, 12% 88%, 92% 8%;
+    opacity: 0.45;
   }
 }
 
@@ -1209,36 +1368,77 @@
 }
 
 /* ========================================
-  FINAL MOBILE OVERRIDES: FULL-SCREEN CARD + PANEL
+  FINAL MOBILE OVERRIDES: CONSTRAINED CARD FOR CONTAINERS
   ======================================== */
 
 @media (max-width: 768px) {
   .pc-card-wrapper {
-    width: 100vw;
-    max-width: 100vw;
+    width: 100%;
+    max-width: 100%;
   }
 
   .pc-card {
-    width: 100vw;
-    height: 100svh;      /* card fills viewport height */
-    max-height: none;
-    border-radius: 0;    /* full-bleed on mobile */
+    width: 100%;
+    height: 75svh;       /* taller card on mobile */
+    max-height: 650px;
+    border-radius: var(--card-radius);
   }
 
   .pc-inside {
-    inset: 0;            /* inner layer full-bleed */
-    border-radius: 0;
+    inset: 1px;
+    border-radius: var(--card-radius);
   }
 
   .pc-user-info {
-    top: 0;              /* overlay covers entire card */
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-height: none;    /* remove 35% cap on mobile */
-    padding: 20px 16px;
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    max-height: 35%;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* keep logos/stats towards bottom */
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .pc-card {
+    height: 70svh;
+    max-height: 600px;
+  }
+
+  .pc-player-name-centered {
+    font-size: 20px;
+    top: 20px;
+  }
+
+  .pc-user-info {
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .pc-card {
+    height: 65svh;
+    max-height: 550px;
+  }
+
+  .pc-player-name-centered {
+    font-size: 18px;
+    top: 15px;
+  }
+
+  .pc-panel-team-logo-main {
+    width: 70px;
+    height: 70px;
+  }
+
+  .pc-panel-team-logo-secondary {
+    width: 48px;
+    height: 48px;
   }
 }

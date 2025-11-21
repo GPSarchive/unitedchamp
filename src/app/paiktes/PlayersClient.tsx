@@ -7,7 +7,6 @@ import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
 import PlayersList from "./PlayersList";
 import PlayersFilterHeader from "./PlayersFilterHeader";
-import SportyBackground from "./Sportybackground";
 
 type PLWithTGoals = PlayerLite & { tournament_goals?: number };
 
@@ -363,12 +362,61 @@ export default function PlayersClient({
     <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
       {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
       {!isXL && detailOpen && active && (
-        <div className="absolute inset-0 z-50 bg-black overflow-y-auto">
-          <div className="relative">
+        <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
+          {/* Premium background layers (same as desktop) */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Topographic contour lines pattern */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
+                `,
+                animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
+              }}
+            />
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Subtle noise texture for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+          </div>
+
+          {/* Header with back button */}
+          <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-sm border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
             <button
               type="button"
               onClick={closeDetailOnMobile}
-              className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-lg border border-white/20 bg-black/80 px-4 py-2 text-sm text-white shadow-lg backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+              className="inline-flex items-center gap-2 text-white/90 hover:text-white transition-colors"
               aria-label="Back to list"
             >
               <svg
@@ -377,7 +425,7 @@ export default function PlayersClient({
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                className="shrink-0"
+                className="shrink-0 sm:w-5 sm:h-5"
               >
                 <path
                   d="M15 18l-6-6 6-6"
@@ -387,9 +435,13 @@ export default function PlayersClient({
                   strokeLinejoin="round"
                 />
               </svg>
-              Πίσω
+              <span className="font-medium text-sm sm:text-base">Πίσω στη λίστα</span>
             </button>
-            <div className="pt-16 px-4 pb-8">
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto overscroll-contain relative z-10">
+            <div className="p-3 sm:p-4 pb-6 sm:pb-8 min-h-0 max-w-2xl mx-auto">
               <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
             </div>
           </div>
@@ -447,9 +499,41 @@ export default function PlayersClient({
 
             {/* Pagination Controls */}
             {showPagination && (
-              <div className="sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-white/50">
+              <div className="sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
+                {/* Mobile Pagination - Compact */}
+                <div className="flex sm:hidden items-center justify-between gap-2">
+                  <button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
+                    aria-label="Previous page"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white text-sm font-medium">{currentPage}</span>
+                    <span className="text-white/30 text-xs">/</span>
+                    <span className="text-white/50 text-sm">{totalPages}</span>
+                  </div>
+                  
+                  <button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
+                    aria-label="Next page"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Desktop Pagination - Full */}
+                <div className="hidden sm:flex items-center justify-between">
+                  <div className="text-xs md:text-sm text-white/50">
                     Page {currentPage} of {totalPages} • {totalCount} total players
                   </div>
                   
@@ -457,7 +541,7 @@ export default function PlayersClient({
                     <button
                       onClick={() => onPageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       Previous
                     </button>
@@ -480,7 +564,7 @@ export default function PlayersClient({
                           <button
                             key={pageNum}
                             onClick={() => onPageChange(pageNum)}
-                            className={`w-10 h-10 text-sm font-medium rounded transition-all ${
+                            className={`w-8 h-8 md:w-10 md:h-10 text-xs md:text-sm font-medium rounded transition-all ${
                               currentPage === pageNum
                                 ? "bg-cyan-500 text-white"
                                 : "text-white/70 hover:bg-white/10"
@@ -495,7 +579,7 @@ export default function PlayersClient({
                     <button
                       onClick={() => onPageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       Next
                     </button>
@@ -507,11 +591,59 @@ export default function PlayersClient({
         </div>
 
         {/* RIGHT PANEL - Player Card (Desktop Only) */}
-        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col bg-zinc-950/50 relative">
-          <SportyBackground variant="pitch" opacity={0.12} animate={true} />
-          <div className="flex-1 overflow-y-auto p-6">
+        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col relative overflow-hidden">
+          {/* Premium background layers */}
+          <div className="absolute inset-0 z-0">
+            {/* Base gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+
+            {/* Topographic contour lines pattern */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage: `
+                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
+                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
+                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
+                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
+                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
+                `,
+                backgroundSize: '100% 100%',
+              }}
+            />
+
+            {/* Subtle animated glow overlay */}
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `
+                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
+                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
+                `,
+                animation: 'meshGradient 20s ease-in-out infinite',
+                backgroundSize: '200% 200%',
+              }}
+            />
+
+            {/* Spotlight from top */}
+            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
+
+            {/* Vignette effect */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
+
+            {/* Subtle noise texture for depth */}
+            <div
+              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+          </div>
+
+          {/* Content on top of background */}
+          <div className="flex-1 overflow-y-auto p-4 xl:p-6 relative z-10">
             {active ? (
-              <div className="sticky top-0">
+              <div className="sticky top-0 max-w-xl mx-auto">
                 <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
               </div>
             ) : (
