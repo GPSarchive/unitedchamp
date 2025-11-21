@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vanta Background Capture Tool</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    #vanta-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* Overlay (same as your VantaSection) */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.2);
+      z-index: 10;
+      pointer-events: none;
+    }
+    /* Controls */
+    #controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      font-size: 14px;
+      max-width: 300px;
+    }
+    button {
+      background: #9f371b;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px 0;
+      width: 100%;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #7a2b15;
+    }
+    .info {
+      background: rgba(244, 194, 83, 0.2);
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    h3 {
+      margin: 10px 0 5px;
+      font-size: 16px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="vanta-container"></div>
+  <div id="overlay"></div>
+
+  <div id="controls">
+    <h3>🎨 Vanta Capture Tool</h3>
+    <div class="info">
+      <strong>Instructions:</strong><br>
+      1. Let animation run for 3-5 seconds<br>
+      2. Find a nice-looking frame<br>
+      3. Click "Hide Controls" below<br>
+      4. Take screenshot (see hotkeys)<br>
+      5. Crop if needed
+    </div>
+
+    <h3>Recommended Sizes:</h3>
+    <button onclick="setSize(1920, 1080)">Desktop (1920×1080)</button>
+    <button onclick="setSize(2560, 1440)">Desktop HD (2560×1440)</button>
+    <button onclick="setSize(3840, 2160)">4K (3840×2160)</button>
+    <button onclick="setSize(768, 1024)">Tablet (768×1024)</button>
+    <button onclick="setSize(375, 667)">Mobile (375×667)</button>
+    <button onclick="setSize(414, 896)">Mobile L (414×896)</button>
+
+    <div class="info" style="margin-top: 15px;">
+      <strong>Current Window:</strong><br>
+      <span id="current-size">Calculating...</span>
+    </div>
+
+    <h3>Screenshot Hotkeys:</h3>
+    <div class="info">
+      <strong>Windows:</strong> Win + Shift + S<br>
+      <strong>Mac:</strong> Cmd + Shift + 4<br>
+      <strong>Linux:</strong> PrtScn or Shift + PrtScn
+    </div>
+
+    <button onclick="toggleControls()" style="background: #444; margin-top: 15px;">
+      👁️ Hide Controls (Press H to toggle)
+    </button>
+
+    <button onclick="pauseAnimation()" style="background: #555;">
+      ⏸️ Pause/Resume (Press Space)
+    </button>
+  </div>
+
+  <!-- Load dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.topology.min.js"></script>
+
+  <script>
+    let vantaEffect;
+    let isPaused = false;
+
+    // Initialize Vanta with your exact settings
+    function initVanta() {
+      if (vantaEffect) vantaEffect.destroy();
+
+      vantaEffect = VANTA.TOPOLOGY({
+        el: "#vanta-container",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200,
+        minWidth: 200,
+        scale: 1.0,
+        scaleMobile: 1.0,
+        color: 0x9f371b,        // Your brownish-red
+        backgroundColor: 0xf4c253 // Your golden yellow
+      });
+    }
+
+    // Set window size (for different viewport captures)
+    function setSize(width, height) {
+      // Note: Modern browsers restrict window.resizeTo() for security
+      // This is mainly informational
+      alert(`Set your browser window to ${width}×${height}\n\n` +
+            `You may need to:\n` +
+            `1. Use browser DevTools (F12)\n` +
+            `2. Enable Device Toolbar (Ctrl+Shift+M)\n` +
+            `3. Set responsive dimensions to ${width}×${height}\n` +
+            `4. Or manually resize window`);
+    }
+
+    // Update current size display
+    function updateSize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      document.getElementById('current-size').textContent =
+        `${width}×${height}px`;
+    }
+
+    // Toggle controls visibility
+    function toggleControls() {
+      const controls = document.getElementById('controls');
+      controls.classList.toggle('hidden');
+    }
+
+    // Pause/resume animation
+    function pauseAnimation() {
+      if (!vantaEffect) return;
+
+      if (isPaused) {
+        vantaEffect.play?.();
+        isPaused = false;
+      } else {
+        vantaEffect.pause?.();
+        isPaused = true;
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') {
+        toggleControls();
+      }
+      if (e.key === ' ') {
+        e.preventDefault();
+        pauseAnimation();
+      }
+    });
+
+    // Initialize
+    window.addEventListener('load', () => {
+      initVanta();
+      updateSize();
+      window.addEventListener('resize', updateSize);
+    });
+
+    // Update size every second
+    setInterval(updateSize, 1000);
+  </script>
+</body>
+</html>
