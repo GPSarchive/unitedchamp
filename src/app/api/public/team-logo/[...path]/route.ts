@@ -36,6 +36,15 @@ const MIME: Record<string, string> = {
 
 type Ctx = { params: Promise<{ path?: string[] }> };
 
+// Handle CORS preflight requests
+export async function OPTIONS() {
+  const headers = new Headers();
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return new NextResponse(null, { status: 204, headers });
+}
+
 export async function GET(_req: Request, ctx: Ctx) {
   const { path } = await ctx.params; // ← Next 15: params is a Promise
   const objectPath = toSafePath(path);
@@ -65,6 +74,9 @@ export async function GET(_req: Request, ctx: Ctx) {
   const headers = new Headers();
   headers.set("Content-Type", (asAny(data).type as string) || fallbackType);
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  // CORS headers required for WebGL/Canvas texture loading
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET");
 
   // Blob in some environments, Node stream in others
   if (typeof asAny(data).arrayBuffer === "function") {
