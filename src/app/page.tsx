@@ -1,5 +1,6 @@
 // app/page.tsx
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { headers } from 'next/headers';
 import { Trophy, Users, BarChart3 } from 'lucide-react';
@@ -9,7 +10,6 @@ import EventCalendar from '@/app/home/Calendar';
 import TeamDashboard from '@/app/home/TeamDashboard';
 import ResponsiveCallendar from '@/app/home/ResponsiveCalendar';
 import GridBgSection from '@/app/home/GridBgSection';
-import VantaSection from '@/app/home/VantaSection';
 import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
 import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
@@ -17,6 +17,18 @@ import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
+
+// ⚡ PERFORMANCE: Lazy load VantaSection (saves ~1.4MB + GPU overhead on initial load)
+const VantaSection = dynamic(() => import('@/app/home/VantaSection'), {
+  ssr: false, // Disable SSR since Vanta uses browser APIs (window, p5.js, WebGL)
+  loading: () => (
+    <div className="py-12 sm:py-16 text-white bg-zinc-950">
+      <div className="container mx-auto px-4 text-center">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    </div>
+  ),
+});
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
