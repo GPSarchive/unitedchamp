@@ -4,10 +4,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useCallback, memo } from "react";
+import { useEffect, useMemo, useState, useCallback, memo, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { useStagedHeaderMotion } from "@/app/lib/framermotion/useStagedHeaderMotion";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
 /* ===================== Data ===================== */
@@ -31,12 +30,6 @@ const TILE_CLASS =
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 " +
   "focus-visible:ring-offset-2 focus-visible:ring-offset-black " +
   "w-[180px] h-[64px] md:w-[260px] md:h-[84px] xl:w-[300px] xl:h-[90px]";
-
-const MOTION_VARIANTS = {
-  visible: { y: 0 },
-  peek: { y: "-50%" },
-  hidden: { y: "-100%" },
-} as const;
 
 /* ===================== Sub-components ===================== */
 
@@ -190,13 +183,127 @@ const AnimatedBackground = memo(() => (
 ));
 AnimatedBackground.displayName = "AnimatedBackground";
 
+/* ===================== Custom Hook: Mobile Scroll Hide ===================== */
+type MobileNavStage = "visible" | "peek" | "hidden";
+
+function useMobileNavScroll({
+  mobileOpen,
+  closeMobile,
+  peekThreshold = 80,
+  hideThreshold = 160,
+  scrollDelta = 12,
+}: {
+  mobileOpen: boolean;
+  closeMobile: () => void;
+  peekThreshold?: number;
+  hideThreshold?: number;
+  scrollDelta?: number;
+}) {
+  const [stage, setStage] = useState<MobileNavStage>("visible");
+  const lastScrollY = useRef(0);
+  const scrollDirection = useRef<"up" | "down">("up");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY.current;
+
+      // Determine scroll direction (with threshold to avoid jitter)
+      if (delta > scrollDelta) {
+        scrollDirection.current = "down";
+      } else if (delta < -scrollDelta) {
+        scrollDirection.current = "up";
+      }
+
+      // At top - always visible
+      if (currentScrollY < 20) {
+        setStage("visible");
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // Scrolling behavior
+      if (scrollDirection.current === "down") {
+        // Stage 1: Peek (50% hidden)
+        if (currentScrollY > peekThreshold && currentScrollY <= hideThreshold) {
+          setStage("peek");
+        }
+        // Stage 2: Fully hidden + close mobile menu
+        else if (currentScrollY > hideThreshold) {
+          setStage("hidden");
+          if (mobileOpen) {
+            closeMobile();
+          }
+        }
+      } else {
+        // Scrolling up - show navbar
+        setStage("visible");
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [mobileOpen, closeMobile, peekThreshold, hideThreshold, scrollDelta]);
+
+  return stage;
+}
+
+/* ===================== Custom Hook: Desktop Scroll ===================== */
+function useDesktopNavScroll({
+  activateAt = 72,
+  scrollDelta = 10,
+}: {
+  activateAt?: number;
+  scrollDelta?: number;
+}) {
+  const [stage, setStage] = useState<"visible" | "hidden">("visible");
+  const [scrolled, setScrolled] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY.current;
+
+      setScrolled(currentScrollY > 50);
+
+      if (currentScrollY < 20) {
+        setStage("visible");
+      } else if (delta > scrollDelta && currentScrollY > activateAt) {
+        setStage("hidden");
+      } else if (delta < -scrollDelta) {
+        setStage("visible");
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [activateAt, scrollDelta]);
+
+  return { stage, scrolled };
+}
+
 /* ===================== Main Component ===================== */
+
+const MOBILE_MOTION_VARIANTS = {
+  visible: { y: 0 },
+  peek: { y: "-50%" },
+  hidden: { y: "-100%" },
+} as const;
+
+const DESKTOP_MOTION_VARIANTS = {
+  visible: { y: 0 },
+  hidden: { y: "-100%" },
+} as const;
 
 export default function NavbarClient({ initialUser }: { initialUser: User | null }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // Memoize isActive function
   const isActive = useCallback((href: string) => (pathname === href ? "page" as const : undefined), [pathname]);
 
   // User state management
@@ -223,20 +330,10 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     };
   }, [supabase]);
 
-  // Memoize next path
   const next = useMemo(() => {
     const q = searchParams?.toString();
     return pathname + (q ? `?${q}` : "");
   }, [pathname, searchParams]);
-
-  // Staged header behavior
-  const { stage, scrolled } = useStagedHeaderMotion({
-    activateAt: 72,
-    jitter: 6,
-    peekAfterPx: 36,
-    hideAfterPx: 120,
-    revealAfterPx: 28,
-  });
 
   const prefersReduced = useReducedMotion();
 
@@ -245,183 +342,328 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
   const toggleMobile = useCallback(() => setMobileOpen(v => !v), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  // Memoize login URL
+  // Scroll tracking for glowing scrollbar
+  const [isMenuScrolling, setIsMenuScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleMenuScroll = useCallback(() => {
+    setIsMenuScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsMenuScrolling(false);
+    }, 150);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Mobile scroll behavior
+  const mobileStage = useMobileNavScroll({
+    mobileOpen,
+    closeMobile,
+    peekThreshold: 80,
+    hideThreshold: 160,
+  });
+
+  // Desktop scroll behavior
+  const { stage: desktopStage, scrolled } = useDesktopNavScroll({
+    activateAt: 72,
+    scrollDelta: 10,
+  });
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  // Close on route change
+  useEffect(() => {
+    closeMobile();
+  }, [pathname, closeMobile]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileOpen) {
+        closeMobile();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [mobileOpen, closeMobile]);
+
   const loginUrl = useMemo(() => `/login?next=${encodeURIComponent(next)}`, [next]);
 
+  // Determine if we're on mobile (for choosing which scroll behavior to use)
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Choose motion variant based on device
+  const currentStage = isMobile ? mobileStage : desktopStage;
+  const motionVariants = isMobile ? MOBILE_MOTION_VARIANTS : DESKTOP_MOTION_VARIANTS;
+
   return (
-    <motion.header
-      aria-label="Site header"
-      initial={false}
-      animate={prefersReduced ? "visible" : stage}
-      variants={MOTION_VARIANTS}
-      transition={prefersReduced ? { duration: 0 } : { type: "tween", duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-      className="sticky top-0 z-50"
-      data-stage={stage}
-      data-scrolled={scrolled}
-    >
-      <nav
-        aria-label="Main"
-        className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-28"
+    <>
+      <motion.header
+        aria-label="Site header"
+        initial={false}
+        animate={prefersReduced ? "visible" : currentStage}
+        variants={motionVariants}
+        transition={prefersReduced ? { duration: 0 } : { type: "tween", duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="fixed top-0 left-0 right-0 z-50"
+        data-stage={currentStage}
+        data-scrolled={scrolled}
       >
-        <AnimatedBackground />
+        <nav
+          aria-label="Main"
+          className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-28"
+          data-scrolled={scrolled}
+        >
+          <AnimatedBackground />
 
-        <div className="grain-layer" aria-hidden />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/20" />
+          <div className="grain-layer" aria-hidden />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/20" />
 
-        {/* Left: Brand + Desktop tiles */}
-        <div className="relative z-10 flex items-center gap-3">
-          {/* Mobile brand */}
-          <Link href="/home" className="flex items-center gap-2 md:hidden">
-            <Image
-              src="/UltraChampLogo.png"
-              alt="Ultra Champ"
-              width={28}
-              height={28}
-              className="rounded-sm shadow"
-              priority
-            />
-            <span className="text-base font-semibold tracking-wide">Ultra Champ</span>
-          </Link>
-
-          {/* Desktop tile links */}
-          <div
-            className="hidden md:flex items-center gap-4 overflow-x-auto desktop-scroll pr-1 max-w-[78vw] lg:max-w-[82vw] xl:max-w-[86vw]"
-            role="list"
-            aria-label="Primary navigation"
-          >
-            {NAV_LINKS.map(({ href, label, img }) => (
-              <NavLink
-                key={href}
-                href={href}
-                label={label}
-                img={img}
-                isActive={isActive(href)}
+          {/* Left: Brand + Desktop tiles */}
+          <div className="relative z-10 flex items-center gap-3">
+            {/* Mobile brand */}
+            <Link href="/home" className="flex items-center gap-2 md:hidden">
+              <Image
+                src="/UltraChampLogo.png"
+                alt="Ultra Champ"
+                width={28}
+                height={28}
+                className="rounded-sm shadow"
+                priority
               />
-            ))}
-          </div>
-        </div>
+              <span className="text-base font-semibold tracking-wide">Ultra Champ</span>
+            </Link>
 
-        {/* Right: Session + Mobile Menu */}
-        <div className="relative z-10 flex items-center gap-2 md:gap-3">
-          {/* Desktop session */}
-          <div className="hidden md:flex items-center gap-3">
-            {user ? (
-              <>
-                <UserAvatar user={user} />
-                <form method="post" action="/api/auth/sign-out">
-                  <button
-                    type="submit"
-                    className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
-                    aria-label="Sign out"
-                  >
-                    Sign out
-                  </button>
-                </form>
-              </>
-            ) : (
-              <Link
-                href={loginUrl}
-                className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
-              >
-                Login
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile avatar/login */}
-          <div className="md:hidden">
-            {user ? (
-              <UserAvatar user={user} isMobile />
-            ) : (
-              <Link
-                href={loginUrl}
-                aria-label="Login"
-                className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
-                title="Login"
-              >
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden className="opacity-90">
-                  <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"/>
-                </svg>
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile hamburger with label */}
-          <button
-            type="button"
-            onClick={toggleMobile}
-            aria-label="Menu"
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-menu"
-            className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
-              <path
-                fill="currentColor"
-                d={mobileOpen
-                  ? "M6 6 L18 18 M18 6 L6 18"
-                  : "M4 7h16v2H4V7Zm0 4h16v2H4v-2Zm0 4h16v2H4v-2Z"
-                }
-                stroke="currentColor"
-                strokeWidth={mobileOpen ? 2 : 0}
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="text-sm font-medium">
-              {mobileOpen ? "Close" : "Menu"}
-            </span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile dropdown */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            id="mobile-menu"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={prefersReduced ? { duration: 0 } : { duration: 0.24 }}
-            className="md:hidden overflow-hidden border-b border-white/15 bg-zinc-950/90 backdrop-blur-md text-white"
-          >
-            <div className="flex flex-col gap-3 px-3 py-3">
+            {/* Desktop tile links */}
+            <div
+              className="hidden md:flex items-center gap-4 overflow-x-auto desktop-scroll pr-1 max-w-[78vw] lg:max-w-[82vw] xl:max-w-[86vw]"
+              role="list"
+              aria-label="Primary navigation"
+            >
               {NAV_LINKS.map(({ href, label, img }) => (
-                <MobileNavLink
+                <NavLink
                   key={href}
                   href={href}
                   label={label}
                   img={img}
                   isActive={isActive(href)}
-                  onClick={closeMobile}
                 />
               ))}
             </div>
+          </div>
 
-            <div className="px-3 pb-3">
+          {/* Right: Session + Mobile Menu */}
+          <div className="relative z-10 flex items-center gap-2 md:gap-3">
+            {/* Desktop session */}
+            <div className="hidden md:flex items-center gap-3">
               {user ? (
-                <form method="post" action="/api/auth/sign-out">
-                  <button
-                    type="submit"
-                    className="w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
-                    aria-label="Sign out"
-                    onClick={closeMobile}
-                  >
-                    Sign out
-                  </button>
-                </form>
+                <>
+                  <UserAvatar user={user} />
+                  <form method="post" action="/api/auth/sign-out">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
+                      aria-label="Sign out"
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                </>
               ) : (
                 <Link
                   href={loginUrl}
-                  className="block w-full text-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
-                  onClick={closeMobile}
+                  className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
                 >
                   Login
                 </Link>
               )}
             </div>
-          </motion.div>
+
+            {/* Mobile avatar/login */}
+            <div className="md:hidden">
+              {user ? (
+                <UserAvatar user={user} isMobile />
+              ) : (
+                <Link
+                  href={loginUrl}
+                  aria-label="Login"
+                  className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
+                  title="Login"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden className="opacity-90">
+                    <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"/>
+                  </svg>
+                </Link>
+              )}
+            </div>
+
+            {/* Mobile hamburger with label */}
+            <button
+              type="button"
+              onClick={toggleMobile}
+              aria-label="Menu"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-menu"
+              className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
+            >
+              <div className="w-[18px] h-[14px] relative flex flex-col justify-between">
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300 origin-center
+                    ${mobileOpen ? "rotate-45 translate-y-[6px]" : ""}
+                  `}
+                />
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300
+                    ${mobileOpen ? "opacity-0 scale-x-0" : ""}
+                  `}
+                />
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300 origin-center
+                    ${mobileOpen ? "-rotate-45 -translate-y-[6px]" : ""}
+                  `}
+                />
+              </div>
+              <span className="text-sm font-medium">
+                {mobileOpen ? "Close" : "Menu"}
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Mobile dropdown - 75% screen height with premium scrollbar */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              id="mobile-menu"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "75vh", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={prefersReduced ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              className={`
+                md:hidden overflow-hidden 
+                border-b border-white/15 
+                bg-gradient-to-b from-zinc-950/95 via-zinc-900/95 to-zinc-950/98
+                backdrop-blur-xl text-white
+                mobile-menu-container
+                ${isMenuScrolling ? "is-scrolling" : ""}
+              `}
+            >
+              {/* Scrollable content area */}
+              <div 
+                className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll"
+                onScroll={handleMenuScroll}
+              >
+                {/* Top fade gradient */}
+                <div className="pointer-events-none sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-zinc-950/90 to-transparent z-10" />
+                
+                <div className="flex flex-col gap-3 px-4 pb-4">
+                  {NAV_LINKS.map(({ href, label, img }, index) => (
+                    <motion.div
+                      key={href}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ 
+                        delay: prefersReduced ? 0 : index * 0.04,
+                        duration: prefersReduced ? 0 : 0.3,
+                        ease: [0.22, 1, 0.36, 1]
+                      }}
+                    >
+                      <MobileNavLink
+                        href={href}
+                        label={label}
+                        img={img}
+                        isActive={isActive(href)}
+                        onClick={closeMobile}
+                      />
+                    </motion.div>
+                  ))}
+                  
+                  {/* Login/Logout button */}
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ 
+                      delay: prefersReduced ? 0 : NAV_LINKS.length * 0.04,
+                      duration: prefersReduced ? 0 : 0.3,
+                      ease: [0.22, 1, 0.36, 1]
+                    }}
+                    className="mt-2"
+                  >
+                    {user ? (
+                      <form method="post" action="/api/auth/sign-out">
+                        <button
+                          type="submit"
+                          className="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3.5 text-sm font-medium hover:bg-white/10 active:scale-[0.98] transition"
+                          aria-label="Sign out"
+                          onClick={closeMobile}
+                        >
+                          Sign out
+                        </button>
+                      </form>
+                    ) : (
+                      <Link
+                        href={loginUrl}
+                        className="block w-full text-center rounded-lg border border-white/20 bg-white/5 px-4 py-3.5 text-sm font-medium hover:bg-white/10 active:scale-[0.98] transition"
+                        onClick={closeMobile}
+                      >
+                        Login
+                      </Link>
+                    )}
+                  </motion.div>
+                </div>
+
+                {/* Bottom fade gradient */}
+                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-zinc-950/90 to-transparent" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.header>
+
+      {/* Backdrop */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+            onClick={closeMobile}
+            aria-hidden="true"
+          />
         )}
       </AnimatePresence>
 
@@ -450,7 +692,38 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
         .desktop-scroll:hover::-webkit-scrollbar-thumb {
           background: linear-gradient(90deg, rgba(255,255,255,0.4), rgba(255,255,255,0.75));
         }
+
+        /* Premium mobile menu scrollbar */
+        .mobile-menu-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255,255,255,0.15) transparent;
+        }
+        .mobile-menu-scroll::-webkit-scrollbar {
+          width: 3px;
+        }
+        .mobile-menu-scroll::-webkit-scrollbar-track {
+          background: transparent;
+          margin: 8px 0;
+        }
+        .mobile-menu-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.2);
+          border-radius: 9999px;
+          transition: all 0.3s ease;
+        }
+        
+        /* Glowing scrollbar when actively scrolling */
+        .mobile-menu-container.is-scrolling .mobile-menu-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.6);
+          box-shadow: 
+            0 0 6px 1px rgba(255,255,255,0.4),
+            0 0 12px 2px rgba(255,255,255,0.2);
+        }
+        
+        /* Firefox doesn't support box-shadow on scrollbars, so we brighten instead */
+        .mobile-menu-container.is-scrolling .mobile-menu-scroll {
+          scrollbar-color: rgba(255,255,255,0.7) transparent;
+        }
       `}</style>
-    </motion.header>
+    </>
   );
 }
