@@ -112,6 +112,12 @@ export interface MatchWithTeams {
   referee?: string | null; // ← add this if you select it
   team_a: { id: Id; name: string; logo: string | null };
   team_b: { id: Id; name: string; logo: string | null };
+  tournament?: {
+    id: Id;
+    name: string;
+    season: string | null;
+    slug: string;
+  } | null;
 }
 
 /** Keep backward compatibility with earlier code that imported `Match` */
