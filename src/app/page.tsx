@@ -21,13 +21,6 @@ import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 // ⚡ PERFORMANCE: Lazy load VantaSection (saves ~1.4MB + GPU overhead on initial load)
 const VantaSection = dynamic(() => import('@/app/home/VantaSection'), {
   ssr: false, // Disable SSR since Vanta uses browser APIs (window, p5.js, WebGL)
-  loading: () => (
-    <div className="py-12 sm:py-16 text-white bg-zinc-950">
-      <div className="container mx-auto px-4 text-center">
-        <div className="animate-pulse">Loading...</div>
-      </div>
-    </div>
-  ),
 });
 /**
  * ------------------------------
