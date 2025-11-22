@@ -150,7 +150,7 @@ function PlayersFilterHeaderComponent({
         </div>
       </div>
 
-      {/* Tournament & Top Filters */}
+      {/* Tournament, Top Filters & Action Buttons */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5 bg-zinc-950/50">
         {/* Mobile: Stacked layout */}
         <div className="flex flex-col gap-3 md:hidden">
@@ -191,18 +191,8 @@ function PlayersFilterHeaderComponent({
             />
           </div>
 
-          {/* Action Buttons - Εύρεση and Reset side by side */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => {
-                // Trigger a re-render by scrolling to top - filters are already applied
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              className="w-full px-3 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold border border-cyan-500 hover:border-cyan-600 transition-all rounded-md shadow-lg shadow-cyan-500/20"
-            >
-              Εύρεση
-            </button>
-
+          {/* Action Buttons - Reset only */}
+          <div className="w-full">
             <button
               onClick={onReset}
               className="w-full px-3 py-2.5 bg-white/5 text-white/70 text-sm font-medium border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all rounded-md"
@@ -212,7 +202,7 @@ function PlayersFilterHeaderComponent({
           </div>
         </div>
 
-        {/* Desktop: Original grid layout */}
+        {/* Desktop: Grid layout */}
         <div className="hidden md:grid md:grid-cols-12 gap-3 items-end">
           {/* Tournament Filter */}
           <div className="md:col-span-5">
@@ -272,22 +262,22 @@ function PlayersFilterHeaderComponent({
         <span>{summaryText}</span>
       </div>
 
-      {/* Sort Buttons Row */}
-      <div className="border-b border-white/5">
+      {/* Sort Buttons Row - Now positioned ABOVE the table */}
+      <div className="bg-zinc-950/90 border-b border-white/10">
         {/* Mobile: Horizontal scroll */}
         <div className="md:hidden">
-          <div className="px-4 pt-4 pb-2 text-[11px] font-semibold tracking-[0.3em] uppercase text-white/40">
-            Α "Αναζήτηση για"
+          <div className="px-4 pt-3 pb-2 text-[10px] font-semibold tracking-wider uppercase text-white/40">
+            Ταξινόμηση κατά
           </div>
           <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex min-w-max gap-3 px-4 pb-4">
+            <div className="flex min-w-max gap-2 px-4 pb-3">
               {SORT_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => onSortChange(opt.value)}
                   className={`
-                    flex-shrink-0 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em]
-                    transition-all duration-200 rounded-full border
+                    flex-shrink-0 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider
+                    transition-all duration-200 rounded-lg border
                     text-center shadow-sm backdrop-blur-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
                     ${
                       selectedSort === opt.value
@@ -307,21 +297,21 @@ function PlayersFilterHeaderComponent({
         </div>
 
         {/* Desktop: Grid aligned with table columns */}
-        <div className="hidden md:block px-6 py-3">
-          <div className="grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4">
+        <div className="hidden md:block px-2 md:px-6 py-3">
+          <div className="grid grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px] gap-4">
             {/* Photo column - empty */}
             <div></div>
 
             {/* Player name column - empty */}
             <div></div>
 
-            {/* Sortable columns */}
+            {/* Sortable columns - aligned with table */}
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => onSortChange(opt.value)}
-                  className={`
-                  px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em]
+                className={`
+                  px-2 py-2 text-[10px] font-semibold uppercase tracking-wider
                   transition-all duration-200 rounded-lg border text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
                   ${
                     selectedSort === opt.value

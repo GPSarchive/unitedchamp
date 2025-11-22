@@ -76,7 +76,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="sticky top-[52px] sm:top-[60px] md:top-[64px] z-10 bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest">
+        <div className="sticky top-[56px] sm:top-[64px] md:top-[72px] z-[14] bg-zinc-900 border-y border-amber-400/20 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-amber-200/70 tracking-widest shadow-md shadow-black/30">
           {letter}
         </div>
       )}
@@ -208,18 +208,18 @@ function PlayersListComponent({
           </div>
         ) : (
           <div className="w-full">
-            {/* Header */}
-            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg">
+            {/* Sticky Table Header - positioned just below filter header */}
+            <div className="sticky top-0 z-[15] bg-zinc-950 border-b-2 border-amber-400/40 shadow-xl shadow-black/50">
               <div
-                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
+                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-3 sm:py-3.5 md:py-4 text-[10px] sm:text-[11px] md:text-xs font-bold uppercase tracking-wider text-amber-200/90 bg-gradient-to-b from-zinc-900 to-zinc-950`}
               >
                 {COLUMN_HEADERS.map((col) => (
-                  <div 
-                    key={col.key} 
+                  <div
+                    key={col.key}
                     className={`${col.align} ${col.hideOnMobile ? 'hidden sm:block' : ''}`}
                   >
-                    <span className="hidden sm:inline">{col.fullLabel}</span>
-                    <span className="sm:hidden">{col.label}</span>
+                    <span className="hidden sm:inline drop-shadow-sm">{col.fullLabel}</span>
+                    <span className="sm:hidden drop-shadow-sm">{col.label}</span>
                   </div>
                 ))}
               </div>
