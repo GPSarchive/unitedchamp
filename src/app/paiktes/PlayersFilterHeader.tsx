@@ -117,7 +117,7 @@ function PlayersFilterHeaderComponent({
     : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
-    <div className="sticky top-16 md:top-32 z-20 bg-zinc-950 border-b border-white/10">
+    <div className="z-20 bg-zinc-950 border-b border-white/10">
       {/* Search & Count Row */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
