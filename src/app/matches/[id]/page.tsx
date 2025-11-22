@@ -109,7 +109,7 @@ export default async function Page({
   const videoId = effectiveVideoInput ? extractYouTubeId(effectiveVideoInput) : null;
 
   const dateLabel = match.match_date
-    ? new Date(match.match_date).toLocaleString(undefined, {
+    ? new Date(match.match_date).toLocaleString("el-GR", {
         year: "numeric",
         month: "short",
         day: "2-digit",

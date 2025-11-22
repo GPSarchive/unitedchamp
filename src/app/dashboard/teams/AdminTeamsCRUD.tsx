@@ -252,7 +252,7 @@ export function AdminTeamsGridClient({
                         )}
                       </div>
                       <div className="text-xs text-white/50">
-                        ID #{r.id} • {r.created_at ? new Date(r.created_at).toLocaleString() : "—"}
+                        ID #{r.id} • {r.created_at ? new Date(r.created_at).toLocaleString('el-GR') : "—"}
                       </div>
                     </div>
                   </div>
@@ -325,7 +325,7 @@ export function AdminTeamsGridClient({
                   </div>
                   {archived && r.deleted_at ? (
                     <p className="mt-2 text-xs text-white/50">
-                      Archived on {new Date(r.deleted_at).toLocaleDateString()}.
+                      Archived on {new Date(r.deleted_at).toLocaleDateString('el-GR')}.
                     </p>
                   ) : null}
                 </div>

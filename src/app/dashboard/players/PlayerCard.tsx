@@ -60,7 +60,7 @@ export default function PlayerCard({ player, onEdit, onDelete }: Props) {
 
           {stats.updated_at && (
             <p className="mt-2 text-[11px] text-white/50">
-              Last updated: {new Date(stats.updated_at).toLocaleString()}
+              Last updated: {new Date(stats.updated_at).toLocaleString('el-GR')}
             </p>
           )}
         </div>

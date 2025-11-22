@@ -36,7 +36,7 @@ function isoToLabelUTC(iso: string | null): string {
 }
 function isoToLabelLocal(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString('el-GR');
 }
 
 function teamLabel(t: TeamLite | null, fallbackId?: Id) {

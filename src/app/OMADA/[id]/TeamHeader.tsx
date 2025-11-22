@@ -81,7 +81,7 @@ export default function TeamHeader({ team }: { team: Team }) {
             {team.name}
           </h1>
           <p className="mt-3 text-lg font-medium text-zinc-300">
-            Established: {team.created_at ? new Date(team.created_at).toLocaleDateString() : "Unknown"}
+            Established: {team.created_at ? new Date(team.created_at).toLocaleDateString('el-GR') : "Unknown"}
           </p>
         </div>
       </div>

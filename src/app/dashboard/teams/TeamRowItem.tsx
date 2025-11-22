@@ -74,14 +74,14 @@ export default function TeamRowItem({
               <div className="text-xs text-white/50">
                 ID #{row.id}
                 {archived && row.deleted_at && (
-                  <span className="ml-2">• deleted {new Date(row.deleted_at).toLocaleDateString()}</span>
+                  <span className="ml-2">• deleted {new Date(row.deleted_at).toLocaleDateString('el-GR')}</span>
                 )}
               </div>
             </div>
           </div>
         </td>
         <td className="px-3 py-2 whitespace-nowrap">
-          {row.created_at ? new Date(row.created_at).toLocaleString() : "—"}
+          {row.created_at ? new Date(row.created_at).toLocaleString('el-GR') : "—"}
         </td>
         {/* Actions cell removed → left empty for table alignment */}
         <td className="px-3 py-2" />

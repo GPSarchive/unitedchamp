@@ -84,7 +84,7 @@ export default async function TournamentsPage({
         >
           <option value="">➕ Νέα διοργάνωση…</option>
           {(tournamentsList ?? []).map((t) => {
-            const created = t.created_at ? new Date(t.created_at).toLocaleString() : "—";
+            const created = t.created_at ? new Date(t.created_at).toLocaleString('el-GR') : "—";
             return (
               <option key={t.id} value={t.id}>
                 {t.name} {t.slug ? `(${t.slug})` : ""} — δημιουργία {created}

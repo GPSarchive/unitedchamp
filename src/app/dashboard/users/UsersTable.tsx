@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 
 function fmt(ts?: string | null) {
-  return ts ? new Date(ts).toLocaleString() : '—';
+  return ts ? new Date(ts).toLocaleString('el-GR') : '—';
 }
 function primaryEmail(u: any): string {
   return (
