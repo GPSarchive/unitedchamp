@@ -161,7 +161,7 @@ const LightRays = ({
   const logoImageRef = useRef<HTMLImageElement | null>(null);
   const logoAspectRef = useRef<number | null>(null); // width / height
 
-  /** Observe visibility (init when in view, tear down when out) */
+  /** Observe visibility (init when in view, pause when far out) */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -169,10 +169,10 @@ const LightRays = ({
       (entries) => {
         const onScreen = entries[0]?.isIntersecting ?? false;
         setIsVisible(onScreen);
-        // Auto-tear-down when off-screen
-        if (!onScreen) cleanup();
+        // Don't cleanup immediately - let the visibility change handler manage it
+        // This prevents logos from disappearing when scrolling or zooming
       },
-      { threshold: 0.02, rootMargin: '0px 0px -10% 0px' }
+      { threshold: 0.01, rootMargin: '50% 0px 50% 0px' }
     );
     observerRef.current.observe(el);
     return () => {

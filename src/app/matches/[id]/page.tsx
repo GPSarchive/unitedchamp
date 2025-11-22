@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 
-import VantaSection from "@/app/home/VantaSection";
+import VantaBg from "@/app/lib/VantaBg";
 import ShinyText from "./ShinyText";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 
@@ -191,9 +191,9 @@ export default async function Page({
   ];
 
   return (
-    <div className="relative min-h-dvh overflow-x-visible bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Simple gradient background instead of VantaBg */}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
+    <div className="relative min-h-dvh overflow-x-visible">
+      {/* Fixed Vanta background that stays in place while content scrolls */}
+      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
