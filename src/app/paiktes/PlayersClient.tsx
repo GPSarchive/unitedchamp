@@ -83,6 +83,10 @@ export default function PlayersClient({
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // ✅ Scroll state for hiding/showing filter header on mobile
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
   // Router + URL sync helpers
   const router = useRouter();
   const sp = useSearchParams();
@@ -216,6 +220,52 @@ export default function PlayersClient({
   useEffect(() => {
     setIsLoading(false);
   }, [initialPlayers]);
+
+  // ✅ Hide/show filter header based on scroll direction (mobile only)
+  useEffect(() => {
+    if (isXL) {
+      // Always show header on desktop
+      setHeaderVisible(true);
+      return;
+    }
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Don't hide if we're at the very top
+      if (currentScrollY < 10) {
+        setHeaderVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // Scrolling down - hide header
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setHeaderVisible(false);
+      }
+      // Scrolling up - show header
+      else if (currentScrollY < lastScrollY.current) {
+        setHeaderVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    // Throttle scroll events for performance
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isXL]);
 
   // Filter + search + sort (client-side for instant response)
   // ✅ Use debounced query to prevent excessive filtering while typing
@@ -471,6 +521,7 @@ export default function PlayersClient({
             onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
+            isVisible={headerVisible}
           />
 
           {/* Players List */}
