@@ -456,22 +456,6 @@ export default function PlayersClient({
       >
         {/* LEFT PANEL - Players List with Filters */}
         <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 overflow-hidden">
-          
-          {/* Filter Header */}
-          <PlayersFilterHeader
-            selectedSort={clientSort}
-            selectedTournamentId={clientTournamentId}
-            topInputValue={clientTopInput}
-            tournaments={tournaments}
-            searchQuery={q}
-            playerCount={players.length}
-            onSortChange={onSortChange}
-            onTournamentChange={onTournamentChange}
-            onTopChange={onTopChange}
-            onTopInputChange={setClientTopInput}
-            onSearchChange={setQ}
-            onReset={handleReset}
-          />
 
           {/* Players List */}
           <div className="flex-1 overflow-hidden flex flex-col relative">
@@ -486,6 +470,22 @@ export default function PlayersClient({
             )}
 
             <div className="flex-1 overflow-y-auto">
+              {/* Filter Header - now inside scrollable container */}
+              <PlayersFilterHeader
+                selectedSort={clientSort}
+                selectedTournamentId={clientTournamentId}
+                topInputValue={clientTopInput}
+                tournaments={tournaments}
+                searchQuery={q}
+                playerCount={players.length}
+                onSortChange={onSortChange}
+                onTournamentChange={onTournamentChange}
+                onTopChange={onTopChange}
+                onTopInputChange={setClientTopInput}
+                onSearchChange={setQ}
+                onReset={handleReset}
+              />
+
               <PlayersList
                 players={players}
                 activeId={activeId}
