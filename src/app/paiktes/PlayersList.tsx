@@ -17,10 +17,10 @@ type Props = {
   isTournamentScoped?: boolean;
 };
 
-// ✅ Mobile-optimized grid - all columns visible with horizontal scroll on mobile
+// ✅ Mobile-optimized grid - all columns fit on mobile without scrolling
 const GRID_TEMPLATE =
-  "grid grid-cols-[60px_minmax(140px,1fr)_60px_60px_60px_60px_60px_60px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
-const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-4";
+  "grid grid-cols-[32px_minmax(80px,1fr)_40px_40px_40px_40px_40px_40px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
+const GRID_GAPS = "gap-0.5 sm:gap-2 md:gap-4";
 
 const COLUMN_HEADERS = [
   { key: "photo", label: "Φωτό", fullLabel: "Φωτογραφία", align: "text-left" },
@@ -76,7 +76,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest min-w-[640px]">
+        <div className="bg-zinc-900 border-y border-white/10 px-1 sm:px-3 md:px-6 py-1 sm:py-2 md:py-3 text-[9px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest">
           {letter}
         </div>
       )}
@@ -88,7 +88,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
         onClick={handleClick}
         className={`
           ${GRID_TEMPLATE} ${GRID_GAPS}
-          px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4
+          px-1 sm:px-3 md:px-6 py-1.5 sm:py-3 md:py-4
           border-b border-white/5
           cursor-pointer
           transition-all duration-200
@@ -101,7 +101,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
       >
         {/* Photo */}
         <div className="flex items-center">
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden rounded-md md:rounded-lg bg-white/5 border border-white/10">
+          <div className="relative w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden rounded sm:rounded-md md:rounded-lg bg-white/5 border border-white/10">
             <PlayerImage
               src={displayPhoto}
               alt={`${player.first_name} ${player.last_name}`}
@@ -115,15 +115,15 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Player Info */}
         <div className="flex flex-col justify-center min-w-0">
-          <div className="text-white font-semibold text-xs sm:text-sm md:text-base truncate">
+          <div className="text-white font-semibold text-[10px] sm:text-sm md:text-base truncate">
             {player.first_name} {player.last_name}
           </div>
-          <div className="text-white/50 text-[10px] sm:text-xs md:text-sm mt-0.5 flex items-center gap-1 md:gap-2">
+          <div className="text-white/50 text-[8px] sm:text-xs md:text-sm mt-0.5 hidden sm:flex items-center gap-1 md:gap-2">
             <span className="truncate">{player.team?.name || "—"}</span>
             {player.position && (
               <>
-                <span className="text-white/30 hidden sm:inline">•</span>
-                <span className="hidden sm:inline">{player.position}</span>
+                <span className="text-white/30">•</span>
+                <span>{player.position}</span>
               </>
             )}
           </div>
@@ -132,7 +132,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
         {/* Stats - Tournament-aware */}
         {/* Matches */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
+          <span className="text-white font-mono text-[9px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_matches !== undefined
               ? player.tournament_matches
               : player.matches}
@@ -141,7 +141,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Wins */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
+          <span className="text-white font-mono text-[9px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_wins !== undefined
               ? player.tournament_wins
               : player.wins}
@@ -150,7 +150,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Goals */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base font-semibold">
+          <span className="text-white font-mono text-[9px] sm:text-sm md:text-base font-semibold">
             {isTournamentScoped && player.tournament_goals !== undefined
               ? player.tournament_goals
               : player.goals}
@@ -159,7 +159,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Assists */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
+          <span className="text-white font-mono text-[9px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_assists !== undefined
               ? player.tournament_assists
               : player.assists}
@@ -168,7 +168,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* MVP */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base">
+          <span className="text-white font-mono text-[9px] sm:text-sm md:text-base">
             {isTournamentScoped && player.tournament_mvp !== undefined
               ? player.tournament_mvp
               : player.mvp}
@@ -177,7 +177,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Best GK */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
+          <span className="text-white font-mono text-[9px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_best_gk !== undefined
               ? player.tournament_best_gk
               : player.best_gk}
@@ -207,11 +207,11 @@ function PlayersListComponent({
             Δεν βρέθηκαν παίκτες
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
+          <div className="w-full">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg min-w-[640px]">
+            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg">
               <div
-                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
+                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-1 sm:px-3 md:px-6 py-1.5 sm:py-2.5 md:py-3 text-[8px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
               >
                 {COLUMN_HEADERS.map((col) => (
                   <div
@@ -226,7 +226,7 @@ function PlayersListComponent({
             </div>
 
             {/* Player rows */}
-            <div className="min-w-[640px]">
+            <div>
               {players.map((player, idx) => {
                 const prev = players[idx - 1];
                 const letter = (player.last_name || player.first_name || "?")
