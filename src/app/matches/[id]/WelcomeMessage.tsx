@@ -49,7 +49,7 @@ export default function WelcomeMessage({
         >
           <Clock className="h-4 w-4" />
           <span>
-            Προγραμματισμένο: {new Date(matchDate).toLocaleDateString("el-GR")}
+            Προγραμματισμένο: {new Date(matchDate).toLocaleDateString("el-GR", { timeZone: "UTC" })}
           </span>
         </motion.div>
       )}
