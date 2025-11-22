@@ -19,8 +19,8 @@ type Props = {
 
 // ✅ Mobile-optimized grid (fewer columns on small screens)
 const GRID_TEMPLATE =
-  "grid grid-cols-[50px_1fr_50px_50px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
-const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-4";
+  "grid grid-cols-[40px_1fr_40px_40px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
+const GRID_GAPS = "gap-1 sm:gap-2 md:gap-4";
 
 const COLUMN_HEADERS = [
   { key: "photo", label: "Φωτό", fullLabel: "Φωτογραφία", align: "text-left" },
@@ -76,7 +76,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="sticky top-[52px] sm:top-[60px] md:top-[64px] z-10 bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest">
+        <div className="sticky top-[52px] sm:top-[60px] md:top-[64px] z-10 bg-zinc-900 border-y border-white/10 px-1.5 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest">
           {letter}
         </div>
       )}
@@ -88,7 +88,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
         onClick={handleClick}
         className={`
           ${GRID_TEMPLATE} ${GRID_GAPS}
-          px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4
+          px-1.5 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4
           border-b border-white/5
           cursor-pointer
           transition-all duration-200
@@ -101,7 +101,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
       >
         {/* Photo */}
         <div className="flex items-center">
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden rounded-md md:rounded-lg bg-white/5 border border-white/10">
+          <div className="relative w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden rounded-md md:rounded-lg bg-white/5 border border-white/10">
             <PlayerImage
               src={displayPhoto}
               alt={`${player.first_name} ${player.last_name}`}
@@ -211,7 +211,7 @@ function PlayersListComponent({
             {/* Header */}
             <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg">
               <div
-                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
+                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-1.5 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
               >
                 {COLUMN_HEADERS.map((col) => (
                   <div 
