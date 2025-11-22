@@ -32,19 +32,17 @@ function nowISO() {
 
 function formatLocal(iso: string | null) {
   if (!iso) return '';
-  const d = new Date(iso); // Create Date object from the ISO string
+  const d = new Date(iso);
 
-  // Use toLocaleString to show the date and time in UTC
   return d.toLocaleString('el-GR', {
-    weekday: 'long', // Full name of the weekday
-    year: 'numeric', // Full year
-    month: 'long', // Full month name
-    day: '2-digit', // Day with leading zero if necessary
-    hour: '2-digit', // Hour in 2-digit format
-    minute: '2-digit', // Minute in 2-digit format
-    second: '2-digit', // Optional, can be removed
-    hour12: false, // Use 24-hour format
-    timeZone: 'UTC', // Explicitly display the date in UTC time zone
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
   });
 }
 

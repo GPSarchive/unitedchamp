@@ -13,7 +13,6 @@ interface MatchesSectionProps {
 /** Stable date formatting (no hydration mismatches) */
 const dtf = new Intl.DateTimeFormat("el-GR", {
   dateStyle: "medium",
-  timeZone: "Europe/Athens",
 });
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "—";

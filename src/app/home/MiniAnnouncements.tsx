@@ -16,11 +16,9 @@ type Announcement = {
 };
 
 // ================== Utils ==================
-const TZ = "Europe/Athens";
 const fmt = (d: string | null) =>
   d
     ? new Date(d).toLocaleString("el-GR", {
-        timeZone: TZ,
         dateStyle: "medium",
         timeStyle: "short",
       })

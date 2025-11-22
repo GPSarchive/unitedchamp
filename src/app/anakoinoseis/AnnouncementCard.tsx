@@ -14,8 +14,6 @@ export type Announcement = {
   pinned: boolean;
 };
 
-const tz = "Europe/Athens";
-
 // Ensure marked runs synchronously (so parse returns string, not Promise)
 marked.setOptions({ gfm: true, breaks: true, async: false });
 
@@ -23,7 +21,6 @@ function fmtDate(d: string | null) {
   if (!d) return "";
   const date = new Date(d);
   return date.toLocaleString("el-GR", {
-    timeZone: tz,
     dateStyle: "medium",
     timeStyle: "short",
   });

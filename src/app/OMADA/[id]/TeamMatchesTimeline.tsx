@@ -15,7 +15,6 @@ const dtf = new Intl.DateTimeFormat("el-GR", {
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
-  timeZone: 'UTC',
 });
 
 function formatDate(iso: string | null | undefined) {
