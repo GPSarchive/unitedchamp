@@ -547,7 +547,7 @@ export default async function PaiktesPage({
   }
 
   return (
-    <div className="h-screen bg-black overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] md:h-[calc(100vh-8rem)] bg-black overflow-hidden">
       <PlayersClient
         initialPlayers={enriched}
         tournaments={tournaments}

@@ -359,7 +359,7 @@ export default function PlayersClient({
   const showPagination = usePagination && totalPages > 1;
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-black overflow-hidden">
       {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
       {!isXL && detailOpen && active && (
         <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
