@@ -14,6 +14,7 @@ type TeamWithCountRPC = {
   id: number;
   name: string;
   logo: string | null;
+  colour: string | null;
   total_count: number;
 };
 
@@ -83,14 +84,17 @@ export default async function TeamsPage({
         id: row.id,
         name: row.name,
         logo: row.logo,
+        colour: row.colour,
         created_at: null,
+        am: null,
+        season_score: null,
       }));
       count = rows.length > 0 ? rows[0].total_count : 0;
     }
   } else {
     const query = supabaseAdmin
       .from("teams")
-      .select("id, name, logo, created_at", { count: "exact" })
+      .select("id, name, logo, colour, created_at, am, season_score", { count: "exact" })
       .order("name", { ascending: true });
 
     const { data, error: queryError, count: queryCount } = await query.range(

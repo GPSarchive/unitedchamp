@@ -1,10 +1,11 @@
 // components/DashboardPageComponents/teams/TeamRowEditor.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import type { TeamRow } from "@/app/lib/types";
 import { clsx, isStoragePath, isUrl, safeJson, signIfNeeded } from "./teamHelpers";
 import ConfirmLogoModal from "./ConfirmLogoModal";
+import { extractColorFromImageFile, extractColorFromImageElement, extractColorFromImageUrl } from "@/app/lib/colorExtraction";
 
 export default function TeamRowEditor({
   initial,
@@ -21,6 +22,9 @@ export default function TeamRowEditor({
   const [name, setName] = useState(initial?.name ?? "");
   const [logo, setLogo] = useState<string>(initial?.logo ?? ""); // https URL or storage path
   const [preview, setPreview] = useState<string | null>(null);
+  const [colour, setColour] = useState<string>(
+    typeof (initial as any)?.colour === "string" ? (initial as any).colour : ""
+  );
 
   // NEW: AM (text, optional; unique)
   const [am, setAm] = useState<string>(
@@ -34,10 +38,14 @@ export default function TeamRowEditor({
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [extractingColor, setExtractingColor] = useState(false);
 
   // modal state for confirm
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  // ref for the preview image element
+  const previewImgRef = useRef<HTMLImageElement>(null);
 
   // map logo to preview: if it's a storage path → proxy, else use as-is
   useEffect(() => {
@@ -61,6 +69,109 @@ export default function TeamRowEditor({
     e.target.value = ""; // allow re-choosing same file later
   }
 
+  // Helper function to reload image and extract color
+  async function reloadImageAndExtract(url: string, withCrossOrigin: boolean = false): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      if (withCrossOrigin) {
+        img.crossOrigin = "anonymous";
+      }
+
+      img.onload = () => {
+        try {
+          const color = extractColorFromImageElement(img);
+          resolve(color);
+        } catch (error: any) {
+          // If we get a tainted canvas error and haven't tried with crossOrigin yet, retry
+          if (error?.message?.includes("tainted") && !withCrossOrigin) {
+            console.log("Canvas tainted, retrying with crossOrigin");
+            reloadImageAndExtract(url, true).then(resolve).catch(reject);
+          } else {
+            reject(error);
+          }
+        }
+      };
+
+      img.onerror = () => {
+        // If loading with crossOrigin failed, try without it
+        if (withCrossOrigin) {
+          console.warn("Failed to load with crossOrigin, trying without");
+          reloadImageAndExtract(url, false).then(resolve).catch(reject);
+        } else {
+          reject(new Error("Failed to load image from URL."));
+        }
+      };
+
+      img.src = url;
+    });
+  }
+
+  async function extractColorFromLogo(fileToExtract?: File) {
+    setExtractingColor(true);
+    try {
+      let extractedColor: string;
+
+      if (fileToExtract) {
+        // Extract from file directly using client-side Canvas API
+        extractedColor = await extractColorFromImageFile(fileToExtract);
+      } else if (
+        previewImgRef.current &&
+        previewImgRef.current.complete &&
+        previewImgRef.current.naturalWidth > 0
+      ) {
+        // Image is loaded and valid - try to extract from the DOM element
+        try {
+          extractedColor = extractColorFromImageElement(previewImgRef.current);
+        } catch (canvasError: any) {
+          // If canvas is tainted, reload image with crossOrigin and try again
+          if (preview && canvasError?.message?.includes("tainted")) {
+            console.warn("Canvas tainted, reloading image with crossOrigin");
+            extractedColor = await reloadImageAndExtract(preview);
+          } else if (preview) {
+            // For other errors, try URL-based extraction as last resort
+            console.warn("DOM extraction failed, trying URL extraction:", canvasError.message);
+            extractedColor = await extractColorFromImageUrl(preview);
+          } else {
+            throw canvasError;
+          }
+        }
+      } else if (preview) {
+        // Image not loaded yet or broken - reload with proper crossOrigin
+        console.warn("Image not ready, reloading with crossOrigin");
+        extractedColor = await reloadImageAndExtract(preview);
+      } else {
+        throw new Error("No logo available to extract color from. Please upload a logo first.");
+      }
+
+      setColour(extractedColor);
+
+      // Auto-save the extracted color if editing an existing team
+      if (isEdit && initial?.id) {
+        try {
+          const res = await fetch(`/api/teams/${initial.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ colour: extractedColor }),
+          });
+          const body = await safeJson(res);
+          if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+          // Notify parent so lists refresh
+          onSaved((body as any).team as TeamRow);
+        } catch (err: any) {
+          console.error("Failed to save extracted color:", err);
+          // Don't throw - color was still extracted and set locally
+        }
+      }
+    } catch (err: any) {
+      console.error("Color extraction failed:", err);
+      alert(err?.message ?? String(err));
+    } finally {
+      setExtractingColor(false);
+    }
+  }
+
   async function actuallyUpload(file: File) {
     setUploading(true);
     try {
@@ -74,6 +185,9 @@ export default function TeamRowEditor({
       // Store & preview the stable proxy URL from the uploader
       setLogo(body.publicUrl as string);
       setPreview((body.publicUrl as string) ?? null);
+
+      // Auto-extract color from uploaded logo
+      await extractColorFromLogo(file);
 
       // NEW: auto-save logo into DB when editing an existing team
       if (isEdit && initial?.id) {
@@ -128,6 +242,7 @@ export default function TeamRowEditor({
         name: name.trim(),
         logo: logoForSave,
         am: am.trim() || null,
+        colour: colour.trim() || null,
       };
       if (seasonScore !== "") payload.season_score = seasonScore;
 
@@ -243,7 +358,49 @@ export default function TeamRowEditor({
             placeholder="https://… or folder/file.png"
           />
         </label>
+
+        {/* Colour (text input with color picker) */}
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-white/80">Team Colour</span>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={colour || "#0080ff"}
+              onChange={(e) => setColour(e.target.value)}
+              className="w-12 h-10 rounded-lg bg-zinc-900 border border-white/10 cursor-pointer"
+              title="Pick a color"
+            />
+            <input
+              type="text"
+              value={colour}
+              onChange={(e) => setColour(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+              placeholder="#0080ff"
+              maxLength={7}
+            />
+          </div>
+        </label>
       </div>
+
+      {/* Color preview display */}
+      {colour && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-zinc-900/50">
+          <div
+            className="w-16 h-16 rounded-lg border-2 border-white/20 shadow-lg"
+            style={{ backgroundColor: colour }}
+            title={`Current color: ${colour}`}
+          />
+          <div className="flex-1">
+            <div className="text-sm text-white/60">Current Team Colour</div>
+            <div className="text-lg font-mono font-semibold text-white">{colour.toUpperCase()}</div>
+            <div className="text-xs text-white/40 mt-1">
+              {initial?.colour && initial.colour !== colour
+                ? `Previously: ${initial.colour.toUpperCase()}`
+                : "This color will be saved to the database"}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logo picker + preview */}
       <div className="flex items-center gap-3">
@@ -251,8 +408,10 @@ export default function TeamRowEditor({
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              ref={previewImgRef}
               alt="logo preview"
               src={preview}
+              crossOrigin="anonymous"
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
@@ -272,6 +431,17 @@ export default function TeamRowEditor({
             disabled={uploading}
           />
         </label>
+
+        {isEdit && preview && (
+          <button
+            type="button"
+            onClick={() => extractColorFromLogo()}
+            disabled={extractingColor || !preview}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-400/40 text-white bg-purple-700/30 hover:bg-purple-700/50 disabled:opacity-50"
+          >
+            {extractingColor ? "Extracting…" : "Extract Color"}
+          </button>
+        )}
       </div>
 
       {/* Actions */}
