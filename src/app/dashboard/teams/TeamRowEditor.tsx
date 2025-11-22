@@ -69,23 +69,37 @@ export default function TeamRowEditor({
     e.target.value = ""; // allow re-choosing same file later
   }
 
-  // Helper function to reload image with crossOrigin and extract color
-  async function reloadImageAndExtract(url: string): Promise<string> {
+  // Helper function to reload image and extract color
+  async function reloadImageAndExtract(url: string, withCrossOrigin: boolean = false): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      if (withCrossOrigin) {
+        img.crossOrigin = "anonymous";
+      }
 
       img.onload = () => {
         try {
           const color = extractColorFromImageElement(img);
           resolve(color);
-        } catch (error) {
-          reject(error);
+        } catch (error: any) {
+          // If we get a tainted canvas error and haven't tried with crossOrigin yet, retry
+          if (error?.message?.includes("tainted") && !withCrossOrigin) {
+            console.log("Canvas tainted, retrying with crossOrigin");
+            reloadImageAndExtract(url, true).then(resolve).catch(reject);
+          } else {
+            reject(error);
+          }
         }
       };
 
       img.onerror = () => {
-        reject(new Error("Failed to load image. The URL may be expired or invalid."));
+        // If loading with crossOrigin failed, try without it
+        if (withCrossOrigin) {
+          console.warn("Failed to load with crossOrigin, trying without");
+          reloadImageAndExtract(url, false).then(resolve).catch(reject);
+        } else {
+          reject(new Error("Failed to load image from URL."));
+        }
       };
 
       img.src = url;
