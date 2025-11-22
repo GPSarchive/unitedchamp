@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { TeamRow } from "@/app/lib/types";
 import { clsx, isStoragePath, isUrl, safeJson, signIfNeeded } from "./teamHelpers";
 import ConfirmLogoModal from "./ConfirmLogoModal";
+import { extractColorFromImageFile, extractColorFromImageUrl } from "@/app/lib/colorExtraction";
 
 export default function TeamRowEditor({
   initial,
@@ -71,33 +72,36 @@ export default function TeamRowEditor({
       let extractedColor: string;
 
       if (fileToExtract) {
-        // Extract from file directly
-        const fd = new FormData();
-        fd.append("file", fileToExtract);
-        const res = await fetch("/api/teams/extract-color", {
-          method: "POST",
-          body: fd,
-          credentials: "include",
-        });
-        const body = await safeJson(res);
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        extractedColor = body.colour;
-      } else if (isEdit && initial?.id) {
-        // Extract from existing team logo
-        const res = await fetch("/api/teams/extract-color", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ teamId: initial.id }),
-        });
-        const body = await safeJson(res);
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-        extractedColor = body.colour;
+        // Extract from file directly using client-side Canvas API
+        extractedColor = await extractColorFromImageFile(fileToExtract);
+      } else if (preview) {
+        // Extract from existing preview image URL
+        extractedColor = await extractColorFromImageUrl(preview);
       } else {
         throw new Error("No logo available to extract color from");
       }
 
       setColour(extractedColor);
+
+      // Auto-save the extracted color if editing an existing team
+      if (isEdit && initial?.id) {
+        try {
+          const res = await fetch(`/api/teams/${initial.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ colour: extractedColor }),
+          });
+          const body = await safeJson(res);
+          if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+          // Notify parent so lists refresh
+          onSaved((body as any).team as TeamRow);
+        } catch (err: any) {
+          console.error("Failed to save extracted color:", err);
+          // Don't throw - color was still extracted and set locally
+        }
+      }
     } catch (err: any) {
       console.error("Color extraction failed:", err);
       alert(err?.message ?? String(err));
@@ -310,10 +314,31 @@ export default function TeamRowEditor({
               onChange={(e) => setColour(e.target.value)}
               className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
               placeholder="#0080ff"
+              maxLength={7}
             />
           </div>
         </label>
       </div>
+
+      {/* Color preview display */}
+      {colour && (
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-zinc-900/50">
+          <div
+            className="w-16 h-16 rounded-lg border-2 border-white/20 shadow-lg"
+            style={{ backgroundColor: colour }}
+            title={`Current color: ${colour}`}
+          />
+          <div className="flex-1">
+            <div className="text-sm text-white/60">Current Team Colour</div>
+            <div className="text-lg font-mono font-semibold text-white">{colour.toUpperCase()}</div>
+            <div className="text-xs text-white/40 mt-1">
+              {initial?.colour && initial.colour !== colour
+                ? `Previously: ${initial.colour.toUpperCase()}`
+                : "This color will be saved to the database"}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logo picker + preview */}
       <div className="flex items-center gap-3">

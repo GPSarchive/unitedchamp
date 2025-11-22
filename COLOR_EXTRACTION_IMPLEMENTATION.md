@@ -6,12 +6,16 @@ This document describes the implementation of automatic color extraction from te
 
 The system automatically extracts the dominant color from team logos and stores it in the `teams.colour` field. This color can be used throughout the application for team branding, UI theming, and visual consistency.
 
+**Client-Side Approach**: Uses browser-native Canvas API for fast, zero-dependency color extraction without server-side processing.
+
 ## Features
 
 1. **Automatic Color Extraction**: Colors are automatically extracted when uploading a new logo
 2. **Manual Extraction**: Button to manually extract color from existing logos
 3. **Color Picker**: Manual color selection via color picker and hex input
-4. **Smart Algorithm**: Ignores white/black backgrounds and grayscale pixels to find vibrant team colors
+4. **Visual Color Display**: Shows extracted color in a preview box with hex value
+5. **Smart Algorithm**: Ignores white/black backgrounds and grayscale pixels to find vibrant team colors
+6. **Client-Side Processing**: No server dependencies - runs entirely in the browser
 
 ## Database Changes
 
@@ -37,43 +41,39 @@ Added `colour` field to:
 - `TeamRow` interface
 - `Team` type
 
-### 2. Color Extraction API (`src/app/api/teams/extract-color/route.ts`)
+### 2. Client-Side Color Extraction (`src/app/lib/colorExtraction.ts`)
 
-New endpoint: `POST /api/teams/extract-color`
+Pure client-side utility using browser Canvas API. No server dependencies!
 
-**Request formats:**
+**Functions:**
 
 ```typescript
-// Extract from uploaded file
-const formData = new FormData();
-formData.append('file', imageFile);
-fetch('/api/teams/extract-color', { method: 'POST', body: formData });
+// Extract color from a File object (e.g., from file input)
+extractColorFromImageFile(file: File): Promise<string>
 
-// Extract from existing team logo
-fetch('/api/teams/extract-color', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ teamId: 123 })
-});
-```
-
-**Response:**
-```json
-{
-  "colour": "#0080ff"
-}
+// Extract color from an image URL (e.g., existing logo preview)
+extractColorFromImageUrl(url: string): Promise<string>
 ```
 
 **Algorithm:**
-1. Resizes image to 100x100 for faster processing
-2. Analyzes each pixel's RGB values
-3. Filters out:
+1. Creates an in-memory canvas element
+2. Resizes image to 100x100 for faster processing
+3. Analyzes each pixel's RGB values
+4. Filters out:
    - Transparent pixels (alpha < 128)
    - Very bright pixels (brightness > 240) - likely white/background
    - Very dark pixels (brightness < 15) - likely black/shadows
    - Low saturation pixels (saturation < 0.2) - grayscale/neutral
-4. Quantizes colors (groups similar colors together)
-5. Returns the most common vibrant color as hex
+5. Quantizes colors (groups similar colors together)
+6. Returns the most common vibrant color as hex
+
+**Benefits of Client-Side Approach:**
+- ✅ No server processing required
+- ✅ Zero external dependencies
+- ✅ Instant results (no network round-trip)
+- ✅ Works offline
+- ✅ Reduced server load
+- ✅ Better privacy (images never leave the browser)
 
 ### 3. Team API Endpoints Updates
 
@@ -89,28 +89,71 @@ Updated all team API endpoints to include `colour` field:
 
 **New Features:**
 - Color input field with visual color picker
-- Hex color text input
+- Hex color text input (limited to 7 characters: #RRGGBB)
 - "Extract Color" button (appears when editing existing team with logo)
 - Automatic color extraction on logo upload
+- **Visual Color Display Box**: Shows the current color with:
+  - Large color preview square (64x64px)
+  - Hex color value in uppercase
+  - Previous color comparison (if changed)
+  - Confirmation message
 
 **User Workflow:**
 
 1. **When creating a new team:**
-   - Upload logo → Color is automatically extracted
+   - Upload logo → Color is automatically extracted and displayed
    - Or manually enter/pick a color
+   - See live preview of selected color
 
 2. **When editing existing team:**
-   - Upload new logo → Color is automatically extracted
+   - Upload new logo → Color is automatically extracted and saved
    - Or click "Extract Color" button to extract from current logo
    - Or manually change color using picker/input
+   - Visual feedback shows current vs. previous color
+
+**Visual Display:**
+```
+┌────────────────────────────────────────┐
+│ [Color Box]  Current Team Colour       │
+│              #FF5733                    │
+│              Previously: #0080FF        │
+└────────────────────────────────────────┘
+```
 
 ### 5. Dependencies
 
-**New packages installed:**
-- `sharp` - Fast image processing library (used for color extraction)
-- `@types/sharp` - TypeScript definitions for sharp
+**Zero external dependencies!**
+- Uses native browser Canvas API
+- No npm packages required for color extraction
+- Works in all modern browsers
 
 ## Usage Examples
+
+### Using the Color Extraction Utility
+
+```typescript
+import { extractColorFromImageFile, extractColorFromImageUrl } from '@/app/lib/colorExtraction';
+
+// Extract from a file input
+async function handleFileUpload(file: File) {
+  try {
+    const color = await extractColorFromImageFile(file);
+    console.log('Extracted color:', color); // e.g., "#ff5733"
+  } catch (error) {
+    console.error('Color extraction failed:', error);
+  }
+}
+
+// Extract from an existing image URL
+async function extractFromUrl(imageUrl: string) {
+  try {
+    const color = await extractColorFromImageUrl(imageUrl);
+    console.log('Extracted color:', color);
+  } catch (error) {
+    console.error('Color extraction failed:', error);
+  }
+}
+```
 
 ### In TeamRowEditor Component
 
@@ -118,7 +161,7 @@ Updated all team API endpoints to include `colour` field:
 // Automatic extraction on upload
 async function actuallyUpload(file: File) {
   // ... upload logic ...
-  await extractColorFromLogo(file); // Automatically extracts color
+  await extractColorFromLogo(file); // Automatically extracts color client-side
 }
 
 // Manual extraction from existing logo
@@ -128,7 +171,15 @@ async function actuallyUpload(file: File) {
 
 // Manual color selection
 <input type="color" value={colour} onChange={e => setColour(e.target.value)} />
-<input type="text" value={colour} onChange={e => setColour(e.target.value)} />
+<input type="text" value={colour} onChange={e => setColour(e.target.value)} maxLength={7} />
+
+// Visual display (automatically shown when colour is set)
+{colour && (
+  <div className="color-preview">
+    <div style={{ backgroundColor: colour }} />
+    <div>{colour.toUpperCase()}</div>
+  </div>
+)}
 ```
 
 ### Using Colors in Your App
@@ -233,21 +284,26 @@ Potential improvements for the future:
 1. `src/app/lib/types.ts` - Added colour field to types
 2. `src/app/api/teams/route.ts` - Added colour to GET/POST endpoints
 3. `src/app/api/teams/[id]/route.ts` - Added colour to GET/PATCH/DELETE endpoints
-4. `src/app/dashboard/teams/TeamRowEditor.tsx` - Added UI and extraction logic
-5. `package.json` - Added sharp dependency
+4. `src/app/dashboard/teams/TeamRowEditor.tsx` - Added UI, extraction logic, and visual color display
+5. `package.json` - No new dependencies (removed sharp)
 
 ## Files Created
 
-1. `src/app/api/teams/extract-color/route.ts` - Color extraction API endpoint
+1. `src/app/lib/colorExtraction.ts` - Client-side color extraction utility
 2. `add-colour-column.sql` - Database migration script
 3. `COLOR_EXTRACTION_IMPLEMENTATION.md` - This documentation
 
+## Files Removed
+
+1. `src/app/api/teams/extract-color/route.ts` - Server-side API no longer needed
+
 ## Maintenance Notes
 
-- **sharp library**: Keep updated for security and performance
-- **Color validation**: Regex pattern enforces 6-digit hex format
-- **API rate limiting**: Consider adding rate limits for color extraction endpoint
-- **Caching**: Consider caching extracted colors to avoid re-processing
+- **Browser compatibility**: Canvas API is supported in all modern browsers (IE11+)
+- **Color validation**: Regex pattern enforces 6-digit hex format (#RRGGBB)
+- **CORS**: For extracting from external URLs, ensure CORS headers are properly configured
+- **Performance**: Client-side extraction is instant but runs on user's device
+- **No caching needed**: Extraction is so fast that caching is unnecessary
 
 ## Support
 
