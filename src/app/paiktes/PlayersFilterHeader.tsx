@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersFilterHeader.tsx (OPTIMIZED - React.memo)
 "use client";
 
-import { memo, useCallback, useState, useEffect, useRef } from "react";
+import { memo, useCallback } from "react";
 
 type Tournament = { id: number; name: string; season: string | null };
 
@@ -55,54 +55,6 @@ function PlayersFilterHeaderComponent({
   onSearchChange,
   onReset,
 }: Props) {
-  // ✅ Mobile filter collapse state
-  const [isExpanded, setIsExpanded] = useState(false);
-  const toggleFilters = useCallback(() => setIsExpanded(v => !v), []);
-
-  // ✅ Scroll-based hide/show state
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
-  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // ✅ Scroll detection for auto-hide/show
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollDelta = currentScrollY - lastScrollY.current;
-
-      // Clear existing timeout
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-
-      // At the very top - always show
-      if (currentScrollY < 100) {
-        setIsVisible(true);
-        lastScrollY.current = currentScrollY;
-        return;
-      }
-
-      // Scrolling down - hide after threshold
-      if (scrollDelta > 10 && currentScrollY > 150) {
-        setIsVisible(false);
-      }
-      // Scrolling up - show immediately
-      else if (scrollDelta < -10) {
-        setIsVisible(true);
-      }
-
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
-  }, []);
-
   // ✅ Wrap event handlers in useCallback
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,69 +117,38 @@ function PlayersFilterHeaderComponent({
     : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
-    <div
-      className="sticky top-16 md:top-32 z-20 bg-zinc-950 border-b border-white/10 transition-transform duration-300 ease-in-out"
-      style={{ transform: isVisible ? 'translateY(0)' : 'translateY(-100%)' }}
-    >
-      {/* Mobile: Compact Toggle Bar (always visible) */}
-      <div className="md:hidden px-4 py-3 border-b border-white/5 flex items-center justify-between gap-3">
-        <button
-          onClick={toggleFilters}
-          className="flex items-center gap-2 text-white/90 hover:text-white transition-colors"
-          aria-expanded={isExpanded}
-          aria-label={isExpanded ? "Hide filters" : "Show filters"}
-        >
-          <svg
-            className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-          <span className="text-sm font-medium">
-            {isExpanded ? 'Απόκρυψη Φίλτρων' : 'Εμφάνιση Φίλτρων'}
-          </span>
-        </button>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-md">
-          <span className="text-white/50 text-xs">Σύνολο:</span>
-          <span className="text-white font-mono font-semibold text-sm">{playerCount}</span>
-        </div>
-      </div>
-
-      {/* Collapsible Filter Content on Mobile */}
-      <div className={`md:block ${isExpanded ? 'block' : 'hidden'}`}>
-        {/* Search & Count Row */}
-        <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Αναζήτηση παίκτη ή ομάδας..."
-                className="w-full bg-white/5 border border-white/10 px-4 py-2.5 md:py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all md:rounded-none rounded-md"
+    <div className="sticky top-16 md:top-32 z-20 bg-zinc-950 border-b border-white/10">
+      {/* Search & Count Row */}
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Αναζήτηση παίκτη ή ομάδας..."
+              className="w-full bg-white/5 border border-white/10 px-4 py-2.5 md:py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all md:rounded-none rounded-md"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <div className="hidden md:flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 md:rounded-none rounded-md whitespace-nowrap">
-              <span className="text-white/50 text-sm">Σύνολο:</span>
-              <span className="text-white font-mono font-semibold">{playerCount}</span>
-            </div>
+            </svg>
+          </div>
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 md:rounded-none rounded-md whitespace-nowrap">
+            <span className="text-white/50 text-sm">Σύνολο:</span>
+            <span className="text-white font-mono font-semibold">{playerCount}</span>
           </div>
         </div>
+      </div>
 
       {/* Tournament & Top Filters */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5 bg-zinc-950/50">
@@ -417,7 +338,6 @@ function PlayersFilterHeaderComponent({
             ))}
           </div>
         </div>
-      </div>
       </div>
     </div>
   );
