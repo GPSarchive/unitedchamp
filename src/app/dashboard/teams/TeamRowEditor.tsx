@@ -1,11 +1,11 @@
 // components/DashboardPageComponents/teams/TeamRowEditor.tsx
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import type { TeamRow } from "@/app/lib/types";
 import { clsx, isStoragePath, isUrl, safeJson, signIfNeeded } from "./teamHelpers";
 import ConfirmLogoModal from "./ConfirmLogoModal";
-import { extractColorFromImageFile, extractColorFromImageUrl } from "@/app/lib/colorExtraction";
+import { extractColorFromImageFile, extractColorFromImageElement } from "@/app/lib/colorExtraction";
 
 export default function TeamRowEditor({
   initial,
@@ -44,6 +44,9 @@ export default function TeamRowEditor({
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
+  // ref for the preview image element
+  const previewImgRef = useRef<HTMLImageElement>(null);
+
   // map logo to preview: if it's a storage path → proxy, else use as-is
   useEffect(() => {
     let cancelled = false;
@@ -74,11 +77,11 @@ export default function TeamRowEditor({
       if (fileToExtract) {
         // Extract from file directly using client-side Canvas API
         extractedColor = await extractColorFromImageFile(fileToExtract);
-      } else if (preview) {
-        // Extract from existing preview image URL
-        extractedColor = await extractColorFromImageUrl(preview);
+      } else if (previewImgRef.current && previewImgRef.current.complete) {
+        // Extract from the already-loaded preview image element (most reliable!)
+        extractedColor = extractColorFromImageElement(previewImgRef.current);
       } else {
-        throw new Error("No logo available to extract color from");
+        throw new Error("No logo available to extract color from. Make sure the image has loaded.");
       }
 
       setColour(extractedColor);
@@ -346,6 +349,7 @@ export default function TeamRowEditor({
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              ref={previewImgRef}
               alt="logo preview"
               src={preview}
               className="absolute inset-0 w-full h-full object-cover"
