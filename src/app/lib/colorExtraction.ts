@@ -154,8 +154,16 @@ export function extractColorFromImageElement(imgElement: HTMLImageElement): stri
   // Draw image on canvas
   ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
 
-  // Get image data
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // Get image data (may throw if canvas is tainted by cross-origin image)
+  let imageData: ImageData;
+  try {
+    imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } catch (error) {
+    throw new Error(
+      "Canvas tainted by cross-origin image. The image must have crossOrigin='anonymous' attribute set before loading, " +
+      "and the server must send proper CORS headers. Try refreshing the page."
+    );
+  }
   const data = imageData.data;
 
   // Count colors, but skip very bright/dark pixels and low saturation

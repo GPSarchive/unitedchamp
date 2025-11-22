@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import type { TeamRow } from "@/app/lib/types";
 import { clsx, isStoragePath, isUrl, safeJson, signIfNeeded } from "./teamHelpers";
 import ConfirmLogoModal from "./ConfirmLogoModal";
-import { extractColorFromImageFile, extractColorFromImageElement } from "@/app/lib/colorExtraction";
+import { extractColorFromImageFile, extractColorFromImageElement, extractColorFromImageUrl } from "@/app/lib/colorExtraction";
 
 export default function TeamRowEditor({
   initial,
@@ -78,8 +78,18 @@ export default function TeamRowEditor({
         // Extract from file directly using client-side Canvas API
         extractedColor = await extractColorFromImageFile(fileToExtract);
       } else if (previewImgRef.current && previewImgRef.current.complete) {
-        // Extract from the already-loaded preview image element (most reliable!)
-        extractedColor = extractColorFromImageElement(previewImgRef.current);
+        // Try to extract from the already-loaded preview image element
+        try {
+          extractedColor = extractColorFromImageElement(previewImgRef.current);
+        } catch (canvasError: any) {
+          // If canvas is tainted, fall back to URL-based extraction
+          if (canvasError?.message?.includes("tainted") && preview) {
+            console.warn("Canvas tainted, falling back to URL extraction");
+            extractedColor = await extractColorFromImageUrl(preview);
+          } else {
+            throw canvasError;
+          }
+        }
       } else {
         throw new Error("No logo available to extract color from. Make sure the image has loaded.");
       }
@@ -352,6 +362,7 @@ export default function TeamRowEditor({
               ref={previewImgRef}
               alt="logo preview"
               src={preview}
+              crossOrigin="anonymous"
               className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
