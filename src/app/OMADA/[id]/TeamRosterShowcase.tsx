@@ -213,7 +213,7 @@ function PlayerCard({
   photoUrl,
   totals,
 }: PlayerCardProps) {
-  const [isStatsExpanded, setIsStatsExpanded] = useState(false);
+  const [isStatsExpanded, setIsStatsExpanded] = useState(true);
 
   const handleClick = () => {
     // TODO: Add your modal/detail view component here
