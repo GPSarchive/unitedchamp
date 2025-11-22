@@ -69,6 +69,29 @@ export default function TeamRowEditor({
     e.target.value = ""; // allow re-choosing same file later
   }
 
+  // Helper function to reload image with crossOrigin and extract color
+  async function reloadImageAndExtract(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => {
+        try {
+          const color = extractColorFromImageElement(img);
+          resolve(color);
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        reject(new Error("Failed to load image. The URL may be expired or invalid."));
+      };
+
+      img.src = url;
+    });
+  }
+
   async function extractColorFromLogo(fileToExtract?: File) {
     setExtractingColor(true);
     try {
@@ -86,20 +109,24 @@ export default function TeamRowEditor({
         try {
           extractedColor = extractColorFromImageElement(previewImgRef.current);
         } catch (canvasError: any) {
-          // If canvas is tainted or other error, fall back to URL-based extraction
-          if (preview) {
-            console.warn("DOM extraction failed, falling back to URL extraction:", canvasError.message);
+          // If canvas is tainted, reload image with crossOrigin and try again
+          if (preview && canvasError?.message?.includes("tainted")) {
+            console.warn("Canvas tainted, reloading image with crossOrigin");
+            extractedColor = await reloadImageAndExtract(preview);
+          } else if (preview) {
+            // For other errors, try URL-based extraction as last resort
+            console.warn("DOM extraction failed, trying URL extraction:", canvasError.message);
             extractedColor = await extractColorFromImageUrl(preview);
           } else {
             throw canvasError;
           }
         }
       } else if (preview) {
-        // Image not loaded yet or broken - use URL extraction
-        console.warn("Image not ready, using URL extraction");
-        extractedColor = await extractColorFromImageUrl(preview);
+        // Image not loaded yet or broken - reload with proper crossOrigin
+        console.warn("Image not ready, reloading with crossOrigin");
+        extractedColor = await reloadImageAndExtract(preview);
       } else {
-        throw new Error("No logo available to extract color from. Make sure the image has loaded.");
+        throw new Error("No logo available to extract color from. Please upload a logo first.");
       }
 
       setColour(extractedColor);
