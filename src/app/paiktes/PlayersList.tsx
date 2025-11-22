@@ -17,20 +17,20 @@ type Props = {
   isTournamentScoped?: boolean;
 };
 
-// ✅ Mobile-optimized grid (fewer columns on small screens)
+// ✅ Mobile-optimized grid - all columns visible with horizontal scroll on mobile
 const GRID_TEMPLATE =
-  "grid grid-cols-[50px_1fr_50px_50px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
+  "grid grid-cols-[60px_minmax(140px,1fr)_60px_60px_60px_60px_60px_60px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
 const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-4";
 
 const COLUMN_HEADERS = [
   { key: "photo", label: "Φωτό", fullLabel: "Φωτογραφία", align: "text-left" },
   { key: "player", label: "Παίκτης", fullLabel: "Παίκτης / Ομάδα", align: "text-left" },
-  { key: "matches", label: "Αγ.", fullLabel: "Αγώνες", align: "text-center", hideOnMobile: true },
-  { key: "wins", label: "Ν.", fullLabel: "Νίκες", align: "text-center", hideOnMobile: true },
+  { key: "matches", label: "Αγ.", fullLabel: "Αγώνες", align: "text-center" },
+  { key: "wins", label: "Ν.", fullLabel: "Νίκες", align: "text-center" },
   { key: "goals", label: "Γκολ", fullLabel: "Γκολ", align: "text-center" },
-  { key: "assists", label: "Ασ.", fullLabel: "Ασίστ", align: "text-center", hideOnMobile: true },
+  { key: "assists", label: "Ασ.", fullLabel: "Ασίστ", align: "text-center" },
   { key: "mvp", label: "MVP", fullLabel: "Βραβεία MVP", align: "text-center" },
-  { key: "best_gk", label: "GK", fullLabel: "Καλύτερος GK", align: "text-center", hideOnMobile: true },
+  { key: "best_gk", label: "GK", fullLabel: "Καλύτερος GK", align: "text-center" },
 ];
 
 // ✅ Helper function to compute display photo (moved outside component)
@@ -76,7 +76,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="sticky top-[52px] sm:top-[60px] md:top-[64px] z-10 bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest">
+        <div className="bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest min-w-[640px]">
           {letter}
         </div>
       )}
@@ -130,54 +130,54 @@ const PlayerRowItem = memo(function PlayerRowItem({
         </div>
 
         {/* Stats - Tournament-aware */}
-        {/* Matches - Hidden on mobile */}
-        <div className="hidden sm:flex items-center justify-center">
-          <span className="text-white font-mono text-xs md:text-base">
+        {/* Matches */}
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_matches !== undefined
               ? player.tournament_matches
               : player.matches}
           </span>
         </div>
 
-        {/* Wins - Hidden on mobile */}
-        <div className="hidden sm:flex items-center justify-center">
-          <span className="text-white font-mono text-xs md:text-base">
+        {/* Wins */}
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_wins !== undefined
               ? player.tournament_wins
               : player.wins}
           </span>
         </div>
 
-        {/* Goals - Always visible */}
+        {/* Goals */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-xs sm:text-sm md:text-base font-semibold">
+          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base font-semibold">
             {isTournamentScoped && player.tournament_goals !== undefined
               ? player.tournament_goals
               : player.goals}
           </span>
         </div>
 
-        {/* Assists - Hidden on mobile */}
-        <div className="hidden sm:flex items-center justify-center">
-          <span className="text-white font-mono text-xs md:text-base">
+        {/* Assists */}
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_assists !== undefined
               ? player.tournament_assists
               : player.assists}
           </span>
         </div>
 
-        {/* MVP - Always visible */}
+        {/* MVP */}
         <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-xs sm:text-sm md:text-base">
+          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base">
             {isTournamentScoped && player.tournament_mvp !== undefined
               ? player.tournament_mvp
               : player.mvp}
           </span>
         </div>
 
-        {/* Best GK - Hidden on mobile */}
-        <div className="hidden sm:flex items-center justify-center">
-          <span className="text-white font-mono text-xs md:text-base">
+        {/* Best GK */}
+        <div className="flex items-center justify-center">
+          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
             {isTournamentScoped && player.tournament_best_gk !== undefined
               ? player.tournament_best_gk
               : player.best_gk}
@@ -207,16 +207,16 @@ function PlayersListComponent({
             Δεν βρέθηκαν παίκτες
           </div>
         ) : (
-          <div className="w-full">
+          <div className="w-full overflow-x-auto">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg">
+            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg min-w-[640px]">
               <div
                 className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
               >
                 {COLUMN_HEADERS.map((col) => (
-                  <div 
-                    key={col.key} 
-                    className={`${col.align} ${col.hideOnMobile ? 'hidden sm:block' : ''}`}
+                  <div
+                    key={col.key}
+                    className={col.align}
                   >
                     <span className="hidden sm:inline">{col.fullLabel}</span>
                     <span className="sm:hidden">{col.label}</span>
@@ -226,31 +226,33 @@ function PlayersListComponent({
             </div>
 
             {/* Player rows */}
-            {players.map((player, idx) => {
-              const prev = players[idx - 1];
-              const letter = (player.last_name || player.first_name || "?")
-                .charAt(0)
-                .toUpperCase();
-              const prevLetter = (prev?.last_name || prev?.first_name || "")
-                .charAt(0)
-                .toUpperCase();
-              const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
-              const isActive = activeId === player.id;
+            <div className="min-w-[640px]">
+              {players.map((player, idx) => {
+                const prev = players[idx - 1];
+                const letter = (player.last_name || player.first_name || "?")
+                  .charAt(0)
+                  .toUpperCase();
+                const prevLetter = (prev?.last_name || prev?.first_name || "")
+                  .charAt(0)
+                  .toUpperCase();
+                const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
+                const isActive = activeId === player.id;
 
-              return (
-                <PlayerRowItem
-                  key={player.id}
-                  player={player}
-                  isActive={isActive}
-                  showLetter={showLetter}
-                  letter={letter}
-                  showTournamentGoals={showTournamentGoals}
-                  isTournamentScoped={isTournamentScoped}
-                  onPlayerSelect={onPlayerSelect}
-                  onPlayerHover={onPlayerHover}
-                />
-              );
-            })}
+                return (
+                  <PlayerRowItem
+                    key={player.id}
+                    player={player}
+                    isActive={isActive}
+                    showLetter={showLetter}
+                    letter={letter}
+                    showTournamentGoals={showTournamentGoals}
+                    isTournamentScoped={isTournamentScoped}
+                    onPlayerSelect={onPlayerSelect}
+                    onPlayerHover={onPlayerHover}
+                  />
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
