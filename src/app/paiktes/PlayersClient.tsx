@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination + Rerender fixes)
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
