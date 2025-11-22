@@ -158,7 +158,7 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, am, logo, created_at, deleted_at, season_score");
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_score");
 
     // Apply ids filter if provided (everything else stays the same)
     if (ids.length > 0) {
@@ -190,6 +190,7 @@ export async function GET(req: Request) {
         id: t.id,
         name: t.name,
         am: t.am,
+        colour: t.colour,
         created_at: t.created_at,
         deleted_at: t.deleted_at,
         season_score: t.season_score,
@@ -253,6 +254,9 @@ export async function POST(req: Request) {
 
     const logoCandidate = toStoragePathOrUrlSafe(body.logo);
 
+    // colour (optional, hex color string)
+    const colourRaw = typeof body.colour === "string" ? body.colour.trim() : null;
+
     // Insert first; if logoCandidate is an external URL, we can include it now.
     const initialLogo = logoCandidate && /^https?:\/\//i.test(logoCandidate) ? logoCandidate : null;
 
@@ -262,9 +266,10 @@ export async function POST(req: Request) {
         name: nameRaw,
         am: amRaw || null, // NEW
         logo: initialLogo,
+        colour: colourRaw,
         season_score: seasonScoreRaw ?? 0,
       })
-      .select("id, name, am, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
       .single();
 
     if (insErr || !created) {
@@ -285,7 +290,7 @@ export async function POST(req: Request) {
           .from("teams")
           .update({ logo: logoCandidate })
           .eq("id", team.id)
-          .select("id, name, am, logo, created_at, deleted_at, season_score")
+          .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
           .single();
 
         if (upErr) {

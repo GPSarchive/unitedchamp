@@ -156,7 +156,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const { data, error } = await supa
       .from("teams")
-      .select("id, name, am, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
       .eq("id", id)
       .maybeSingle();
 
@@ -225,6 +225,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
       amVal = vRaw || null;
     }
 
+    // Optional: colour (hex color string)
+    let colourVal: string | null | undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "colour")) {
+      const cRaw = typeof (body as any).colour === "string" ? (body as any).colour.trim() : null;
+      colourVal = cRaw || null;
+    }
+
     const update: Record<string, any> = {};
     if (nameRaw !== undefined) {
       if (nameRaw.length < 2 || nameRaw.length > 128) {
@@ -248,6 +255,10 @@ export async function PATCH(req: Request, ctx: Ctx) {
       update.am = amVal;
     }
 
+    if (colourVal !== undefined) {
+      update.colour = colourVal;
+    }
+
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
@@ -257,7 +268,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .update(update)
       .eq("id", id)
       .is("deleted_at", null) // don't update soft-deleted rows
-      .select("id, name, am, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {
@@ -307,7 +318,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .is("deleted_at", null) // only delete if not already deleted
-      .select("id, name, am, logo, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
       .maybeSingle();
 
     if (error) {

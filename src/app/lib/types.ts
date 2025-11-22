@@ -23,6 +23,7 @@ export interface TeamRow {
   id: Id;
   name: string;
   logo: string | null;
+  colour: string | null;
   created_at: string | null;
   am?: string | null;
   season_score?: number | null;
@@ -164,7 +165,7 @@ export interface PlayerAssociation {
  */
 export type Team = Pick<
   TeamRow,
-  "id" | "name" | "logo" | "created_at" | "am" | "season_score"
+  "id" | "name" | "logo" | "colour" | "created_at" | "am" | "season_score"
 >;
 
 /**

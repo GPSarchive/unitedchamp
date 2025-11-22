@@ -21,6 +21,9 @@ export default function TeamRowEditor({
   const [name, setName] = useState(initial?.name ?? "");
   const [logo, setLogo] = useState<string>(initial?.logo ?? ""); // https URL or storage path
   const [preview, setPreview] = useState<string | null>(null);
+  const [colour, setColour] = useState<string>(
+    typeof (initial as any)?.colour === "string" ? (initial as any).colour : ""
+  );
 
   // NEW: AM (text, optional; unique)
   const [am, setAm] = useState<string>(
@@ -34,6 +37,7 @@ export default function TeamRowEditor({
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [extractingColor, setExtractingColor] = useState(false);
 
   // modal state for confirm
   const [showConfirm, setShowConfirm] = useState(false);
@@ -61,6 +65,47 @@ export default function TeamRowEditor({
     e.target.value = ""; // allow re-choosing same file later
   }
 
+  async function extractColorFromLogo(fileToExtract?: File) {
+    setExtractingColor(true);
+    try {
+      let extractedColor: string;
+
+      if (fileToExtract) {
+        // Extract from file directly
+        const fd = new FormData();
+        fd.append("file", fileToExtract);
+        const res = await fetch("/api/teams/extract-color", {
+          method: "POST",
+          body: fd,
+          credentials: "include",
+        });
+        const body = await safeJson(res);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        extractedColor = body.colour;
+      } else if (isEdit && initial?.id) {
+        // Extract from existing team logo
+        const res = await fetch("/api/teams/extract-color", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ teamId: initial.id }),
+        });
+        const body = await safeJson(res);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        extractedColor = body.colour;
+      } else {
+        throw new Error("No logo available to extract color from");
+      }
+
+      setColour(extractedColor);
+    } catch (err: any) {
+      console.error("Color extraction failed:", err);
+      alert(err?.message ?? String(err));
+    } finally {
+      setExtractingColor(false);
+    }
+  }
+
   async function actuallyUpload(file: File) {
     setUploading(true);
     try {
@@ -74,6 +119,9 @@ export default function TeamRowEditor({
       // Store & preview the stable proxy URL from the uploader
       setLogo(body.publicUrl as string);
       setPreview((body.publicUrl as string) ?? null);
+
+      // Auto-extract color from uploaded logo
+      await extractColorFromLogo(file);
 
       // NEW: auto-save logo into DB when editing an existing team
       if (isEdit && initial?.id) {
@@ -128,6 +176,7 @@ export default function TeamRowEditor({
         name: name.trim(),
         logo: logoForSave,
         am: am.trim() || null,
+        colour: colour.trim() || null,
       };
       if (seasonScore !== "") payload.season_score = seasonScore;
 
@@ -243,6 +292,27 @@ export default function TeamRowEditor({
             placeholder="https://… or folder/file.png"
           />
         </label>
+
+        {/* Colour (text input with color picker) */}
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-white/80">Team Colour</span>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={colour || "#0080ff"}
+              onChange={(e) => setColour(e.target.value)}
+              className="w-12 h-10 rounded-lg bg-zinc-900 border border-white/10 cursor-pointer"
+              title="Pick a color"
+            />
+            <input
+              type="text"
+              value={colour}
+              onChange={(e) => setColour(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+              placeholder="#0080ff"
+            />
+          </div>
+        </label>
       </div>
 
       {/* Logo picker + preview */}
@@ -272,6 +342,17 @@ export default function TeamRowEditor({
             disabled={uploading}
           />
         </label>
+
+        {isEdit && preview && (
+          <button
+            type="button"
+            onClick={() => extractColorFromLogo()}
+            disabled={extractingColor || !preview}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-400/40 text-white bg-purple-700/30 hover:bg-purple-700/50 disabled:opacity-50"
+          >
+            {extractingColor ? "Extracting…" : "Extract Color"}
+          </button>
+        )}
       </div>
 
       {/* Actions */}
