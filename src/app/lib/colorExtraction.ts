@@ -139,6 +139,11 @@ export async function extractColorFromImageFile(file: File): Promise<string> {
  * This is the most reliable method as the image is already in the DOM
  */
 export function extractColorFromImageElement(imgElement: HTMLImageElement): string {
+  // Check if image loaded successfully
+  if (!imgElement.complete || imgElement.naturalWidth === 0) {
+    throw new Error("Image has not loaded successfully or is in a broken state");
+  }
+
   // Create canvas and resize image to small size for faster processing
   const canvas = document.createElement("canvas");
   const maxSize = 100;
@@ -151,8 +156,12 @@ export function extractColorFromImageElement(imgElement: HTMLImageElement): stri
     throw new Error("Failed to get canvas context");
   }
 
-  // Draw image on canvas
-  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+  // Draw image on canvas (will throw if image is broken)
+  try {
+    ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+  } catch (error) {
+    throw new Error(`Failed to draw image on canvas: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   // Get image data (may throw if canvas is tainted by cross-origin image)
   let imageData: ImageData;

@@ -77,19 +77,27 @@ export default function TeamRowEditor({
       if (fileToExtract) {
         // Extract from file directly using client-side Canvas API
         extractedColor = await extractColorFromImageFile(fileToExtract);
-      } else if (previewImgRef.current && previewImgRef.current.complete) {
-        // Try to extract from the already-loaded preview image element
+      } else if (
+        previewImgRef.current &&
+        previewImgRef.current.complete &&
+        previewImgRef.current.naturalWidth > 0
+      ) {
+        // Image is loaded and valid - try to extract from the DOM element
         try {
           extractedColor = extractColorFromImageElement(previewImgRef.current);
         } catch (canvasError: any) {
-          // If canvas is tainted, fall back to URL-based extraction
-          if (canvasError?.message?.includes("tainted") && preview) {
-            console.warn("Canvas tainted, falling back to URL extraction");
+          // If canvas is tainted or other error, fall back to URL-based extraction
+          if (preview) {
+            console.warn("DOM extraction failed, falling back to URL extraction:", canvasError.message);
             extractedColor = await extractColorFromImageUrl(preview);
           } else {
             throw canvasError;
           }
         }
+      } else if (preview) {
+        // Image not loaded yet or broken - use URL extraction
+        console.warn("Image not ready, using URL extraction");
+        extractedColor = await extractColorFromImageUrl(preview);
       } else {
         throw new Error("No logo available to extract color from. Make sure the image has loaded.");
       }
