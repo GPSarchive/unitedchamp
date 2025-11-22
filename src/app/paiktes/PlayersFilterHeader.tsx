@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersFilterHeader.tsx (OPTIMIZED - React.memo)
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useState, useEffect, useRef } from "react";
 
 type Tournament = { id: number; name: string; season: string | null };
 
@@ -58,6 +58,50 @@ function PlayersFilterHeaderComponent({
   // ✅ Mobile filter collapse state
   const [isExpanded, setIsExpanded] = useState(false);
   const toggleFilters = useCallback(() => setIsExpanded(v => !v), []);
+
+  // ✅ Scroll-based hide/show state
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ Scroll detection for auto-hide/show
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const scrollDelta = currentScrollY - lastScrollY.current;
+
+      // Clear existing timeout
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+
+      // At the very top - always show
+      if (currentScrollY < 100) {
+        setIsVisible(true);
+        lastScrollY.current = currentScrollY;
+        return;
+      }
+
+      // Scrolling down - hide after threshold
+      if (scrollDelta > 10 && currentScrollY > 150) {
+        setIsVisible(false);
+      }
+      // Scrolling up - show immediately
+      else if (scrollDelta < -10) {
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
 
   // ✅ Wrap event handlers in useCallback
   const handleSearchChange = useCallback(
@@ -121,7 +165,10 @@ function PlayersFilterHeaderComponent({
     : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
-    <div className="sticky top-16 md:top-32 z-20 bg-zinc-950 border-b border-white/10">
+    <div
+      className="sticky top-16 md:top-32 z-20 bg-zinc-950 border-b border-white/10 transition-transform duration-300 ease-in-out"
+      style={{ transform: isVisible ? 'translateY(0)' : 'translateY(-100%)' }}
+    >
       {/* Mobile: Compact Toggle Bar (always visible) */}
       <div className="md:hidden px-4 py-3 border-b border-white/5 flex items-center justify-between gap-3">
         <button
