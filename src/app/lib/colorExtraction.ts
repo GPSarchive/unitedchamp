@@ -137,89 +137,108 @@ export async function extractColorFromImageFile(file: File): Promise<string> {
 /**
  * Extract dominant color from an image URL using Canvas API
  * Works client-side in the browser
+ * Uses fetch + blob to bypass CORS restrictions
  */
 export async function extractColorFromImageUrl(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // Enable CORS
+  try {
+    // Fetch the image as a blob to bypass CORS restrictions
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
 
-    img.onload = () => {
-      try {
-        // Create canvas and resize image to small size for faster processing
-        const canvas = document.createElement("canvas");
-        const maxSize = 100;
-        const scale = Math.min(maxSize / img.width, maxSize / img.height);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
+    const blob = await response.blob();
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Failed to get canvas context"));
-          return;
-        }
+    // Create a blob URL (this bypasses CORS for canvas operations)
+    const blobUrl = URL.createObjectURL(blob);
 
-        // Draw image on canvas
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
 
-        // Get image data
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+      img.onload = () => {
+        try {
+          // Clean up the blob URL
+          URL.revokeObjectURL(blobUrl);
 
-        // Count colors, but skip very bright/dark pixels and low saturation
-        const colorCounts = new Map<string, { count: number; rgb: RGB }>();
+          // Create canvas and resize image to small size for faster processing
+          const canvas = document.createElement("canvas");
+          const maxSize = 100;
+          const scale = Math.min(maxSize / img.width, maxSize / img.height);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
 
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const a = data[i + 3];
-
-          // Skip transparent pixels
-          if (a < 128) continue;
-
-          // Skip very bright (likely white/background) or very dark pixels
-          const brightness = getBrightness(r, g, b);
-          if (brightness > 240 || brightness < 15) continue;
-
-          // Skip low saturation (grayscale) pixels
-          const saturation = getSaturation(r, g, b);
-          if (saturation < 0.2) continue;
-
-          // Quantize colors to reduce variations (group similar colors)
-          const qr = Math.round(r / 10) * 10;
-          const qg = Math.round(g / 10) * 10;
-          const qb = Math.round(b / 10) * 10;
-          const key = `${qr},${qg},${qb}`;
-
-          const existing = colorCounts.get(key);
-          if (existing) {
-            existing.count++;
-          } else {
-            colorCounts.set(key, { count: 1, rgb: { r: qr, g: qg, b: qb } });
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Failed to get canvas context"));
+            return;
           }
-        }
 
-        // Find most common color
-        let maxCount = 0;
-        let dominantColor: RGB = { r: 0, g: 128, b: 255 }; // default blue
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        for (const [_, { count, rgb }] of colorCounts) {
-          if (count > maxCount) {
-            maxCount = count;
-            dominantColor = rgb;
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+
+          // Count colors, but skip very bright/dark pixels and low saturation
+          const colorCounts = new Map<string, { count: number; rgb: RGB }>();
+
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const a = data[i + 3];
+
+            // Skip transparent pixels
+            if (a < 128) continue;
+
+            // Skip very bright (likely white/background) or very dark pixels
+            const brightness = getBrightness(r, g, b);
+            if (brightness > 240 || brightness < 15) continue;
+
+            // Skip low saturation (grayscale) pixels
+            const saturation = getSaturation(r, g, b);
+            if (saturation < 0.2) continue;
+
+            // Quantize colors to reduce variations (group similar colors)
+            const qr = Math.round(r / 10) * 10;
+            const qg = Math.round(g / 10) * 10;
+            const qb = Math.round(b / 10) * 10;
+            const key = `${qr},${qg},${qb}`;
+
+            const existing = colorCounts.get(key);
+            if (existing) {
+              existing.count++;
+            } else {
+              colorCounts.set(key, { count: 1, rgb: { r: qr, g: qg, b: qb } });
+            }
           }
+
+          // Find most common color
+          let maxCount = 0;
+          let dominantColor: RGB = { r: 0, g: 128, b: 255 }; // default blue
+
+          for (const [_, { count, rgb }] of colorCounts) {
+            if (count > maxCount) {
+              maxCount = count;
+              dominantColor = rgb;
+            }
+          }
+
+          resolve(rgbToHex(dominantColor.r, dominantColor.g, dominantColor.b));
+        } catch (error) {
+          reject(error);
         }
+      };
 
-        resolve(rgbToHex(dominantColor.r, dominantColor.g, dominantColor.b));
-      } catch (error) {
-        reject(error);
-      }
-    };
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        reject(new Error("Failed to load image from blob URL"));
+      };
 
-    img.onerror = () => {
-      reject(new Error("Failed to load image from URL. Make sure CORS is enabled."));
-    };
-
-    img.src = url;
-  });
+      img.src = blobUrl;
+    });
+  } catch (error) {
+    throw new Error(`Failed to extract color: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
