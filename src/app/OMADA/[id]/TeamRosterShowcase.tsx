@@ -43,7 +43,19 @@ import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
 interface TeamRosterShowcaseProps {
   playerAssociations: PlayerAssociation[] | null;
-  seasonStatsByPlayer?: Record<number, any[]>;
+  seasonStatsByPlayer?: Record<
+    number,
+    {
+      matches: number;
+      goals: number;
+      assists: number;
+      yellow_cards: number;
+      red_cards: number;
+      blue_cards: number;
+      mvp: number;
+      best_gk: number;
+    }
+  >;
   errorMessage?: string | null;
 }
 
@@ -136,26 +148,14 @@ export default function TeamRosterShowcase({
               blue_cards: 0,
             };
 
-          // Per-season rows for this team
-          const perSeason = (seasonStatsByPlayer?.[p.id] ?? []) as Array<any>;
-
-          const totals = perSeason.reduce(
-            (acc, row) => {
-              acc.matches += row.matches ?? 0;
-              acc.goals += row.goals ?? 0;
-              acc.assists += row.assists ?? 0;
-              acc.mvp += row.mvp ?? 0;
-              acc.best_gk += row.best_gk ?? 0;
-              return acc;
-            },
-            {
-              matches: 0,
-              goals: 0,
-              assists: 0,
-              mvp: 0,
-              best_gk: 0,
-            }
-          );
+          // Get aggregated stats for this player
+          const totals = seasonStatsByPlayer?.[p.id] ?? {
+            matches: 0,
+            goals: 0,
+            assists: 0,
+            mvp: 0,
+            best_gk: 0,
+          };
 
           const fullName =
             `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Άγνωστος";
@@ -213,7 +213,7 @@ function PlayerCard({
   photoUrl,
   totals,
 }: PlayerCardProps) {
-  const [isStatsExpanded, setIsStatsExpanded] = useState(false);
+  const [isStatsExpanded, setIsStatsExpanded] = useState(true);
 
   const handleClick = () => {
     // TODO: Add your modal/detail view component here

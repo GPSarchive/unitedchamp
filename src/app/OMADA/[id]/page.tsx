@@ -104,35 +104,73 @@ export default async function TeamPage({ params }: TeamPageProps) {
       ? []
       : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]);
 
-  // ── Per-player per-season stats (scoped to this team) ──────────────────────────
-  const { data: seasonStats, error: pssErr } = await supabaseAdmin
-    .from("player_season_stats")
+  // ── Aggregate player stats from match_player_stats ────────────────────────────
+  // Get all matches for this team
+  const { data: teamMatches } = await supabaseAdmin
+    .from("matches")
+    .select("id")
+    .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+    .eq("status", "finished");
+
+  const matchIds = (teamMatches ?? []).map((m) => m.id);
+
+  // Get all player stats for those matches, filtered by team_id
+  const { data: matchPlayerStats, error: pssErr } = await supabaseAdmin
+    .from("match_player_stats")
     .select(
       `
         player_id,
-        season,
-        matches,
         goals,
         assists,
         yellow_cards,
         red_cards,
         blue_cards,
         mvp,
-        best_gk,
-        updated_at
+        best_goalkeeper
       `
     )
-    .eq("team_id", teamId)
-    .order("season", { ascending: false });
+    .in("match_id", matchIds.length > 0 ? matchIds : [0])
+    .eq("team_id", teamId);
 
-  const seasonStatsByPlayer: Record<number, any[]> = (seasonStats ?? []).reduce(
-    (acc: Record<number, any[]>, row: any) => {
-      if (!acc[row.player_id]) acc[row.player_id] = [];
-      acc[row.player_id].push(row);
-      return acc;
-    },
-    {}
-  );
+  // Aggregate stats by player
+  const seasonStatsByPlayer: Record<
+    number,
+    {
+      matches: number;
+      goals: number;
+      assists: number;
+      yellow_cards: number;
+      red_cards: number;
+      blue_cards: number;
+      mvp: number;
+      best_gk: number;
+    }
+  > = {};
+
+  for (const stat of matchPlayerStats ?? []) {
+    if (!seasonStatsByPlayer[stat.player_id]) {
+      seasonStatsByPlayer[stat.player_id] = {
+        matches: 0,
+        goals: 0,
+        assists: 0,
+        yellow_cards: 0,
+        red_cards: 0,
+        blue_cards: 0,
+        mvp: 0,
+        best_gk: 0,
+      };
+    }
+
+    const playerStats = seasonStatsByPlayer[stat.player_id];
+    playerStats.matches += 1;
+    playerStats.goals += stat.goals || 0;
+    playerStats.assists += stat.assists || 0;
+    playerStats.yellow_cards += stat.yellow_cards || 0;
+    playerStats.red_cards += stat.red_cards || 0;
+    playerStats.blue_cards += stat.blue_cards || 0;
+    playerStats.mvp += stat.mvp ? 1 : 0;
+    playerStats.best_gk += stat.best_goalkeeper ? 1 : 0;
+  }
 
   // ── Matches ─────────────────────────
   const { data: matchesData, error: matchesError } = await supabaseAdmin
