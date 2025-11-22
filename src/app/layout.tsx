@@ -117,7 +117,11 @@ export default async function RootLayout({
         { key: "body", className: "antialiased font-sans", suppressHydrationWarning: true },
         [
           React.createElement(Navbar, { key: "nav" }),
-          children,
+          React.createElement(
+            "main",
+            { key: "main", className: "pt-16 md:pt-32" },
+            children
+          ),
 
           // Example after-hydration script (nonced)
           React.createElement(
