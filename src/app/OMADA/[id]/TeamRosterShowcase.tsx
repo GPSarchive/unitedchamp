@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Users, 
-  Trophy, 
+import {
+  Users,
+  Trophy,
   Target,
   Award,
   Zap,
@@ -25,21 +25,23 @@ import {
   FaCrown,
   FaAward
 } from "react-icons/fa";
-import { 
-  GiSoccerBall, 
-  GiWhistle, 
+import {
+  GiSoccerBall,
+  GiWhistle,
   GiTrophy,
   GiLaurels,
   GiShieldEchoes
 } from "react-icons/gi";
-import { 
-  MdOutlineSportsScore, 
+import {
+  MdOutlineSportsScore,
   MdSportsSoccer,
-  MdEmojiEvents 
+  MdEmojiEvents
 } from "react-icons/md";
 import AvatarImage from "./AvatarImage";
 import type { PlayerAssociation } from "@/app/lib/types";
+import type { PlayerLite } from "@/app/paiktes/types";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import PlayerProfileModal from "./PlayerProfileModal";
 
 interface TeamRosterShowcaseProps {
   playerAssociations: PlayerAssociation[] | null;
@@ -64,6 +66,73 @@ export default function TeamRosterShowcase({
   seasonStatsByPlayer,
   errorMessage,
 }: TeamRosterShowcaseProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerLite | null>(null);
+
+  // Convert PlayerAssociation to PlayerLite format for the modal
+  const convertToPlayerLite = (
+    assoc: PlayerAssociation,
+    totals: {
+      matches: number;
+      goals: number;
+      assists: number;
+      yellow_cards: number;
+      red_cards: number;
+      blue_cards: number;
+      mvp: number;
+      best_gk: number;
+    }
+  ): PlayerLite => {
+    const p = assoc.player;
+    const stats = p.player_statistics?.[0];
+
+    // Calculate age from birth_date
+    let age: number | null = null;
+    if (p.birth_date) {
+      const birthDate = new Date(p.birth_date);
+      const today = new Date();
+      age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+    }
+
+    return {
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      photo: p.photo,
+      position: p.position || "Unknown",
+      height_cm: p.height_cm,
+      birth_date: p.birth_date,
+      age: age,
+      team: null, // Team info not available in this context
+      teams: [], // Team info not available in this context
+      matches: totals.matches,
+      goals: totals.goals,
+      assists: totals.assists,
+      yellow_cards: totals.yellow_cards,
+      red_cards: totals.red_cards,
+      blue_cards: totals.blue_cards,
+      mvp: totals.mvp,
+      best_gk: totals.best_gk,
+      wins: 0, // Win count not available in this context
+    };
+  };
+
+  const handlePlayerClick = (assoc: PlayerAssociation, totals: any) => {
+    const playerLite = convertToPlayerLite(assoc, totals);
+    setSelectedPlayer(playerLite);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Small delay before clearing player to allow exit animation
+    setTimeout(() => setSelectedPlayer(null), 300);
+  };
+
   if (errorMessage) {
     return (
       <section className="rounded-2xl bg-red-950/40 border border-red-500/40 p-4">
@@ -176,10 +245,18 @@ export default function TeamRosterShowcase({
               heightCm={heightCm}
               photoUrl={photoUrl}
               totals={totals}
+              onPlayerClick={() => handlePlayerClick(assoc, totals)}
             />
           );
         })}
       </div>
+
+      {/* Player Profile Modal */}
+      <PlayerProfileModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        player={selectedPlayer}
+      />
     </section>
   );
 }
@@ -200,6 +277,7 @@ type PlayerCardProps = {
     mvp: number;
     best_gk: number;
   };
+  onPlayerClick: () => void;
 };
 
 function PlayerCard({
@@ -212,12 +290,14 @@ function PlayerCard({
   heightCm,
   photoUrl,
   totals,
+  onPlayerClick,
 }: PlayerCardProps) {
   const [isStatsExpanded, setIsStatsExpanded] = useState(true);
 
-  const handleClick = () => {
-    // TODO: Add your modal/detail view component here
-    console.log('Κλικ στον παίκτη:', fullName);
+  const handleImageClick = (e: React.MouseEvent) => {
+    // Only trigger if clicking on the image area, not the stats section
+    e.stopPropagation();
+    onPlayerClick();
   };
 
   const toggleStats = (e: React.MouseEvent) => {
@@ -244,8 +324,7 @@ function PlayerCard({
         y: -14,
         transition: { duration: 0.3, ease: "easeOut" }
       }}
-      onClick={handleClick}
-      className="cursor-pointer group relative w-full max-w-[320px] mx-auto"
+      className="group relative w-full max-w-[320px] mx-auto"
     >
       {/* Main Glassmorphic Card Container */}
       <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:border-red-400/60 group-hover:shadow-[0_0_40px_rgba(239,68,68,0.4),0_0_80px_rgba(239,68,68,0.2),inset_0_0_60px_rgba(239,68,68,0.1)]">
@@ -256,8 +335,11 @@ function PlayerCard({
         {/* Top gloss effect */}
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/20 via-white/5 to-transparent pointer-events-none" />
 
-        {/* Player Image Section - Responsive height */}
-        <div className="relative h-[260px] sm:h-[280px] lg:h-[300px] overflow-hidden rounded-t-3xl">
+        {/* Player Image Section - Responsive height - Clickable */}
+        <div
+          className="relative h-[260px] sm:h-[280px] lg:h-[300px] overflow-hidden rounded-t-3xl cursor-pointer"
+          onClick={handleImageClick}
+        >
           <AvatarImage
             src={photoUrl}
             alt={fullName}
