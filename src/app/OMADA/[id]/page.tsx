@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
 import TeamSidebar from "./TeamSidebar";
 import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
+import VantaBgToggle from "./VantaBgToggle";
 import {
   type Team,
   type PlayerAssociation,
@@ -196,7 +196,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
   return (
     <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
       {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+      <VantaBgToggle className="fixed inset-0 -z-10" mode="eco" />
 
       {/* Page content scrolling over the fixed background */}
       <div className="relative z-10">
