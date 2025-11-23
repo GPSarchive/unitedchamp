@@ -16,9 +16,9 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
 
   if (stageIdx === undefined) {
     return (
-      <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
-        <p className="text-red-800 dark:text-red-400 font-semibold">⚠️ Configuration Error</p>
-        <p className="text-sm text-red-600 dark:text-red-300 mt-2">
+      <div className="p-6 bg-red-900/20 border border-red-500/30 rounded-lg">
+        <p className="text-red-400 font-semibold">⚠️ Configuration Error</p>
+        <p className="text-sm text-red-300/80 mt-2">
           Stage index not found in store.
         </p>
       </div>
@@ -59,28 +59,28 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
     }, [groupIdx]);
 
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur shadow-sm overflow-hidden hover:border-[#FFD700]/20 transition-all duration-200">
         {/* Group Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+        <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-[#FFD700]/10 to-transparent">
+          <h3 className="text-xl font-bold text-white">
             {group.name}
           </h3>
         </div>
 
         {/* Standings */}
         <div className="p-4">
-          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+          <h4 className="text-sm font-semibold text-white/80 mb-3">
             Βαθμολογία
           </h4>
-          
+
           {groupStandings.length === 0 ? (
-            <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
+            <div className="text-center py-4 text-white/50 text-sm">
               Δεν υπάρχουν βαθμολογίες
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-xs text-slate-600 dark:text-slate-400">
+                <thead className="text-xs text-white/60">
                   <tr>
                     <th className="px-2 py-2 text-left">#</th>
                     <th className="px-2 py-2 text-left">Ομάδα</th>
@@ -88,10 +88,10 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                     <th className="px-2 py-2 text-center">Π</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-white/5">
                   {groupStandings.map((standing, idx) => (
-                    <tr key={standing.team_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100">
+                    <tr key={standing.team_id} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="px-2 py-2 font-bold text-white">
                         {standing.rank ?? idx + 1}
                       </td>
                       <td className="px-2 py-2">
@@ -103,15 +103,15 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                               className="w-6 h-6 rounded-full object-cover"
                             />
                           )}
-                          <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                          <span className="font-medium text-white truncate">
                             {getTeamName(standing.team_id)}
                           </span>
                         </div>
                       </td>
-                      <td className="px-2 py-2 text-center text-slate-700 dark:text-slate-300">
+                      <td className="px-2 py-2 text-center text-white/70">
                         {standing.played}
                       </td>
-                      <td className="px-2 py-2 text-center font-bold text-blue-600 dark:text-blue-400">
+                      <td className="px-2 py-2 text-center font-bold text-[#FFD700]">
                         {standing.points}
                       </td>
                     </tr>
@@ -123,20 +123,20 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
         </div>
 
         {/* Matches */}
-        <div className="border-t border-slate-200 dark:border-slate-800 p-4">
+        <div className="border-t border-white/10 p-4">
           <div className="grid gap-4 md:grid-cols-2">
             {/* Upcoming */}
             <div>
-              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              <h4 className="text-sm font-semibold text-white/80 mb-2">
                 Επερχόμενοι
               </h4>
               {upcomingMatches.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Κανένας</p>
+                <p className="text-xs text-white/50">Κανένας</p>
               ) : (
                 <div className="space-y-2">
                   {upcomingMatches.map(m => (
-                    <div key={m.db_id} className="text-xs p-2 bg-slate-50 dark:bg-slate-800/50 rounded">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                    <div key={m.db_id} className="text-xs p-2 bg-white/[0.03] border border-white/5 rounded hover:bg-white/[0.05] transition-colors">
+                      <div className="font-medium text-white">
                         {getTeamName(m.team_a_id ?? 0)} vs {getTeamName(m.team_b_id ?? 0)}
                       </div>
                     </div>
@@ -147,16 +147,16 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
 
             {/* Finished */}
             <div>
-              <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              <h4 className="text-sm font-semibold text-white/80 mb-2">
                 Ολοκληρωμένοι
               </h4>
               {finishedMatches.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">Κανένας</p>
+                <p className="text-xs text-white/50">Κανένας</p>
               ) : (
                 <div className="space-y-2">
                   {finishedMatches.map(m => (
-                    <div key={m.db_id} className="text-xs p-2 bg-slate-50 dark:bg-slate-800/50 rounded">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                    <div key={m.db_id} className="text-xs p-2 bg-white/[0.03] border border-white/5 rounded hover:bg-white/[0.05] transition-colors">
+                      <div className="font-medium text-white">
                         {getTeamName(m.team_a_id ?? 0)} {m.team_a_score}-{m.team_b_score} {getTeamName(m.team_b_id ?? 0)}
                       </div>
                     </div>
@@ -173,15 +173,15 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   return (
     <div className="space-y-6">
       {sortedGroups.length === 0 ? (
-        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+        <div className="text-center py-8 text-white/60">
           Δεν υπάρχουν όμιλοι για αυτό το στάδιο.
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {sortedGroups.map((group) => (
-            <GroupSection 
-              key={group.id} 
-              group={group} 
+            <GroupSection
+              key={group.id}
+              group={group}
               groupIdx={group.ordering - 1}
             />
           ))}

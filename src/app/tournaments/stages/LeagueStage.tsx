@@ -13,9 +13,9 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
 
   if (stageIdx === undefined) {
     return (
-      <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
-        <p className="text-red-800 dark:text-red-400 font-semibold">⚠️ Configuration Error</p>
-        <p className="text-sm text-red-600 dark:text-red-300 mt-2">
+      <div className="p-6 bg-red-900/20 border border-red-500/30 rounded-lg">
+        <p className="text-red-400 font-semibold">⚠️ Configuration Error</p>
+        <p className="text-sm text-red-300/80 mt-2">
           Stage index not found. ID: {stage.id}, Ordering: {stage.ordering}
         </p>
       </div>
@@ -55,23 +55,23 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   return (
     <div className="space-y-6">
       {/* Standings Table */}
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+      <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur shadow-sm overflow-hidden hover:border-[#FFD700]/20 transition-all duration-200">
+        <div className="px-6 py-4 border-b border-white/10">
+          <h3 className="text-lg font-bold text-white">
             Βαθμολογία ({stageStandings.length} ομάδες)
           </h3>
         </div>
 
         {stageStandings.length === 0 ? (
           <div className="p-6 text-center">
-            <div className="text-red-600 dark:text-red-400 font-semibold mb-2">Το τουρνουά ξεκίνησε!            </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">Ετοιμοι Για Δράση ;</div>
+            <div className="text-[#FFD700] font-semibold mb-2">Το τουρνουά ξεκίνησε!</div>
+            <div className="text-sm text-white/60">Ετοιμοι Για Δράση ;</div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-800/50">
-                <tr className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              <thead className="bg-white/[0.03]">
+                <tr className="text-xs font-semibold text-white/60">
                   <th className="px-4 py-3 text-left">#</th>
                   <th className="px-4 py-3 text-left">Ομάδα</th>
                   <th className="px-4 py-3 text-center">Αγώνες</th>
@@ -84,10 +84,10 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                   <th className="px-4 py-3 text-center font-bold">Πόντοι</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tbody className="divide-y divide-white/5">
                 {stageStandings.map((standing, idx) => (
-                  <tr key={standing.team_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3 text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <tr key={standing.team_id} className="hover:bg-white/[0.03] transition-colors">
+                    <td className="px-4 py-3 text-sm font-bold text-white">
                       {standing.rank ?? idx + 1}
                     </td>
                     <td className="px-4 py-3">
@@ -96,27 +96,27 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                           <img
                             src={getTeamLogo(standing.team_id)!}
                             alt=""
-                            className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+                            className="w-8 h-8 rounded-full object-cover border border-white/10"
                           />
                         )}
-                        <span className="font-medium text-slate-900 dark:text-slate-100">
+                        <span className="font-medium text-white">
                           {getTeamName(standing.team_id)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-slate-300">{standing.played}</td>
-                    <td className="px-4 py-3 text-center text-sm text-green-600 dark:text-green-400 font-semibold">
+                    <td className="px-4 py-3 text-center text-sm text-white/70">{standing.played}</td>
+                    <td className="px-4 py-3 text-center text-sm text-green-400 font-semibold">
                       {standing.won}
                     </td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">{standing.drawn}</td>
-                    <td className="px-4 py-3 text-center text-sm text-red-600 dark:text-red-400">{standing.lost}</td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-slate-300">{standing.gf}</td>
-                    <td className="px-4 py-3 text-center text-sm text-slate-700 dark:text-slate-300">{standing.ga}</td>
-                    <td className="px-4 py-3 text-center text-sm font-medium text-slate-900 dark:text-slate-100">
+                    <td className="px-4 py-3 text-center text-sm text-white/50">{standing.drawn}</td>
+                    <td className="px-4 py-3 text-center text-sm text-red-400">{standing.lost}</td>
+                    <td className="px-4 py-3 text-center text-sm text-white/70">{standing.gf}</td>
+                    <td className="px-4 py-3 text-center text-sm text-white/70">{standing.ga}</td>
+                    <td className="px-4 py-3 text-center text-sm font-medium text-white">
                       {standing.gd > 0 ? "+" : ""}
                       {standing.gd}
                     </td>
-                    <td className="px-4 py-3 text-center text-sm font-bold text-blue-600 dark:text-blue-400">
+                    <td className="px-4 py-3 text-center text-sm font-bold text-[#FFD700]">
                       {standing.points}
                     </td>
                   </tr>
@@ -130,32 +130,32 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
       {/* Matches Section */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Upcoming Matches */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Επερχόμενοι Αγώνες</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{upcomingMatches.length} σύνολο</span>
+        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur shadow-sm overflow-hidden hover:border-[#FFD700]/20 transition-all duration-200">
+          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white">Επερχόμενοι Αγώνες</h3>
+            <span className="text-xs text-white/50">{upcomingMatches.length} σύνολο</span>
           </div>
 
-          <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-[400px] overflow-y-auto">
+          <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
             {upcomingMatches.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 dark:text-slate-400">Δεν υπάρχουν επερχόμενοι αγώνες.</div>
+              <div className="p-6 text-center text-white/60">Δεν υπάρχουν επερχόμενοι αγώνες.</div>
             ) : (
               upcomingMatches.slice(0, 5).map((match) => (
-                <div key={match.db_id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <div key={match.db_id} className="p-4 hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {getTeamLogo(match.team_a_id ?? 0) && (
                         <img src={getTeamLogo(match.team_a_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
                       )}
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                      <span className="font-medium text-white truncate">
                         {getTeamName(match.team_a_id ?? 0)}
                       </span>
                     </div>
 
-                    <div className="text-lg font-bold text-slate-500 dark:text-slate-400">VS</div>
+                    <div className="text-lg font-bold text-white/50">VS</div>
 
                     <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                      <span className="font-medium text-white truncate">
                         {getTeamName(match.team_b_id ?? 0)}
                       </span>
                       {getTeamLogo(match.team_b_id ?? 0) && (
@@ -165,7 +165,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                   </div>
 
                   {match.match_date && (
-                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                    <div className="mt-2 text-xs text-white/50 text-center">
                       {new Date(match.match_date).toLocaleString("el-GR", {
                         weekday: "long",
                         day: "2-digit",
@@ -183,24 +183,24 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
         </div>
 
         {/* Finished Matches */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Ολοκληρωμένοι Αγώνες</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{finishedMatches.length} σύνολο</span>
+        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur shadow-sm overflow-hidden hover:border-[#FFD700]/20 transition-all duration-200">
+          <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white">Ολοκληρωμένοι Αγώνες</h3>
+            <span className="text-xs text-white/50">{finishedMatches.length} σύνολο</span>
           </div>
 
-          <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-[400px] overflow-y-auto">
+          <div className="divide-y divide-white/5 max-h-[400px] overflow-y-auto">
             {finishedMatches.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 dark:text-slate-400">Δεν υπάρχουν ολοκληρωμένοι αγώνες ακόμη.</div>
+              <div className="p-6 text-center text-white/60">Δεν υπάρχουν ολοκληρωμένοι αγώνες ακόμη.</div>
             ) : (
               finishedMatches.slice(0, 5).map((match) => (
-                <div key={match.db_id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <div key={match.db_id} className="p-4 hover:bg-white/[0.03] transition-colors">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {getTeamLogo(match.team_a_id ?? 0) && (
                         <img src={getTeamLogo(match.team_a_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
                       )}
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                      <span className="font-medium text-white truncate">
                         {getTeamName(match.team_a_id ?? 0)}
                       </span>
                     </div>
@@ -208,15 +208,15 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-2xl font-bold ${
-                          match.winner_team_id === match.team_a_id ? "text-green-600 dark:text-green-400" : "text-slate-400"
+                          match.winner_team_id === match.team_a_id ? "text-[#FFD700]" : "text-white/40"
                         }`}
                       >
                         {match.team_a_score ?? 0}
                       </span>
-                      <span className="text-slate-400">-</span>
+                      <span className="text-white/40">-</span>
                       <span
                         className={`text-2xl font-bold ${
-                          match.winner_team_id === match.team_b_id ? "text-green-600 dark:text-green-400" : "text-slate-400"
+                          match.winner_team_id === match.team_b_id ? "text-[#FFD700]" : "text-white/40"
                         }`}
                       >
                         {match.team_b_score ?? 0}
@@ -224,7 +224,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                     </div>
 
                     <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                      <span className="font-medium text-white truncate">
                         {getTeamName(match.team_b_id ?? 0)}
                       </span>
                       {getTeamLogo(match.team_b_id ?? 0) && (
@@ -234,7 +234,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                   </div>
 
                   {match.match_date && (
-                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
+                    <div className="mt-2 text-xs text-white/50 text-center">
                       {new Date(match.match_date).toLocaleString("el-GR", {
                         weekday: "short",
                         day: "2-digit",
