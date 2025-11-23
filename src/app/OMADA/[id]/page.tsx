@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
 import TeamSidebar from "./TeamSidebar";
 import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
-import VantaBgToggle from "./VantaBgToggle";
+import VantaBgToggle from "@/app/lib/VantaBgToggle";
 import {
   type Team,
   type PlayerAssociation,

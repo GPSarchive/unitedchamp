@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 
-import VantaBg from "@/app/lib/VantaBg";
+import VantaBgToggle from "@/app/lib/VantaBgToggle";
 import ShinyText from "./ShinyText";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 
@@ -193,7 +193,7 @@ export default async function Page({
   return (
     <div className="relative min-h-dvh overflow-x-visible">
       {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+      <VantaBgToggle className="fixed inset-0 -z-10" mode="eco" buttonPosition="top" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (

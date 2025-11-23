@@ -7,9 +7,11 @@ import { EyeOff, Eye } from 'lucide-react';
 export default function VantaBgToggle({
   className = '',
   mode = 'eco',
+  buttonPosition = 'bottom',
 }: {
   className?: string;
   mode?: 'eco' | 'balanced' | 'fancy';
+  buttonPosition?: 'top' | 'bottom';
 }) {
   const [effectsEnabled, setEffectsEnabled] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -34,18 +36,34 @@ export default function VantaBgToggle({
     setEffectsEnabled((prev) => !prev);
   };
 
+  // Position classes based on buttonPosition prop
+  const positionClasses = buttonPosition === 'top'
+    ? 'top-6 right-6'
+    : 'bottom-6 right-6';
+
   return (
     <>
       {/* Vanta background - only render when enabled */}
-      {effectsEnabled && <VantaBg className={className} mode={mode} />}
+      {effectsEnabled ? (
+        <VantaBg className={className} mode={mode} />
+      ) : (
+        /* Fallback background: faded black with a pinch of orange */
+        <div
+          className={className}
+          style={{
+            background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1410 50%, #0a0a0a 100%)',
+          }}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Toggle button - fixed position in bottom right */}
+      {/* Toggle button - position based on prop */}
       <button
         onClick={toggleEffects}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2
+        className={`fixed ${positionClasses} z-50 flex items-center gap-2 px-4 py-2
                    bg-slate-800/80 hover:bg-slate-700/80 text-slate-200
                    rounded-lg shadow-lg backdrop-blur-sm border border-slate-600/50
-                   transition-all duration-200 hover:scale-105"
+                   transition-all duration-200 hover:scale-105`}
         title={effectsEnabled ? 'Disable background effects' : 'Enable background effects'}
         aria-label={effectsEnabled ? 'Disable background effects' : 'Enable background effects'}
       >
