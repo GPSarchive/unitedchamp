@@ -1,7 +1,4 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
-import TeamSidebar from "./TeamSidebar";
-import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
 import {
   type Team,
   type PlayerAssociation,
@@ -9,7 +6,7 @@ import {
   normalizeTeamPlayers,
   type TeamPlayersRowRaw,
 } from "@/app/lib/types";
-import TeamRosterShowcase from "./TeamRosterShowcase";
+import TeamPageContent from "./TeamPageContent";
 
 type TeamPageProps = {
   params: Promise<{ id: string }>;
@@ -194,39 +191,20 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
-
-      {/* Page content scrolling over the fixed background */}
-      <div className="relative z-10">
-        <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
-          {/* Top: team hero */}
-          <TeamSidebar
-            team={team as Team}
-            tournaments={tournaments}
-            wins={wins}
-            errors={{
-              membership: membershipErr?.message,
-              wins: winsErr?.message,
-            }}
-          />
-
-          {/* Middle: roster */}
-          <TeamRosterShowcase
-            playerAssociations={playerAssociations}
-            seasonStatsByPlayer={seasonStatsByPlayer}
-            errorMessage={playersError?.message || pssErr?.message}
-          />
-
-          {/* Bottom: matches timeline */}
-          <TeamMatchesTimeline
-            matches={matches}
-            teamId={teamId}
-            errorMessage={matchesError?.message}
-          />
-        </div>
-      </div>
-    </section>
+    <TeamPageContent
+      team={team as Team}
+      tournaments={tournaments}
+      wins={wins}
+      errors={{
+        membership: membershipErr?.message,
+        wins: winsErr?.message,
+      }}
+      playerAssociations={playerAssociations}
+      seasonStatsByPlayer={seasonStatsByPlayer}
+      playersErrorMessage={playersError?.message || pssErr?.message || null}
+      matches={matches}
+      teamId={teamId}
+      matchesErrorMessage={matchesError?.message || null}
+    />
   );
 }

@@ -62,10 +62,12 @@ export default function VantaBg({
   className = '',
   mode = 'eco',
   maxDpr, // 👈 optional override
+  visible = true, // 👈 control visibility
 }: {
   className?: string;
   mode?: Mode;
   maxDpr?: number; // e.g., 0.75 (fewer pixels) or 1.0 (1x)
+  visible?: boolean;
 }) {
   const elRef = useRef<HTMLDivElement | null>(null);
   const [vanta, setVanta] = useState<VantaInstance>(null);
@@ -80,6 +82,13 @@ export default function VantaBg({
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    // Destroy vanta instance if not visible
+    if (!visible && vanta) {
+      vanta?.destroy?.();
+      setVanta(null);
+      return;
+    }
 
     const applyPixelRatioCap = (instance: any) => {
       try {
@@ -161,8 +170,8 @@ export default function VantaBg({
       }
     };
 
-    if (!prefersReduced) {
-      // Only init when the element is about to be visible
+    if (!prefersReduced && visible) {
+      // Only init when the element is about to be visible AND visible prop is true
       rIC(() => {
         if (!elRef.current) return;
         io = new IntersectionObserver(
@@ -186,8 +195,8 @@ export default function VantaBg({
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       vanta?.destroy?.();
     };
-    // re-run if preset or cap changes
-  }, [vanta, presets, mode, maxDpr]);
+    // re-run if preset, cap, or visibility changes
+  }, [vanta, presets, mode, maxDpr, visible]);
 
   return (
     <div
@@ -200,6 +209,9 @@ export default function VantaBg({
         willChange: 'transform',
         backfaceVisibility: 'hidden',
         transform: 'translateZ(0)',
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'opacity 0.3s ease-in-out',
       }}
     />
   );

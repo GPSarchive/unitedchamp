@@ -7,8 +7,6 @@ import {
   Trophy,
   Target,
   Award,
-  Zap,
-  Shield,
   Activity,
   TrendingUp,
   ChevronDown
@@ -59,16 +57,21 @@ interface TeamRosterShowcaseProps {
     }
   >;
   errorMessage?: string | null;
+  bgEffectsEnabled: boolean;
+  setBgEffectsEnabled: (enabled: boolean) => void;
+  onModalOpenChange?: (isOpen: boolean) => void;
 }
 
 export default function TeamRosterShowcase({
   playerAssociations,
   seasonStatsByPlayer,
   errorMessage,
+  bgEffectsEnabled,
+  setBgEffectsEnabled,
+  onModalOpenChange,
 }: TeamRosterShowcaseProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerLite | null>(null);
-  const [bgEffectsEnabled, setBgEffectsEnabled] = useState(true);
   const [previousBgEffects, setPreviousBgEffects] = useState(true);
 
   // Convert PlayerAssociation to PlayerLite format for the modal
@@ -130,10 +133,12 @@ export default function TeamRosterShowcase({
     setPreviousBgEffects(bgEffectsEnabled);
     setBgEffectsEnabled(true);
     setIsModalOpen(true);
+    onModalOpenChange?.(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    onModalOpenChange?.(false);
     // Restore previous background effects state
     setBgEffectsEnabled(previousBgEffects);
     // Small delay before clearing player to allow exit animation
@@ -257,32 +262,6 @@ export default function TeamRosterShowcase({
           );
         })}
       </div>
-
-      {/* Background Effects Toggle - Sticky Button */}
-      <motion.button
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.5 }}
-        onClick={() => setBgEffectsEnabled(!bgEffectsEnabled)}
-        className="fixed bottom-6 right-6 z-40 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 border-2 border-white/30 backdrop-blur-sm group"
-        aria-label="Toggle background effects"
-        disabled={isModalOpen}
-        title={isModalOpen ? "Background effects always on in modal" : bgEffectsEnabled ? "Disable background effects" : "Enable background effects"}
-      >
-        <div className="relative">
-          {bgEffectsEnabled ? (
-            <Zap className="w-6 h-6" />
-          ) : (
-            <Shield className="w-6 h-6 opacity-50" />
-          )}
-          {isModalOpen && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse border-2 border-white" />
-          )}
-        </div>
-        <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          {isModalOpen ? "Effects locked ON" : bgEffectsEnabled ? "Effects ON" : "Effects OFF"}
-        </span>
-      </motion.button>
 
       {/* Player Profile Modal */}
       <PlayerProfileModal
