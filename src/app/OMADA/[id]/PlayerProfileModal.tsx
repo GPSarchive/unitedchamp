@@ -10,12 +10,14 @@ interface PlayerProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   player: PlayerLite | null;
+  bgEffectsEnabled?: boolean;
 }
 
 export default function PlayerProfileModal({
   isOpen,
   onClose,
   player,
+  bgEffectsEnabled = true,
 }: PlayerProfileModalProps) {
   // Close modal on Escape key
   useEffect(() => {
@@ -73,7 +75,11 @@ export default function PlayerProfileModal({
 
               {/* Player Profile Card */}
               <div className="relative">
-                <PlayerProfileCard player={player} isTournamentScoped={false} />
+                <PlayerProfileCard
+                  player={player}
+                  isTournamentScoped={false}
+                  showBehindGradient={bgEffectsEnabled}
+                />
               </div>
             </motion.div>
           </div>

@@ -8,6 +8,7 @@ import type { PlayerLite } from "./types";
 type Props = {
   player: PlayerLite;
   isTournamentScoped?: boolean;
+  showBehindGradient?: boolean;
 };
 
 function StatPill({
@@ -41,6 +42,7 @@ function StatPill({
 function PlayerProfileCardComponent({
   player,
   isTournamentScoped = false,
+  showBehindGradient = false,
 }: Props) {
   const name = useMemo(
     () => `${player.first_name} ${player.last_name}`.trim() || "—",
@@ -146,7 +148,7 @@ function PlayerProfileCardComponent({
         teams={teams}
         // we move stats out of the card into the modal below
         showStats={false}
-        showBehindGradient={false}
+        showBehindGradient={showBehindGradient}
         enableTilt={true}
         enableMobileTilt={false}
         mobileTiltSensitivity={5}
