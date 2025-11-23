@@ -96,7 +96,7 @@ export default function TeamPageContent({
         className="fixed bottom-6 right-6 z-40 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 border-2 border-white/30 backdrop-blur-sm group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
         aria-label="Toggle background effects"
         disabled={isModalOpen}
-        title={isModalOpen ? "Background effects always on in modal" : bgEffectsEnabled ? "Disable background effects" : "Enable background effects"}
+        title={isModalOpen ? "Background effects locked OFF in modal" : bgEffectsEnabled ? "Disable background effects" : "Enable background effects"}
       >
         <div className="relative">
           {bgEffectsEnabled ? (
@@ -109,7 +109,7 @@ export default function TeamPageContent({
           )}
         </div>
         <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-black/90 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          {isModalOpen ? "Effects locked ON" : bgEffectsEnabled ? "Effects ON" : "Effects OFF"}
+          {isModalOpen ? "Effects locked OFF" : bgEffectsEnabled ? "Effects ON" : "Effects OFF"}
         </span>
       </motion.button>
     </section>

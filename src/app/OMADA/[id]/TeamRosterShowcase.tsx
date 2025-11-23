@@ -129,9 +129,9 @@ export default function TeamRosterShowcase({
   const handlePlayerClick = (assoc: PlayerAssociation, totals: any) => {
     const playerLite = convertToPlayerLite(assoc, totals);
     setSelectedPlayer(playerLite);
-    // Store current background effects state and force it on for modal
+    // Store current background effects state and force it OFF for modal (lighter page)
     setPreviousBgEffects(bgEffectsEnabled);
-    setBgEffectsEnabled(true);
+    setBgEffectsEnabled(false);
     setIsModalOpen(true);
     onModalOpenChange?.(true);
   };
