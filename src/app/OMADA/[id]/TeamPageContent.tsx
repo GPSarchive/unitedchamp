@@ -92,7 +92,12 @@ export default function TeamPageContent({
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.5 }}
-        onClick={() => !isModalOpen && setBgEffectsEnabled(!bgEffectsEnabled)}
+        onClick={() => {
+          if (!isModalOpen) {
+            console.log('Toggle clicked, current:', bgEffectsEnabled, 'new:', !bgEffectsEnabled);
+            setBgEffectsEnabled(!bgEffectsEnabled);
+          }
+        }}
         className="fixed bottom-6 right-6 z-40 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-full p-4 shadow-2xl transition-all duration-300 hover:scale-110 border-2 border-white/30 backdrop-blur-sm group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
         aria-label="Toggle background effects"
         disabled={isModalOpen}

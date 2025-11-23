@@ -79,16 +79,24 @@ export default function VantaBg({
     let cleanupVisibility: (() => void) | null = null;
     let resizeRaf = 0 as number;
 
+    console.log('VantaBg effect triggered, visible:', visible, 'vanta:', !!vanta);
+
     const prefersReduced =
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     // Destroy vanta instance if not visible
-    if (!visible && vanta) {
-      vanta?.destroy?.();
-      setVanta(null);
+    if (!visible) {
+      if (vanta) {
+        console.log('Destroying vanta instance');
+        vanta?.destroy?.();
+        setVanta(null);
+      }
       return;
     }
+
+    // If visible but already initialized, do nothing
+    if (vanta) return;
 
     const applyPixelRatioCap = (instance: any) => {
       try {
@@ -170,21 +178,13 @@ export default function VantaBg({
       }
     };
 
-    if (!prefersReduced && visible) {
-      // Only init when the element is about to be visible AND visible prop is true
+    if (!prefersReduced) {
+      // Initialize directly when visible (for toggling)
+      // Use requestIdleCallback for non-blocking init
       rIC(() => {
-        if (!elRef.current) return;
-        io = new IntersectionObserver(
-          (entries) => {
-            if (entries.some((e) => e.isIntersecting)) {
-              init();
-              io?.disconnect();
-              io = null;
-            }
-          },
-          { rootMargin: '0px 0px 200px 0px', threshold: 0.01 }
-        );
-        io.observe(elRef.current);
+        if (mounted && elRef.current && !vanta) {
+          init();
+        }
       });
     }
 
