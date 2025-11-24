@@ -248,7 +248,7 @@ if (body.matches?.deleteIds?.length) {
       if (updateRows.length) {
         const { data, error } = await supabaseAdmin
           .from("tournament_stages")
-          .upsert(updateRows, )
+          .upsert(updateRows.map(r => ({ ...r, tournament_id: tournamentId })), )
           .select();
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
         upserted = upserted.concat(data ?? []);
