@@ -440,15 +440,31 @@ if (body.matches?.upsert?.length) {
     created.push(...(data ?? []));
   }
 
-  // Non-KO Matches - Use (stage_id, group_id, matchday, bracket_pos) as natural keys
+  // Non-KO Matches - Insert only (no upsert since bracket_pos can be null)
   if (lgRowsAll.some(r => r.id == null)) {
     const toCreateLG = lgRowsAll.filter(r => r.id == null).map(strip);
-    const { data, error } = await supabaseAdmin
-      .from("matches")
-      .upsert(toCreateLG, { onConflict: "stage_id,group_id,matchday,bracket_pos" })
-      .select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    created.push(...(data ?? []));
+
+    // Check for existing matches to avoid duplicates
+    for (const match of toCreateLG) {
+      const { data: existing } = await supabaseAdmin
+        .from("matches")
+        .select("id")
+        .eq("stage_id", match.stage_id)
+        .eq("matchday", match.matchday ?? null)
+        .eq("team_a_id", match.team_a_id ?? null)
+        .eq("team_b_id", match.team_b_id ?? null)
+        .is("round", null)
+        .maybeSingle();
+
+      if (!existing) {
+        const { data, error } = await supabaseAdmin
+          .from("matches")
+          .insert([match])
+          .select();
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        created.push(...(data ?? []));
+      }
+    }
   }
 
   out.matches = [...updated, ...created];
