@@ -111,27 +111,8 @@ export default function StageCard({
     if (preferIdx != null) return preferIdx;
     if ((matchesPerIdx.get(index) ?? 0) > 0) return index;
 
-    const kindAt = (idx: number) => {
-      const sid = stageIdByIndex[idx];
-      return sid ? (stagesById as any)[sid]?.kind : undefined;
-    };
-    const wantKind = kindAt(typeof preferred === "number" ? preferred : index);
-
-    let best: number | undefined;
-    let bestCount = -1;
-    matchesPerIdx.forEach((count, idx) => {
-      if (!count) return;
-      if (wantKind && kindAt(idx) !== wantKind) return;
-      if (count > bestCount) {
-        bestCount = count;
-        best = idx;
-      }
-    });
-    if (best != null) return best;
-
-    for (const [idx, count] of matchesPerIdx.entries()) {
-      if (count > 0) return idx;
-    }
+    // ✅ FIX: For new stages with no matches, always use the actual index
+    // Don't fall back to other stages' matches - this causes stages to show wrong data
     return typeof preferred === "number" ? preferred : index;
   }, [payloadStageId, stageIndexById, stageIdByIndex, stagesById, index, matchesPerIdx]);
 
