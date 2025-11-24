@@ -95,6 +95,7 @@ export default async function TeamsPage({
     const query = supabaseAdmin
       .from("teams")
       .select("id, name, logo, colour, created_at, am, season_score", { count: "exact" })
+      .is("deleted_at", null)
       .order("name", { ascending: true });
 
     const { data, error: queryError, count: queryCount } = await query.range(
