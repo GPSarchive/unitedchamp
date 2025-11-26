@@ -171,7 +171,7 @@ export default function PlayersPanel({
                   <button
                     type="button"
                     onClick={() => removeFromTeam(p.id)}
-                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50 transition-opacity"
+                    className="absolute right-2 top-2 text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50 transition-opacity"
                     title="Αφαίρεση από την ομάδα"
                   >
                     Αφαίρεση
