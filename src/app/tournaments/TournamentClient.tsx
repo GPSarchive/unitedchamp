@@ -158,7 +158,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
         </motion.header>
 
         {/* Stages Section */}
-        <div className="space-y-6">
+        <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-white">
               Στάδια Τουρνουά
@@ -195,7 +195,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                   const Renderer = getRendererForStage(stage);
 
                   return (
-                    <motion.div
+                    <motion.section
                       key={stage.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -204,7 +204,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                     >
                       <div className="rounded-2xl border border-white/10 bg-zinc-950/60 hover:bg-zinc-950/80 shadow-lg hover:shadow-xl transition-all overflow-hidden">
                         {/* Stage Header */}
-                        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black">
+                        <header className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]">
@@ -231,20 +231,20 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                               <span className="capitalize">{stage.kind}</span>
                             </div>
                           </div>
-                        </div>
+                        </header>
 
                         {/* Stage Content */}
                         <div className="p-6">
                           <Renderer stage={stage} />
                         </div>
                       </div>
-                    </motion.div>
+                    </motion.section>
                   );
                 })}
               </AnimatePresence>
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );
