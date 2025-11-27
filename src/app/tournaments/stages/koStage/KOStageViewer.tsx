@@ -234,6 +234,9 @@ const KOStageViewer = ({
       >
         {/* Track grows with zoom in both axes */}
         <div ref={trackRef} className="relative" style={{ width: trackWidth, height: trackHeight }}>
+          {/* Background Pattern - covers entire track */}
+          <BracketBackground snap={snap} />
+
           {/* Logical plane scaled in place */}
           <div
             className="absolute top-0 left-0"
@@ -244,8 +247,6 @@ const KOStageViewer = ({
               transformOrigin: "top left",
             }}
           >
-            {/* Background Pattern */}
-            <BracketBackground snap={snap} />
 
             {/* SVG connection layer */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">

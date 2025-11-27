@@ -40,6 +40,7 @@ interface NodeBox {
 }
 
 const KOStageDisplay = () => {
+  const tournament = useTournamentData((state) => state.tournament);
   const stages = useTournamentData((state) => state.stages);
   const teams = useTournamentData((state) => state.teams);
   const matches = useTournamentData((state) => state.matches);
@@ -158,14 +159,17 @@ const KOStageDisplay = () => {
             const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
             const nameA = getTeamName(teamsNode.A);
             const nameB = getTeamName(teamsNode.B);
+            const isFirstNode = n.id === "R1-B1";
             return (
               <div className="text-center text-white">
                 <div className="font-medium">
                   {nameA} vs {nameB}
                 </div>
-                <div className="text-xs text-white/70">
-                  Round {nodeMeta[n.id]?.round} • Pos {nodeMeta[n.id]?.bracket_pos}
-                </div>
+                {isFirstNode && tournament && (
+                  <div className="text-xs text-amber-300/90 font-semibold mt-1">
+                    {tournament.name} • Knockout Stage
+                  </div>
+                )}
               </div>
             );
           }}
