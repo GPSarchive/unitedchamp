@@ -30,7 +30,7 @@ const KOStageViewer = ({
   minZoom = 0.4,
   maxZoom = 3,
   backgroundPattern = "subtle-dots",
-  lineStyle = "rounded-orthogonal",
+  lineStyle = "sharp-orthogonal",
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -184,27 +184,27 @@ const KOStageViewer = ({
       {/* Controls */}
       <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col gap-2">
         {/* Line Style Selector */}
-        <div className="rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+        <div className="rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
           <select
             value={selectedLineStyle}
             onChange={(e) => setSelectedLineStyle(e.target.value as LineStyle)}
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-emerald-400/40 transition-colors cursor-pointer"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-orange-500/50 transition-colors cursor-pointer"
             aria-label="Line style"
           >
+            <option value="sharp-orthogonal">Sharp Orthogonal</option>
             <option value="rounded-orthogonal">Rounded Orthogonal</option>
             <option value="smooth-bezier">Smooth Bezier</option>
-            <option value="sharp-orthogonal">Sharp Orthogonal</option>
             <option value="elbow">Elbow</option>
             <option value="straight">Straight</option>
           </select>
         </div>
 
         {/* Pattern Selector */}
-        <div className="rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+        <div className="rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
           <select
             value={selectedPattern}
             onChange={(e) => setSelectedPattern(e.target.value as BackgroundPattern)}
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-emerald-400/40 transition-colors cursor-pointer"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-orange-500/50 transition-colors cursor-pointer"
             aria-label="Background pattern"
           >
             <option value="subtle-dots">Subtle Dots</option>
@@ -219,10 +219,10 @@ const KOStageViewer = ({
         </div>
 
         {/* Zoom Controls */}
-        <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
           <button
             type="button"
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
             onClick={() => setZoomAt(zoom / 1.1)}
             aria-label="Zoom out"
           >
@@ -230,7 +230,7 @@ const KOStageViewer = ({
           </button>
           <input
             aria-label="Zoom"
-            className="h-6 w-28 accent-emerald-500"
+            className="h-6 w-28 accent-orange-500"
             type="range"
             min={minZoom}
             max={maxZoom}
@@ -240,7 +240,7 @@ const KOStageViewer = ({
           />
           <button
             type="button"
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
             onClick={() => setZoomAt(zoom * 1.1)}
             aria-label="Zoom in"
           >
@@ -248,7 +248,7 @@ const KOStageViewer = ({
           </button>
           <button
             type="button"
-            className="ml-1 rounded-lg border border-emerald-400/40 bg-emerald-700/30 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-700/50 transition-colors"
+            className="ml-1 rounded-lg border border-orange-500/50 bg-orange-600/30 px-2 py-1 text-xs text-amber-100 hover:bg-orange-600/50 transition-colors"
             onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
           >
             Fit H
@@ -291,21 +291,21 @@ const KOStageViewer = ({
             {/* SVG connection layer */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
-                {/* Emerald gradient left-to-right */}
+                {/* Gold/Orange/Red gradient left-to-right */}
                 <linearGradient id="edgeGradLTR" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(16,185,129,0.4)" />
-                  <stop offset="50%" stopColor="rgba(16,185,129,0.7)" />
-                  <stop offset="100%" stopColor="rgba(16,185,129,0.95)" />
+                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
+                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
+                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
                 </linearGradient>
-                {/* Emerald gradient right-to-left */}
+                {/* Gold/Orange/Red gradient right-to-left */}
                 <linearGradient id="edgeGradRTL" x1="100%" y1="0%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(16,185,129,0.4)" />
-                  <stop offset="50%" stopColor="rgba(16,185,129,0.7)" />
-                  <stop offset="100%" stopColor="rgba(16,185,129,0.95)" />
+                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
+                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
+                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
                 </linearGradient>
-                {/* Glow filter for depth */}
-                <filter id="emeraldGlow">
-                  <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                {/* Warm glow filter for depth */}
+                <filter id="warmGlow">
+                  <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
                   <feMerge>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
@@ -332,10 +332,10 @@ const KOStageViewer = ({
 
                 return (
                   <g key={idx} className="pointer-events-none">
-                    {/* Outer glow/shadow */}
-                    <path d={d} fill="none" stroke="rgba(16,185,129,0.15)" strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" />
-                    {/* Main gradient stroke with glow filter */}
-                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" filter="url(#emeraldGlow)" />
+                    {/* Outer warm glow/shadow */}
+                    <path d={d} fill="none" stroke="rgba(249,115,22,0.2)" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Main gradient stroke with warm glow filter */}
+                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" filter="url(#warmGlow)" />
                   </g>
                 );
               })}
@@ -345,13 +345,13 @@ const KOStageViewer = ({
             {nodes.map((n) => (
               <div
                 key={n.id}
-                className="absolute rounded-2xl border border-emerald-400/20 bg-zinc-950/80 p-2 text-white backdrop-blur-sm shadow-lg hover:border-emerald-400/40 hover:bg-zinc-950/90 transition-all"
+                className="absolute rounded-2xl border border-amber-500/25 bg-zinc-950/85 p-2 text-white backdrop-blur-sm shadow-lg shadow-orange-500/10 hover:border-orange-500/50 hover:bg-zinc-950/95 hover:shadow-orange-500/20 transition-all"
                 style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
               >
-                <div className="flex items-center justify-between text-xs text-emerald-200/80">
+                <div className="flex items-center justify-between text-xs text-amber-200/90">
                   <span className="truncate font-medium">{n.label ?? n.id}</span>
                 </div>
-                <div className="mt-1 h-[1px] w-full bg-gradient-to-r from-emerald-400/20 via-emerald-400/40 to-emerald-400/20" />
+                <div className="mt-1 h-[1px] w-full bg-gradient-to-r from-amber-400/20 via-orange-500/50 to-red-500/30" />
                 <div className="flex-1 min-h-0 text-sm leading-tight">
                   {nodeContent ? <div className="h-full">{nodeContent(n)}</div> : <div className="opacity-80 text-white/90">{n.label ?? n.id}</div>}
                 </div>
@@ -361,7 +361,7 @@ const KOStageViewer = ({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-zinc-950/90 border border-emerald-400/20 px-2 py-1 text-[11px] text-emerald-200/70">
+      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-zinc-950/90 border border-amber-500/25 px-2 py-1 text-[11px] text-amber-200/80">
         Scroll H/V · Drag to pan · Pinch/Ctrl+wheel to zoom
       </div>
     </div>

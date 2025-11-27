@@ -34,15 +34,15 @@ export const BracketBackground: React.FC<BracketBackgroundProps> = ({
 
       case "dots":
         return {
-          backgroundImage: `radial-gradient(circle, rgba(16,185,129,0.12) 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(circle, rgba(249,115,22,0.12) 1px, transparent 1px)`,
           backgroundSize: `${snap * 2}px ${snap * 2}px`,
         };
 
       case "grid":
         return {
           backgroundImage: `
-            linear-gradient(to right, rgba(16,185,129,0.08) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(16,185,129,0.08) 1px, transparent 1px)
+            linear-gradient(to right, rgba(251,191,36,0.08) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(251,191,36,0.08) 1px, transparent 1px)
           `,
           backgroundSize: `${snap * 2}px ${snap * 2}px`,
         };
@@ -54,8 +54,8 @@ export const BracketBackground: React.FC<BracketBackgroundProps> = ({
               45deg,
               transparent,
               transparent ${snap * 4}px,
-              rgba(16,185,129,0.04) ${snap * 4}px,
-              rgba(16,185,129,0.04) ${snap * 4 + 1}px
+              rgba(249,115,22,0.05) ${snap * 4}px,
+              rgba(249,115,22,0.05) ${snap * 4 + 1}px
             )
           `,
         };
@@ -63,8 +63,8 @@ export const BracketBackground: React.FC<BracketBackgroundProps> = ({
       case "hexagon":
         return {
           backgroundImage: `
-            radial-gradient(circle at 0% 50%, rgba(16,185,129,0.05) 1px, transparent 1px),
-            radial-gradient(circle at 100% 50%, rgba(16,185,129,0.05) 1px, transparent 1px)
+            radial-gradient(circle at 0% 50%, rgba(251,191,36,0.06) 1px, transparent 1px),
+            radial-gradient(circle at 100% 50%, rgba(249,115,22,0.06) 1px, transparent 1px)
           `,
           backgroundSize: `${snap * 3}px ${snap * 2.6}px`,
           backgroundPosition: `0 0, ${snap * 1.5}px ${snap * 1.3}px`,
@@ -73,10 +73,10 @@ export const BracketBackground: React.FC<BracketBackgroundProps> = ({
       case "circuit":
         return {
           backgroundImage: `
-            linear-gradient(to right, rgba(16,185,129,0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(16,185,129,0.04) 1px, transparent 1px),
-            linear-gradient(to right, rgba(16,185,129,0.02) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(16,185,129,0.02) 1px, transparent 1px)
+            linear-gradient(to right, rgba(251,191,36,0.05) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(251,191,36,0.05) 1px, transparent 1px),
+            linear-gradient(to right, rgba(249,115,22,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(249,115,22,0.03) 1px, transparent 1px)
           `,
           backgroundSize: `${snap * 8}px ${snap * 8}px, ${snap * 8}px ${snap * 8}px, ${snap * 2}px ${snap * 2}px, ${snap * 2}px ${snap * 2}px`,
         };
@@ -84,8 +84,8 @@ export const BracketBackground: React.FC<BracketBackgroundProps> = ({
       case "waves":
         return {
           backgroundImage: `
-            radial-gradient(ellipse at top, rgba(16,185,129,0.03), transparent 50%),
-            radial-gradient(ellipse at bottom, rgba(16,185,129,0.03), transparent 50%)
+            radial-gradient(ellipse at top, rgba(251,191,36,0.04), transparent 50%),
+            radial-gradient(ellipse at bottom, rgba(249,115,22,0.04), transparent 50%)
           `,
           backgroundSize: `${snap * 10}px ${snap * 5}px`,
           backgroundPosition: `0 0, ${snap * 5}px ${snap * 2.5}px`,
