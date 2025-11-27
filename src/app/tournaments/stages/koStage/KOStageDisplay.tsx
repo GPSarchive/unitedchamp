@@ -159,26 +159,27 @@ const KOStageDisplay = () => {
             const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
             const nameA = getTeamName(teamsNode.A);
             const nameB = getTeamName(teamsNode.B);
-            const isFirstNode = n.id === "R1-B1";
             return (
               <div className="flex flex-col items-center justify-center gap-2 text-white h-full">
-                {/* Logo Rings */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-amber-400/60">A</span>
+                {/* Logo Rings with Team Names */}
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-amber-400/60">A</span>
+                    </div>
+                    <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
                   </div>
-                  <span className="text-xs text-orange-400/80 font-medium">vs</span>
-                  <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-orange-400/60">B</span>
+                  <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-orange-400/60">B</span>
+                    </div>
+                    <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
                   </div>
                 </div>
-                {/* Team Names */}
-                <div className="font-medium text-sm">
-                  {nameA} vs {nameB}
-                </div>
-                {/* Tournament Name for R1-B1 */}
-                {isFirstNode && tournament && (
-                  <div className="text-xs text-amber-300/90 font-semibold mt-1">
+                {/* Tournament Name */}
+                {tournament && (
+                  <div className="text-xs text-amber-300/90 font-semibold">
                     {tournament.name} • Knockout Stage
                   </div>
                 )}

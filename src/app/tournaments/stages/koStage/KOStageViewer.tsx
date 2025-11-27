@@ -232,10 +232,13 @@ const KOStageViewer = ({
         role="region"
         aria-label="Knockout bracket viewer"
       >
+        {/* Background Pattern - fixed to container */}
+        <div className="absolute inset-0 pointer-events-none">
+          <BracketBackground snap={snap} />
+        </div>
+
         {/* Track grows with zoom in both axes */}
         <div ref={trackRef} className="relative" style={{ width: trackWidth, height: trackHeight }}>
-          {/* Background Pattern - covers entire track */}
-          <BracketBackground snap={snap} />
 
           {/* Logical plane scaled in place */}
           <div
