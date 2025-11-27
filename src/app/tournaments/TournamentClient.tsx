@@ -17,7 +17,8 @@ import type {
 } from "./useTournamentData";
 import { useTournamentData } from "./useTournamentData";
 import { useStages } from "./useStages";
-import VantaBg from "@/app/lib/VantaBg";
+import GridBgSection from "@/app/home/GridBgSection";
+import LightRays from "@/app/OMADA/[id]/react-bits/LightRays";
 
 type TournamentClientProps = {
   initialData: {
@@ -33,8 +34,7 @@ type TournamentClientProps = {
 };
 
 const Skeleton: React.FC = () => (
-  <div className="min-h-screen bg-zinc-950 text-white">
-    <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+  <GridBgSection className="min-h-screen bg-zinc-950 text-white">
     <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="h-12 w-2/3 rounded-xl bg-white/10 animate-pulse" />
       <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -46,7 +46,7 @@ const Skeleton: React.FC = () => (
         ))}
       </div>
     </div>
-  </div>
+  </GridBgSection>
 );
 
 const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
@@ -95,14 +95,20 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   if (!tournament) return <Skeleton />;
 
   return (
-    <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Fixed Vanta background */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+    <div className="relative min-h-screen bg-zinc-950">
+      {/* Fixed GridBg background that fits screen */}
+      <div className="fixed inset-0 -z-10">
+        <GridBgSection
+          className="h-screen w-screen"
+          baseColor="#1F1B2E"
+          activeColor="#F59E0B"
+        />
+      </div>
 
-      {/* Page content */}
+      {/* Scrollable content */}
       <div className="relative z-10">
         <div className="container mx-auto max-w-7xl px-4 py-8 space-y-8">
-          {/* Tournament Header */}
+          {/* Tournament Header - Centered with Logo */}
           <motion.header
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -118,87 +124,134 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             {/* Decorative corner accents */}
             <div className="pointer-events-none absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-transparent rounded-tl-3xl" />
             <div className="pointer-events-none absolute bottom-0 right-0 w-32 h-32 bg-gradient-to-tl from-amber-500/10 to-transparent rounded-br-3xl" />
-          
-            <div className="relative px-8 py-10 md:px-12 md:py-14">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                {/* Left side - Title */}
-                <div className="space-y-3">
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2, duration: 0.5 }}
-                    className="inline-flex items-center gap-2 rounded-full bg-black/60 border border-white/15 px-4 py-1.5"
-                  >
-                    <GiTrophy className="h-4 w-4 text-red-400" />
-                    <span className="text-[10px] tracking-[0.18em] uppercase text-white/70 font-semibold">
-                      {tournament.status === 'running' ? 'Σε Εξέλιξη' :
-                       tournament.status === 'completed' ? 'Ολοκληρωμένο' :
-                       'Προγραμματισμένο'}
-                    </span>
-                    <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-                  </motion.div>
 
-                  <motion.h1
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.5 }}
-                    className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white"
+            <div className="relative px-8 py-12 md:px-12 md:py-16">
+              {/* Centered Content */}
+              <div className="flex flex-col items-center text-center space-y-6">
+                {/* Status Badge */}
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
+                  className="inline-flex items-center gap-2 rounded-full bg-black/60 border border-white/15 px-4 py-1.5"
+                >
+                  <GiTrophy className="h-4 w-4 text-red-400" />
+                  <span className="text-[10px] tracking-[0.18em] uppercase text-white/70 font-semibold">
+                    {tournament.status === 'running' ? 'Σε Εξέλιξη' :
+                     tournament.status === 'completed' ? 'Ολοκληρωμένο' :
+                     'Προγραμματισμένο'}
+                  </span>
+                  <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                </motion.div>
+
+                {/* Tournament Logo with Light Rays */}
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6, type: "spring", stiffness: 150 }}
+                  className="relative"
+                >
+                  <div className="relative h-40 w-40 sm:h-48 sm:w-48 md:h-56 md:w-56 lg:h-64 lg:w-64">
+                    <div className="absolute inset-0 rounded-full bg-black/70 border-2 border-white/15 shadow-[0_0_40px_rgba(0,0,0,0.9)] overflow-hidden">
+                      {tournament.logo ? (
+                        <LightRays
+                          className="h-full w-full rounded-full"
+                          raysOrigin="top-center"
+                          raysColor="#ffffff"
+                          raysSpeed={1.2}
+                          lightSpread={0.9}
+                          rayLength={1.5}
+                          followMouse
+                          mouseInfluence={0.16}
+                          noiseAmount={0.08}
+                          distortion={0.03}
+                          logoSrc={tournament.logo}
+                          logoStrength={4}
+                          logoFit="cover"
+                          logoScale={1.0}
+                          popIn
+                          popDuration={800}
+                          popDelay={100}
+                          popScaleFrom={0.85}
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-red-600 to-amber-600">
+                          <GiLaurelCrown className="h-24 w-24 text-white/90" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Outer glow ring */}
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-500/20 via-amber-500/20 to-transparent opacity-100 blur-xl -z-10 animate-pulse" />
+                  </div>
+                </motion.div>
+
+                {/* Tournament Title with Shiny Effect */}
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="space-y-3"
+                >
+                  <h1
+                    className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tight"
                     style={{
-                      textShadow:
-                        "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                      color: "#b5b5b5a4",
+                      background: "linear-gradient(120deg, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 255, 255, 0) 60%)",
+                      backgroundSize: "200% 100%",
+                      WebkitBackgroundClip: "text",
+                      backgroundClip: "text",
+                      animation: "shine 5s linear infinite",
+                      textShadow: "2px 2px 8px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
                     }}
                   >
                     {tournament.name}
-                  </motion.h1>
+                  </h1>
 
                   {tournament.season && (
-                    <motion.p
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.4, duration: 0.5 }}
-                      className="text-lg text-white/80 font-medium"
+                    <p
+                      className="text-xl md:text-2xl text-white/80 font-bold uppercase tracking-wide"
                       style={{
                         textShadow: "1px 1px 3px rgba(0,0,0,0.85)",
                       }}
                     >
                       Σεζόν {tournament.season}
-                    </motion.p>
+                    </p>
                   )}
-                </div>
+                </motion.div>
 
-                {/* Right side - Stats */}
+                {/* Stats Row */}
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.5, duration: 0.5 }}
-                  className="flex gap-4 md:gap-6"
+                  transition={{ delay: 0.7, duration: 0.5 }}
+                  className="flex flex-wrap justify-center gap-4 md:gap-6 mt-6"
                 >
-                  <div className="flex flex-col items-center justify-center rounded-2xl px-4 py-3 bg-black/45 border border-white/10 hover:border-red-400/40 hover:bg-black/60 transition-all duration-300">
-                    <Users className="h-5 w-5 text-red-400 mb-1" />
-                    <div className="text-3xl md:text-4xl font-black text-white tabular-nums">
+                  <div className="flex flex-col items-center justify-center rounded-2xl px-6 py-4 bg-black/45 border border-white/10 hover:border-red-400/40 hover:bg-black/60 hover:scale-105 transition-all duration-300">
+                    <Users className="h-6 w-6 text-red-400 mb-2" />
+                    <div className="text-4xl md:text-5xl font-black text-white tabular-nums">
                       {initialData.teams.length}
                     </div>
-                    <div className="text-[9px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-1">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-2">
                       Ομάδες
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center justify-center rounded-2xl px-4 py-3 bg-black/45 border border-white/10 hover:border-amber-400/40 hover:bg-black/60 transition-all duration-300">
-                    <Target className="h-5 w-5 text-amber-400 mb-1" />
-                    <div className="text-3xl md:text-4xl font-black text-white tabular-nums">
+                  <div className="flex flex-col items-center justify-center rounded-2xl px-6 py-4 bg-black/45 border border-white/10 hover:border-amber-400/40 hover:bg-black/60 hover:scale-105 transition-all duration-300">
+                    <Target className="h-6 w-6 text-amber-400 mb-2" />
+                    <div className="text-4xl md:text-5xl font-black text-white tabular-nums">
                       {sortedStages.length}
                     </div>
-                    <div className="text-[9px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-1">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-2">
                       Στάδια
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center justify-center rounded-2xl px-4 py-3 bg-black/45 border border-white/10 hover:border-red-400/40 hover:bg-black/60 transition-all duration-300">
-                    <GiSoccerBall className="h-5 w-5 text-red-400 mb-1" />
-                    <div className="text-3xl md:text-4xl font-black text-white tabular-nums">
+                  <div className="flex flex-col items-center justify-center rounded-2xl px-6 py-4 bg-black/45 border border-white/10 hover:border-red-400/40 hover:bg-black/60 hover:scale-105 transition-all duration-300">
+                    <GiSoccerBall className="h-6 w-6 text-red-400 mb-2" />
+                    <div className="text-4xl md:text-5xl font-black text-white tabular-nums">
                       {initialData.matches.length}
                     </div>
-                    <div className="text-[9px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-1">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-white/55 font-semibold mt-2">
                       Αγώνες
                     </div>
                   </div>
@@ -206,6 +259,14 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </div>
             </div>
           </motion.header>
+
+          {/* Add keyframes for shine animation */}
+          <style jsx global>{`
+            @keyframes shine {
+              0% { background-position: 100%; }
+              100% { background-position: -100%; }
+            }
+          `}</style>
 
           {/* Stages Section */}
           <div className="space-y-6">
@@ -334,7 +395,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };
 
