@@ -60,137 +60,221 @@ const KnockoutBracket: React.FC<KnockoutBracketProps> = ({ matches }) => {
 
   const getRoundName = (roundNum: number, totalRounds: number) => {
     const remaining = totalRounds - roundNum + 1;
-    if (remaining === 1) return "Τελικός";
-    if (remaining === 2) return "Ημιτελικοί";
-    if (remaining === 3) return "Προημιτελικοί";
-    if (remaining === 4) return "Φάση των 16";
-    return `Γύρος ${roundNum}`;
+    if (remaining === 1) return "ΤΕΛΙΚΟΣ";
+    if (remaining === 2) return "ΗΜΙΤΕΛΙΚΟΙ";
+    if (remaining === 3) return "ΠΡΟΗΜΙΤΕΛΙΚΟΙ";
+    if (remaining === 4) return "ΦΑΣΗ ΤΩΝ 16";
+    return `ΓΥΡΟΣ ${roundNum}`;
   };
 
   if (matches.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-white/60">Δεν υπάρχουν αγώνες νοκ-άουτ ακόμα.</p>
+      <div className="text-center py-20">
+        <div className="inline-flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center">
+            <span className="text-4xl">🏆</span>
+          </div>
+          <p className="text-white/60 text-lg">Δεν υπάρχουν αγώνες νοκ-άουτ</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <div className="inline-flex gap-8 min-w-full p-6">
-        {rounds.map(({ roundNum, matches: roundMatches }, roundIdx) => (
-          <div key={roundNum} className="flex flex-col gap-4 min-w-[280px]">
-            {/* Round Header */}
-            <div className="sticky top-0 z-10 pb-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#FFD700] to-[#B38600] text-black font-bold text-sm shadow-lg">
-                <span className="text-lg">🏆</span>
-                {getRoundName(roundNum, rounds.length)}
+    <div className="py-8">
+      {/* Rounds */}
+      <div className="space-y-16">
+        {rounds.map(({ roundNum, matches: roundMatches }) => (
+          <div key={roundNum}>
+            {/* Round Title */}
+            <div className="mb-8 text-center">
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-[#FFD700] via-[#E6BE00] to-[#FFD700] shadow-[0_0_30px_rgba(255,215,0,0.4)]">
+                <span className="text-2xl">🏆</span>
+                <h3 className="text-xl font-black text-black tracking-wider">
+                  {getRoundName(roundNum, rounds.length)}
+                </h3>
               </div>
             </div>
 
-            {/* Matches in this round */}
-            <div className="flex flex-col gap-6">
+            {/* Matches Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-7xl mx-auto px-4">
               {roundMatches.map((match) => {
                 const isFinished = match.status === "finished";
-                const teamAWon = match.winner_team_id === match.team_a_id;
-                const teamBWon = match.winner_team_id === match.team_b_id;
+                const teamAWon = isFinished && match.winner_team_id === match.team_a_id;
+                const teamBWon = isFinished && match.winner_team_id === match.team_b_id;
+                const logoA = getTeamLogo(match.team_a_id);
+                const logoB = getTeamLogo(match.team_b_id);
 
                 return (
                   <div
                     key={match.db_id ?? `${roundNum}-${match.bracket_pos}`}
-                    className="group relative rounded-2xl border border-white/20 bg-black/60 backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.03),0_8px_16px_rgba(0,0,0,0.6)] hover:border-[#FFD700]/40 hover:shadow-[inset_0_1px_1px_rgba(255,215,0,0.1),0_12px_24px_rgba(255,215,0,0.2)] transition-all duration-300"
+                    className="relative group"
                   >
-                    {/* Match Header */}
-                    <div className="px-4 py-2 border-b border-white/10 bg-gradient-to-r from-[#FFD700]/5 to-transparent">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-medium text-white/60">
-                          Match {match.bracket_pos}
-                        </span>
-                        {match.match_date && (
-                          <span className="text-[10px] text-white/50">
-                            {new Date(match.match_date).toLocaleDateString("el-GR", {
-                              month: "short",
-                              day: "numeric",
-                            })}
+                    {/* Match Card */}
+                    <div className="relative rounded-3xl border-2 border-white/20 bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl overflow-hidden shadow-2xl hover:border-[#FFD700]/50 hover:shadow-[0_0_40px_rgba(255,215,0,0.3)] transition-all duration-500">
+                      {/* Match Number Badge */}
+                      <div className="absolute top-4 right-4 z-10">
+                        <div className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+                          <span className="text-xs font-bold text-white/80">
+                            #{match.bracket_pos}
                           </span>
-                        )}
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Teams */}
-                    <div className="p-3 space-y-2">
                       {/* Team A */}
                       <div
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                          isFinished && teamAWon
-                            ? "bg-[#FFD700]/20 border-2 border-[#FFD700]/50 shadow-[0_0_20px_rgba(255,215,0,0.3)]"
-                            : "bg-white/[0.03] border border-white/10 hover:bg-white/[0.05]"
-                        }`}
+                        className={`relative p-6 ${
+                          teamAWon
+                            ? "bg-gradient-to-br from-[#FFD700]/30 to-[#B38600]/20"
+                            : "bg-black/20"
+                        } transition-all duration-300`}
                       >
-                        {getTeamLogo(match.team_a_id) && (
-                          <img
-                            src={getTeamLogo(match.team_a_id)!}
-                            alt=""
-                            className="w-8 h-8 rounded-full object-cover ring-2 ring-white/20"
-                          />
-                        )}
-                        <span className="flex-1 text-sm font-semibold text-white truncate">
-                          {getTeamName(match.team_a_id)}
-                        </span>
-                        {isFinished && (
-                          <span
-                            className={`text-xl font-bold min-w-[2rem] text-right ${
-                              teamAWon ? "text-[#FFD700]" : "text-white/30"
-                            }`}
+                        <div className="flex items-center gap-4">
+                          {/* Logo */}
+                          <div
+                            className={`flex-shrink-0 w-16 h-16 rounded-2xl ${
+                              teamAWon
+                                ? "bg-gradient-to-br from-[#FFD700] to-[#B38600] p-0.5 shadow-[0_0_20px_rgba(255,215,0,0.6)]"
+                                : "bg-white/10"
+                            } overflow-hidden`}
                           >
-                            {match.team_a_score ?? 0}
-                          </span>
-                        )}
+                            {logoA ? (
+                              <div className="w-full h-full bg-black/90 rounded-2xl flex items-center justify-center p-2">
+                                <img
+                                  src={logoA}
+                                  alt=""
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 rounded-2xl flex items-center justify-center">
+                                <span className="text-2xl font-bold text-white/40">?</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Team Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4
+                              className={`font-bold text-sm mb-1 truncate ${
+                                teamAWon ? "text-[#FFD700]" : "text-white"
+                              }`}
+                            >
+                              {getTeamName(match.team_a_id)}
+                            </h4>
+                            {match.match_date && !isFinished && (
+                              <p className="text-xs text-white/50">
+                                {new Date(match.match_date).toLocaleDateString("el-GR", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Score */}
+                          {isFinished && (
+                            <div
+                              className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${
+                                teamAWon
+                                  ? "bg-[#FFD700] text-black shadow-lg"
+                                  : "bg-white/10 text-white/50"
+                              }`}
+                            >
+                              <span className="text-2xl font-black">
+                                {match.team_a_score ?? 0}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* VS Divider */}
-                      <div className="flex items-center justify-center">
-                        <span className="text-xs font-bold text-white/40">VS</span>
+                      <div className="relative h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent">
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                          <div className="px-3 py-1 rounded-full bg-black border border-white/20">
+                            <span className="text-xs font-bold text-white/60">VS</span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Team B */}
                       <div
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                          isFinished && teamBWon
-                            ? "bg-[#FFD700]/20 border-2 border-[#FFD700]/50 shadow-[0_0_20px_rgba(255,215,0,0.3)]"
-                            : "bg-white/[0.03] border border-white/10 hover:bg-white/[0.05]"
-                        }`}
+                        className={`relative p-6 ${
+                          teamBWon
+                            ? "bg-gradient-to-br from-[#FFD700]/30 to-[#B38600]/20"
+                            : "bg-black/20"
+                        } transition-all duration-300`}
                       >
-                        {getTeamLogo(match.team_b_id) && (
-                          <img
-                            src={getTeamLogo(match.team_b_id)!}
-                            alt=""
-                            className="w-8 h-8 rounded-full object-cover ring-2 ring-white/20"
-                          />
-                        )}
-                        <span className="flex-1 text-sm font-semibold text-white truncate">
-                          {getTeamName(match.team_b_id)}
-                        </span>
-                        {isFinished && (
-                          <span
-                            className={`text-xl font-bold min-w-[2rem] text-right ${
-                              teamBWon ? "text-[#FFD700]" : "text-white/30"
-                            }`}
+                        <div className="flex items-center gap-4">
+                          {/* Logo */}
+                          <div
+                            className={`flex-shrink-0 w-16 h-16 rounded-2xl ${
+                              teamBWon
+                                ? "bg-gradient-to-br from-[#FFD700] to-[#B38600] p-0.5 shadow-[0_0_20px_rgba(255,215,0,0.6)]"
+                                : "bg-white/10"
+                            } overflow-hidden`}
                           >
-                            {match.team_b_score ?? 0}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                            {logoB ? (
+                              <div className="w-full h-full bg-black/90 rounded-2xl flex items-center justify-center p-2">
+                                <img
+                                  src={logoB}
+                                  alt=""
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 rounded-2xl flex items-center justify-center">
+                                <span className="text-2xl font-bold text-white/40">?</span>
+                              </div>
+                            )}
+                          </div>
 
-                    {/* Status Badge */}
-                    {!isFinished && (
-                      <div className="absolute -top-2 -right-2">
-                        <div className="px-2 py-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white text-[10px] font-bold shadow-lg">
-                          Upcoming
+                          {/* Team Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4
+                              className={`font-bold text-sm mb-1 truncate ${
+                                teamBWon ? "text-[#FFD700]" : "text-white"
+                              }`}
+                            >
+                              {getTeamName(match.team_b_id)}
+                            </h4>
+                            {match.match_date && !isFinished && (
+                              <p className="text-xs text-white/50">
+                                {new Date(match.match_date).toLocaleString("el-GR", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Score */}
+                          {isFinished && (
+                            <div
+                              className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${
+                                teamBWon
+                                  ? "bg-[#FFD700] text-black shadow-lg"
+                                  : "bg-white/10 text-white/50"
+                              }`}
+                            >
+                              <span className="text-2xl font-black">
+                                {match.team_b_score ?? 0}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
+
+                      {/* Winner Crown */}
+                      {isFinished && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FFD700] to-[#B38600] flex items-center justify-center shadow-[0_0_20px_rgba(255,215,0,0.8)] border-4 border-black">
+                            <span className="text-xl">👑</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}

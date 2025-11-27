@@ -18,11 +18,7 @@ const KOStageDisplay = () => {
     return (matches ?? []).filter((match) => match.stageIdx === knockoutStageIdx);
   }, [knockoutStageIdx, matches]);
 
-  return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-sm overflow-hidden">
-      <KnockoutBracket matches={knockoutMatches} />
-    </div>
-  );
+  return <KnockoutBracket matches={knockoutMatches} />;
 };
 
 export default KOStageDisplay;
