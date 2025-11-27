@@ -155,6 +155,7 @@ export default async function Page({
         (p) => p.player.id === part.player_id
       )?.player;
       if (!player) return null;
+      const stats = existingStats.get(part.player_id);
       return {
         player: {
           id: player.id,
@@ -164,6 +165,7 @@ export default async function Page({
         },
         teamId: part.team_id,
         played: part.played,
+        playerNumber: stats?.player_number ?? null,
       };
     })
     .filter((p) => p !== null);

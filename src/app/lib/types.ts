@@ -504,6 +504,7 @@ export type MatchPlayerStatRow = {
   gk?: boolean;
   mvp?: boolean;
   best_goalkeeper?: boolean;
+  player_number?: number | null;
 };
 
 
