@@ -149,8 +149,8 @@ const KOStageDisplay = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-center text-Black">Knockout Stage</h2>
-      <div className="overflow-auto bg-black p-4 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold text-center text-white">Knockout Stage</h2>
+      <div className="overflow-auto bg-zinc-950/60 p-4 rounded-2xl border border-white/10 shadow-lg">
         <KOStageViewer
           nodes={nodes}
           connections={connections}
@@ -160,10 +160,10 @@ const KOStageDisplay = () => {
             const nameB = getTeamName(teamsNode.B);
             return (
               <div className="text-center text-white">
-                <div>
+                <div className="font-medium">
                   {nameA} vs {nameB}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-white/70">
                   Round {nodeMeta[n.id]?.round} • Pos {nodeMeta[n.id]?.bracket_pos}
                 </div>
               </div>
