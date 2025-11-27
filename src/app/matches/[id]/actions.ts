@@ -46,7 +46,7 @@ export async function saveAllStatsAction(formData: FormData) {
     .update({ referee: referee && referee.length ? referee : null })
     .eq('id', match_id);
 
-  /** Stats row - ✅ UPDATED: now includes own_goals */
+  /** Stats row - ✅ UPDATED: now includes own_goals and player_number */
   type Row = {
     match_id: number;
     team_id: number;
@@ -62,6 +62,7 @@ export async function saveAllStatsAction(formData: FormData) {
     position?: string | null;
     is_captain?: boolean;
     gk?: boolean;
+    player_number?: number | null;
     _delete?: boolean;
   };
 
@@ -76,9 +77,9 @@ export async function saveAllStatsAction(formData: FormData) {
   const statsRows = new Map<string, Row>();
   const partRows = new Map<string, ParticipantFormRow>();
 
-  // ✅ UPDATED: regex now captures own_goals too
+  // ✅ UPDATED: regex now captures own_goals and player_number too
   const statsRe =
-    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|own_goals|yellow_cards|red_cards|blue_cards|position|is_captain|gk|_delete)\]$/;
+    /^players\[(\d+)\]\[(\d+)\]\[(team_id|player_id|goals|assists|own_goals|yellow_cards|red_cards|blue_cards|position|is_captain|gk|player_number|_delete)\]$/;
 
   // participants[...] regex (participation) – attendance only
   const partRe = /^participants\[(\d+)\]\[(\d+)\]\[(played)\]$/;
@@ -108,6 +109,7 @@ export async function saveAllStatsAction(formData: FormData) {
             blue_cards: 0,
             mvp: false,
             best_goalkeeper: false,
+            player_number: null,
           });
         }
 
@@ -123,6 +125,10 @@ export async function saveAllStatsAction(formData: FormData) {
         } else if (field === 'position') {
           const tpos = (val ?? '').trim();
           (row as any).position = tpos && tpos.toUpperCase() !== 'TBD' ? tpos : null;
+        } else if (field === 'player_number') {
+          const trimmed = (val ?? '').trim();
+          const n = Number(trimmed);
+          (row as any).player_number = trimmed && Number.isFinite(n) ? n : null;
         } else {
           const n = Number(val);
           (row as any)[field] = Number.isFinite(n) ? Math.max(0, n) : 0;

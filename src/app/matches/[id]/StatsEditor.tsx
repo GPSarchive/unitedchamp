@@ -104,6 +104,7 @@ export default function StatsEditor({
           const yc = String(stats?.yellow_cards ?? 0);
           const rc = String(stats?.red_cards ?? 0);
           const bc = String(stats?.blue_cards ?? 0);
+          const playerNumber = String(stats?.player_number ?? "");
 
           return (
             <div
@@ -185,6 +186,7 @@ export default function StatsEditor({
                   <input type="hidden" name={`${baseStats}[yellow_cards]`} value="0" />
                   <input type="hidden" name={`${baseStats}[red_cards]`} value="0" />
                   <input type="hidden" name={`${baseStats}[blue_cards]`} value="0" />
+                  <input type="hidden" name={`${baseStats}[player_number]`} value="" />
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {/* Position */}
@@ -198,6 +200,24 @@ export default function StatsEditor({
                         value={posVal}
                         placeholder="e.g. FW, MF, DF, GK"
                         onChange={(e) => handleStatChange(p.id, 'position', e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        readOnly={readOnly || !playedOn}
+                      />
+                    </div>
+
+                    {/* Player Number */}
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">
+                        Player Number
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="\d*"
+                        name={`${baseStats}[player_number]`}
+                        value={playerNumber}
+                        placeholder="e.g. 10"
+                        onChange={(e) => handleStatChange(p.id, 'player_number', e.target.value)}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         readOnly={readOnly || !playedOn}
                       />

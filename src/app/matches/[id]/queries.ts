@@ -104,6 +104,7 @@ export async function fetchMatchStatsMap(matchId: Id) {
       player_id,
       goals,
       assists,
+      own_goals,
       yellow_cards,
       red_cards,
       blue_cards,
@@ -111,7 +112,8 @@ export async function fetchMatchStatsMap(matchId: Id) {
       is_captain,
       gk,
       mvp,
-      best_goalkeeper
+      best_goalkeeper,
+      player_number
     `
     )
     .eq("match_id", matchId);
