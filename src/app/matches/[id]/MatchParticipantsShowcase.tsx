@@ -190,18 +190,6 @@ function ParticipantCard({
         className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-shadow hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
         style={{ width: "140px" }}
       >
-        {/* Player Number Badge - Top Left */}
-        {playerNumber && (
-          <div
-            className="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-sm font-bold text-white shadow-lg"
-            style={{
-              textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-            }}
-          >
-            {playerNumber}
-          </div>
-        )}
-
         {/* Avatar wrapper */}
         <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
           {!isPlaceholderPhoto ? (
@@ -240,6 +228,7 @@ function ParticipantCard({
                 "1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000",
             }}
           >
+            {playerNumber && <span className="text-red-400">#{playerNumber} </span>}
             {firstName}
           </div>
           {player.last_name && (
