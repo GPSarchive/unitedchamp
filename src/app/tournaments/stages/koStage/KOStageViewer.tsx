@@ -3,6 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BracketBackground, BackgroundPattern } from "./BracketBackground";
+import { generateLinePath, LineStyle } from "./BracketLineStyles";
 
 export type NodeBox = { id: string; x: number; y: number; w: number; h: number; label?: string };
 
@@ -16,6 +17,7 @@ type Props = {
   minZoom?: number;
   maxZoom?: number;
   backgroundPattern?: BackgroundPattern;
+  lineStyle?: LineStyle;
 };
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -28,6 +30,7 @@ const KOStageViewer = ({
   minZoom = 0.4,
   maxZoom = 3,
   backgroundPattern = "subtle-dots",
+  lineStyle = "rounded-orthogonal",
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +53,7 @@ const KOStageViewer = ({
 
   const [zoom, setZoom] = useState(1);
   const [selectedPattern, setSelectedPattern] = useState<BackgroundPattern>(backgroundPattern);
+  const [selectedLineStyle, setSelectedLineStyle] = useState<LineStyle>(lineStyle);
 
   // Fit height on mount and resize. Keeps vertical size fixed at container height.
   useEffect(() => {
@@ -179,6 +183,22 @@ const KOStageViewer = ({
     <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40">
       {/* Controls */}
       <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col gap-2">
+        {/* Line Style Selector */}
+        <div className="rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+          <select
+            value={selectedLineStyle}
+            onChange={(e) => setSelectedLineStyle(e.target.value as LineStyle)}
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-emerald-400/40 transition-colors cursor-pointer"
+            aria-label="Line style"
+          >
+            <option value="rounded-orthogonal">Rounded Orthogonal</option>
+            <option value="smooth-bezier">Smooth Bezier</option>
+            <option value="sharp-orthogonal">Sharp Orthogonal</option>
+            <option value="elbow">Elbow</option>
+            <option value="straight">Straight</option>
+          </select>
+        </div>
+
         {/* Pattern Selector */}
         <div className="rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
           <select
@@ -307,20 +327,15 @@ const KOStageViewer = ({
                 let x2 = rtl ? b.x + b.w + 6 : b.x - 6;
                 let y2 = b.y + b.h / 2;
 
-                const dx = Math.max(40, Math.abs(x2 - x1) * 0.35);
-                const c1x = rtl ? x1 - dx : x1 + dx;
-                const c2x = rtl ? x2 + dx : x2 - dx;
-                const c1y = y1;
-                const c2y = y2;
-
-                const d = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
+                // Generate path based on selected line style
+                const d = generateLinePath(selectedLineStyle, { x1, y1, x2, y2, rtl });
 
                 return (
                   <g key={idx} className="pointer-events-none">
                     {/* Outer glow/shadow */}
-                    <path d={d} fill="none" stroke="rgba(16,185,129,0.15)" strokeWidth={8} strokeLinecap="round" />
+                    <path d={d} fill="none" stroke="rgba(16,185,129,0.15)" strokeWidth={8} strokeLinecap="round" strokeLinejoin="round" />
                     {/* Main gradient stroke with glow filter */}
-                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={3.5} strokeLinecap="round" filter="url(#emeraldGlow)" />
+                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" filter="url(#emeraldGlow)" />
                   </g>
                 );
               })}
