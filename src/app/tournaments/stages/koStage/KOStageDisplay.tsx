@@ -161,10 +161,22 @@ const KOStageDisplay = () => {
             const nameB = getTeamName(teamsNode.B);
             const isFirstNode = n.id === "R1-B1";
             return (
-              <div className="text-center text-white">
-                <div className="font-medium">
+              <div className="flex flex-col items-center justify-center gap-2 text-white h-full">
+                {/* Logo Rings */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
+                    <span className="text-xs text-amber-400/60">A</span>
+                  </div>
+                  <span className="text-xs text-orange-400/80 font-medium">vs</span>
+                  <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
+                    <span className="text-xs text-orange-400/60">B</span>
+                  </div>
+                </div>
+                {/* Team Names */}
+                <div className="font-medium text-sm">
                   {nameA} vs {nameB}
                 </div>
+                {/* Tournament Name for R1-B1 */}
                 {isFirstNode && tournament && (
                   <div className="text-xs text-amber-300/90 font-semibold mt-1">
                     {tournament.name} • Knockout Stage
