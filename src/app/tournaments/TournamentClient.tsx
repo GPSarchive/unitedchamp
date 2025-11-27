@@ -91,8 +91,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <div className="container mx-auto max-w-7xl px-4 py-8 space-y-8">
-        {/* Tournament Header */}
+      {/* Tournament Header - Contained */}
+      <div className="container mx-auto max-w-7xl px-4 py-8">
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -106,14 +106,14 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               {/* Left side - Title */}
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-700/30 border border-emerald-400/40 text-emerald-200 text-sm font-medium">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-900/40 border border-orange-500/50 text-orange-200 text-sm font-medium">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
                   {tournament.status === 'running' ? 'Σε Εξέλιξη' :
                    tournament.status === 'completed' ? 'Ολοκληρωμένο' :
                    'Προγραμματισμένο'}
                 </div>
 
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-300">
                   {tournament.name}
                 </h1>
 
@@ -127,7 +127,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               {/* Right side - Stats */}
               <div className="flex gap-6">
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400">
                     {initialData.teams.length}
                   </div>
                   <div className="text-sm text-white/70 font-medium mt-1">
@@ -136,7 +136,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                 </div>
 
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400">
                     {sortedStages.length}
                   </div>
                   <div className="text-sm text-white/70 font-medium mt-1">
@@ -145,7 +145,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                 </div>
 
                 <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
+                  <div className="text-3xl md:text-4xl font-bold text-amber-400">
                     {initialData.matches.length}
                   </div>
                   <div className="text-sm text-white/70 font-medium mt-1">
@@ -156,10 +156,12 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             </div>
           </div>
         </motion.header>
+      </div>
 
-        {/* Stages Section */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
+      {/* Stages Section - Full Width with distinct background */}
+      <section className="w-full bg-gradient-to-b from-zinc-900/50 via-zinc-900/30 to-zinc-950 border-y border-orange-500/10 py-12 mt-8">
+        <div className="container mx-auto max-w-7xl px-4">
+          <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold text-white">
               Στάδια Τουρνουά
             </h2>
@@ -189,7 +191,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </p>
             </motion.div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <AnimatePresence mode="wait">
                 {sortedStages.map((stage, index) => {
                   const Renderer = getRendererForStage(stage);
@@ -201,20 +203,24 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className="relative"
                     >
-                      <div className="rounded-2xl border border-white/10 bg-zinc-950/60 hover:bg-zinc-950/80 shadow-lg hover:shadow-xl transition-all overflow-hidden">
+                      {/* Full-width background for each stage */}
+                      <div className="absolute inset-0 -mx-4 md:-mx-8 lg:-mx-16 bg-gradient-to-r from-orange-950/20 via-zinc-900/40 to-orange-950/20 border-y border-orange-500/5" />
+
+                      <div className="relative rounded-2xl border border-orange-500/20 bg-zinc-950/60 hover:bg-zinc-950/80 shadow-lg hover:shadow-xl hover:shadow-orange-500/10 transition-all overflow-hidden">
                         {/* Stage Header */}
-                        <header className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black">
+                        <header className="px-6 py-5 border-b border-orange-500/20 bg-gradient-to-r from-black via-zinc-950 to-black">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_0_1px_rgba(249,115,22,0.3)_inset]">
                                 {index + 1}
                               </div>
                               <div>
                                 <h3 className="text-xl font-bold text-white">
                                   {stage.name}
                                 </h3>
-                                <p className="text-sm text-white/70">
+                                <p className="text-sm text-orange-200/70">
                                   {stage.kind === 'league' && 'Πρωτάθλημα'}
                                   {stage.kind === 'groups' && 'Όμιλοι'}
                                   {stage.kind === 'knockout' && 'Νοκ-άουτ'}
@@ -223,7 +229,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                               </div>
                             </div>
 
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/15 text-white text-sm font-medium">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-orange-500/20 text-white text-sm font-medium">
                               {stage.kind === 'league' && '👥'}
                               {stage.kind === 'groups' && '👥'}
                               {stage.kind === 'knockout' && '🏆'}
@@ -244,8 +250,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </AnimatePresence>
             </div>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 };
