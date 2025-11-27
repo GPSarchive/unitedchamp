@@ -172,12 +172,12 @@ const KOStageViewer = ({
   const trackHeight = baseHeight * zoom;
 
   return (
-    <div className="relative w-full rounded-xl border border-white/10 bg-gradient-to-br from-black-950/60 via-[#2a0a0a]/60 to-black-950/50">
+    <div className="relative w-full rounded-xl border border-white/10 bg-black/60 backdrop-blur-sm">
       {/* Controls */}
-      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex items-center gap-2 rounded-xl bg-black/40 p-2 backdrop-blur-sm">
+      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex items-center gap-2 rounded-xl bg-black/60 border border-white/10 p-2 backdrop-blur-sm">
         <button
           type="button"
-          className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
+          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 hover:text-[#FFD700] transition-all"
           onClick={() => setZoomAt(zoom / 1.1)}
           aria-label="Zoom out"
         >
@@ -185,7 +185,7 @@ const KOStageViewer = ({
         </button>
         <input
           aria-label="Zoom"
-          className="h-6 w-28 accent-white/80"
+          className="h-6 w-28 accent-[#FFD700]"
           type="range"
           min={minZoom}
           max={maxZoom}
@@ -195,7 +195,7 @@ const KOStageViewer = ({
         />
         <button
           type="button"
-          className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
+          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 hover:text-[#FFD700] transition-all"
           onClick={() => setZoomAt(zoom * 1.1)}
           aria-label="Zoom in"
         >
@@ -203,7 +203,7 @@ const KOStageViewer = ({
         </button>
         <button
           type="button"
-          className="ml-1 rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
+          className="ml-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90 hover:bg-[#FFD700]/20 hover:border-[#FFD700]/30 hover:text-[#FFD700] transition-all"
           onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
         >
           Fit H
@@ -246,12 +246,14 @@ const KOStageViewer = ({
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
                 <linearGradient id="edgeGradLTR" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                  <stop offset="0%" stopColor="rgba(255,215,0,0.3)" />
+                  <stop offset="50%" stopColor="rgba(255,215,0,0.5)" />
+                  <stop offset="100%" stopColor="rgba(255,215,0,0.7)" />
                 </linearGradient>
                 <linearGradient id="edgeGradRTL" x1="100%" y1="0%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                  <stop offset="0%" stopColor="rgba(255,215,0,0.3)" />
+                  <stop offset="50%" stopColor="rgba(255,215,0,0.5)" />
+                  <stop offset="100%" stopColor="rgba(255,215,0,0.7)" />
                 </linearGradient>
               </defs>
 
@@ -279,8 +281,8 @@ const KOStageViewer = ({
 
                 return (
                   <g key={idx} className="pointer-events-none">
-                    <path d={d} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={6} strokeLinecap="round" />
-                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={3} strokeLinecap="round" />
+                    <path d={d} fill="none" stroke="rgba(255,215,0,0.1)" strokeWidth={6} strokeLinecap="round" />
+                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={2.5} strokeLinecap="round" />
                   </g>
                 );
               })}
@@ -290,15 +292,14 @@ const KOStageViewer = ({
             {nodes.map((n) => (
               <div
                 key={n.id}
-                className="absolute rounded-2xl border border-white/15 bg-white/5 p-2 text-white backdrop-blur-sm"
+                className="absolute rounded-2xl border border-white/20 bg-black/60 backdrop-blur-sm shadow-[inset_0_1px_1px_rgba(255,255,255,0.03),0_8px_16px_rgba(0,0,0,0.6)] hover:border-[#FFD700]/30 hover:shadow-[inset_0_1px_1px_rgba(255,215,0,0.1),0_12px_24px_rgba(255,215,0,0.15)] transition-all duration-200"
                 style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
               >
-                <div className="flex items-center justify-between text-xs text-white/70">
-                  <span className="truncate">{n.label ?? n.id}</span>
+                <div className="px-2 py-1.5 border-b border-white/10 bg-gradient-to-r from-[#FFD700]/5 to-transparent">
+                  <span className="text-[10px] font-medium text-white/70 truncate block">{n.label ?? n.id}</span>
                 </div>
-                <div className="mt-1 h-[1px] w-full bg-white/10" />
-                <div className="flex-1 min-h-0 text-sm leading-tight">
-                  {nodeContent ? <div className="h-full">{nodeContent(n)}</div> : <div className="opacity-80 text-white/90">{n.label ?? n.id}</div>}
+                <div className="flex-1 min-h-0 text-sm leading-tight p-1">
+                  {nodeContent ? <div className="h-full">{nodeContent(n)}</div> : <div className="opacity-80 text-white/90 p-2">{n.label ?? n.id}</div>}
                 </div>
               </div>
             ))}
@@ -306,7 +307,7 @@ const KOStageViewer = ({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-black/35 px-2 py-1 text-[11px] text-white/80">
+      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-black/60 border border-white/10 px-2 py-1 text-[11px] text-white/70 backdrop-blur-sm">
         Scroll H/V · Drag to pan · Pinch/Ctrl+wheel to zoom
       </div>
     </div>

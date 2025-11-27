@@ -147,30 +147,84 @@ const KOStageDisplay = () => {
     return team?.name ?? `Team #${id}`;
   };
 
+  const getTeamLogo = (id: number | null) => {
+    if (id == null) return null;
+    const team = teams?.find((t) => t.id === id);
+    return team?.logo ?? null;
+  };
+
+  const getMatchInfo = (nodeId: string) => {
+    const meta = nodeMeta[nodeId];
+    if (!meta) return null;
+
+    const match = knockoutMatches.find(
+      m => m.round === meta.round && m.bracket_pos === meta.bracket_pos
+    );
+    return match;
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-center text-Black">Knockout Stage</h2>
-      <div className="overflow-auto bg-black p-4 rounded-lg shadow-lg">
-        <KOStageViewer
-          nodes={nodes}
-          connections={connections}
-          nodeContent={(n) => {
-            const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
-            const nameA = getTeamName(teamsNode.A);
-            const nameB = getTeamName(teamsNode.B);
-            return (
-              <div className="text-center text-white">
-                <div>
-                  {nameA} vs {nameB}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Round {nodeMeta[n.id]?.round} • Pos {nodeMeta[n.id]?.bracket_pos}
-                </div>
+      <KOStageViewer
+        nodes={nodes}
+        connections={connections}
+        nodeContent={(n) => {
+          const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
+          const nameA = getTeamName(teamsNode.A);
+          const nameB = getTeamName(teamsNode.B);
+          const logoA = getTeamLogo(teamsNode.A);
+          const logoB = getTeamLogo(teamsNode.B);
+          const match = getMatchInfo(n.id);
+          const isFinished = match?.status === 'finished';
+
+          return (
+            <div className="h-full flex flex-col justify-center gap-1.5 px-1">
+              {/* Team A */}
+              <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
+                isFinished && match?.winner_team_id === teamsNode.A
+                  ? 'bg-[#FFD700]/20 border border-[#FFD700]/30'
+                  : 'bg-white/[0.03] border border-white/5'
+              }`}>
+                {logoA && (
+                  <img src={logoA} alt="" className="w-6 h-6 rounded-full object-cover" />
+                )}
+                <span className="flex-1 text-xs font-medium text-white truncate">{nameA}</span>
+                {isFinished && (
+                  <span className={`text-sm font-bold ${
+                    match?.winner_team_id === teamsNode.A ? 'text-[#FFD700]' : 'text-white/40'
+                  }`}>
+                    {match?.team_a_score ?? 0}
+                  </span>
+                )}
               </div>
-            );
-          }}
-        />
-      </div>
+
+              {/* VS or Score */}
+              <div className="text-center text-[10px] text-white/50 font-medium">
+                {isFinished ? '' : 'vs'}
+              </div>
+
+              {/* Team B */}
+              <div className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${
+                isFinished && match?.winner_team_id === teamsNode.B
+                  ? 'bg-[#FFD700]/20 border border-[#FFD700]/30'
+                  : 'bg-white/[0.03] border border-white/5'
+              }`}>
+                {logoB && (
+                  <img src={logoB} alt="" className="w-6 h-6 rounded-full object-cover" />
+                )}
+                <span className="flex-1 text-xs font-medium text-white truncate">{nameB}</span>
+                {isFinished && (
+                  <span className={`text-sm font-bold ${
+                    match?.winner_team_id === teamsNode.B ? 'text-[#FFD700]' : 'text-white/40'
+                  }`}>
+                    {match?.team_b_score ?? 0}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 };
