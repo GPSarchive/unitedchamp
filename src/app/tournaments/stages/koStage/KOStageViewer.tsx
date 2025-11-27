@@ -2,8 +2,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BracketBackground, BackgroundPattern } from "./BracketBackground";
-import { generateLinePath, LineStyle } from "./BracketLineStyles";
+import { BracketBackground } from "./BracketBackground";
+import { generateElbowPath } from "./BracketLineStyles";
 
 export type NodeBox = { id: string; x: number; y: number; w: number; h: number; label?: string };
 
@@ -16,8 +16,6 @@ type Props = {
   snap?: number;
   minZoom?: number;
   maxZoom?: number;
-  backgroundPattern?: BackgroundPattern;
-  lineStyle?: LineStyle;
 };
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -29,8 +27,6 @@ const KOStageViewer = ({
   snap = 10,
   minZoom = 0.4,
   maxZoom = 3,
-  backgroundPattern = "subtle-dots",
-  lineStyle = "sharp-orthogonal",
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -52,8 +48,6 @@ const KOStageViewer = ({
   );
 
   const [zoom, setZoom] = useState(1);
-  const [selectedPattern, setSelectedPattern] = useState<BackgroundPattern>(backgroundPattern);
-  const [selectedLineStyle, setSelectedLineStyle] = useState<LineStyle>(lineStyle);
 
   // Fit height on mount and resize. Keeps vertical size fixed at container height.
   useEffect(() => {
@@ -182,42 +176,7 @@ const KOStageViewer = ({
   return (
     <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40">
       {/* Controls */}
-      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col gap-2">
-        {/* Line Style Selector */}
-        <div className="rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
-          <select
-            value={selectedLineStyle}
-            onChange={(e) => setSelectedLineStyle(e.target.value as LineStyle)}
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-orange-500/50 transition-colors cursor-pointer"
-            aria-label="Line style"
-          >
-            <option value="sharp-orthogonal">Sharp Orthogonal</option>
-            <option value="rounded-orthogonal">Rounded Orthogonal</option>
-            <option value="smooth-bezier">Smooth Bezier</option>
-            <option value="elbow">Elbow</option>
-            <option value="straight">Straight</option>
-          </select>
-        </div>
-
-        {/* Pattern Selector */}
-        <div className="rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
-          <select
-            value={selectedPattern}
-            onChange={(e) => setSelectedPattern(e.target.value as BackgroundPattern)}
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-orange-500/50 transition-colors cursor-pointer"
-            aria-label="Background pattern"
-          >
-            <option value="subtle-dots">Subtle Dots</option>
-            <option value="dots">Dots</option>
-            <option value="grid">Grid</option>
-            <option value="diagonal">Diagonal</option>
-            <option value="hexagon">Hexagon</option>
-            <option value="circuit">Circuit</option>
-            <option value="waves">Waves</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-
+      <div className="pointer-events-auto absolute right-3 top-3 z-10">
         {/* Zoom Controls */}
         <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
           <button
@@ -286,7 +245,7 @@ const KOStageViewer = ({
             }}
           >
             {/* Background Pattern */}
-            <BracketBackground pattern={selectedPattern} snap={snap} />
+            <BracketBackground snap={snap} />
 
             {/* SVG connection layer */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
@@ -327,8 +286,8 @@ const KOStageViewer = ({
                 let x2 = rtl ? b.x + b.w + 6 : b.x - 6;
                 let y2 = b.y + b.h / 2;
 
-                // Generate path based on selected line style
-                const d = generateLinePath(selectedLineStyle, { x1, y1, x2, y2, rtl });
+                // Generate path using elbow style
+                const d = generateElbowPath({ x1, y1, x2, y2 });
 
                 return (
                   <g key={idx} className="pointer-events-none">
