@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { BracketBackground, BackgroundPattern } from "./BracketBackground";
 
 export type NodeBox = { id: string; x: number; y: number; w: number; h: number; label?: string };
 
@@ -14,6 +15,7 @@ type Props = {
   snap?: number;
   minZoom?: number;
   maxZoom?: number;
+  backgroundPattern?: BackgroundPattern;
 };
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -25,6 +27,7 @@ const KOStageViewer = ({
   snap = 10,
   minZoom = 0.4,
   maxZoom = 3,
+  backgroundPattern = "subtle-dots",
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -46,6 +49,7 @@ const KOStageViewer = ({
   );
 
   const [zoom, setZoom] = useState(1);
+  const [selectedPattern, setSelectedPattern] = useState<BackgroundPattern>(backgroundPattern);
 
   // Fit height on mount and resize. Keeps vertical size fixed at container height.
   useEffect(() => {
@@ -174,40 +178,62 @@ const KOStageViewer = ({
   return (
     <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40">
       {/* Controls */}
-      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
-        <button
-          type="button"
-          className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
-          onClick={() => setZoomAt(zoom / 1.1)}
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <input
-          aria-label="Zoom"
-          className="h-6 w-28 accent-emerald-500"
-          type="range"
-          min={minZoom}
-          max={maxZoom}
-          step={0.01}
-          value={zoom}
-          onChange={(e) => setZoomAt(parseFloat(e.target.value))}
-        />
-        <button
-          type="button"
-          className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
-          onClick={() => setZoomAt(zoom * 1.1)}
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="ml-1 rounded-lg border border-emerald-400/40 bg-emerald-700/30 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-700/50 transition-colors"
-          onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
-        >
-          Fit H
-        </button>
+      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex flex-col gap-2">
+        {/* Pattern Selector */}
+        <div className="rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+          <select
+            value={selectedPattern}
+            onChange={(e) => setSelectedPattern(e.target.value as BackgroundPattern)}
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 focus:border-emerald-400/40 transition-colors cursor-pointer"
+            aria-label="Background pattern"
+          >
+            <option value="subtle-dots">Subtle Dots</option>
+            <option value="dots">Dots</option>
+            <option value="grid">Grid</option>
+            <option value="diagonal">Diagonal</option>
+            <option value="hexagon">Hexagon</option>
+            <option value="circuit">Circuit</option>
+            <option value="waves">Waves</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-emerald-400/20 p-2 backdrop-blur-sm shadow-lg">
+          <button
+            type="button"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
+            onClick={() => setZoomAt(zoom / 1.1)}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <input
+            aria-label="Zoom"
+            className="h-6 w-28 accent-emerald-500"
+            type="range"
+            min={minZoom}
+            max={maxZoom}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoomAt(parseFloat(e.target.value))}
+          />
+          <button
+            type="button"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-emerald-400/40 transition-colors"
+            onClick={() => setZoomAt(zoom * 1.1)}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="ml-1 rounded-lg border border-emerald-400/40 bg-emerald-700/30 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-700/50 transition-colors"
+            onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
+          >
+            Fit H
+          </button>
+        </div>
       </div>
 
       {/* Scroll container */}
@@ -237,11 +263,11 @@ const KOStageViewer = ({
               height: baseHeight,
               transform: `scale(${zoom})`,
               transformOrigin: "top left",
-              backgroundImage:
-                "linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)",
-              backgroundSize: `${snap}px ${snap}px, ${snap}px ${snap}px`,
             }}
           >
+            {/* Background Pattern */}
+            <BracketBackground pattern={selectedPattern} snap={snap} />
+
             {/* SVG connection layer */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
