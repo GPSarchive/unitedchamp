@@ -2,6 +2,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { BracketBackground } from "./BracketBackground";
+import { generateElbowPath } from "./BracketLineStyles";
 
 export type NodeBox = { id: string; x: number; y: number; w: number; h: number; label?: string };
 
@@ -172,42 +174,45 @@ const KOStageViewer = ({
   const trackHeight = baseHeight * zoom;
 
   return (
-    <div className="relative w-full rounded-xl border border-white/10 bg-gradient-to-br from-black-950/60 via-[#2a0a0a]/60 to-black-950/50">
+    <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40">
       {/* Controls */}
-      <div className="pointer-events-auto absolute right-3 top-3 z-10 flex items-center gap-2 rounded-xl bg-black/40 p-2 backdrop-blur-sm">
-        <button
-          type="button"
-          className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
-          onClick={() => setZoomAt(zoom / 1.1)}
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <input
-          aria-label="Zoom"
-          className="h-6 w-28 accent-white/80"
-          type="range"
-          min={minZoom}
-          max={maxZoom}
-          step={0.01}
-          value={zoom}
-          onChange={(e) => setZoomAt(parseFloat(e.target.value))}
-        />
-        <button
-          type="button"
-          className="rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
-          onClick={() => setZoomAt(zoom * 1.1)}
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="ml-1 rounded-lg border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
-          onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
-        >
-          Fit H
-        </button>
+      <div className="pointer-events-auto absolute right-3 top-3 z-10">
+        {/* Zoom Controls */}
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
+          <button
+            type="button"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
+            onClick={() => setZoomAt(zoom / 1.1)}
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <input
+            aria-label="Zoom"
+            className="h-6 w-28 accent-orange-500"
+            type="range"
+            min={minZoom}
+            max={maxZoom}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => setZoomAt(parseFloat(e.target.value))}
+          />
+          <button
+            type="button"
+            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
+            onClick={() => setZoomAt(zoom * 1.1)}
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="ml-1 rounded-lg border border-orange-500/50 bg-orange-600/30 px-2 py-1 text-xs text-amber-100 hover:bg-orange-600/50 transition-colors"
+            onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
+          >
+            Fit H
+          </button>
+        </div>
       </div>
 
       {/* Scroll container */}
@@ -227,8 +232,14 @@ const KOStageViewer = ({
         role="region"
         aria-label="Knockout bracket viewer"
       >
+        {/* Background Pattern - fixed to container */}
+        <div className="absolute inset-0 pointer-events-none">
+          <BracketBackground snap={snap} />
+        </div>
+
         {/* Track grows with zoom in both axes */}
         <div ref={trackRef} className="relative" style={{ width: trackWidth, height: trackHeight }}>
+
           {/* Logical plane scaled in place */}
           <div
             className="absolute top-0 left-0"
@@ -237,22 +248,32 @@ const KOStageViewer = ({
               height: baseHeight,
               transform: `scale(${zoom})`,
               transformOrigin: "top left",
-              backgroundImage:
-                "linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)",
-              backgroundSize: `${snap}px ${snap}px, ${snap}px ${snap}px`,
             }}
           >
+
             {/* SVG connection layer */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
+                {/* Gold/Orange/Red gradient left-to-right */}
                 <linearGradient id="edgeGradLTR" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
+                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
+                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
                 </linearGradient>
+                {/* Gold/Orange/Red gradient right-to-left */}
                 <linearGradient id="edgeGradRTL" x1="100%" y1="0%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
+                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
+                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
+                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
                 </linearGradient>
+                {/* Warm glow filter for depth */}
+                <filter id="warmGlow">
+                  <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
 
               {connections.map(([from, to], idx) => {
@@ -269,18 +290,15 @@ const KOStageViewer = ({
                 let x2 = rtl ? b.x + b.w + 6 : b.x - 6;
                 let y2 = b.y + b.h / 2;
 
-                const dx = Math.max(40, Math.abs(x2 - x1) * 0.35);
-                const c1x = rtl ? x1 - dx : x1 + dx;
-                const c2x = rtl ? x2 + dx : x2 - dx;
-                const c1y = y1;
-                const c2y = y2;
-
-                const d = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
+                // Generate path using elbow style
+                const d = generateElbowPath({ x1, y1, x2, y2 });
 
                 return (
                   <g key={idx} className="pointer-events-none">
-                    <path d={d} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={6} strokeLinecap="round" />
-                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={3} strokeLinecap="round" />
+                    {/* Outer warm glow/shadow */}
+                    <path d={d} fill="none" stroke="rgba(249,115,22,0.2)" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
+                    {/* Main gradient stroke with warm glow filter */}
+                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" filter="url(#warmGlow)" />
                   </g>
                 );
               })}
@@ -290,13 +308,13 @@ const KOStageViewer = ({
             {nodes.map((n) => (
               <div
                 key={n.id}
-                className="absolute rounded-2xl border border-white/15 bg-white/5 p-2 text-white backdrop-blur-sm"
+                className="absolute rounded-2xl border border-amber-500/25 bg-zinc-950/85 p-2 text-white backdrop-blur-sm shadow-lg shadow-orange-500/10 hover:border-orange-500/50 hover:bg-zinc-950/95 hover:shadow-orange-500/20 transition-all"
                 style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
               >
-                <div className="flex items-center justify-between text-xs text-white/70">
-                  <span className="truncate">{n.label ?? n.id}</span>
+                <div className="flex items-center justify-between text-xs text-amber-200/90">
+                  <span className="truncate font-medium">{n.label ?? n.id}</span>
                 </div>
-                <div className="mt-1 h-[1px] w-full bg-white/10" />
+                <div className="mt-1 h-[1px] w-full bg-gradient-to-r from-amber-400/20 via-orange-500/50 to-red-500/30" />
                 <div className="flex-1 min-h-0 text-sm leading-tight">
                   {nodeContent ? <div className="h-full">{nodeContent(n)}</div> : <div className="opacity-80 text-white/90">{n.label ?? n.id}</div>}
                 </div>
@@ -306,7 +324,7 @@ const KOStageViewer = ({
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-black/35 px-2 py-1 text-[11px] text-white/80">
+      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-zinc-950/90 border border-amber-500/25 px-2 py-1 text-[11px] text-amber-200/80">
         Scroll H/V · Drag to pan · Pinch/Ctrl+wheel to zoom
       </div>
     </div>

@@ -40,6 +40,7 @@ interface NodeBox {
 }
 
 const KOStageDisplay = () => {
+  const tournament = useTournamentData((state) => state.tournament);
   const stages = useTournamentData((state) => state.stages);
   const teams = useTournamentData((state) => state.teams);
   const matches = useTournamentData((state) => state.matches);
@@ -66,7 +67,7 @@ const KOStageDisplay = () => {
   const BOX_W = 220;
   const BOX_H = 120;
   const COL_GAP = 240 * SCALE; // horizontal gap between rounds
-  const BASE_GAP_Y = 80 * SCALE; // base vertical gap multiplier
+  const BASE_GAP_Y = 140 * SCALE; // base vertical gap multiplier
   const X_MARGIN = 60 * SCALE;
   const Y_MARGIN = 60 * SCALE;
 
@@ -98,7 +99,7 @@ const KOStageDisplay = () => {
         y: getYPosition(r, b),
         w: BOX_W,
         h: BOX_H,
-        label: `R${r} • Pos ${b}`,
+        label: tournament?.name ? `${tournament.name} • Knockout Stage` : "Knockout Stage",
       };
     });
 
@@ -149,8 +150,8 @@ const KOStageDisplay = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-center text-Black">Knockout Stage</h2>
-      <div className="overflow-auto bg-black p-4 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold text-center text-white">Knockout Stage</h2>
+      <div className="overflow-auto bg-zinc-950/60 p-4 rounded-2xl border border-white/10 shadow-lg">
         <KOStageViewer
           nodes={nodes}
           connections={connections}
@@ -159,12 +160,20 @@ const KOStageDisplay = () => {
             const nameA = getTeamName(teamsNode.A);
             const nameB = getTeamName(teamsNode.B);
             return (
-              <div className="text-center text-white">
-                <div>
-                  {nameA} vs {nameB}
+              <div className="flex items-center justify-center gap-4 text-white h-full">
+                {/* Logo Rings with Team Names */}
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
+                    <span className="text-xs text-amber-400/60">A</span>
+                  </div>
+                  <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
                 </div>
-                <div className="text-xs text-gray-400">
-                  Round {nodeMeta[n.id]?.round} • Pos {nodeMeta[n.id]?.bracket_pos}
+                <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
+                    <span className="text-xs text-orange-400/60">B</span>
+                  </div>
+                  <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
                 </div>
               </div>
             );
