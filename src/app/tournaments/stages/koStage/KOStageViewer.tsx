@@ -264,7 +264,7 @@ const KOStageViewer = ({
                 </linearGradient>
                 {/* Warm glow filter for depth */}
                 <filter id="warmGlow">
-                  <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                  <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
                   <feMerge>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>

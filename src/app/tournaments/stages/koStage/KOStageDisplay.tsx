@@ -66,7 +66,7 @@ const KOStageDisplay = () => {
   const BOX_W = 220;
   const BOX_H = 120;
   const COL_GAP = 240 * SCALE; // horizontal gap between rounds
-  const BASE_GAP_Y = 80 * SCALE; // base vertical gap multiplier
+  const BASE_GAP_Y = 140 * SCALE; // base vertical gap multiplier
   const X_MARGIN = 60 * SCALE;
   const Y_MARGIN = 60 * SCALE;
 
