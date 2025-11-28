@@ -14,6 +14,7 @@ import type {
 } from "./useTournamentData";
 import { useTournamentData } from "./useTournamentData";
 import { useStages } from "./useStages";
+import PlayerStatsSection from "./PlayerStatsSection";
 
 type TournamentClientProps = {
   initialData: {
@@ -245,6 +246,9 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             </div>
           )}
         </div>
+
+        {/* Player Statistics Section */}
+        <PlayerStatsSection />
       </div>
     </div>
   );
