@@ -18,16 +18,35 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
   players,
   teams,
 }) => {
+  console.log('[PlayerStatistics] Component rendered with:', {
+    playersCount: players?.length || 0,
+    teamsCount: teams?.length || 0,
+    players: players,
+    teams: teams,
+  });
+
   // Create a map for quick team lookup
   const teamMap = useMemo(() => {
-    return new Map(teams.map((team) => [team.id, team]));
+    const map = new Map(teams.map((team) => [team.id, team]));
+    console.log('[PlayerStatistics] Team map created:', map);
+    return map;
   }, [teams]);
 
   // Enrich players with team info and sort by goals
   const playersWithTeam = useMemo((): PlayerWithTeam[] => {
-    return players
+    const enriched = players
       .map((player) => {
         const team = teamMap.get(player.teamId);
+        console.log('[PlayerStatistics] Mapping player:', {
+          playerId: player.id,
+          playerName: player.name,
+          teamId: player.teamId,
+          team: team,
+          goals: player.goals,
+          assists: player.assists,
+          mvp: player.mvp,
+          matchesPlayed: player.matchesPlayed,
+        });
         return {
           ...player,
           teamName: team?.name || "Unknown Team",
@@ -40,6 +59,9 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         if (b.assists !== a.assists) return b.assists - a.assists;
         return b.mvp - a.mvp;
       });
+
+    console.log('[PlayerStatistics] Enriched players:', enriched);
+    return enriched;
   }, [players, teamMap]);
 
   if (!players || players.length === 0) {

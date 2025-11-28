@@ -68,7 +68,11 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
         teamsCount: initialData.teams.length,
         matchesCount: initialData.matches.length,
         standingsCount: initialData.standings.length,
+        playersCount: initialData.players.length,
       });
+
+      console.log('[TournamentClient] Players data:', initialData.players);
+      console.log('[TournamentClient] Teams data:', initialData.teams);
 
       setTournamentData(initialData.tournament);
       setTeams(initialData.teams);
@@ -250,12 +254,30 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
         </div>
 
         {/* Player Statistics Section */}
-        {players && teams && (
-          <PlayerStatistics
-            players={players}
-            teams={teams}
-          />
-        )}
+        {(() => {
+          console.log('[TournamentClient] Rendering PlayerStatistics section:', {
+            hasPlayers: !!players,
+            playersLength: players?.length || 0,
+            hasTeams: !!teams,
+            teamsLength: teams?.length || 0,
+          });
+
+          if (players && teams) {
+            return (
+              <PlayerStatistics
+                players={players}
+                teams={teams}
+              />
+            );
+          }
+
+          return (
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
+              <p>Loading player statistics...</p>
+              <p className="text-xs mt-2">Players: {players?.length || 0}, Teams: {teams?.length || 0}</p>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
