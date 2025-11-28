@@ -184,7 +184,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="rounded-2xl border-2 border-dashed border-white/10 bg-black/40 p-12 text-center"
+              className="rounded-2xl border-2 border-dashed border-white/10 backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl p-12 text-center"
             >
               <div className="mx-auto w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -212,9 +212,9 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
                     >
-                      <div className="rounded-2xl border border-white/10 bg-zinc-950/60 hover:bg-zinc-950/80 shadow-lg hover:shadow-xl transition-all overflow-hidden">
+                      <div className="rounded-2xl border border-white/10 backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl hover:shadow-emerald-900/20 transition-all overflow-hidden">
                         {/* Stage Header */}
-                        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black">
+                        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]">
@@ -244,7 +244,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                         </div>
 
                         {/* Stage Content */}
-                        <div className="p-6">
+                        <div className="p-6 bg-black/20">
                           <Renderer stage={stage} />
                         </div>
                       </div>
