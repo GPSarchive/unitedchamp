@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { motion } from "framer-motion";
+import React, { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Player, Team } from "../useTournamentData";
 
 type PlayerStatisticsProps = {
@@ -14,10 +14,14 @@ type PlayerWithTeam = Player & {
   teamLogo: string;
 };
 
+const PLAYERS_PER_PAGE = 10;
+
 const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
   players,
   teams,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+
   console.log('[PlayerStatistics] Component rendered with:', {
     playersCount: players?.length || 0,
     teamsCount: teams?.length || 0,
@@ -63,6 +67,19 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
     console.log('[PlayerStatistics] Enriched players:', enriched);
     return enriched;
   }, [players, teamMap]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(playersWithTeam.length / PLAYERS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PLAYERS_PER_PAGE;
+  const endIndex = startIndex + PLAYERS_PER_PAGE;
+  const currentPlayers = playersWithTeam.slice(startIndex, endIndex);
+
+  // Reset to page 1 if current page is out of bounds
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
 
   if (!players || players.length === 0) {
     return (
@@ -129,26 +146,30 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
 
         {/* Table Body */}
         <div className="divide-y divide-white/5">
-          {playersWithTeam.map((player, index) => (
-            <motion.div
-              key={`${player.id}-${player.teamId}`}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.02 }}
-              className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
-            >
-              {/* Rank */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
-                  ${index === 0 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg shadow-yellow-500/30' : ''}
-                  ${index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-400/30' : ''}
-                  ${index === 2 ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-600/30' : ''}
-                  ${index > 2 ? 'bg-white/5 text-white/70 group-hover:bg-white/10' : ''}
-                `}>
-                  {index + 1}
-                </div>
-              </div>
+          <AnimatePresence mode="wait">
+            {currentPlayers.map((player, index) => {
+              const globalIndex = startIndex + index;
+              return (
+                <motion.div
+                  key={`${player.id}-${player.teamId}-${currentPage}`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3, delay: index * 0.02 }}
+                  className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
+                >
+                  {/* Rank */}
+                  <div className="flex items-center justify-center">
+                    <div className={`
+                      w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
+                      ${globalIndex === 0 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg shadow-yellow-500/30' : ''}
+                      ${globalIndex === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-400/30' : ''}
+                      ${globalIndex === 2 ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-600/30' : ''}
+                      ${globalIndex > 2 ? 'bg-white/5 text-white/70 group-hover:bg-white/10' : ''}
+                    `}>
+                      {globalIndex + 1}
+                    </div>
+                  </div>
 
               {/* Player Info */}
               <div className="flex items-center gap-3 min-w-0">
@@ -248,8 +269,96 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                 </div>
               </div>
             </motion.div>
-          ))}
+          );
+        })}
+          </AnimatePresence>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="border-t border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm px-6 py-4">
+            <div className="flex items-center justify-between">
+              {/* Page Info */}
+              <div className="text-sm text-white/70">
+                Εμφάνιση {startIndex + 1}-{Math.min(endIndex, playersWithTeam.length)} από {playersWithTeam.length} παίκτες
+              </div>
+
+              {/* Page Controls */}
+              <div className="flex items-center gap-2">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={`
+                    px-3 py-2 rounded-lg font-medium text-sm transition-all
+                    ${currentPage === 1
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                      : 'bg-white/10 text-white hover:bg-emerald-500/20 hover:text-emerald-400'
+                    }
+                  `}
+                >
+                  ← Προηγούμενο
+                </button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                    // Show first page, last page, current page, and pages around current
+                    const showPage =
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1);
+
+                    const showEllipsis =
+                      (page === 2 && currentPage > 3) ||
+                      (page === totalPages - 1 && currentPage < totalPages - 2);
+
+                    if (!showPage && !showEllipsis) return null;
+
+                    if (showEllipsis) {
+                      return (
+                        <span key={page} className="px-2 text-white/50">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`
+                          w-10 h-10 rounded-lg font-bold text-sm transition-all
+                          ${page === currentPage
+                            ? 'bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-white/10 text-white hover:bg-white/20'
+                          }
+                        `}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`
+                    px-3 py-2 rounded-lg font-medium text-sm transition-all
+                    ${currentPage === totalPages
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                      : 'bg-white/10 text-white hover:bg-emerald-500/20 hover:text-emerald-400'
+                    }
+                  `}
+                >
+                  Επόμενο →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Summary Stats */}
