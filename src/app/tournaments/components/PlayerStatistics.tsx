@@ -2,6 +2,9 @@
 
 import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Trophy, Shield, ChevronUp, ChevronDown } from "lucide-react";
+import { FaFutbol, FaHandsHelping, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
+import { MdSportsSoccer } from "react-icons/md";
 import type { Player, Team } from "../useTournamentData";
 
 type PlayerStatisticsProps = {
@@ -16,11 +19,16 @@ type PlayerWithTeam = Player & {
 
 const PLAYERS_PER_PAGE = 10;
 
+type SortKey = 'goals' | 'assists' | 'mvp' | 'yellowCards' | 'redCards' | 'matchesPlayed';
+type SortDirection = 'asc' | 'desc';
+
 const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
   players,
   teams,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<SortKey>('goals');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   console.log('[PlayerStatistics] Component rendered with:', {
     playersCount: players?.length || 0,
@@ -36,7 +44,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
     return map;
   }, [teams]);
 
-  // Enrich players with team info and sort by goals
+  // Enrich players with team info and sort by selected column
   const playersWithTeam = useMemo((): PlayerWithTeam[] => {
     const enriched = players
       .map((player) => {
@@ -58,15 +66,41 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         };
       })
       .sort((a, b) => {
-        // Sort by goals first, then assists, then mvp
-        if (b.goals !== a.goals) return b.goals - a.goals;
-        if (b.assists !== a.assists) return b.assists - a.assists;
-        return b.mvp - a.mvp;
+        const aValue = a[sortKey];
+        const bValue = b[sortKey];
+
+        if (sortDirection === 'desc') {
+          if (bValue !== aValue) return bValue - aValue;
+          // Secondary sort by goals if not already sorting by goals
+          if (sortKey !== 'goals') return b.goals - a.goals;
+          // Tertiary sort by assists
+          return b.assists - a.assists;
+        } else {
+          if (aValue !== bValue) return aValue - bValue;
+          // Secondary sort by goals if not already sorting by goals
+          if (sortKey !== 'goals') return b.goals - a.goals;
+          // Tertiary sort by assists
+          return b.assists - a.assists;
+        }
       });
 
     console.log('[PlayerStatistics] Enriched players:', enriched);
     return enriched;
-  }, [players, teamMap]);
+  }, [players, teamMap, sortKey, sortDirection]);
+
+  // Handle column header click for sorting
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      // Toggle direction if clicking the same column
+      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+    } else {
+      // New column, default to descending
+      setSortKey(key);
+      setSortDirection('desc');
+    }
+    // Reset to page 1 when sorting changes
+    setCurrentPage(1);
+  };
 
   // Pagination calculations
   const totalPages = Math.ceil(playersWithTeam.length / PLAYERS_PER_PAGE);
@@ -135,12 +169,84 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             <div className="text-center">#</div>
             <div>Παίκτης</div>
             <div className="text-center">Ομάδα</div>
-            <div className="text-center" title="Γκολ">⚽ Γκολ</div>
-            <div className="text-center" title="Ασίστ">🎯 Ασίστ</div>
-            <div className="text-center" title="MVP">⭐ MVP</div>
-            <div className="text-center" title="Κίτρινες Κάρτες">🟨 ΚΚ</div>
-            <div className="text-center" title="Κόκκινες Κάρτες">🟥 ΚΚ</div>
-            <div className="text-center" title="Αγώνες">📊 ΑΓ</div>
+
+            {/* Sortable Goals Column */}
+            <button
+              onClick={() => handleSort('goals')}
+              className="text-center hover:text-emerald-400 transition-colors flex items-center justify-center gap-1 group"
+              title="Γκολ (Κλικ για ταξινόμηση)"
+            >
+              <FaFutbol className="w-3 h-3 text-emerald-400" />
+              <span>Γκολ</span>
+              {sortKey === 'goals' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Sortable Assists Column */}
+            <button
+              onClick={() => handleSort('assists')}
+              className="text-center hover:text-blue-400 transition-colors flex items-center justify-center gap-1 group"
+              title="Ασίστ (Κλικ για ταξινόμηση)"
+            >
+              <FaHandsHelping className="w-3 h-3 text-blue-400" />
+              <span>Ασίστ</span>
+              {sortKey === 'assists' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Sortable MVP Column */}
+            <button
+              onClick={() => handleSort('mvp')}
+              className="text-center hover:text-yellow-400 transition-colors flex items-center justify-center gap-1 group"
+              title="MVP (Κλικ για ταξινόμηση)"
+            >
+              <Trophy className="w-3 h-3 text-yellow-400" />
+              <span>MVP</span>
+              {sortKey === 'mvp' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Sortable Yellow Cards Column */}
+            <button
+              onClick={() => handleSort('yellowCards')}
+              className="text-center hover:text-yellow-500 transition-colors flex items-center justify-center gap-1 group"
+              title="Κίτρινες Κάρτες (Κλικ για ταξινόμηση)"
+            >
+              <FaExclamationTriangle className="w-3 h-3 text-yellow-500" />
+              <span>ΚΚ</span>
+              {sortKey === 'yellowCards' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Sortable Red Cards Column */}
+            <button
+              onClick={() => handleSort('redCards')}
+              className="text-center hover:text-red-500 transition-colors flex items-center justify-center gap-1 group"
+              title="Κόκκινες Κάρτες (Κλικ για ταξινόμηση)"
+            >
+              <FaTimesCircle className="w-3 h-3 text-red-500" />
+              <span>ΚΚ</span>
+              {sortKey === 'redCards' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Sortable Matches Column */}
+            <button
+              onClick={() => handleSort('matchesPlayed')}
+              className="text-center hover:text-white transition-colors flex items-center justify-center gap-1 group"
+              title="Αγώνες (Κλικ για ταξινόμηση)"
+            >
+              <MdSportsSoccer className="w-3 h-3" />
+              <span>ΑΓ</span>
+              {sortKey === 'matchesPlayed' && (
+                sortDirection === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -364,12 +470,12 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {[
-          { label: "Συνολικά Γκολ", value: playersWithTeam.reduce((sum, p) => sum + p.goals, 0), icon: "⚽", color: "emerald" },
-          { label: "Συνολικά Ασίστ", value: playersWithTeam.reduce((sum, p) => sum + p.assists, 0), icon: "🎯", color: "blue" },
-          { label: "Συνολικά MVP", value: playersWithTeam.reduce((sum, p) => sum + p.mvp, 0), icon: "⭐", color: "yellow" },
-          { label: "Κίτρινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.yellowCards, 0), icon: "🟨", color: "yellow" },
-          { label: "Κόκκινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.redCards, 0), icon: "🟥", color: "red" },
-          { label: "Σύνολο Παικτών", value: playersWithTeam.length, icon: "👥", color: "white" },
+          { label: "Συνολικά Γκολ", value: playersWithTeam.reduce((sum, p) => sum + p.goals, 0), icon: <FaFutbol className="w-6 h-6 text-emerald-400" />, color: "emerald" },
+          { label: "Συνολικά Ασίστ", value: playersWithTeam.reduce((sum, p) => sum + p.assists, 0), icon: <FaHandsHelping className="w-6 h-6 text-blue-400" />, color: "blue" },
+          { label: "Συνολικά MVP", value: playersWithTeam.reduce((sum, p) => sum + p.mvp, 0), icon: <Trophy className="w-6 h-6 text-yellow-400" />, color: "yellow" },
+          { label: "Κίτρινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.yellowCards, 0), icon: <FaExclamationTriangle className="w-6 h-6 text-yellow-500" />, color: "yellow" },
+          { label: "Κόκκινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.redCards, 0), icon: <FaTimesCircle className="w-6 h-6 text-red-500" />, color: "red" },
+          { label: "Σύνολο Παικτών", value: playersWithTeam.length, icon: <MdSportsSoccer className="w-6 h-6 text-white/70" />, color: "white" },
         ].map((stat, index) => (
           <motion.div
             key={stat.label}
@@ -378,7 +484,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
             className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm p-4 hover:bg-white/5 transition-colors"
           >
-            <div className="text-2xl mb-2">{stat.icon}</div>
+            <div className="mb-2">{stat.icon}</div>
             <div className={`text-2xl font-bold text-${stat.color}-400 mb-1`}>
               {stat.value}
             </div>
