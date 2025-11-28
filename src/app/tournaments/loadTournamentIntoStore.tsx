@@ -202,36 +202,15 @@ export const loadTournamentIntoStore = async (
   // Fetch match IDs for tournament-specific filtering
   const matchIds = matches.map((m: DraftMatch) => m.db_id).filter((id): id is number => id !== null && id !== undefined);
 
-  // Fetch confirmed participants first (source of truth for who played)
-  const { data: participantsData, error: participantsError } = await supabaseInstance
-    .from('match_participants')
-    .select('player_id, team_id, match_id, played')
-    .in('match_id', matchIds)
-    .in('team_id', teamIds)
-    .eq('played', true); // Explicit filter for actual participation
-  console.log(`[loadTournamentIntoStore] Participants fetch result:`, { data: participantsData, error: participantsError });
+  console.log(`[loadTournamentIntoStore] Query params:`, {
+    tournamentId,
+    matchIds: matchIds,
+    matchIdsLength: matchIds.length,
+    teamIds: teamIds,
+    teamIdsLength: teamIds.length,
+  });
 
-  if (participantsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch participants: ${participantsError.message}`);
-    throw new Error(`Failed to fetch participants: ${participantsError.message}`);
-  }
-
-  // Build participant map for unique players and match counts
-  const participantMap = new Map<string, { player_id: number; team_id: number; matchIds: Set<number> }>();
-  for (const p of (participantsData as MatchParticipant[] || [])) {
-    const key = `${p.player_id}-${p.team_id}`;
-    const existing = participantMap.get(key) || {
-      player_id: p.player_id,
-      team_id: p.team_id,
-      matchIds: new Set<number>(),
-    };
-    existing.matchIds.add(p.match_id);
-    participantMap.set(key, existing);
-  }
-  const participantEntries = Array.from(participantMap.values());
-  const playerIds = [...new Set(participantEntries.map(e => e.player_id))]; // Unique participants
-
-  // Fetch raw match player stats, but FILTER to only participating players
+  // Fetch raw match player stats DIRECTLY (primary source of truth)
   const { data: rawStats, error: statsError } = await supabaseInstance
     .from('match_player_stats')
     .select(`
@@ -248,22 +227,49 @@ export const loadTournamentIntoStore = async (
       is_captain
     `)
     .in('match_id', matchIds)
-    .in('team_id', teamIds)
-    .in('player_id', playerIds) as { data: MatchPlayerStat[] | null; error: any };
-  console.log(`[loadTournamentIntoStore] Raw player stats fetch result:`, { data: rawStats, error: statsError });
+    .in('team_id', teamIds) as { data: MatchPlayerStat[] | null; error: any };
+
+  console.log(`[loadTournamentIntoStore] Raw player stats fetch result:`, {
+    data: rawStats,
+    error: statsError,
+    statsCount: rawStats?.length || 0,
+  });
 
   if (statsError) {
     console.error(`[loadTournamentIntoStore] Failed to fetch raw player stats: ${statsError.message}`);
     throw new Error(`Failed to fetch raw player stats: ${statsError.message}`);
   }
 
-  // Aggregate player stats in JavaScript, initializing from participants
-  const aggStatsMap = new Map<string, AggPlayerStat & { matchIds: Set<number> }>();
-  for (const entry of participantEntries) {
-    const key = `${entry.player_id}-${entry.team_id}`;
-    aggStatsMap.set(key, {
-      player_id: entry.player_id,
-      team_id: entry.team_id,
+  // Fetch participants for match count (optional - will work even if empty)
+  const { data: participantsData, error: participantsError } = await supabaseInstance
+    .from('match_participants')
+    .select('player_id, team_id, match_id, played')
+    .in('match_id', matchIds)
+    .in('team_id', teamIds)
+    .eq('played', true);
+
+  console.log(`[loadTournamentIntoStore] Participants fetch result:`, {
+    participantsCount: participantsData?.length || 0,
+    error: participantsError,
+  });
+
+  // Build participant map for accurate match counts
+  const participantMap = new Map<string, Set<number>>();
+  for (const p of (participantsData as MatchParticipant[] || [])) {
+    const key = `${p.player_id}-${p.team_id}`;
+    if (!participantMap.has(key)) {
+      participantMap.set(key, new Set<number>());
+    }
+    participantMap.get(key)!.add(p.match_id);
+  }
+
+  // Aggregate player stats from match_player_stats
+  const aggStatsMap = new Map<string, AggPlayerStat>();
+  for (const stat of rawStats || []) {
+    const key = `${stat.player_id}-${stat.team_id}`;
+    const existing = aggStatsMap.get(key) || {
+      player_id: stat.player_id,
+      team_id: stat.team_id,
       goals: 0,
       assists: 0,
       yellow_cards: 0,
@@ -271,31 +277,58 @@ export const loadTournamentIntoStore = async (
       blue_cards: 0,
       mvp: 0,
       best_goalkeeper: 0,
-      matches: entry.matchIds.size, // Accurate count from participation
+      matches: 0,
       is_captain: false,
-      matchIds: entry.matchIds,
+    };
+
+    aggStatsMap.set(key, {
+      ...existing,
+      goals: existing.goals + (stat.goals || 0),
+      assists: existing.assists + (stat.assists || 0),
+      yellow_cards: existing.yellow_cards + (stat.yellow_cards || 0),
+      red_cards: existing.red_cards + (stat.red_cards || 0),
+      blue_cards: existing.blue_cards + (stat.blue_cards || 0),
+      mvp: existing.mvp + (stat.mvp ? 1 : 0),
+      best_goalkeeper: existing.best_goalkeeper + (stat.best_goalkeeper ? 1 : 0),
+      is_captain: existing.is_captain || stat.is_captain,
     });
   }
 
-  // Overlay stats from rawStats
-  for (const stat of rawStats || []) {
-    const key = `${stat.player_id}-${stat.team_id}`;
-    const existing = aggStatsMap.get(key);
-    if (existing) { // Only if confirmed participant
-      aggStatsMap.set(key, {
-        ...existing,
-        goals: existing.goals + (stat.goals || 0),
-        assists: existing.assists + (stat.assists || 0),
-        yellow_cards: existing.yellow_cards + (stat.yellow_cards || 0),
-        red_cards: existing.red_cards + (stat.red_cards || 0),
-        blue_cards: existing.blue_cards + (stat.blue_cards || 0),
-        mvp: existing.mvp + (stat.mvp ? 1 : 0),
-        best_goalkeeper: existing.best_goalkeeper + (stat.best_goalkeeper ? 1 : 0),
-        is_captain: existing.is_captain || stat.is_captain,
-      });
+  // Update match counts from participants (if available)
+  for (const [key, matchSet] of participantMap.entries()) {
+    const stat = aggStatsMap.get(key);
+    if (stat) {
+      stat.matches = matchSet.size;
     }
   }
-  const aggStats: AggPlayerStat[] = Array.from(aggStatsMap.values()).map(({ matchIds, ...stat }) => stat);
+
+  // If no participant data, estimate matches from stats records
+  for (const [key, stat] of aggStatsMap.entries()) {
+    if (stat.matches === 0) {
+      // Count unique match_ids for this player from rawStats
+      const playerMatches = new Set(
+        (rawStats || [])
+          .filter(s => `${s.player_id}-${s.team_id}` === key)
+          .map(s => s.match_id)
+      );
+      stat.matches = playerMatches.size;
+    }
+  }
+
+  const aggStats: AggPlayerStat[] = Array.from(aggStatsMap.values());
+
+  console.log(`[loadTournamentIntoStore] Aggregated stats:`, {
+    aggStatsCount: aggStats.length,
+    sampleStats: aggStats.slice(0, 3),
+  });
+
+  // Extract unique player IDs from aggregated stats
+  const playerIds = [...new Set(aggStats.map(s => s.player_id))];
+
+  console.log(`[loadTournamentIntoStore] Player IDs to fetch:`, {
+    playerIdsCount: playerIds.length,
+    playerIds: playerIds,
+  });
 
   // Fetch player details with fallback
   let playersDetails: PlayerDetail[] | null = null;
@@ -307,7 +340,11 @@ export const loadTournamentIntoStore = async (
       .in('id', playerIds);
     playersDetails = data;
     detailsError = error;
-    console.log(`[loadTournamentIntoStore] Player details fetch result:`, { data: playersDetails, error: detailsError });
+    console.log(`[loadTournamentIntoStore] Player details fetch result:`, {
+      data: playersDetails,
+      error: detailsError,
+      detailsCount: playersDetails?.length || 0,
+    });
   } catch (e) {
     console.error(`[loadTournamentIntoStore] Exception while fetching player details: ${e}`);
     detailsError = e;
@@ -359,6 +396,12 @@ export const loadTournamentIntoStore = async (
       photo: detail.photo || '/player-placeholder.jpg',
       isCaptain: stat.is_captain || false,
     };
+  });
+
+  console.log(`[loadTournamentIntoStore] Built players array:`, {
+    playersCount: players.length,
+    samplePlayers: players.slice(0, 3),
+    allPlayers: players,
   });
 
   // Build teams
