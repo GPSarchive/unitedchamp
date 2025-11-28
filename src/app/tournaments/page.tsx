@@ -6,10 +6,11 @@ import { signTournamentLogos } from "./signTournamentLogos"; // ✅ Import utili
 
 export default async function TournamentsPage() {
   try {
-    // 1) Fetch all tournaments
+    // 1) Fetch all tournaments with status 'running'
     const { data: tournamentsData, error: tournamentsError } = await supabaseAdmin
       .from('tournaments')
       .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .eq('status', 'running')
       .order('id', { ascending: true });
 
     if (tournamentsError || !tournamentsData) {

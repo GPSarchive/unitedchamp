@@ -163,6 +163,7 @@ async function fetchTournaments() {
     const { data, error } = await supabaseAdmin
       .from('tournaments')
       .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .eq('status', 'running')
       .order('id', { ascending: false })
       .limit(6); // Limit to 6 tournaments for homepage
 
