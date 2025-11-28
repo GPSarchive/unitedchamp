@@ -48,6 +48,8 @@ const Skeleton: React.FC = () => (
 const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   const {
     tournament,
+    teams,
+    players,
     setTournamentData,
     setTeams,
     setPlayers,
@@ -248,10 +250,12 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
         </div>
 
         {/* Player Statistics Section */}
-        <PlayerStatistics
-          players={initialData.players}
-          teams={initialData.teams}
-        />
+        {players && teams && (
+          <PlayerStatistics
+            players={players}
+            teams={teams}
+          />
+        )}
       </div>
     </div>
   );

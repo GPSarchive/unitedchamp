@@ -14,48 +14,123 @@ type PlayerWithTeam = Player & {
   teamLogo: string;
 };
 
-const StatCard: React.FC<{
-  title: string;
-  icon: string;
-  players: PlayerWithTeam[];
-  statKey: keyof Pick<Player, "goals" | "assists" | "mvp" | "yellowCards" | "redCards" | "matchesPlayed">;
-  statLabel: string;
-}> = ({ title, icon, players, statKey, statLabel }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="rounded-2xl border border-white/10 bg-zinc-950/60 hover:bg-zinc-950/80 shadow-lg hover:shadow-xl transition-all overflow-hidden"
-    >
-      {/* Card Header */}
-      <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-black via-zinc-950 to-black">
-        <div className="flex items-center gap-3">
-          <div className="text-2xl">{icon}</div>
-          <h3 className="text-xl font-bold text-white">{title}</h3>
+const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
+  players,
+  teams,
+}) => {
+  // Create a map for quick team lookup
+  const teamMap = useMemo(() => {
+    return new Map(teams.map((team) => [team.id, team]));
+  }, [teams]);
+
+  // Enrich players with team info and sort by goals
+  const playersWithTeam = useMemo((): PlayerWithTeam[] => {
+    return players
+      .map((player) => {
+        const team = teamMap.get(player.teamId);
+        return {
+          ...player,
+          teamName: team?.name || "Unknown Team",
+          teamLogo: team?.logo || "/team-placeholder.png",
+        };
+      })
+      .sort((a, b) => {
+        // Sort by goals first, then assists, then mvp
+        if (b.goals !== a.goals) return b.goals - a.goals;
+        if (b.assists !== a.assists) return b.assists - a.assists;
+        return b.mvp - a.mvp;
+      });
+  }, [players, teamMap]);
+
+  if (!players || players.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">
+            Στατιστικά Παικτών
+          </h2>
         </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-2xl border-2 border-dashed border-white/10 bg-black/40 p-12 text-center"
+        >
+          <div className="mx-auto w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <p className="text-lg font-medium text-white mb-2">
+            Δεν υπάρχουν στατιστικά παικτών
+          </p>
+          <p className="text-white/70">
+            Τα στατιστικά των παικτών θα εμφανιστούν εδώ όταν υπάρχουν δεδομένα.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Section Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-white">
+          Στατιστικά Παικτών
+        </h2>
+        <span className="text-sm text-white/70">
+          {playersWithTeam.length} {playersWithTeam.length === 1 ? 'παίκτης' : 'παίκτες'}
+        </span>
       </div>
 
-      {/* Card Content */}
-      <div className="p-6">
-        {players.length === 0 ? (
-          <div className="text-center py-8 text-white/50">
-            Δεν υπάρχουν δεδομένα
+      {/* Glassmorphism Scoreboard Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="rounded-2xl border border-white/10 overflow-hidden backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl"
+      >
+        {/* Table Header */}
+        <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
+          <div className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider">
+            <div className="text-center">#</div>
+            <div>Παίκτης</div>
+            <div className="text-center">Ομάδα</div>
+            <div className="text-center" title="Γκολ">⚽ Γκολ</div>
+            <div className="text-center" title="Ασίστ">🎯 Ασίστ</div>
+            <div className="text-center" title="MVP">⭐ MVP</div>
+            <div className="text-center" title="Κίτρινες Κάρτες">🟨 ΚΚ</div>
+            <div className="text-center" title="Κόκκινες Κάρτες">🟥 ΚΚ</div>
+            <div className="text-center" title="Αγώνες">📊 ΑΓ</div>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {players.map((player, index) => (
-              <div
-                key={`${player.id}-${player.teamId}`}
-                className="flex items-center gap-4 p-3 rounded-xl bg-black/40 hover:bg-black/60 transition-colors"
-              >
-                {/* Rank */}
-                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm">
+        </div>
+
+        {/* Table Body */}
+        <div className="divide-y divide-white/5">
+          {playersWithTeam.map((player, index) => (
+            <motion.div
+              key={`${player.id}-${player.teamId}`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.02 }}
+              className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
+            >
+              {/* Rank */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
+                  ${index === 0 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg shadow-yellow-500/30' : ''}
+                  ${index === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-400/30' : ''}
+                  ${index === 2 ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-600/30' : ''}
+                  ${index > 2 ? 'bg-white/5 text-white/70 group-hover:bg-white/10' : ''}
+                `}>
                   {index + 1}
                 </div>
+              </div>
 
-                {/* Player Photo */}
-                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10">
+              {/* Player Info */}
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors">
                   <img
                     src={player.photo}
                     alt={player.name}
@@ -65,169 +140,125 @@ const StatCard: React.FC<{
                     }}
                   />
                 </div>
-
-                {/* Player Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-white truncate">
+                  <div className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
                     {player.name}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-white/70">
-                    <img
-                      src={player.teamLogo}
-                      alt={player.teamName}
-                      className="w-4 h-4 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.src = "/team-placeholder.png";
-                      }}
-                    />
-                    <span className="truncate">{player.teamName}</span>
-                  </div>
-                </div>
-
-                {/* Stat Value */}
-                <div className="flex-shrink-0 text-right">
-                  <div className="text-2xl font-bold text-emerald-400">
-                    {player[statKey]}
-                  </div>
-                  <div className="text-xs text-white/70">{statLabel}</div>
+                  {player.position && (
+                    <div className="text-xs text-white/50 truncate">
+                      {player.position}
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
 
-export const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
-  players,
-  teams,
-}) => {
-  // Create a map for quick team lookup
-  const teamMap = useMemo(() => {
-    return new Map(teams.map((team) => [team.id, team]));
-  }, [teams]);
+              {/* Team Logo */}
+              <div className="flex items-center justify-center">
+                <div className="relative group/team">
+                  <img
+                    src={player.teamLogo}
+                    alt={player.teamName}
+                    className="w-10 h-10 object-contain transition-transform group-hover/team:scale-110"
+                    onError={(e) => {
+                      e.currentTarget.src = "/team-placeholder.png";
+                    }}
+                  />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover/team:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    {player.teamName}
+                  </div>
+                </div>
+              </div>
 
-  // Enrich players with team info
-  const playersWithTeam = useMemo((): PlayerWithTeam[] => {
-    return players.map((player) => {
-      const team = teamMap.get(player.teamId);
-      return {
-        ...player,
-        teamName: team?.name || "Unknown Team",
-        teamLogo: team?.logo || "/team-placeholder.png",
-      };
-    });
-  }, [players, teamMap]);
+              {/* Goals */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  font-bold text-lg
+                  ${player.goals > 0 ? 'text-emerald-400' : 'text-white/30'}
+                `}>
+                  {player.goals}
+                </div>
+              </div>
 
-  // Top Scorers (Goals)
-  const topScorers = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.goals > 0)
-      .sort((a, b) => b.goals - a.goals)
-      .slice(0, 10);
-  }, [playersWithTeam]);
+              {/* Assists */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  font-bold text-lg
+                  ${player.assists > 0 ? 'text-blue-400' : 'text-white/30'}
+                `}>
+                  {player.assists}
+                </div>
+              </div>
 
-  // Assists Leaders
-  const assistLeaders = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.assists > 0)
-      .sort((a, b) => b.assists - a.assists)
-      .slice(0, 10);
-  }, [playersWithTeam]);
+              {/* MVP */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  font-bold text-lg
+                  ${player.mvp > 0 ? 'text-yellow-400' : 'text-white/30'}
+                `}>
+                  {player.mvp}
+                </div>
+              </div>
 
-  // MVPs
-  const mvpLeaders = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.mvp > 0)
-      .sort((a, b) => b.mvp - a.mvp)
-      .slice(0, 10);
-  }, [playersWithTeam]);
+              {/* Yellow Cards */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  font-bold text-lg
+                  ${player.yellowCards > 0 ? 'text-yellow-500' : 'text-white/30'}
+                `}>
+                  {player.yellowCards}
+                </div>
+              </div>
 
-  // Yellow Cards
-  const yellowCardLeaders = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.yellowCards > 0)
-      .sort((a, b) => b.yellowCards - a.yellowCards)
-      .slice(0, 10);
-  }, [playersWithTeam]);
+              {/* Red Cards */}
+              <div className="flex items-center justify-center">
+                <div className={`
+                  font-bold text-lg
+                  ${player.redCards > 0 ? 'text-red-500' : 'text-white/30'}
+                `}>
+                  {player.redCards}
+                </div>
+              </div>
 
-  // Red Cards
-  const redCardLeaders = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.redCards > 0)
-      .sort((a, b) => b.redCards - a.redCards)
-      .slice(0, 10);
-  }, [playersWithTeam]);
+              {/* Matches Played */}
+              <div className="flex items-center justify-center">
+                <div className="font-bold text-lg text-white/70">
+                  {player.matchesPlayed}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
 
-  // Match Participation
-  const matchParticipation = useMemo(() => {
-    return [...playersWithTeam]
-      .filter((p) => p.matchesPlayed > 0)
-      .sort((a, b) => b.matchesPlayed - a.matchesPlayed)
-      .slice(0, 10);
-  }, [playersWithTeam]);
-
-  return (
-    <div className="space-y-6">
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">
-          Στατιστικά Παικτών
-        </h2>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title="Κορυφαίοι Σκόρερ"
-          icon="⚽"
-          players={topScorers}
-          statKey="goals"
-          statLabel="γκολ"
-        />
-
-        <StatCard
-          title="Ασίστ"
-          icon="🎯"
-          players={assistLeaders}
-          statKey="assists"
-          statLabel="ασίστ"
-        />
-
-        <StatCard
-          title="MVPs"
-          icon="⭐"
-          players={mvpLeaders}
-          statKey="mvp"
-          statLabel="MVP"
-        />
-
-        <StatCard
-          title="Κίτρινες Κάρτες"
-          icon="🟨"
-          players={yellowCardLeaders}
-          statKey="yellowCards"
-          statLabel="κίτρινες"
-        />
-
-        <StatCard
-          title="Κόκκινες Κάρτες"
-          icon="🟥"
-          players={redCardLeaders}
-          statKey="redCards"
-          statLabel="κόκκινες"
-        />
-
-        <StatCard
-          title="Συμμετοχές"
-          icon="📊"
-          players={matchParticipation}
-          statKey="matchesPlayed"
-          statLabel="αγώνες"
-        />
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {[
+          { label: "Συνολικά Γκολ", value: playersWithTeam.reduce((sum, p) => sum + p.goals, 0), icon: "⚽", color: "emerald" },
+          { label: "Συνολικά Ασίστ", value: playersWithTeam.reduce((sum, p) => sum + p.assists, 0), icon: "🎯", color: "blue" },
+          { label: "Συνολικά MVP", value: playersWithTeam.reduce((sum, p) => sum + p.mvp, 0), icon: "⭐", color: "yellow" },
+          { label: "Κίτρινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.yellowCards, 0), icon: "🟨", color: "yellow" },
+          { label: "Κόκκινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.redCards, 0), icon: "🟥", color: "red" },
+          { label: "Σύνολο Παικτών", value: playersWithTeam.length, icon: "👥", color: "white" },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
+            className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm p-4 hover:bg-white/5 transition-colors"
+          >
+            <div className="text-2xl mb-2">{stat.icon}</div>
+            <div className={`text-2xl font-bold text-${stat.color}-400 mb-1`}>
+              {stat.value}
+            </div>
+            <div className="text-xs text-white/70 uppercase tracking-wide">
+              {stat.label}
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );
 };
+
+export { PlayerStatistics };
