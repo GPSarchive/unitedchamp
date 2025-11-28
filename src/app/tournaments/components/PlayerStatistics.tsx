@@ -466,34 +466,6 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
           </div>
         )}
       </motion.div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {[
-          { label: "Συνολικά Γκολ", value: playersWithTeam.reduce((sum, p) => sum + p.goals, 0), icon: <FaFutbol className="w-6 h-6 text-emerald-400" />, color: "emerald" },
-          { label: "Συνολικά Ασίστ", value: playersWithTeam.reduce((sum, p) => sum + p.assists, 0), icon: <FaHandsHelping className="w-6 h-6 text-blue-400" />, color: "blue" },
-          { label: "Συνολικά MVP", value: playersWithTeam.reduce((sum, p) => sum + p.mvp, 0), icon: <Trophy className="w-6 h-6 text-yellow-400" />, color: "yellow" },
-          { label: "Κίτρινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.yellowCards, 0), icon: <FaExclamationTriangle className="w-6 h-6 text-yellow-500" />, color: "yellow" },
-          { label: "Κόκκινες Κάρτες", value: playersWithTeam.reduce((sum, p) => sum + p.redCards, 0), icon: <FaTimesCircle className="w-6 h-6 text-red-500" />, color: "red" },
-          { label: "Σύνολο Παικτών", value: playersWithTeam.length, icon: <MdSportsSoccer className="w-6 h-6 text-white/70" />, color: "white" },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 + index * 0.05 }}
-            className="rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm p-4 hover:bg-white/5 transition-colors"
-          >
-            <div className="mb-2">{stat.icon}</div>
-            <div className={`text-2xl font-bold text-${stat.color}-400 mb-1`}>
-              {stat.value}
-            </div>
-            <div className="text-xs text-white/70 uppercase tracking-wide">
-              {stat.label}
-            </div>
-          </motion.div>
-        ))}
-      </div>
     </div>
   );
 };

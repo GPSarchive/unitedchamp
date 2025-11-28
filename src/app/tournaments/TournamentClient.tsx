@@ -97,8 +97,11 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   if (!tournament) return <Skeleton />;
 
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <div className="container mx-auto max-w-7xl px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
+      {/* Background pattern overlay */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/5 via-transparent to-transparent pointer-events-none" />
+
+      <div className="relative container mx-auto max-w-7xl px-4 py-8 space-y-8">
         {/* Tournament Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
