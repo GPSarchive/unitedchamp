@@ -310,12 +310,12 @@ function MatchCard({
 }
 
 // ===================== Day Modal =====================
-function DayModal({ 
-  day, 
+function DayModal({
+  day,
   onClose,
   highlightTeams = []
-}: { 
-  day: DayData | null; 
+}: {
+  day: DayData | null;
   onClose: () => void;
   highlightTeams?: string[];
 }) {
@@ -330,11 +330,48 @@ function DayModal({
     return a.start.localeCompare(b.start);
   });
 
-  // Lock body scroll when modal is open
+  // Enhanced iOS-compatible scroll lock
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+
+    // Store original styles
+    const originalBodyOverflow = body.style.overflow;
+    const originalBodyPosition = body.style.position;
+    const originalBodyTop = body.style.top;
+    const originalBodyWidth = body.style.width;
+    const originalHtmlOverflow = html.style.overflow;
+
+    // Apply iOS-compatible scroll lock
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    html.style.overflow = 'hidden';
+
+    // Prevent touch move on background (iOS fix)
+    const preventTouchMove = (e: TouchEvent) => {
+      if (e.target === e.currentTarget) {
+        e.preventDefault();
+      }
+    };
+
+    body.addEventListener('touchmove', preventTouchMove, { passive: false });
+
     return () => {
-      document.body.style.overflow = '';
+      // Restore original styles
+      body.style.overflow = originalBodyOverflow;
+      body.style.position = originalBodyPosition;
+      body.style.top = originalBodyTop;
+      body.style.width = originalBodyWidth;
+      html.style.overflow = originalHtmlOverflow;
+
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+
+      // Remove event listener
+      body.removeEventListener('touchmove', preventTouchMove);
     };
   }, []);
 
@@ -345,16 +382,27 @@ function DayModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          touchAction: 'none',
+          WebkitOverflowScrolling: 'touch'
+        } as React.CSSProperties}
         onClick={onClose}
       >
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+        <div
+          className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          style={{ touchAction: 'none' } as React.CSSProperties}
+        />
 
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-          className="relative w-full max-w-2xl bg-zinc-900 rounded-2xl shadow-2xl max-h-[85vh] flex flex-col"
+          className="relative w-full max-w-2xl bg-zinc-900 rounded-2xl shadow-2xl flex flex-col"
+          style={{
+            touchAction: 'auto',
+            maxHeight: 'min(85vh, 85dvh)'
+          } as React.CSSProperties}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="sticky top-0 z-10 bg-zinc-900 border-b border-white/10 px-6 py-4 rounded-t-2xl">
@@ -377,7 +425,14 @@ function DayModal({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div
+            className="flex-1 overflow-y-auto p-6 space-y-4"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+              touchAction: 'pan-y'
+            } as React.CSSProperties}
+          >
             {sortedMatches.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-white/50">Δεν υπάρχουν προγραμματισμένοι αγώνες</p>
@@ -386,8 +441,8 @@ function DayModal({
               sortedMatches.map((match) => {
                 const isHighlighted = match.teams?.some(t => highlightTeams.includes(t));
                 return (
-                  <MatchCard 
-                    key={match.id} 
+                  <MatchCard
+                    key={match.id}
                     match={match}
                     isHighlighted={isHighlighted || false}
                   />
