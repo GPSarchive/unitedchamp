@@ -2,11 +2,10 @@
 
 import React, { useState, useMemo } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import { Navigation, Autoplay } from "swiper/modules";
 import { Search } from "lucide-react";
 import "swiper/css";
 import "swiper/css/navigation";
-import "swiper/css/pagination";
 
 import type { DraftMatch } from "../useTournamentData";
 import MatchCard from "./MatchCard";
@@ -107,11 +106,10 @@ const MatchCarousel: React.FC<MatchCarouselProps> = ({
           </div>
 
           <Swiper
-            modules={[Navigation, Pagination, Autoplay]}
+            modules={[Navigation, Autoplay]}
             spaceBetween={20}
             slidesPerView={1}
             navigation
-            pagination={{ clickable: true }}
             autoplay={{ delay: 5000, disableOnInteraction: false }}
             breakpoints={{
               640: { slidesPerView: 2 },
@@ -147,11 +145,10 @@ const MatchCarousel: React.FC<MatchCarouselProps> = ({
           </div>
 
           <Swiper
-            modules={[Navigation, Pagination, Autoplay]}
+            modules={[Navigation, Autoplay]}
             spaceBetween={20}
             slidesPerView={1}
             navigation
-            pagination={{ clickable: true }}
             autoplay={{ delay: 5000, disableOnInteraction: false }}
             breakpoints={{
               640: { slidesPerView: 2 },

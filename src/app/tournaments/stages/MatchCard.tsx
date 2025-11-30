@@ -48,7 +48,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
             </span>
             {isFinished && (
               <span className="px-2 py-1 text-xs font-bold bg-green-500/20 text-green-400 rounded-full">
-                ΤΕΛΙΚΟ
+                ΟΛΟΚΛΗΡΩΘΗΚΕ
               </span>
             )}
             {!isFinished && (

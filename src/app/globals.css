@@ -374,7 +374,7 @@ select option:checked {
 
 /* ================== Match Carousel Styles ================== */
 .match-carousel {
-  padding-bottom: 50px; /* Space for pagination */
+  padding-bottom: 20px; /* Reduced padding - no pagination dots */
 }
 
 .match-carousel .swiper-button-prev,
@@ -401,19 +401,4 @@ select option:checked {
 .match-carousel .swiper-button-next::after {
   font-size: 20px;
   font-weight: bold;
-}
-
-.match-carousel .swiper-pagination-bullet {
-  width: 10px;
-  height: 10px;
-  background: rgba(107, 114, 128, 0.5); /* gray-500 */
-  opacity: 1;
-  transition: all 0.3s ease;
-}
-
-.match-carousel .swiper-pagination-bullet-active {
-  background: rgb(249, 115, 22); /* orange-500 */
-  width: 28px;
-  border-radius: 5px;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.6);
 }
