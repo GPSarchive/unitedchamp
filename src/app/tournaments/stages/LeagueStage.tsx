@@ -3,6 +3,7 @@
 import React from "react";
 import type { Stage } from "../useTournamentData";
 import { useTournamentData } from "../useTournamentData";
+import MatchCarousel from "./MatchCarousel";
 
 const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   const stageIdx = useTournamentData((s) => s.ids.stageIndexById[stage.id]);
@@ -34,27 +35,17 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
     });
   }, [standings, stage.id]);
 
-  const { upcomingMatches, finishedMatches } = React.useMemo(() => {
-    if (!matches) return { upcomingMatches: [], finishedMatches: [] };
-
-    const todayISO = new Date().toISOString();
-
-    const stageMatches = matches.filter((m) => m.stageIdx === stageIdx);
-
-    const upcoming = stageMatches
-      .filter((m) => m.status === "scheduled" && (m.match_date ?? "") >= todayISO)
-      .sort((a, b) => (a.match_date ?? "").localeCompare(b.match_date ?? ""));
-
-    const finished = stageMatches
-      .filter((m) => m.status === "finished")
-      .sort((a, b) => (b.match_date ?? "").localeCompare(a.match_date ?? ""));
-
-    return { upcomingMatches: upcoming, finishedMatches: finished };
-  }, [matches, stageIdx]);
-
   return (
-    <div className="space-y-6">
-      {/* Standings Table */}
+    <div className="space-y-8">
+      {/* Matches Carousel - Now at the top */}
+      <MatchCarousel
+        stageIdx={stageIdx}
+        matches={matches ?? []}
+        getTeamName={getTeamName}
+        getTeamLogo={getTeamLogo}
+      />
+
+      {/* Standings Table - Separated from matches */}
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -64,7 +55,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
 
         {stageStandings.length === 0 ? (
           <div className="p-6 text-center">
-            <div className="text-red-600 dark:text-red-400 font-semibold mb-2">Το τουρνουά ξεκίνησε!            </div>
+            <div className="text-red-600 dark:text-red-400 font-semibold mb-2">Το τουρνουά ξεκίνησε!</div>
             <div className="text-sm text-slate-600 dark:text-slate-400">Ετοιμοι Για Δράση ;</div>
           </div>
         ) : (
@@ -125,129 +116,6 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
             </table>
           </div>
         )}
-      </div>
-
-      {/* Matches Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Upcoming Matches */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Επερχόμενοι Αγώνες</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{upcomingMatches.length} σύνολο</span>
-          </div>
-
-          <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-[400px] overflow-y-auto">
-            {upcomingMatches.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 dark:text-slate-400">Δεν υπάρχουν επερχόμενοι αγώνες.</div>
-            ) : (
-              upcomingMatches.slice(0, 5).map((match) => (
-                <div key={match.db_id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {getTeamLogo(match.team_a_id ?? 0) && (
-                        <img src={getTeamLogo(match.team_a_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      )}
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {getTeamName(match.team_a_id ?? 0)}
-                      </span>
-                    </div>
-
-                    <div className="text-lg font-bold text-slate-500 dark:text-slate-400">VS</div>
-
-                    <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {getTeamName(match.team_b_id ?? 0)}
-                      </span>
-                      {getTeamLogo(match.team_b_id ?? 0) && (
-                        <img src={getTeamLogo(match.team_b_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      )}
-                    </div>
-                  </div>
-
-                  {match.match_date && (
-                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                      {new Date(match.match_date).toLocaleString("el-GR", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        timeZone: "UTC",
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Finished Matches */}
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Ολοκληρωμένοι Αγώνες</h3>
-            <span className="text-xs text-slate-500 dark:text-slate-400">{finishedMatches.length} σύνολο</span>
-          </div>
-
-          <div className="divide-y divide-slate-200 dark:divide-slate-800 max-h-[400px] overflow-y-auto">
-            {finishedMatches.length === 0 ? (
-              <div className="p-6 text-center text-slate-500 dark:text-slate-400">Δεν υπάρχουν ολοκληρωμένοι αγώνες ακόμη.</div>
-            ) : (
-              finishedMatches.slice(0, 5).map((match) => (
-                <div key={match.db_id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {getTeamLogo(match.team_a_id ?? 0) && (
-                        <img src={getTeamLogo(match.team_a_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      )}
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {getTeamName(match.team_a_id ?? 0)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-2xl font-bold ${
-                          match.winner_team_id === match.team_a_id ? "text-green-600 dark:text-green-400" : "text-slate-400"
-                        }`}
-                      >
-                        {match.team_a_score ?? 0}
-                      </span>
-                      <span className="text-slate-400">-</span>
-                      <span
-                        className={`text-2xl font-bold ${
-                          match.winner_team_id === match.team_b_id ? "text-green-600 dark:text-green-400" : "text-slate-400"
-                        }`}
-                      >
-                        {match.team_b_score ?? 0}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 flex-1 min-w-0 justify-end">
-                      <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {getTeamName(match.team_b_id ?? 0)}
-                      </span>
-                      {getTeamLogo(match.team_b_id ?? 0) && (
-                        <img src={getTeamLogo(match.team_b_id ?? 0)!} alt="" className="w-8 h-8 rounded-full object-cover" />
-                      )}
-                    </div>
-                  </div>
-
-                  {match.match_date && (
-                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                      {new Date(match.match_date).toLocaleString("el-GR", {
-                        weekday: "short",
-                        day: "2-digit",
-                        month: "2-digit",
-                        timeZone: "UTC",
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );
