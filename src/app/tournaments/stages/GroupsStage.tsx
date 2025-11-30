@@ -40,59 +40,59 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
     }, [group.id]);
 
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm overflow-hidden">
+      <div className="bg-black text-white rounded-lg shadow-xl overflow-hidden">
         {/* Group Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+        <div className="px-6 py-4 border-b border-orange-500/30 bg-gradient-to-r from-orange-500/10 to-orange-600/10">
+          <h3 className="text-xl font-bold">
             {group.name}
           </h3>
         </div>
 
         {/* Standings */}
         <div className="p-4">
-          <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
+          <h4 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
             Βαθμολογία
           </h4>
 
           {groupStandings.length === 0 ? (
-            <div className="text-center py-4 text-slate-500 dark:text-slate-400 text-sm">
+            <div className="text-center py-4 text-gray-400 text-sm">
               Δεν υπάρχουν βαθμολογίες
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-xs text-slate-600 dark:text-slate-400">
+                <thead className="text-xs text-gray-400 uppercase tracking-wider">
                   <tr>
-                    <th className="px-2 py-2 text-left">#</th>
-                    <th className="px-2 py-2 text-left">Ομάδα</th>
-                    <th className="px-2 py-2 text-center">Αγ</th>
-                    <th className="px-2 py-2 text-center">Π</th>
+                    <th className="px-3 py-3 text-left">#</th>
+                    <th className="px-3 py-3 text-left">Ομάδα</th>
+                    <th className="px-3 py-3 text-center">Αγ</th>
+                    <th className="px-3 py-3 text-center">Π</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-gray-800">
                   {groupStandings.map((standing, idx) => (
-                    <tr key={standing.team_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                      <td className="px-2 py-2 font-bold text-slate-900 dark:text-slate-100">
+                    <tr key={standing.team_id} className="hover:bg-orange-500/10 transition-colors">
+                      <td className="px-3 py-3 font-bold text-orange-400">
                         {standing.rank ?? idx + 1}
                       </td>
-                      <td className="px-2 py-2">
+                      <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           {getTeamLogo(standing.team_id) && (
                             <img
                               src={getTeamLogo(standing.team_id)!}
                               alt=""
-                              className="w-6 h-6 rounded-full object-cover"
+                              className="w-8 h-8 rounded-full object-cover border-2 border-orange-500"
                             />
                           )}
-                          <span className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                          <span className="font-semibold text-white truncate">
                             {getTeamName(standing.team_id)}
                           </span>
                         </div>
                       </td>
-                      <td className="px-2 py-2 text-center text-slate-700 dark:text-slate-300">
+                      <td className="px-3 py-3 text-center text-gray-300">
                         {standing.played}
                       </td>
-                      <td className="px-2 py-2 text-center font-bold text-blue-600 dark:text-blue-400">
+                      <td className="px-3 py-3 text-center font-bold text-orange-400">
                         {standing.points}
                       </td>
                     </tr>
@@ -108,17 +108,9 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
 
   return (
     <div className="space-y-8">
-      {/* Matches Carousel for all groups - Now at the top */}
-      <MatchCarousel
-        stageIdx={stageIdx}
-        matches={matches ?? []}
-        getTeamName={getTeamName}
-        getTeamLogo={getTeamLogo}
-      />
-
-      {/* Group Standings - Separated from matches */}
+      {/* Group Standings */}
       {sortedGroups.length === 0 ? (
-        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+        <div className="text-center py-8 text-gray-400">
           Δεν υπάρχουν όμιλοι για αυτό το στάδιο.
         </div>
       ) : (
@@ -132,6 +124,14 @@ const GroupsStage: React.FC<{ stage: Stage }> = ({ stage }) => {
           ))}
         </div>
       )}
+
+      {/* Matches Carousel - Below standings */}
+      <MatchCarousel
+        stageIdx={stageIdx}
+        matches={matches ?? []}
+        getTeamName={getTeamName}
+        getTeamLogo={getTeamLogo}
+      />
     </div>
   );
 };

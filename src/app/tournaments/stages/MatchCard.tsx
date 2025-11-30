@@ -35,23 +35,24 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
   return (
     <Link href={`/matches/${match.db_id ?? ""}`} className="block h-full">
       <motion.div
-        className="h-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden"
-        whileHover={{ scale: 1.02, y: -4 }}
+        className="h-full bg-black text-white rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-800 hover:border-orange-500/50"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         transition={{ duration: 0.2 }}
       >
         {/* Match Date Header */}
-        <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-slate-200 dark:border-slate-800">
+        <div className="px-4 py-3 bg-gradient-to-r from-orange-500/10 to-orange-600/10 border-b border-orange-500/30">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <span className="text-xs font-semibold text-gray-400">
               {formatDate(match.match_date)}
             </span>
             {isFinished && (
-              <span className="px-2 py-1 text-xs font-bold bg-green-500/20 text-green-700 dark:text-green-400 rounded-full">
+              <span className="px-2 py-1 text-xs font-bold bg-green-500/20 text-green-400 rounded-full">
                 ΤΕΛΙΚΟ
               </span>
             )}
             {!isFinished && (
-              <span className="px-2 py-1 text-xs font-bold bg-blue-500/20 text-blue-700 dark:text-blue-400 rounded-full">
+              <span className="px-2 py-1 text-xs font-bold bg-orange-500/20 text-orange-400 rounded-full">
                 ΠΡΟΣΕΧΩΣ
               </span>
             )}
@@ -68,15 +69,15 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
                   <img
                     src={teamALogo}
                     alt={teamAName}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-orange-500"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-slate-400">?</span>
+                  <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center border-4 border-orange-500">
+                    <span className="text-2xl font-bold text-gray-400">?</span>
                   </div>
                 )}
               </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 text-center line-clamp-2">
+              <span className="text-sm font-bold text-white text-center line-clamp-2">
                 {teamAName}
               </span>
             </div>
@@ -86,27 +87,27 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
               {isFinished ? (
                 <div className="flex items-center gap-3">
                   <span
-                    className={`text-3xl font-black ${
+                    className={`text-4xl font-black ${
                       match.winner_team_id === match.team_a_id
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-slate-400 dark:text-slate-500"
+                        ? "text-green-400"
+                        : "text-gray-600"
                     }`}
                   >
                     {match.team_a_score ?? 0}
                   </span>
-                  <span className="text-2xl font-bold text-slate-300 dark:text-slate-600">-</span>
+                  <span className="text-2xl font-bold text-gray-600">-</span>
                   <span
-                    className={`text-3xl font-black ${
+                    className={`text-4xl font-black ${
                       match.winner_team_id === match.team_b_id
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-slate-400 dark:text-slate-500"
+                        ? "text-green-400"
+                        : "text-gray-600"
                     }`}
                   >
                     {match.team_b_score ?? 0}
                   </span>
                 </div>
               ) : (
-                <span className="text-2xl font-bold text-slate-400 dark:text-slate-500">VS</span>
+                <span className="text-3xl font-bold text-orange-400">VS</span>
               )}
             </div>
 
@@ -117,15 +118,15 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
                   <img
                     src={teamBLogo}
                     alt={teamBName}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-orange-500"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-slate-400">?</span>
+                  <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center border-4 border-orange-500">
+                    <span className="text-2xl font-bold text-gray-400">?</span>
                   </div>
                 )}
               </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 text-center line-clamp-2">
+              <span className="text-sm font-bold text-white text-center line-clamp-2">
                 {teamBName}
               </span>
             </div>
