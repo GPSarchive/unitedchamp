@@ -32,6 +32,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "tailwind.config.js"
-  ],
+, "src/app/api/teams/trim-logo"  ],
   "exclude": ["node_modules"]
 }
