@@ -130,15 +130,6 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
               </span>
             </div>
           </div>
-
-          {/* Additional Info */}
-          {match.field && (
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                📍 {match.field}
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     </Link>
