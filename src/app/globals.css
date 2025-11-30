@@ -374,7 +374,7 @@ select option:checked {
 
 /* ================== Match Carousel Styles ================== */
 .match-carousel {
-  padding-bottom: 20px; /* Reduced padding - no pagination dots */
+  padding: 0 64px 20px; /* Add horizontal padding to make room for external arrows */
 }
 
 .match-carousel .swiper-button-prev,
@@ -389,6 +389,15 @@ select option:checked {
   transition: all 0.3s ease;
 }
 
+/* Position arrows outside the carousel container */
+.match-carousel .swiper-button-prev {
+  left: 0;
+}
+
+.match-carousel .swiper-button-next {
+  right: 0;
+}
+
 .match-carousel .swiper-button-prev:hover,
 .match-carousel .swiper-button-next:hover {
   background: rgb(249, 115, 22);
@@ -401,4 +410,45 @@ select option:checked {
 .match-carousel .swiper-button-next::after {
   font-size: 20px;
   font-weight: bold;
+}
+
+/* Mobile responsiveness - hide arrows on small screens or position them inside */
+@media (max-width: 640px) {
+  .match-carousel {
+    padding: 0 0 20px; /* Remove horizontal padding on mobile */
+  }
+
+  .match-carousel .swiper-button-prev,
+  .match-carousel .swiper-button-next {
+    width: 36px;
+    height: 36px;
+    background: rgba(0, 0, 0, 0.9); /* More opaque on mobile for visibility */
+  }
+
+  .match-carousel .swiper-button-prev::after,
+  .match-carousel .swiper-button-next::after {
+    font-size: 16px;
+  }
+
+  /* Position arrows inside on mobile with some margin */
+  .match-carousel .swiper-button-prev {
+    left: 8px;
+  }
+
+  .match-carousel .swiper-button-next {
+    right: 8px;
+  }
+}
+
+/* Tablet responsiveness */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .match-carousel {
+    padding: 0 56px 20px; /* Slightly less padding on tablets */
+  }
+
+  .match-carousel .swiper-button-prev,
+  .match-carousel .swiper-button-next {
+    width: 44px;
+    height: 44px;
+  }
 }
