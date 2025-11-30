@@ -3,12 +3,12 @@
 import React, { useState, useMemo } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay } from "swiper/modules";
-import { Search } from "lucide-react";
 import "swiper/css";
 import "swiper/css/navigation";
 
 import type { DraftMatch } from "../useTournamentData";
 import MatchCard from "./MatchCard";
+import TeamFilter from "@/components/TeamFilter";
 
 interface MatchCarouselProps {
   stageIdx: number;
@@ -27,7 +27,7 @@ const MatchCarousel: React.FC<MatchCarouselProps> = ({
   getTeamLogo,
   className = "",
 }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
 
   // Filter matches by stage and optional group
   const stageMatches = useMemo(() => {
@@ -62,35 +62,58 @@ const MatchCarousel: React.FC<MatchCarouselProps> = ({
     return { finishedMatches: finished, scheduledMatches: scheduled };
   }, [stageMatches]);
 
-  // Filter matches based on search query
-  const filterMatchesBySearch = (matchList: DraftMatch[]) => {
-    if (!searchQuery.trim()) return matchList;
+  // Extract all unique teams from stage matches
+  const allTeams = useMemo(() => {
+    const teams = new Set<string>();
+    stageMatches.forEach((match) => {
+      if (match.team_a_id) teams.add(getTeamName(match.team_a_id));
+      if (match.team_b_id) teams.add(getTeamName(match.team_b_id));
+    });
+    return Array.from(teams).sort();
+  }, [stageMatches, getTeamName]);
 
-    const query = searchQuery.toLowerCase();
+  // Map team names to logos
+  const teamLogos = useMemo(() => {
+    const map: Record<string, string> = {};
+    stageMatches.forEach((match) => {
+      if (match.team_a_id) {
+        const name = getTeamName(match.team_a_id);
+        const logo = getTeamLogo(match.team_a_id);
+        if (logo && !map[name]) map[name] = logo;
+      }
+      if (match.team_b_id) {
+        const name = getTeamName(match.team_b_id);
+        const logo = getTeamLogo(match.team_b_id);
+        if (logo && !map[name]) map[name] = logo;
+      }
+    });
+    return map;
+  }, [stageMatches, getTeamName, getTeamLogo]);
+
+  // Filter matches by selected team
+  const filterMatchesByTeam = (matchList: DraftMatch[]) => {
+    if (!selectedTeam) return matchList;
     return matchList.filter((match) => {
-      const teamAName = getTeamName(match.team_a_id ?? 0).toLowerCase();
-      const teamBName = getTeamName(match.team_b_id ?? 0).toLowerCase();
-      return teamAName.includes(query) || teamBName.includes(query);
+      const teamAName = getTeamName(match.team_a_id ?? 0);
+      const teamBName = getTeamName(match.team_b_id ?? 0);
+      return teamAName === selectedTeam || teamBName === selectedTeam;
     });
   };
 
-  const filteredFinished = filterMatchesBySearch(finishedMatches);
-  const filteredScheduled = filterMatchesBySearch(scheduledMatches);
+  const filteredFinished = filterMatchesByTeam(finishedMatches);
+  const filteredScheduled = filterMatchesByTeam(scheduledMatches);
 
   return (
     <div className={`space-y-8 ${className}`}>
-      {/* Search Bar */}
+      {/* Team Filter - Modern searchable combobox */}
       <div className="max-w-2xl mx-auto">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-orange-400" />
-          <input
-            type="text"
-            placeholder="Αναζήτηση ομάδας..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-lg bg-black border border-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
-          />
-        </div>
+        <TeamFilter
+          options={allTeams}
+          logosByTeam={teamLogos}
+          value={selectedTeam}
+          onChange={setSelectedTeam}
+          placeholder="Αναζήτηση ομάδας..."
+        />
       </div>
 
       {/* Scheduled Matches Carousel */}
@@ -175,8 +198,8 @@ const MatchCarousel: React.FC<MatchCarouselProps> = ({
       {filteredScheduled.length === 0 && filteredFinished.length === 0 && (
         <div className="text-center py-12 bg-black rounded-lg border border-gray-800">
           <p className="text-gray-400 text-lg">
-            {searchQuery
-              ? "Δεν βρέθηκαν αγώνες που να ταιριάζουν με την αναζήτηση."
+            {selectedTeam
+              ? `Δεν βρέθηκαν αγώνες για την ομάδα ${selectedTeam}.`
               : "Δεν υπάρχουν αγώνες για αυτό το στάδιο."}
           </p>
         </div>
