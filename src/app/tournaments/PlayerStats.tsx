@@ -3,6 +3,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
 type PlayerStatsProps = {
   player: {
@@ -34,7 +35,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ player }) => {
     >
       <div className="flex items-center gap-6 mb-6">
         <img
-          src={photo || "/player-placeholder.jpg"}
+          src={resolvePlayerPhotoUrl(photo)}
           alt={name}
           className="h-20 w-20 object-cover rounded-full border-4 border-orange-500"
         />

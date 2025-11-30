@@ -6,6 +6,7 @@ import { Trophy, Shield, ChevronUp, ChevronDown } from "lucide-react";
 import { FaFutbol, FaHandsHelping, FaExclamationTriangle, FaTimesCircle } from "react-icons/fa";
 import { MdSportsSoccer } from "react-icons/md";
 import type { Player, Team } from "../useTournamentData";
+import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
 type PlayerStatisticsProps = {
   players: Player[];
@@ -281,7 +282,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               <div className="flex items-center gap-3 min-w-0">
                 <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors">
                   <img
-                    src={player.photo}
+                    src={resolvePlayerPhotoUrl(player.photo)}
                     alt={player.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
