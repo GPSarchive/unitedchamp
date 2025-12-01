@@ -51,7 +51,12 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
                 ΟΛΟΚΛΗΡΩΘΗΚΕ
               </span>
             )}
-            {!isFinished && (
+            {match.status === "postponed" && (
+              <span className="px-2 py-1 text-xs font-bold bg-orange-500/20 text-orange-400 rounded-full">
+                ΑΝΑΒΛΗΘΗΚΕ
+              </span>
+            )}
+            {!isFinished && match.status !== "postponed" && (
               <span className="px-2 py-1 text-xs font-bold bg-orange-500/20 text-orange-400 rounded-full">
                 ΠΡΟΣΕΧΩΣ
               </span>
