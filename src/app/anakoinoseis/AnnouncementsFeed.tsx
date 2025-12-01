@@ -43,32 +43,50 @@ export default function AnnouncementsFeed({ pageSize, className }: Props) {
 
   return (
     <div className={className}>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {rows.map((a) => (
           <AnnouncementCard key={a.id} a={a} />
         ))}
       </div>
 
       {rows.length === 0 && !loading && !error && (
-        <div className="text-sm text-gray-500 mt-2">No announcements.</div>
+        <div className="text-center text-white/50 mt-8 py-12
+                       bg-black/20 backdrop-blur-sm border border-white/5 rounded-xl">
+          Δεν υπάρχουν ανακοινώσεις.
+        </div>
       )}
 
       {error && (
-        <div className="text-sm text-red-600 mt-2">Error: {error}</div>
+        <div className="text-sm text-red-400 mt-4 p-4 rounded-xl
+                       bg-red-500/10 border border-red-500/20 backdrop-blur-sm">
+          Σφάλμα: {error}
+        </div>
       )}
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-6 flex items-center justify-center gap-4">
         {nextOffset !== null && (
           <button
             onClick={load}
             disabled={loading}
-            className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-sm"
+            className="px-6 py-3 rounded-lg
+                     bg-black/40 backdrop-blur-sm
+                     border border-white/10
+                     text-white/90 font-medium text-sm tracking-wide
+                     shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_4px_12px_rgba(0,0,0,0.6)]
+                     hover:bg-gradient-to-br hover:from-[#FFD700]/10 hover:to-transparent
+                     hover:border-[#FFD700]/30
+                     hover:text-white
+                     active:scale-[0.98]
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     transition-all duration-200"
           >
-            {loading ? "Loading…" : "Load more"}
+            {loading ? "Φόρτωση…" : "Φόρτωση περισσότερων"}
           </button>
         )}
         {nextOffset === null && rows.length > 0 && (
-          <span className="text-xs text-gray-500">All caught up</span>
+          <span className="text-sm text-white/40 tracking-wide">
+            Όλα τα νέα εμφανίζονται
+          </span>
         )}
       </div>
     </div>
