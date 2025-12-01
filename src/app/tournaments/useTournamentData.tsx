@@ -65,7 +65,7 @@ export type DraftMatch = {
   team_b_id?: number | null;
   round?: number | null;
 
-  status?: "scheduled" | "finished" | null;
+  status?: "scheduled" | "postponed" | "finished" | null;
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
