@@ -13,7 +13,7 @@ export default function RecentAnnouncementsBubble({ count }: Props) {
   return (
     <Link
       href="/anakoinoseis"
-      className="group fixed top-24 left-4 sm:left-6 z-50 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-full bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95"
+      className="group fixed top-32 left-4 sm:left-6 z-50 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-full bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95"
       aria-label={`${count} νέες ανακοινώσεις`}
     >
       <div className="relative">
