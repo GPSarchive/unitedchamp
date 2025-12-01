@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 
 // Make sure this runs on the Node runtime, not Edge
 export const runtime = "nodejs";
-// Always fresh (no ISR cache)
-export const revalidate = 0;
+// Cache for 60 seconds (ISR) - reduces CPU load on Vercel
+export const revalidate = 60;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
