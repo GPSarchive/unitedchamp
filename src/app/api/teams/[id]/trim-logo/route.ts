@@ -5,6 +5,11 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import sharp from "sharp";
 
+// Use Node runtime for Sharp image processing
+export const runtime = "nodejs";
+// Allow up to 60 seconds for image processing
+export const maxDuration = 60;
+
 const BUCKET = "GPSarchive's Project";
 
 export async function POST(
@@ -77,16 +82,15 @@ export async function POST(
 
     const buffer = Buffer.from(await fileData.arrayBuffer());
 
-    // Get original dimensions
+    // Get original dimensions and trim in one operation
     const originalMeta = await sharp(buffer).metadata();
 
-    // Trim transparent pixels
-    const trimmedBuffer = await sharp(buffer)
-      .trim()
-      .toBuffer();
-
-    // Get new dimensions
-    const trimmedMeta = await sharp(trimmedBuffer).metadata();
+    // Trim transparent pixels and get metadata in single pipeline
+    const trimmedImage = sharp(buffer).trim();
+    const [trimmedBuffer, trimmedMeta] = await Promise.all([
+      trimmedImage.toBuffer(),
+      trimmedImage.metadata()
+    ]);
 
     const wasTrimmed =
       originalMeta.width !== trimmedMeta.width ||

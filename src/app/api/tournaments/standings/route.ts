@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
+// Cache for 60 seconds (ISR) - reduces CPU load on Vercel
+export const revalidate = 60;
+
 type Ctx = { params: Promise<{ slug: string }> };
 
 export async function GET(req: NextRequest, ctx: Ctx) {

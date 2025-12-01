@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
+// Cache for 30 seconds (ISR) - bracket data doesn't change frequently
+export const revalidate = 30;
+
 type Ctx = { params: Promise<{ slug: string }> };
 
 export async function GET(req: NextRequest, ctx: Ctx) {

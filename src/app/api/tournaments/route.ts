@@ -2,6 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
+// Cache for 60 seconds (ISR) - tournament list rarely changes
+export const revalidate = 60;
+
 export async function GET(req: NextRequest) {
   const s = await createSupabaseRouteClient();
   const { searchParams } = new URL(req.url);
