@@ -43,30 +43,30 @@ export default function AnnouncementsFeed({ pageSize, className }: Props) {
 
   return (
     <div className={className}>
-      <div className="space-y-4">
+      <div className="space-y-5">
         {rows.map((a) => (
           <AnnouncementCard key={a.id} a={a} />
         ))}
       </div>
 
       {rows.length === 0 && !loading && !error && (
-        <div className="text-sm text-white/70 mt-4 text-center py-8 rounded-2xl border border-white/20 bg-black/50 backdrop-blur-sm">
+        <div className="text-sm text-white/75 text-center py-12 rounded-2xl bg-black/80 ring-1 ring-black backdrop-blur-2xl shadow-xl shadow-black/40">
           Δεν υπάρχουν ανακοινώσεις.
         </div>
       )}
 
       {error && (
-        <div className="text-sm text-rose-400 mt-4 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 backdrop-blur-sm">
+        <div className="text-sm text-rose-300 p-6 rounded-2xl bg-rose-950/40 ring-1 ring-rose-500/30 backdrop-blur-2xl shadow-xl shadow-black/40">
           Σφάλμα: {error}
         </div>
       )}
 
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-8 flex items-center justify-center gap-3">
         {nextOffset !== null && (
           <button
             onClick={load}
             disabled={loading}
-            className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/20 text-sm font-medium backdrop-blur-sm transition-colors disabled:opacity-60"
+            className="px-6 py-2.5 rounded-lg bg-black/80 ring-1 ring-black hover:ring-white/25 text-white hover:bg-black/90 text-sm font-medium backdrop-blur-2xl shadow-lg shadow-black/40 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? "Φόρτωση…" : "Φόρτωσε περισσότερα"}
           </button>
