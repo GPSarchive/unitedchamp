@@ -27,6 +27,7 @@ import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
 import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
+import MatchAdminActions from "./MatchAdminActions";
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -220,6 +221,19 @@ export default async function Page({
 
         {/* Welcome Message for Unplayed Matches */}
         {showWelcomeMessage && <WelcomeMessage matchDate={match.match_date} />}
+
+        {/* Admin Actions (Postpone Match) */}
+        {isAdmin && (
+          <MatchAdminActions
+            match={{
+              id: match.id,
+              status: match.status,
+              match_date: match.match_date,
+              teamA: match.team_a,
+              teamB: match.team_b,
+            }}
+          />
+        )}
 
         {/* Team vs Score Display with Scorers */}
         <TeamVersusScore

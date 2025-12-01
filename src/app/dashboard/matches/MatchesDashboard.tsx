@@ -501,9 +501,9 @@ export default function MatchesDashboard({
                         <button
                           onClick={() => setPostponingId(r.id)}
                           className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                          title="Postpone match"
+                          title="Αναβολή αγώνα"
                         >
-                          <Clock className="h-4 w-4" />
+                          <Clock className="h-4 w-4" /> <span className="hidden sm:inline">Αναβολή</span>
                         </button>
                       )}
                       <button
@@ -632,9 +632,9 @@ export default function MatchesDashboard({
                               <button
                                 onClick={() => setPostponingId(r.id)}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                                title="Postpone match"
+                                title="Αναβολή αγώνα"
                               >
-                                <Clock className="h-4 w-4" /> Postpone
+                                <Clock className="h-4 w-4" /> Αναβολή
                               </button>
                             )}
                             <button
