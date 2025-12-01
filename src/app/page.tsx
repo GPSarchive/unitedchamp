@@ -15,6 +15,7 @@ import RecentMatchesTabs from './home/RecentMatchesTabs';
 import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
+import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 /**
@@ -203,6 +204,29 @@ async function fetchTournaments() {
   });
 }
 
+async function fetchRecentAnnouncementsCount() {
+  return withConsoleTiming('db:recent-announcements', async () => {
+    // Calculate date 2 days ago
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    const twoDaysAgoISO = twoDaysAgo.toISOString();
+
+    const { count, error } = await supabaseAdmin
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+      .gte('created_at', twoDaysAgoISO);
+
+    if (error) {
+      console.error('Error fetching recent announcements count:', error.message);
+      return { recentAnnouncementsCount: 0 };
+    }
+
+    console.log(`Recent announcements count: ${count ?? 0}`);
+    return { recentAnnouncementsCount: count ?? 0 };
+  });
+}
+
 /**
  * ------------------------------
  * Mapping functions
@@ -266,10 +290,11 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
 
-  const [{ user }, { rawMatches }, { tournaments }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentAnnouncementsCount }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
-    fetchTournaments()
+    fetchTournaments(),
+    fetchRecentAnnouncementsCount()
   ]);
   const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
   console.log('Rendering Home page with events:', eventsToPass);
@@ -431,10 +456,10 @@ export default async function Home() {
           </div>
         </div>
 
-      </section>       
+      </section>
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">
-        
+
         <div className="container mx-auto px-4">
           <p>© 2025 Ultra Champ.</p>
           <div className="mt-4">
@@ -444,6 +469,9 @@ export default async function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Recent Announcements Bubble */}
+      <RecentAnnouncementsBubble count={recentAnnouncementsCount} />
     </div>
   );
 }
