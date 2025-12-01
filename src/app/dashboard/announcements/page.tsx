@@ -16,7 +16,7 @@ export default function AnnouncementsPage() {
         προτεραιότητα και χρονικά παράθυρα εμφάνισης.
       </p>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 shadow-sm">
+      <div className="rounded-2xl border border-white/20 bg-black/50 p-4 shadow-lg backdrop-blur-sm">
         <AnnouncementsAdmin />
       </div>
 
