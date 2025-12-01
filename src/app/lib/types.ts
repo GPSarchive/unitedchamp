@@ -78,10 +78,10 @@ export interface PlayerTeamsRow {
   team_id: Id;
 }
 
-/** Match status used in the UI + DB (two states only) */
-export type MatchStatus = "scheduled" | "finished";
+/** Match status used in the UI + DB (three states: scheduled, postponed, finished) */
+export type MatchStatus = "scheduled" | "postponed" | "finished";
 
-/** Base match row (nullable date for drafts, two-state status) */
+/** Base match row (nullable date for drafts, three-state status) */
 export interface MatchRow {
   id: Id;
   match_date: string | null;
@@ -91,7 +91,13 @@ export interface MatchRow {
   winner_team_id: Id | null;
   team_a_id: Id;
   team_b_id: Id;
-  field?: string | null; // ✅ NEW: Field/venue where match is played
+  field?: string | null; // Field/venue where match is played
+
+  // ✅ Postponement fields (added 2025-12-01)
+  postponement_reason?: string | null; // Reason why match was postponed
+  original_match_date?: string | null; // Original date before postponement
+  postponed_at?: string | null; // Timestamp when postponed
+  postponed_by?: string | null; // UUID of admin who postponed the match
 }
 
 
