@@ -41,7 +41,7 @@ export type ClusterItem = {
   end: string;   // naive 'YYYY-MM-DDTHH:mm:ss'
   teams?: [string, string];
   logos?: [string, string];
-  status?: 'scheduled' | 'live' | 'finished';
+  status?: 'scheduled' | 'postponed' | 'live' | 'finished';
   score?: [number, number] | null;
   home_score?: number;
   away_score?: number;

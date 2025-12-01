@@ -27,7 +27,7 @@
       all_day?: boolean;
       teams?: [string, string];
       logos?: [string, string];
-      status?: 'scheduled' | 'live' | 'finished';  // ✅ FIXED: Changed from string
+      status?: 'scheduled' | 'postponed' | 'live' | 'finished';  // ✅ Support for postponed matches
       home_score?: number;
       away_score?: number;
       score?: [number, number];
@@ -113,6 +113,7 @@
      const v = s.trim().toLowerCase();
      if (!v) return undefined;
      if (v === 'scheduled' || v === 'not_started' || v === 'upcoming') return 'scheduled';
+     if (v === 'postponed') return 'postponed';
      if (v === 'live' || v === 'inprogress' || v === 'in_progress' || v === 'ongoing') return 'live';
      if (v === 'finished' || v === 'final' || v === 'completed' || v === 'ended') return 'finished';
      return undefined;
