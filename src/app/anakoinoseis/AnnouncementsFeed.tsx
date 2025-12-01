@@ -43,32 +43,36 @@ export default function AnnouncementsFeed({ pageSize, className }: Props) {
 
   return (
     <div className={className}>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {rows.map((a) => (
           <AnnouncementCard key={a.id} a={a} />
         ))}
       </div>
 
       {rows.length === 0 && !loading && !error && (
-        <div className="text-sm text-gray-500 mt-2">No announcements.</div>
+        <div className="text-sm text-white/70 mt-4 text-center py-8 rounded-2xl border border-white/20 bg-black/50 backdrop-blur-sm">
+          Δεν υπάρχουν ανακοινώσεις.
+        </div>
       )}
 
       {error && (
-        <div className="text-sm text-red-600 mt-2">Error: {error}</div>
+        <div className="text-sm text-rose-400 mt-4 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 backdrop-blur-sm">
+          Σφάλμα: {error}
+        </div>
       )}
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-6 flex items-center gap-3">
         {nextOffset !== null && (
           <button
             onClick={load}
             disabled={loading}
-            className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-sm"
+            className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/20 text-sm font-medium backdrop-blur-sm transition-colors disabled:opacity-60"
           >
-            {loading ? "Loading…" : "Load more"}
+            {loading ? "Φόρτωση…" : "Φόρτωσε περισσότερα"}
           </button>
         )}
         {nextOffset === null && rows.length > 0 && (
-          <span className="text-xs text-gray-500">All caught up</span>
+          <span className="text-xs text-white/60">Όλα φορτώθηκαν</span>
         )}
       </div>
     </div>

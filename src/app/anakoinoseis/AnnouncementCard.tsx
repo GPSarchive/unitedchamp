@@ -46,19 +46,26 @@ export default function AnnouncementCard({ a }: { a: Announcement }) {
   const displayDate = fmtDate(a.start_at || a.created_at);
 
   return (
-    <article className="rounded-xl border bg-white p-4">
-      <div className="flex items-center gap-2">
+    <article className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm hover:bg-black/60 transition-colors">
+      <div className="flex items-center gap-3 mb-3">
         {a.pinned && (
-          <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200">
-            Pinned
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/15 border border-amber-200/30 text-amber-100 font-medium tracking-wide">
+            PINNED
           </span>
         )}
-        <h3 className="font-semibold">{a.title}</h3>
-        <span className="ml-auto text-xs text-gray-500">{displayDate}</span>
+        <span className="ml-auto text-xs text-white/60">{displayDate}</span>
       </div>
 
+      <h3 className="font-bold text-lg text-white mb-3">{a.title}</h3>
+
       <div
-        className="prose prose-sm mt-2"
+        className="prose prose-sm prose-invert max-w-none
+          prose-headings:text-white prose-p:text-white/90
+          prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+          prose-strong:text-white prose-code:text-emerald-300
+          prose-pre:bg-black/40 prose-pre:border prose-pre:border-white/20
+          prose-ul:text-white/90 prose-ol:text-white/90
+          prose-li:text-white/90"
         dangerouslySetInnerHTML={renderBody(a)}
       />
     </article>
