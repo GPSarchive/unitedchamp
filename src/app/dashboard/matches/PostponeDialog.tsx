@@ -14,6 +14,7 @@ interface PostponeDialogProps {
 }
 
 const POSTPONEMENT_REASONS = [
+  { value: "none", label: "(Χωρίς λόγο)" },
   { value: "weather", label: "Κακές καιρικές συνθήκες" },
   { value: "venue", label: "Έλλειψη γηπέδου" },
   { value: "team_request", label: "Αίτημα ομάδας" },
@@ -27,7 +28,7 @@ export default function PostponeDialog({
 }: PostponeDialogProps) {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("20:00");
-  const [reasonType, setReasonType] = useState("weather");
+  const [reasonType, setReasonType] = useState("none");
   const [customReason, setCustomReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,31 +67,26 @@ export default function PostponeDialog({
     e.preventDefault();
     setError(null);
 
-    if (!newDate) {
-      setError("Please select a new date");
-      return;
+    // Validate future date if provided
+    let newDateTime: string | null = null;
+    if (newDate) {
+      newDateTime = `${newDate}T${newTime}:00.000Z`;
+      const selectedDate = new Date(newDateTime);
+      const now = new Date();
+      if (selectedDate <= now) {
+        setError("New date must be in the future");
+        return;
+      }
     }
 
-    // Combine date and time
-    const newDateTime = `${newDate}T${newTime}:00.000Z`;
-
-    // Validate future date
-    const selectedDate = new Date(newDateTime);
-    const now = new Date();
-    if (selectedDate <= now) {
-      setError("New date must be in the future");
-      return;
-    }
-
-    // Get reason text
-    const reason =
-      reasonType === "other"
-        ? customReason.trim()
-        : POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label ?? "";
-
-    if (reasonType === "other" && !customReason.trim()) {
-      setError('Please enter a custom reason or select a different option');
-      return;
+    // Get reason text (optional)
+    let reason: string | null = null;
+    if (reasonType === "none") {
+      reason = null;
+    } else if (reasonType === "other") {
+      reason = customReason.trim() || null;
+    } else {
+      reason = POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label ?? null;
     }
 
     setIsSubmitting(true);
@@ -103,7 +99,7 @@ export default function PostponeDialog({
         },
         body: JSON.stringify({
           new_match_date: newDateTime,
-          postponement_reason: reason || null,
+          postponement_reason: reason,
         }),
       });
 
@@ -158,15 +154,17 @@ export default function PostponeDialog({
           {/* New Date */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/90">
-              📅 Νέα Ημερομηνία *
+              📅 Νέα Ημερομηνία (προαιρετικό)
             </label>
+            <p className="text-xs text-white/60">
+              Αφήστε κενό αν η νέα ημερομηνία δεν έχει καθοριστεί ακόμα
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="date"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
                 min={getMinDate()}
-                required
                 disabled={isSubmitting}
                 className="px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
               />
@@ -174,8 +172,7 @@ export default function PostponeDialog({
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                required
-                disabled={isSubmitting}
+                disabled={isSubmitting || !newDate}
                 className="px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
               />
             </div>
@@ -184,7 +181,7 @@ export default function PostponeDialog({
           {/* Reason */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/90">
-              📝 Λόγος Αναβολής
+              📝 Λόγος Αναβολής (προαιρετικό)
             </label>
             <select
               value={reasonType}
