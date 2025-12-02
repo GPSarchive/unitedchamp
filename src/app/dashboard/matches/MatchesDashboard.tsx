@@ -190,6 +190,18 @@ export default function MatchesDashboard({
     );
   }, [rows]);
 
+  // Get all postponed matches (unfiltered, for dedicated section)
+  const postponedMatches = useMemo(() => {
+    return rows
+      .filter((r) => r.status === "postponed")
+      .sort((a, b) => {
+        // Sort by postponed_at date (most recent first)
+        const pa = a.postponed_at ? Date.parse(a.postponed_at) : 0;
+        const pb = b.postponed_at ? Date.parse(b.postponed_at) : 0;
+        return pb - pa;
+      });
+  }, [rows]);
+
   // Derive visible list (filter + sort)
   const displayRows = useMemo(() => {
     let out = [...rows];
@@ -432,6 +444,95 @@ export default function MatchesDashboard({
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-900/30 p-3 text-red-200">
           Error: {error}
+        </div>
+      )}
+
+      {/* Postponed Matches Section */}
+      {postponedMatches.length > 0 && (
+        <div className="rounded-xl border border-orange-500/30 bg-gradient-to-b from-orange-950/40 to-black/40 overflow-hidden">
+          <div className="px-4 py-3 border-b border-orange-500/20 bg-gradient-to-r from-orange-950/60 to-black/60">
+            <h3 className="text-lg font-bold text-orange-300 flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Αναβληθέντες Αγώνες ({postponedMatches.length})
+            </h3>
+            <p className="text-xs text-white/60 mt-1">
+              Αγώνες που έχουν αναβληθεί και χρειάζονται προσοχή
+            </p>
+          </div>
+          <div className="divide-y divide-orange-500/10">
+            {postponedMatches.map((r) => {
+              const a = one<TeamLite>(r.teamA);
+              const b = one<TeamLite>(r.teamB);
+              const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+              const stageTxt = stageLabel(r);
+              const originalDate = r.original_match_date ? isoToDTString(r.original_match_date) : "—";
+              const newDate = r.match_date ? isoToDTString(r.match_date) : "Δεν έχει οριστεί";
+              const postponedDate = r.postponed_at ? new Date(r.postponed_at).toLocaleString("el-GR") : "—";
+
+              return (
+                <div key={r.id} className="p-4 hover:bg-orange-500/5 transition-colors">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    {/* Match info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {a?.logo && <img src={a.logo} alt={a.name} className="h-6 w-6 rounded-full object-contain ring-1 ring-white/10" />}
+                        <span className="font-semibold text-white">{a?.name ?? r.team_a_id}</span>
+                        <span className="text-white/50">vs</span>
+                        <span className="font-semibold text-white">{b?.name ?? r.team_b_id}</span>
+                        {b?.logo && <img src={b.logo} alt={b.name} className="h-6 w-6 rounded-full object-contain ring-1 ring-white/10" />}
+                      </div>
+                      <div className="text-xs text-white/70 space-y-1">
+                        <div className="flex gap-2">
+                          <span className="px-1.5 py-0.5 rounded bg-white/10 ring-1 ring-white/15">{tourName}</span>
+                          {stageTxt && <span className="px-1.5 py-0.5 rounded bg-white/10 ring-1 ring-white/15">{stageTxt}</span>}
+                        </div>
+                        <div className="flex flex-col gap-1 mt-2">
+                          <div><span className="text-white/50">Αρχική ημερομηνία:</span> <span className="text-orange-300">{originalDate}</span></div>
+                          <div><span className="text-white/50">Νέα ημερομηνία:</span> <span className={newDate === "Δεν έχει οριστεί" ? "text-red-400 font-semibold" : "text-green-400"}>{newDate}</span></div>
+                          {r.postponement_reason && <div><span className="text-white/50">Λόγος:</span> <span className="text-white">{r.postponement_reason}</span></div>}
+                          <div className="text-white/40 text-[11px]">Αναβλήθηκε: {postponedDate}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPostponingId(r.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50 text-white text-sm"
+                        title="Επανα-προγραμματισμός"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        <span className="hidden sm:inline">Επανα-προγραμματισμός</span>
+                      </button>
+                      <button
+                        onClick={() => setEditingId(r.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900 text-white text-sm"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Επεξεργασία</span>
+                      </button>
+                    </div>
+                  </div>
+                  {editingId === r.id && (
+                    <div className="mt-3 pt-3 border-t border-orange-500/20">
+                      <RowEditor
+                        initial={r}
+                        teams={teams}
+                        onCancel={() => setEditingId(null)}
+                        onSaved={async () => {
+                          setEditingId(null);
+                          await refreshFromServer();
+                        }}
+                        tournamentName={tourName}
+                        stageText={stageTxt}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
