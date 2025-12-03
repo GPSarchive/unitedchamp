@@ -14,6 +14,7 @@ interface PostponeDialogProps {
 }
 
 const POSTPONEMENT_REASONS = [
+  { value: "", label: "Χωρίς λόγο" },
   { value: "weather", label: "Κακές καιρικές συνθήκες" },
   { value: "venue", label: "Έλλειψη γηπέδου" },
   { value: "team_request", label: "Αίτημα ομάδας" },
@@ -27,7 +28,7 @@ export default function PostponeDialog({
 }: PostponeDialogProps) {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("20:00");
-  const [reasonType, setReasonType] = useState("weather");
+  const [reasonType, setReasonType] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,45 +67,52 @@ export default function PostponeDialog({
     e.preventDefault();
     setError(null);
 
-    if (!newDate) {
-      setError("Please select a new date");
-      return;
+    // Date is now optional
+    let newDateTime: string | undefined = undefined;
+
+    if (newDate) {
+      // Combine date and time
+      newDateTime = `${newDate}T${newTime}:00.000Z`;
+
+      // Validate future date only if date is provided
+      const selectedDate = new Date(newDateTime);
+      const now = new Date();
+      if (selectedDate <= now) {
+        setError("New date must be in the future");
+        return;
+      }
     }
 
-    // Combine date and time
-    const newDateTime = `${newDate}T${newTime}:00.000Z`;
-
-    // Validate future date
-    const selectedDate = new Date(newDateTime);
-    const now = new Date();
-    if (selectedDate <= now) {
-      setError("New date must be in the future");
-      return;
-    }
-
-    // Get reason text
-    const reason =
-      reasonType === "other"
-        ? customReason.trim()
-        : POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label ?? "";
-
-    if (reasonType === "other" && !customReason.trim()) {
-      setError('Please enter a custom reason or select a different option');
-      return;
+    // Get reason text - now optional
+    let reason: string | undefined = undefined;
+    if (reasonType === "other") {
+      reason = customReason.trim() || undefined;
+    } else if (reasonType) {
+      reason = POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label;
     }
 
     setIsSubmitting(true);
 
     try {
+      const requestBody: {
+        new_match_date?: string;
+        postponement_reason?: string;
+      } = {};
+
+      if (newDateTime) {
+        requestBody.new_match_date = newDateTime;
+      }
+
+      if (reason) {
+        requestBody.postponement_reason = reason;
+      }
+
       const response = await fetch(`/api/matches/${match.id}/postpone`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          new_match_date: newDateTime,
-          postponement_reason: reason || null,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -158,7 +166,7 @@ export default function PostponeDialog({
           {/* New Date */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/90">
-              📅 Νέα Ημερομηνία *
+              📅 Νέα Ημερομηνία <span className="text-white/60 text-xs">(προαιρετικό)</span>
             </label>
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -166,25 +174,27 @@ export default function PostponeDialog({
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
                 min={getMinDate()}
-                required
                 disabled={isSubmitting}
+                placeholder="Επιλέξτε ημερομηνία"
                 className="px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
               />
               <input
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                required
                 disabled={isSubmitting}
                 className="px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
               />
             </div>
+            <p className="text-xs text-white/50">
+              Αφήστε κενό αν η νέα ημερομηνία δεν έχει οριστεί ακόμα
+            </p>
           </div>
 
           {/* Reason */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/90">
-              📝 Λόγος Αναβολής
+              📝 Λόγος Αναβολής <span className="text-white/60 text-xs">(προαιρετικό)</span>
             </label>
             <select
               value={reasonType}

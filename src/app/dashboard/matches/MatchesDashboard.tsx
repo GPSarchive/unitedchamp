@@ -190,6 +190,11 @@ export default function MatchesDashboard({
     );
   }, [rows]);
 
+  // Get postponed matches (not affected by filters)
+  const postponedMatches = useMemo(() => {
+    return rows.filter((r) => r.status === "postponed");
+  }, [rows]);
+
   // Derive visible list (filter + sort)
   const displayRows = useMemo(() => {
     let out = [...rows];
@@ -432,6 +437,138 @@ export default function MatchesDashboard({
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-900/30 p-3 text-red-200">
           Error: {error}
+        </div>
+      )}
+
+      {/* Postponed Matches Section */}
+      {postponedMatches.length > 0 && (
+        <div className="border border-orange-500/30 rounded-2xl overflow-hidden shadow-xl shadow-orange-500/10 bg-gradient-to-b from-orange-950/20 to-black/40">
+          <div className="bg-gradient-to-r from-orange-900/40 to-orange-800/30 px-4 py-3 border-b border-orange-500/30">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-orange-400" />
+              <h3 className="text-lg font-bold text-orange-100">
+                Αναβληθέντες Αγώνες ({postponedMatches.length})
+              </h3>
+            </div>
+            <p className="text-sm text-orange-200/70 mt-1">
+              Αγώνες που έχουν αναβληθεί και αναμένουν επιβεβαίωση νέας ημερομηνίας
+            </p>
+          </div>
+
+          <div className="divide-y divide-orange-500/20">
+            {postponedMatches.map((r) => {
+              const a = one<TeamLite>(r.teamA);
+              const b = one<TeamLite>(r.teamB);
+              const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+              const stageTxt = stageLabel(r);
+
+              return (
+                <div
+                  key={r.id}
+                  className="p-4 bg-gradient-to-r from-orange-950/10 to-transparent hover:from-orange-950/20 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    {/* Match Info */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        {a?.logo && (
+                          <img
+                            src={a.logo}
+                            alt={a.name}
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-orange-400/30"
+                          />
+                        )}
+                        <span className="font-semibold text-white text-lg">
+                          {a?.name ?? r.team_a_id}
+                        </span>
+                        <span className="text-orange-300/60">vs</span>
+                        <span className="font-semibold text-white text-lg">
+                          {b?.name ?? r.team_b_id}
+                        </span>
+                        {b?.logo && (
+                          <img
+                            src={b.logo}
+                            alt={b.name}
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-orange-400/30"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-sm text-orange-200/80">
+                        <span className="px-2 py-1 rounded bg-orange-900/30 border border-orange-500/30">
+                          {tourName}
+                        </span>
+                        {stageTxt && (
+                          <span className="px-2 py-1 rounded bg-orange-900/30 border border-orange-500/30">
+                            {stageTxt}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-orange-200/90">
+                          <Calendar className="h-4 w-4 text-orange-400" />
+                          <span className="font-medium">Αρχική:</span>
+                          <span>{r.original_match_date ? isoToDTString(r.original_match_date) : "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-orange-200/90">
+                          <Calendar className="h-4 w-4 text-orange-400" />
+                          <span className="font-medium">Νέα:</span>
+                          <span>
+                            {r.match_date && r.match_date !== r.original_match_date
+                              ? isoToDTString(r.match_date)
+                              : "ΘΑ ΑΝΑΚΟΙΝΩΘΕΙ"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {r.postponement_reason && (
+                        <div className="flex items-start gap-2 text-sm text-orange-200/80 bg-orange-900/20 p-2 rounded border border-orange-500/20">
+                          <span className="font-medium">Λόγος:</span>
+                          <span>{r.postponement_reason}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setPostponingId(r.id)}
+                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50 text-white transition-colors"
+                        title="Ενημέρωση ημερομηνίας"
+                      >
+                        <Clock className="h-4 w-4" />
+                        <span>Ενημέρωση</span>
+                      </button>
+                      <button
+                        onClick={() => setEditingId(r.id)}
+                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900 text-white transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingId === r.id && (
+                    <div className="mt-4 p-4 bg-black/40 rounded-lg border border-orange-500/30">
+                      <RowEditor
+                        initial={r}
+                        teams={teams}
+                        onCancel={() => setEditingId(null)}
+                        onSaved={async () => {
+                          setEditingId(null);
+                          await refreshFromServer();
+                        }}
+                        tournamentName={tourName}
+                        stageText={stageTxt}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
