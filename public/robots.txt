@@ -1,0 +1,33 @@
+# Block aggressive crawlers and bots
+User-agent: *
+Crawl-delay: 10
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /_next/
+Disallow: /static/
+
+# Allow main pages
+Allow: /
+Allow: /tournoua
+Allow: /matches
+Allow: /OMADES
+Allow: /paiktes
+
+# Block common bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+# Sitemap
+Sitemap: https://ultrachamp.gr/sitemap.xml

@@ -46,10 +46,12 @@ export async function middleware(req: NextRequest) {
     | { success: boolean; limit: number; remaining: number; reset: number }
     | null = null
 
-  if (!isApi && (method === 'GET' || method === 'HEAD')) {
+  // Rate limit API write operations only (not page views)
+  // This reduces KV operations from ~600k/day to ~5k/day
+  if (isApi && (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE')) {
     const ip = ipFromRequest(req)
-    perPath = await checkLimit(`page:${ip}:${path}`, 120, 60)
-    const daily = await checkLimit(`day:${ip}`, 3000, 24 * 60 * 60)
+    perPath = await checkLimit(`api:${ip}:${path}`, 30, 60) // 30 writes per minute
+    const daily = await checkLimit(`api-day:${ip}`, 500, 24 * 60 * 60) // 500 writes per day
 
     const failures = [perPath, daily].filter(x => !x.success)
     if (failures.length) {
