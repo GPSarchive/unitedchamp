@@ -324,9 +324,9 @@ export default async function PaiktesPage({
         if (b.matchesForTeam !== a.matchesForTeam) {
           return b.matchesForTeam - a.matchesForTeam;
         }
-        // Tie-breaker: name, then id for determinism
+        // Tie-breaker: name (Greek locale), then id for determinism
         if (a.name !== b.name) {
-          return a.name.localeCompare(b.name);
+          return a.name.localeCompare(b.name, 'el');
         }
         return a.id - b.id;
       });

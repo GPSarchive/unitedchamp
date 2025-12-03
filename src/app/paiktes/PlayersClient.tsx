@@ -295,11 +295,11 @@ export default function PlayersClient({
         break;
       case "alpha":
       default:
-        // Alphabetical sorting
+        // Alphabetical sorting (Greek locale)
         sorted.sort((a, b) => {
           const aName = `${a.last_name} ${a.first_name}`.toLowerCase();
           const bName = `${b.last_name} ${b.first_name}`.toLowerCase();
-          return aName.localeCompare(bName);
+          return aName.localeCompare(bName, 'el');
         });
         break;
     }
