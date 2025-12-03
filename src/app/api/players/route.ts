@@ -60,6 +60,8 @@ export async function GET(req: Request) {
       )
     `)
     .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true })
+    .order("id", { ascending: true })
     .limit(limit)
     .order("id", { foreignTable: "player_statistics", ascending: false })
     .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
