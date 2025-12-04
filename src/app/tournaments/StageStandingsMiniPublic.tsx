@@ -115,16 +115,16 @@ export default function StageStandingsMiniPublic({
     const logo = showLogos ? getTeamLogo?.(teamId) : null;
 
     return (
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logo}
             alt=""
-            className="h-6 w-6 rounded object-contain"
+            className="h-5 w-5 sm:h-6 sm:w-6 rounded object-contain flex-shrink-0"
           />
         ) : null}
-        <span className="font-semibold tracking-wide">{name}</span>
+        <span className="font-semibold tracking-wide text-sm sm:text-base truncate">{name}</span>
       </div>
     );
   };
@@ -133,20 +133,20 @@ export default function StageStandingsMiniPublic({
     const sorted = sortRows(rows);
 
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
+      <div className="overflow-x-auto -webkit-overflow-scrolling-touch">
+        <table className="w-full text-sm sm:text-[13px] min-w-[600px]">
           <thead>
-            <tr className="bg-gradient-to-r from-rose-700 to-rose-800 text-white uppercase tracking-[0.15em] text-[11px] font-extrabold">
-              <th className="px-4 py-3 text-center w-10">#</th>
-              <th className="px-4 py-3 text-left">ΟΜΑΔΑ</th>
-              <th className="px-2 py-3 text-center w-12" title="Αγώνες">Α</th>
-              <th className="px-2 py-3 text-center w-12" title="Νίκες">Ν</th>
-              <th className="px-2 py-3 text-center w-12" title="Ισοπαλίες">Ι</th>
-              <th className="px-2 py-3 text-center w-12" title="Ήττες">Η</th>
-              <th className="px-2 py-3 text-center w-12" title="Γκολ Υπέρ">Υ</th>
-              <th className="px-2 py-3 text-center w-12" title="Γκολ Κατά">Κ</th>
-              <th className="px-2 py-3 text-center w-12" title="Διαφορά">Δ</th>
-              <th className="px-4 py-3 text-center w-14 bg-gradient-to-r from-rose-800 to-rose-900" title="Βαθμοί">Β</th>
+            <tr className="bg-gradient-to-r from-rose-700 to-rose-800 text-white uppercase tracking-[0.15em] text-xs sm:text-[11px] font-extrabold">
+              <th className="px-2 sm:px-4 py-3 text-center min-w-[40px]">#</th>
+              <th className="px-2 sm:px-4 py-3 text-left min-w-[120px]">ΟΜΑΔΑ</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Αγώνες">Α</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Νίκες">Ν</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Ισοπαλίες">Ι</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Ήττες">Η</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Γκολ Υπέρ">Υ</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Γκολ Κατά">Κ</th>
+              <th className="px-1 sm:px-2 py-3 text-center min-w-[50px]" title="Διαφορά">Δ</th>
+              <th className="px-2 sm:px-4 py-3 text-center min-w-[60px] bg-gradient-to-r from-rose-800 to-rose-900" title="Βαθμοί">Β</th>
             </tr>
           </thead>
 
@@ -162,18 +162,18 @@ export default function StageStandingsMiniPublic({
                   key={`${r.team_id}-${r.group_id ?? "0"}`}
                   className="border-b border-slate-700/50 hover:bg-slate-800 transition-colors text-white"
                 >
-                  <td className="px-4 py-3.5 text-center font-black text-white/90">{rank}</td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-2 sm:px-4 py-3.5 text-center font-black text-sm sm:text-base text-white/90">{rank}</td>
+                  <td className="px-2 sm:px-4 py-3.5">
                     <TeamCell teamId={r.team_id} />
                   </td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.played}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.won}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.drawn}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.lost}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.gf}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{r.ga}</td>
-                  <td className="px-2 py-3.5 text-center text-white/90">{gdDisplay}</td>
-                  <td className="px-4 py-3.5 text-center font-black text-base bg-slate-800">
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.played}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.won}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.drawn}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.lost}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.gf}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{r.ga}</td>
+                  <td className="px-1 sm:px-2 py-3.5 text-center text-sm sm:text-base text-white/90">{gdDisplay}</td>
+                  <td className="px-2 sm:px-4 py-3.5 text-center font-black text-sm sm:text-base bg-slate-800">
                     {r.points}
                   </td>
                 </tr>
