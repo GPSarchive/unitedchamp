@@ -107,9 +107,6 @@ export default function MatchesDashboard({
   // Pagination state
   const [page, setPage] = useState<number>(1);
 
-  // Accessibility/visual option
-  const [hiContrast, setHiContrast] = useState(false);
-
   // Keep local state in sync when the server re-hydrates with new data
   useEffect(() => setTeams(initialTeams), [initialTeams]);
   useEffect(() => setRows(initialMatches), [initialMatches]);
@@ -247,11 +244,11 @@ export default function MatchesDashboard({
         : "border-white/15 bg-zinc-950 text-white hover:bg-zinc-900"
     }`;
 
-  // Row styling helper: zebra + status accent + hover + optional high-contrast tones
+  // Row styling helper: zebra + status accent + hover
   function rowClass(i: number, s: MatchRow["status"]) {
     return [
       "group relative transition-colors border-t border-white/8",
-      i % 2 ? (hiContrast ? "bg-[#06070a]" : "bg-[#0b0b10]") : (hiContrast ? "bg-[#0d0f13]" : "bg-[#101215]"),
+      i % 2 ? "bg-[#0b0b10]" : "bg-[#101215]",
       "hover:bg-red-500/10 focus-within:bg-black-500/15 active:bg-red-500/20",
       "text-white/90 hover:text-white focus-within:text-white active:text-white",
       "hover:[&_svg]:text-white hover:[&_span]:text-white hover:[&_div]:text-white hover:[&_p]:text-white",
@@ -341,14 +338,6 @@ export default function MatchesDashboard({
             className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/30 text-white hover:bg-emerald-700/50 shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]"
           >
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New match</span>
-          </button>
-          <button
-            onClick={() => setHiContrast((v) => !v)}
-            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-zinc-950 text-white hover:bg-zinc-900"
-            title="Toggle high contrast rows"
-          >
-            <span className="hidden sm:inline">{hiContrast ? "Normal contrast" : "High contrast"}</span>
-            <span className="sm:hidden">Contrast</span>
           </button>
           <button
             onClick={testRlsCondition}
