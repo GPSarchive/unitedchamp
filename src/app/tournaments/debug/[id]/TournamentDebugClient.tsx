@@ -16,6 +16,8 @@ type DebugData = {
 export default function TournamentDebugClient({ data }: { data: DebugData }) {
   const [expandedStages, setExpandedStages] = useState<Set<number>>(new Set());
   const [selectedStageFilter, setSelectedStageFilter] = useState<number | null>(null);
+  const [recalculating, setRecalculating] = useState<Record<number, boolean>>({});
+  const [recalcResults, setRecalcResults] = useState<Record<number, { success: boolean; message: string } | null>>({});
 
   const toggleStage = (stageId: number) => {
     const newExpanded = new Set(expandedStages);
@@ -78,6 +80,46 @@ export default function TournamentDebugClient({ data }: { data: DebugData }) {
 
   const getTournamentTeamsForStage = (stageId: number) => {
     return data.tournamentTeams.filter((tt) => tt.stage_id === stageId);
+  };
+
+  const recalculateStandings = async (stageId: number) => {
+    setRecalculating((prev) => ({ ...prev, [stageId]: true }));
+    setRecalcResults((prev) => ({ ...prev, [stageId]: null }));
+
+    try {
+      const response = await fetch(`/api/stages/${stageId}/reseed?recompute=true&force=true`, {
+        method: "POST",
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.ok) {
+        setRecalcResults((prev) => ({
+          ...prev,
+          [stageId]: { success: true, message: "✅ Standings recalculated successfully! Refresh the page to see updates." },
+        }));
+
+        // Auto-dismiss success message after 5 seconds
+        setTimeout(() => {
+          setRecalcResults((prev) => ({ ...prev, [stageId]: null }));
+        }, 5000);
+      } else {
+        setRecalcResults((prev) => ({
+          ...prev,
+          [stageId]: { success: false, message: `❌ Error: ${result.error || "Unknown error"}` },
+        }));
+      }
+    } catch (error) {
+      setRecalcResults((prev) => ({
+        ...prev,
+        [stageId]: {
+          success: false,
+          message: `❌ Network error: ${error instanceof Error ? error.message : "Unknown error"}`
+        },
+      }));
+    } finally {
+      setRecalculating((prev) => ({ ...prev, [stageId]: false }));
+    }
   };
 
   const diagnoseStage = (stage: any) => {
@@ -255,11 +297,11 @@ export default function TournamentDebugClient({ data }: { data: DebugData }) {
                 } overflow-hidden`}
               >
                 {/* Stage Header */}
-                <button
-                  onClick={() => toggleStage(stage.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-750 transition"
-                >
-                  <div className="flex items-center gap-4">
+                <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-750 transition">
+                  <button
+                    onClick={() => toggleStage(stage.id)}
+                    className="flex items-center gap-4 flex-1"
+                  >
                     <span className="text-2xl">
                       {hasIssues ? "🔴" : hasWarnings ? "🟡" : "🟢"}
                     </span>
@@ -274,13 +316,58 @@ export default function TournamentDebugClient({ data }: { data: DebugData }) {
                         Type: {stage.kind} | Config: {stage.config ? "Yes" : "No"}
                       </p>
                     </div>
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    {/* Recalculate Button - Only show for league/groups stages */}
+                    {(stage.kind === "league" || stage.kind === "groups") && (
+                      <button
+                        onClick={() => recalculateStandings(stage.id)}
+                        disabled={recalculating[stage.id]}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                          recalculating[stage.id]
+                            ? "bg-gray-600 cursor-not-allowed"
+                            : hasIssues
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        }`}
+                        title="Recalculate standings from all finished matches"
+                      >
+                        {recalculating[stage.id] ? "⏳ Calculating..." : "🔄 Recalculate Standings"}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => toggleStage(stage.id)}
+                      className="text-2xl"
+                    >
+                      {isExpanded ? "▼" : "▶"}
+                    </button>
                   </div>
-                  <span className="text-2xl">{isExpanded ? "▼" : "▶"}</span>
-                </button>
+                </div>
 
                 {/* Stage Content */}
                 {isExpanded && (
                   <div className="px-6 pb-6 space-y-6">
+                    {/* Recalculation Result Message */}
+                    {recalcResults[stage.id] && (
+                      <div
+                        className={`rounded-md p-4 ${
+                          recalcResults[stage.id]!.success
+                            ? "bg-green-900/30 border border-green-500"
+                            : "bg-red-900/30 border border-red-500"
+                        }`}
+                      >
+                        <p
+                          className={`font-semibold ${
+                            recalcResults[stage.id]!.success ? "text-green-300" : "text-red-300"
+                          }`}
+                        >
+                          {recalcResults[stage.id]!.message}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Diagnosis */}
                     <div className="space-y-2">
                       {diagnosis.issues.length > 0 && (
