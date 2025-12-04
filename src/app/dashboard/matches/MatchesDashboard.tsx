@@ -107,9 +107,6 @@ export default function MatchesDashboard({
   // Pagination state
   const [page, setPage] = useState<number>(1);
 
-  // Accessibility/visual option
-  const [hiContrast, setHiContrast] = useState(false);
-
   // Keep local state in sync when the server re-hydrates with new data
   useEffect(() => setTeams(initialTeams), [initialTeams]);
   useEffect(() => setRows(initialMatches), [initialMatches]);
@@ -190,6 +187,11 @@ export default function MatchesDashboard({
     );
   }, [rows]);
 
+  // Get postponed matches (not affected by filters)
+  const postponedMatches = useMemo(() => {
+    return rows.filter((r) => r.status === "postponed");
+  }, [rows]);
+
   // Derive visible list (filter + sort)
   const displayRows = useMemo(() => {
     let out = [...rows];
@@ -242,11 +244,11 @@ export default function MatchesDashboard({
         : "border-white/15 bg-zinc-950 text-white hover:bg-zinc-900"
     }`;
 
-  // Row styling helper: zebra + status accent + hover + optional high-contrast tones
+  // Row styling helper: zebra + status accent + hover
   function rowClass(i: number, s: MatchRow["status"]) {
     return [
       "group relative transition-colors border-t border-white/8",
-      i % 2 ? (hiContrast ? "bg-[#06070a]" : "bg-[#0b0b10]") : (hiContrast ? "bg-[#0d0f13]" : "bg-[#101215]"),
+      i % 2 ? "bg-[#0b0b10]" : "bg-[#101215]",
       "hover:bg-red-500/10 focus-within:bg-black-500/15 active:bg-red-500/20",
       "text-white/90 hover:text-white focus-within:text-white active:text-white",
       "hover:[&_svg]:text-white hover:[&_span]:text-white hover:[&_div]:text-white hover:[&_p]:text-white",
@@ -338,14 +340,6 @@ export default function MatchesDashboard({
             <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New match</span>
           </button>
           <button
-            onClick={() => setHiContrast((v) => !v)}
-            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-zinc-950 text-white hover:bg-zinc-900"
-            title="Toggle high contrast rows"
-          >
-            <span className="hidden sm:inline">{hiContrast ? "Normal contrast" : "High contrast"}</span>
-            <span className="sm:hidden">Contrast</span>
-          </button>
-          <button
             onClick={testRlsCondition}
             className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-blue-400/40 bg-blue-700/30 text-white hover:bg-blue-700/50"
           >
@@ -432,6 +426,138 @@ export default function MatchesDashboard({
       {error && (
         <div className="rounded-lg border border-red-500/40 bg-red-900/30 p-3 text-red-200">
           Error: {error}
+        </div>
+      )}
+
+      {/* Postponed Matches Section */}
+      {postponedMatches.length > 0 && (
+        <div className="border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/40">
+          <div className="bg-gradient-to-r from-zinc-950 to-black px-4 py-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-white" />
+              <h3 className="text-lg font-bold text-white">
+                Αναβληθέντες Αγώνες ({postponedMatches.length})
+              </h3>
+            </div>
+            <p className="text-sm text-white/70 mt-1">
+              Αγώνες που έχουν αναβληθεί και αναμένουν επιβεβαίωση νέας ημερομηνίας
+            </p>
+          </div>
+
+          <div className="divide-y divide-white/10">
+            {postponedMatches.map((r) => {
+              const a = one<TeamLite>(r.teamA);
+              const b = one<TeamLite>(r.teamB);
+              const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+              const stageTxt = stageLabel(r);
+
+              return (
+                <div
+                  key={r.id}
+                  className="p-4 bg-zinc-950/50 hover:bg-zinc-900/60 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    {/* Match Info */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-3">
+                        {a?.logo && (
+                          <img
+                            src={a.logo}
+                            alt={a.name}
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
+                          />
+                        )}
+                        <span className="font-semibold text-white text-lg">
+                          {a?.name ?? r.team_a_id}
+                        </span>
+                        <span className="text-white/60">vs</span>
+                        <span className="font-semibold text-white text-lg">
+                          {b?.name ?? r.team_b_id}
+                        </span>
+                        {b?.logo && (
+                          <img
+                            src={b.logo}
+                            alt={b.name}
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
+                          />
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-sm text-white/80">
+                        <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
+                          {tourName}
+                        </span>
+                        {stageTxt && (
+                          <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
+                            {stageTxt}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2 text-white/90">
+                          <Calendar className="h-4 w-4 text-white/70" />
+                          <span className="font-medium">Αρχική:</span>
+                          <span>{r.original_match_date ? isoToDTString(r.original_match_date) : "—"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-white/90">
+                          <Calendar className="h-4 w-4 text-white/70" />
+                          <span className="font-medium">Νέα:</span>
+                          <span>
+                            {r.match_date && r.match_date !== r.original_match_date
+                              ? isoToDTString(r.match_date)
+                              : "ΘΑ ΑΝΑΚΟΙΝΩΘΕΙ"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {r.postponement_reason && (
+                        <div className="flex items-start gap-2 text-sm text-white/80 bg-white/5 p-2 rounded border border-white/10">
+                          <span className="font-medium">Λόγος:</span>
+                          <span>{r.postponement_reason}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setPostponingId(r.id)}
+                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 text-white transition-colors"
+                        title="Ενημέρωση ημερομηνίας"
+                      >
+                        <Clock className="h-4 w-4" />
+                        <span>Ενημέρωση</span>
+                      </button>
+                      <button
+                        onClick={() => setEditingId(r.id)}
+                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900 text-white transition-colors"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        <span>Edit</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingId === r.id && (
+                    <div className="mt-4 p-4 bg-black/40 rounded-lg border border-white/10">
+                      <RowEditor
+                        initial={r}
+                        teams={teams}
+                        onCancel={() => setEditingId(null)}
+                        onSaved={async () => {
+                          setEditingId(null);
+                          await refreshFromServer();
+                        }}
+                        tournamentName={tourName}
+                        stageText={stageTxt}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

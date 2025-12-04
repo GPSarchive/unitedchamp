@@ -84,11 +84,12 @@ export async function HEAD() {
 /* ======================================
    POST /api/matches/:id/postpone (admin)
 
-   Postpones a scheduled match to a new date and creates an announcement.
+   Postpones a scheduled match and creates an announcement.
+   The new date and reason are both optional.
 
    Request body:
    {
-     new_match_date: string (ISO 8601),
+     new_match_date: string (ISO 8601, optional),
      postponement_reason: string (optional)
    }
    ====================================== */
@@ -120,21 +121,22 @@ export async function POST(
 
     const { new_match_date, postponement_reason } = body;
 
-    // Validate new_match_date is provided and valid
-    if (!new_match_date) {
-      return jsonError(400, "new_match_date is required");
-    }
+    // Parse and validate new_match_date if provided
+    let newDateISO: string | null = null;
+    let newDate: Date | null = null;
 
-    const newDateISO = parseNullableISODate(new_match_date);
-    if (!newDateISO) {
-      return jsonError(400, "Invalid new_match_date format (must be ISO 8601)");
-    }
+    if (new_match_date) {
+      newDateISO = parseNullableISODate(new_match_date);
+      if (!newDateISO) {
+        return jsonError(400, "Invalid new_match_date format (must be ISO 8601)");
+      }
 
-    // Validate new date is in the future
-    const newDate = new Date(newDateISO);
-    const now = new Date();
-    if (newDate <= now) {
-      return jsonError(400, "New match date must be in the future");
+      // Validate new date is in the future
+      newDate = new Date(newDateISO);
+      const now = new Date();
+      if (newDate <= now) {
+        return jsonError(400, "New match date must be in the future");
+      }
     }
 
     // Load current match with team details for announcement
@@ -190,7 +192,7 @@ export async function POST(
     };
 
     const oldDateFormatted = formatGreekDate(current.match_date);
-    const newDateFormatted = formatGreekDate(newDateISO);
+    const newDateFormatted = newDateISO ? formatGreekDate(newDateISO) : null;
 
     // Store original date only if this is the first postponement
     const originalDate = current.original_match_date ?? current.match_date;
@@ -198,7 +200,7 @@ export async function POST(
     // Prepare postponement update
     const postponementUpdate = {
       status: "postponed" as const,
-      match_date: newDateISO,
+      match_date: newDateISO ?? current.match_date, // Keep current date if no new date provided
       original_match_date: originalDate,
       postponement_reason: postponement_reason || null,
       postponed_at: new Date().toISOString(),
@@ -222,8 +224,19 @@ export async function POST(
     // Create announcement for users
     const announcementTitle = `Αναβολή Αγώνα: ${teamAName} - ${teamBName}`;
 
-    let announcementBody = `Ο αγώνας **${teamAName}** vs **${teamBName}** που ήταν προγραμματισμένος για **${oldDateFormatted}** αναβλήθηκε.\n\n`;
-    announcementBody += `📅 **Νέα ημερομηνία**: ${newDateFormatted}\n\n`;
+    let announcementBody = `Ο αγώνας **${teamAName}** vs **${teamBName}**`;
+
+    if (current.match_date) {
+      announcementBody += ` που ήταν προγραμματισμένος για **${oldDateFormatted}**`;
+    }
+
+    announcementBody += ` αναβλήθηκε.\n\n`;
+
+    if (newDateFormatted) {
+      announcementBody += `📅 **Νέα ημερομηνία**: ${newDateFormatted}\n\n`;
+    } else {
+      announcementBody += `📅 **Νέα ημερομηνία**: Θα ανακοινωθεί σύντομα\n\n`;
+    }
 
     if (postponement_reason) {
       announcementBody += `ℹ️ **Λόγος**: ${postponement_reason}\n\n`;
@@ -231,9 +244,13 @@ export async function POST(
 
     announcementBody += `Σας ευχαριστούμε για την κατανόησή σας.`;
 
-    // Calculate announcement end date (show until 1 day after new match date)
-    const endDate = new Date(newDate);
-    endDate.setDate(endDate.getDate() + 1);
+    // Calculate announcement end date (show until 1 day after new match date, or 30 days if no date)
+    const endDate = newDate ? new Date(newDate) : new Date();
+    if (newDate) {
+      endDate.setDate(endDate.getDate() + 1);
+    } else {
+      endDate.setDate(endDate.getDate() + 30); // Show for 30 days if no new date set
+    }
 
     const announcementPayload = {
       title: announcementTitle,
@@ -258,11 +275,15 @@ export async function POST(
       console.error("Postpone: failed to create announcement", announcementErr);
     }
 
+    const message = newDateFormatted
+      ? `Match postponed successfully from ${oldDateFormatted} to ${newDateFormatted}`
+      : `Match postponed successfully (new date TBD)`;
+
     return NextResponse.json({
       ok: true,
       match: updatedMatch,
       announcement: announcement ?? null,
-      message: `Match postponed successfully from ${oldDateFormatted} to ${newDateFormatted}`,
+      message,
     });
   } catch (e: any) {
     const msg = String(e?.message ?? "");
