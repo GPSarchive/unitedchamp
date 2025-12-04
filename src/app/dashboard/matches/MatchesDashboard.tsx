@@ -442,20 +442,20 @@ export default function MatchesDashboard({
 
       {/* Postponed Matches Section */}
       {postponedMatches.length > 0 && (
-        <div className="border border-orange-500/30 rounded-2xl overflow-hidden shadow-xl shadow-orange-500/10 bg-gradient-to-b from-orange-950/20 to-black/40">
-          <div className="bg-gradient-to-r from-orange-900/40 to-orange-800/30 px-4 py-3 border-b border-orange-500/30">
+        <div className="border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/40">
+          <div className="bg-gradient-to-r from-zinc-950 to-black px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-orange-400" />
-              <h3 className="text-lg font-bold text-orange-100">
+              <Clock className="h-5 w-5 text-white" />
+              <h3 className="text-lg font-bold text-white">
                 Αναβληθέντες Αγώνες ({postponedMatches.length})
               </h3>
             </div>
-            <p className="text-sm text-orange-200/70 mt-1">
+            <p className="text-sm text-white/70 mt-1">
               Αγώνες που έχουν αναβληθεί και αναμένουν επιβεβαίωση νέας ημερομηνίας
             </p>
           </div>
 
-          <div className="divide-y divide-orange-500/20">
+          <div className="divide-y divide-white/10">
             {postponedMatches.map((r) => {
               const a = one<TeamLite>(r.teamA);
               const b = one<TeamLite>(r.teamB);
@@ -465,7 +465,7 @@ export default function MatchesDashboard({
               return (
                 <div
                   key={r.id}
-                  className="p-4 bg-gradient-to-r from-orange-950/10 to-transparent hover:from-orange-950/20 transition-colors"
+                  className="p-4 bg-zinc-950/50 hover:bg-zinc-900/60 transition-colors"
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     {/* Match Info */}
@@ -475,13 +475,13 @@ export default function MatchesDashboard({
                           <img
                             src={a.logo}
                             alt={a.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-orange-400/30"
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
                           />
                         )}
                         <span className="font-semibold text-white text-lg">
                           {a?.name ?? r.team_a_id}
                         </span>
-                        <span className="text-orange-300/60">vs</span>
+                        <span className="text-white/60">vs</span>
                         <span className="font-semibold text-white text-lg">
                           {b?.name ?? r.team_b_id}
                         </span>
@@ -489,30 +489,30 @@ export default function MatchesDashboard({
                           <img
                             src={b.logo}
                             alt={b.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-orange-400/30"
+                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
                           />
                         )}
                       </div>
 
-                      <div className="flex flex-wrap gap-2 text-sm text-orange-200/80">
-                        <span className="px-2 py-1 rounded bg-orange-900/30 border border-orange-500/30">
+                      <div className="flex flex-wrap gap-2 text-sm text-white/80">
+                        <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
                           {tourName}
                         </span>
                         {stageTxt && (
-                          <span className="px-2 py-1 rounded bg-orange-900/30 border border-orange-500/30">
+                          <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
                             {stageTxt}
                           </span>
                         )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-2 text-orange-200/90">
-                          <Calendar className="h-4 w-4 text-orange-400" />
+                        <div className="flex items-center gap-2 text-white/90">
+                          <Calendar className="h-4 w-4 text-white/70" />
                           <span className="font-medium">Αρχική:</span>
                           <span>{r.original_match_date ? isoToDTString(r.original_match_date) : "—"}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-orange-200/90">
-                          <Calendar className="h-4 w-4 text-orange-400" />
+                        <div className="flex items-center gap-2 text-white/90">
+                          <Calendar className="h-4 w-4 text-white/70" />
                           <span className="font-medium">Νέα:</span>
                           <span>
                             {r.match_date && r.match_date !== r.original_match_date
@@ -523,7 +523,7 @@ export default function MatchesDashboard({
                       </div>
 
                       {r.postponement_reason && (
-                        <div className="flex items-start gap-2 text-sm text-orange-200/80 bg-orange-900/20 p-2 rounded border border-orange-500/20">
+                        <div className="flex items-start gap-2 text-sm text-white/80 bg-white/5 p-2 rounded border border-white/10">
                           <span className="font-medium">Λόγος:</span>
                           <span>{r.postponement_reason}</span>
                         </div>
@@ -534,7 +534,7 @@ export default function MatchesDashboard({
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => setPostponingId(r.id)}
-                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50 text-white transition-colors"
+                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 text-white transition-colors"
                         title="Ενημέρωση ημερομηνίας"
                       >
                         <Clock className="h-4 w-4" />
@@ -551,7 +551,7 @@ export default function MatchesDashboard({
                   </div>
 
                   {editingId === r.id && (
-                    <div className="mt-4 p-4 bg-black/40 rounded-lg border border-orange-500/30">
+                    <div className="mt-4 p-4 bg-black/40 rounded-lg border border-white/10">
                       <RowEditor
                         initial={r}
                         teams={teams}
