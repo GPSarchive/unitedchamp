@@ -87,7 +87,7 @@ export default function TournamentDebugClient({ data }: { data: DebugData }) {
     setRecalcResults((prev) => ({ ...prev, [stageId]: null }));
 
     try {
-      const response = await fetch(`/api/stages/${stageId}/reseed?recompute=true&force=true`, {
+      const response = await fetch(`/api/stages/${stageId}/recalculate-standings`, {
         method: "POST",
       });
 
