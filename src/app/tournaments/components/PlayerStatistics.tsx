@@ -164,12 +164,14 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         transition={{ duration: 0.4 }}
         className="rounded-2xl border border-white/10 overflow-hidden backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl"
       >
-        {/* Table Header */}
-        <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
-          <div className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider">
-            <div className="text-center">#</div>
-            <div>Παίκτης</div>
-            <div className="text-center">Ομάδα</div>
+        {/* Table Wrapper with horizontal scroll for mobile */}
+        <div className="overflow-x-auto">
+          {/* Table Header */}
+          <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
+            <div className="grid grid-cols-[50px_minmax(150px,1fr)_70px_70px_70px_70px_70px_70px] gap-2 sm:gap-4 px-4 sm:px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider min-w-[600px]">
+              <div className="text-center">#</div>
+              <div>Παίκτης</div>
+              <div className="text-center">Ομάδα</div>
 
             {/* Sortable Goals Column */}
             <button
@@ -249,22 +251,25 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               )}
             </button>
           </div>
-        </div>
+          </div>
 
-        {/* Table Body */}
-        <div className="divide-y divide-white/5">
-          <AnimatePresence mode="wait">
-            {currentPlayers.map((player, index) => {
-              const globalIndex = startIndex + index;
-              return (
-                <motion.div
-                  key={`${player.id}-${player.teamId}-${currentPage}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3, delay: index * 0.02 }}
-                  className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
-                >
+          {/* Table Body */}
+          <div className="divide-y divide-white/5">
+            <AnimatePresence mode="wait">
+              {currentPlayers.map((player, index) => {
+                const globalIndex = startIndex + index;
+                const hasPlayerPhoto = player.photo && player.photo !== '';
+                const playerImageSrc = hasPlayerPhoto ? resolvePlayerPhotoUrl(player.photo) : player.teamLogo;
+
+                return (
+                  <motion.div
+                    key={`${player.id}-${player.teamId}-${currentPage}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, delay: index * 0.02 }}
+                    className="grid grid-cols-[50px_minmax(150px,1fr)_70px_70px_70px_70px_70px_70px] gap-2 sm:gap-4 px-4 sm:px-6 py-4 hover:bg-white/5 transition-all duration-200 group min-w-[600px]"
+                  >
                   {/* Rank */}
                   <div className="flex items-center justify-center">
                     <div className={`
@@ -278,107 +283,114 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                     </div>
                   </div>
 
-              {/* Player Info */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors">
-                  <img
-                    src={resolvePlayerPhotoUrl(player.photo)}
-                    alt={player.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = "/player-placeholder.jpg";
-                    }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
-                    {player.name}
+                {/* Player Info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors ${hasPlayerPhoto ? 'rounded-full' : 'rounded-lg'}`}>
+                    <img
+                      src={playerImageSrc}
+                      alt={player.name}
+                      className={`w-full h-full ${hasPlayerPhoto ? 'object-cover' : 'object-contain p-1'}`}
+                      onError={(e) => {
+                        e.currentTarget.src = "/player-placeholder.jpg";
+                      }}
+                    />
                   </div>
-                  {player.position && (
-                    <div className="text-xs text-white/50 truncate">
-                      {player.position}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors text-sm sm:text-base">
+                      {player.name}
+                    </div>
+                    {player.position && (
+                      <div className="text-xs text-white/50 truncate">
+                        {player.position}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Team Logo - Only show if player has a photo (to avoid duplication) */}
+                <div className="flex items-center justify-center">
+                  {hasPlayerPhoto ? (
+                    <div className="relative group/team">
+                      <img
+                        src={player.teamLogo}
+                        alt={player.teamName}
+                        className="w-8 h-8 sm:w-10 sm:h-10 object-contain transition-transform group-hover/team:scale-110"
+                        onError={(e) => {
+                          e.currentTarget.src = "/team-placeholder.png";
+                        }}
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover/team:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                        {player.teamName}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/50 text-center">
+                      {player.teamName}
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Team Logo */}
-              <div className="flex items-center justify-center">
-                <div className="relative group/team">
-                  <img
-                    src={player.teamLogo}
-                    alt={player.teamName}
-                    className="w-10 h-10 object-contain transition-transform group-hover/team:scale-110"
-                    onError={(e) => {
-                      e.currentTarget.src = "/team-placeholder.png";
-                    }}
-                  />
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover/team:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    {player.teamName}
+                {/* Goals */}
+                <div className="flex items-center justify-center">
+                  <div className={`
+                    font-bold text-base sm:text-lg
+                    ${player.goals > 0 ? 'text-emerald-400' : 'text-white/30'}
+                  `}>
+                    {player.goals}
                   </div>
                 </div>
-              </div>
 
-              {/* Goals */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  font-bold text-lg
-                  ${player.goals > 0 ? 'text-emerald-400' : 'text-white/30'}
-                `}>
-                  {player.goals}
+                {/* Assists */}
+                <div className="flex items-center justify-center">
+                  <div className={`
+                    font-bold text-base sm:text-lg
+                    ${player.assists > 0 ? 'text-blue-400' : 'text-white/30'}
+                  `}>
+                    {player.assists}
+                  </div>
                 </div>
-              </div>
 
-              {/* Assists */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  font-bold text-lg
-                  ${player.assists > 0 ? 'text-blue-400' : 'text-white/30'}
-                `}>
-                  {player.assists}
+                {/* MVP */}
+                <div className="flex items-center justify-center">
+                  <div className={`
+                    font-bold text-base sm:text-lg
+                    ${player.mvp > 0 ? 'text-yellow-400' : 'text-white/30'}
+                  `}>
+                    {player.mvp}
+                  </div>
                 </div>
-              </div>
 
-              {/* MVP */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  font-bold text-lg
-                  ${player.mvp > 0 ? 'text-yellow-400' : 'text-white/30'}
-                `}>
-                  {player.mvp}
+                {/* Yellow Cards */}
+                <div className="flex items-center justify-center">
+                  <div className={`
+                    font-bold text-base sm:text-lg
+                    ${player.yellowCards > 0 ? 'text-yellow-500' : 'text-white/30'}
+                  `}>
+                    {player.yellowCards}
+                  </div>
                 </div>
-              </div>
 
-              {/* Yellow Cards */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  font-bold text-lg
-                  ${player.yellowCards > 0 ? 'text-yellow-500' : 'text-white/30'}
-                `}>
-                  {player.yellowCards}
+                {/* Red Cards */}
+                <div className="flex items-center justify-center">
+                  <div className={`
+                    font-bold text-base sm:text-lg
+                    ${player.redCards > 0 ? 'text-red-500' : 'text-white/30'}
+                  `}>
+                    {player.redCards}
+                  </div>
                 </div>
-              </div>
 
-              {/* Red Cards */}
-              <div className="flex items-center justify-center">
-                <div className={`
-                  font-bold text-lg
-                  ${player.redCards > 0 ? 'text-red-500' : 'text-white/30'}
-                `}>
-                  {player.redCards}
+                {/* Matches Played */}
+                <div className="flex items-center justify-center">
+                  <div className="font-bold text-base sm:text-lg text-white/70">
+                    {player.matchesPlayed}
+                  </div>
                 </div>
-              </div>
-
-              {/* Matches Played */}
-              <div className="flex items-center justify-center">
-                <div className="font-bold text-lg text-white/70">
-                  {player.matchesPlayed}
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-          </AnimatePresence>
+              </motion.div>
+            );
+          })}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Pagination Controls */}
