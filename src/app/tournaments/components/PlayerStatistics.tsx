@@ -164,9 +164,11 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         transition={{ duration: 0.4 }}
         className="rounded-2xl border border-white/10 overflow-hidden backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl"
       >
-        {/* Table Header */}
-        <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
-          <div className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider">
+        {/* Scrollable Container */}
+        <div className="overflow-x-auto">
+          {/* Table Header */}
+          <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
+            <div className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider min-w-[900px]">
             <div className="text-center">#</div>
             <div>Παίκτης</div>
             <div className="text-center">Ομάδα</div>
@@ -249,22 +251,22 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               )}
             </button>
           </div>
-        </div>
+          </div>
 
-        {/* Table Body */}
-        <div className="divide-y divide-white/5">
-          <AnimatePresence mode="wait">
-            {currentPlayers.map((player, index) => {
-              const globalIndex = startIndex + index;
-              return (
-                <motion.div
-                  key={`${player.id}-${player.teamId}-${currentPage}`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3, delay: index * 0.02 }}
-                  className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
-                >
+          {/* Table Body */}
+          <div className="divide-y divide-white/5">
+            <AnimatePresence mode="wait">
+              {currentPlayers.map((player, index) => {
+                const globalIndex = startIndex + index;
+                return (
+                  <motion.div
+                    key={`${player.id}-${player.teamId}-${currentPage}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, delay: index * 0.02 }}
+                    className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group min-w-[900px]"
+                  >
                   {/* Rank */}
                   <div className="flex items-center justify-center">
                     <div className={`
@@ -376,9 +378,10 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                 </div>
               </div>
             </motion.div>
-          );
-        })}
-          </AnimatePresence>
+              );
+            })}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Pagination Controls */}
