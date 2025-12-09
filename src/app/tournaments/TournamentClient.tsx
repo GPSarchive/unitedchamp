@@ -61,7 +61,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   const { stages: sortedStages, getRendererForStage } = useStages();
 
   useEffect(() => {
-    if (!tournament) {
+    // Update store if tournament is null OR if the tournament ID has changed
+    if (!tournament || tournament.id !== initialData.tournament.id) {
       console.log('[TournamentClient] Hydrating store with:', {
         tournament: initialData.tournament.name,
         stagesCount: initialData.stages.length,
