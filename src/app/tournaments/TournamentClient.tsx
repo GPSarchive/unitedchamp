@@ -61,7 +61,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   const { stages: sortedStages, getRendererForStage } = useStages();
 
   useEffect(() => {
-    if (!tournament) {
+    // Update store if tournament is not loaded OR if the tournament ID has changed
+    if (!tournament || tournament.id !== initialData.tournament.id) {
       console.log('[TournamentClient] Hydrating store with:', {
         tournament: initialData.tournament.name,
         stagesCount: initialData.stages.length,
@@ -94,7 +95,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     setGroups,
   ]);
 
-  if (!tournament) return <Skeleton />;
+  // Show skeleton if tournament is not loaded OR if the IDs don't match (during navigation)
+  if (!tournament || tournament.id !== initialData.tournament.id) return <Skeleton />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
