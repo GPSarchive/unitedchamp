@@ -95,7 +95,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     setGroups,
   ]);
 
-  if (!tournament) return <Skeleton />;
+  // Show skeleton if tournament is not loaded OR if the IDs don't match (during navigation)
+  if (!tournament || tournament.id !== initialData.tournament.id) return <Skeleton />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
