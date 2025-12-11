@@ -220,7 +220,6 @@ function useDesktopNavScroll({
 
 const MOBILE_MOTION_VARIANTS = {
   visible: { y: 0 },
-  peek: { y: "-50%" },
   hidden: { y: "-100%" },
 } as const;
 
@@ -271,142 +270,11 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
   const toggleMobile = useCallback(() => setMobileOpen(v => !v), []);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
 
-  // Mobile menu scroll stage (accordion behavior)
-  const [mobileMenuStage, setMobileMenuStage] = useState<"visible" | "peek" | "hidden">("visible");
-  const menuScrollRef = useRef<HTMLDivElement>(null);
-  const lastMenuScrollY = useRef(0);
-
-  // Scroll tracking for glowing scrollbar
-  const [isMenuScrolling, setIsMenuScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Track overscroll attempts at bottom
-  const bottomHitCount = useRef(0);
-  
-  // Handle menu scroll - accordion behavior + glow effect
-  const handleMenuScroll = useCallback(() => {
-    const el = menuScrollRef.current;
-    if (!el) return;
-
-    const currentScrollY = el.scrollTop;
-    const maxScroll = el.scrollHeight - el.clientHeight;
-    const delta = currentScrollY - lastMenuScrollY.current;
-
-    // Glow effect
-    setIsMenuScrolling(true);
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-    scrollTimeoutRef.current = setTimeout(() => {
-      setIsMenuScrolling(false);
-    }, 150);
-
-    // Accordion hide behavior based on scroll within menu
-    const scrollPercentage = maxScroll > 0 ? currentScrollY / maxScroll : 0;
-
-    // Scrolling down in menu
-    if (delta > 5) {
-      if (scrollPercentage > 0.3 && scrollPercentage <= 0.7) {
-        setMobileMenuStage("peek");
-      } else if (scrollPercentage > 0.7) {
-        setMobileMenuStage("hidden");
-      }
-    }
-    // Scrolling up in menu
-    else if (delta < -5) {
-      if (scrollPercentage < 0.3) {
-        setMobileMenuStage("visible");
-      } else if (scrollPercentage < 0.7) {
-        setMobileMenuStage("peek");
-      }
-    }
-
-    // Auto-close with lag - require multiple scroll attempts at bottom
-    const isAtBottom = scrollPercentage >= 0.98;
-    
-    if (isAtBottom && delta > 0) {
-      // User is trying to scroll down while at bottom
-      bottomHitCount.current += 1;
-      
-      // Require 3+ scroll attempts at bottom before closing
-      if (bottomHitCount.current >= 3) {
-        setTimeout(() => {
-          closeMobile();
-        }, 150);
-      }
-    } else if (!isAtBottom) {
-      // Reset counter when not at bottom
-      bottomHitCount.current = 0;
-    }
-
-    lastMenuScrollY.current = currentScrollY;
-  }, [closeMobile]);
-
-  // Reset menu stage and counters when menu opens/closes
-  useEffect(() => {
-    if (mobileOpen) {
-      setMobileMenuStage("visible");
-      lastMenuScrollY.current = 0;
-      bottomHitCount.current = 0;
-    }
-  }, [mobileOpen]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-    };
-  }, []);
-
   // Desktop scroll behavior
   const { stage: desktopStage, scrolled } = useDesktopNavScroll({
     activateAt: 72,
     scrollDelta: 10,
   });
-
-  // Page scroll behavior for mobile (when menu is closed)
-  const [mobilePageStage, setMobilePageStage] = useState<"visible" | "peek" | "hidden">("visible");
-  const lastPageScrollY = useRef(0);
-
-  useEffect(() => {
-    const handlePageScroll = () => {
-      // Only apply page scroll behavior on mobile when menu is closed
-      if (window.innerWidth >= 768) return;
-
-      const currentScrollY = window.scrollY;
-      const delta = currentScrollY - lastPageScrollY.current;
-
-      // At top - always visible
-      if (currentScrollY < 20) {
-        setMobilePageStage("visible");
-        lastPageScrollY.current = currentScrollY;
-        return;
-      }
-
-      // Scrolling down
-      if (delta > 12) {
-        if (currentScrollY > 80 && currentScrollY <= 160) {
-          setMobilePageStage("peek");
-        } else if (currentScrollY > 160) {
-          setMobilePageStage("hidden");
-          if (mobileOpen) {
-            closeMobile();
-          }
-        }
-      }
-      // Scrolling up
-      else if (delta < -12) {
-        setMobilePageStage("visible");
-      }
-
-      lastPageScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener("scroll", handlePageScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handlePageScroll);
-  }, [mobileOpen, closeMobile]);
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -447,10 +315,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Choose motion variant based on device and menu state
-  // When menu is open, use menu scroll stage; when closed, use page scroll stage
-  const currentMobileStage = mobileOpen ? mobileMenuStage : mobilePageStage;
-  const currentStage = isMobile ? currentMobileStage : desktopStage;
+  // Mobile navbar always visible, desktop uses scroll behavior
+  const currentStage = isMobile ? "visible" : desktopStage;
   const motionVariants = isMobile ? MOBILE_MOTION_VARIANTS : DESKTOP_MOTION_VARIANTS;
 
   return (
@@ -602,21 +468,10 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               animate={{ height: "75vh", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={prefersReduced ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              className={`
-                md:hidden overflow-hidden 
-                border-b border-white/15 
-                bg-gradient-to-b from-zinc-950/95 via-zinc-900/95 to-zinc-950/98
-                backdrop-blur-xl text-white
-                mobile-menu-container
-                ${isMenuScrolling ? "is-scrolling" : ""}
-              `}
+              className="md:hidden overflow-hidden border-b border-white/15 bg-gradient-to-b from-zinc-950/95 via-zinc-900/95 to-zinc-950/98 backdrop-blur-xl text-white mobile-menu-container"
             >
               {/* Scrollable content area */}
-              <div 
-                ref={menuScrollRef}
-                className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll"
-                onScroll={handleMenuScroll}
-              >
+              <div className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll">
                 {/* Top fade gradient */}
                 <div className="pointer-events-none sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-zinc-950/90 to-transparent z-10" />
                 
@@ -676,17 +531,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                   </motion.div>
                 </div>
 
-                {/* Bottom fade gradient + scroll indicator */}
-                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-zinc-950/95 to-transparent flex items-end justify-center pb-1">
-                  <motion.div
-                    initial={{ opacity: 0.6 }}
-                    animate={{ opacity: [0.6, 1, 0.6], y: [0, 4, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="text-white/40 text-xs"
-                  >
-                    ↓ scroll to close
-                  </motion.div>
-                </div>
+                {/* Bottom fade gradient */}
+                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-zinc-950/95 to-transparent" />
               </div>
             </motion.div>
           )}
@@ -734,35 +580,24 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
           background: linear-gradient(90deg, rgba(255,255,255,0.4), rgba(255,255,255,0.75));
         }
 
-        /* Premium mobile menu scrollbar */
+        /* Simple mobile menu scrollbar */
         .mobile-menu-scroll {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.15) transparent;
+          scrollbar-color: rgba(255,255,255,0.3) transparent;
         }
         .mobile-menu-scroll::-webkit-scrollbar {
-          width: 3px;
+          width: 4px;
         }
         .mobile-menu-scroll::-webkit-scrollbar-track {
           background: transparent;
           margin: 8px 0;
         }
         .mobile-menu-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.3);
           border-radius: 9999px;
-          transition: all 0.3s ease;
         }
-        
-        /* Glowing scrollbar when actively scrolling */
-        .mobile-menu-container.is-scrolling .mobile-menu-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.6);
-          box-shadow: 
-            0 0 6px 1px rgba(255,255,255,0.4),
-            0 0 12px 2px rgba(255,255,255,0.2);
-        }
-        
-        /* Firefox fallback */
-        .mobile-menu-container.is-scrolling .mobile-menu-scroll {
-          scrollbar-color: rgba(255,255,255,0.7) transparent;
+        .mobile-menu-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255,255,255,0.5);
         }
       `}</style>
     </>
