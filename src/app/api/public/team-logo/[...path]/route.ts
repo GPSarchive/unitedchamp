@@ -10,6 +10,32 @@ export const dynamic = "force-dynamic";
 // ⚠️ MUST MATCH the bucket used by your uploader exactly
 const BUCKET = "GPSarchive's Project";
 
+// Allowed origins for CORS (whitelist)
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",           // Local development
+  "http://localhost:3001",
+  process.env.NEXT_PUBLIC_APP_URL,   // Production domain
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+].filter(Boolean) as string[];
+
+// Helper to check if origin is allowed
+function getAllowedOrigin(requestOrigin: string | null): string | null {
+  if (!requestOrigin) return null;
+
+  // Exact match
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+    return requestOrigin;
+  }
+
+  // Allow Vercel preview deployments (*.vercel.app)
+  if (requestOrigin.endsWith(".vercel.app")) {
+    return requestOrigin;
+  }
+
+  // Disallow all others
+  return null;
+}
+
 // Minimal, safe path validator (no leading "/", no "..", no empty segments)
 function toSafePath(segments: string[] | undefined): string | null {
   try {
@@ -37,22 +63,28 @@ const MIME: Record<string, string> = {
 type Ctx = { params: Promise<{ path?: string[] }> };
 
 // Handle CORS preflight requests
-export async function OPTIONS() {
+export async function OPTIONS(req: Request) {
+  const origin = req.headers.get("origin");
+  const allowedOrigin = getAllowedOrigin(origin);
+
   const headers = new Headers();
-  headers.set("Access-Control-Allow-Origin", "*");
+  if (allowedOrigin) {
+    headers.set("Access-Control-Allow-Origin", allowedOrigin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+  }
   headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Content-Type");
   return new NextResponse(null, { status: 204, headers });
 }
 
-export async function GET(_req: Request, ctx: Ctx) {
+export async function GET(req: Request, ctx: Ctx) {
   const { path } = await ctx.params; // ← Next 15: params is a Promise
   const objectPath = toSafePath(path);
   if (!objectPath) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  // Try the download and surface any error (don’t silently 404)
+  // Try the download and surface any error (don't silently 404)
   const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(objectPath);
 
   if (error || !data) {
@@ -74,8 +106,14 @@ export async function GET(_req: Request, ctx: Ctx) {
   const headers = new Headers();
   headers.set("Content-Type", (asAny(data).type as string) || fallbackType);
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
-  // CORS headers required for WebGL/Canvas texture loading
-  headers.set("Access-Control-Allow-Origin", "*");
+
+  // CORS headers: whitelist allowed origins
+  const origin = req.headers.get("origin");
+  const allowedOrigin = getAllowedOrigin(origin);
+  if (allowedOrigin) {
+    headers.set("Access-Control-Allow-Origin", allowedOrigin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+  }
   headers.set("Access-Control-Allow-Methods", "GET");
 
   // Blob in some environments, Node stream in others
