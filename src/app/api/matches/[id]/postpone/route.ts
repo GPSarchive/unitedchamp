@@ -200,7 +200,7 @@ export async function POST(
     // Prepare postponement update
     const postponementUpdate = {
       status: "postponed" as const,
-      match_date: newDateISO ?? current.match_date, // Keep current date if no new date provided
+      match_date: newDateISO ?? null, // Set to null if no new date provided
       original_match_date: originalDate,
       postponement_reason: postponement_reason || null,
       postponed_at: new Date().toISOString(),
