@@ -143,6 +143,7 @@ async function fetchMatchesWithTeams() {
         teamB:teams!matches_team_b_id_fkey (name, logo)
       `
       )
+      .neq('status', 'postponed')
       .order('match_date', { ascending: true })) as unknown as SupaResp;
     if (error) {
       console.error('Error fetching matches:', error.message);

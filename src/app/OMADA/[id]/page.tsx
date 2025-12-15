@@ -189,6 +189,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
       `
     )
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+    .neq("status", "postponed")
     .order("match_date", { ascending: false });
 
   const matches = (matchesData as unknown as Match[] | null) ?? null;

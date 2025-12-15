@@ -255,6 +255,7 @@
             teamA:teams!matches_team_a_id_fkey (name, logo),
             teamB:teams!matches_team_b_id_fkey (name, logo)`
          )
+         .neq('status', 'postponed')
          .order('match_date', { ascending: true });
    
        if (error) {
