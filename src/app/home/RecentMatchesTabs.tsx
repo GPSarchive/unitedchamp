@@ -4,6 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Trophy } from 'lucide-react';
 import { supabase } from '@/app/lib/supabase/supabaseClient';
+import { resolveImageUrl, ImageType } from '@/app/lib/image-config';
 
 type Props = {
   className?: string;
@@ -225,7 +226,8 @@ export default function RecentMatchesTabs({
                   // Tournament and matchday/round info
                   const tournament = one(m.tournament);
                   const tournamentName = tournament?.name ?? null;
-                  const tournamentLogo = tournament?.logo ?? null;
+                  const tournamentLogoRaw = tournament?.logo ?? null;
+                  const tournamentLogo = tournamentLogoRaw ? resolveImageUrl(tournamentLogoRaw, ImageType.TOURNAMENT) : null;
                   const matchdayRound = m.round
                     ? `Round ${m.round}`
                     : m.matchday

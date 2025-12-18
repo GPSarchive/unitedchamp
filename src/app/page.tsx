@@ -18,6 +18,7 @@ import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
+import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -300,6 +301,17 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
   return events;
 }
 
+function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
+  // Resolve tournament logos to public URLs
+  return events.map((e: any) => {
+    if (e.tournament_logo) {
+      const resolvedLogo = resolveImageUrl(e.tournament_logo, ImageType.TOURNAMENT);
+      return { ...e, tournament_logo: resolvedLogo };
+    }
+    return e;
+  });
+}
+
 /**
  * ------------------------------
  * Page component (Server)
@@ -314,8 +326,9 @@ export default async function Home() {
     fetchTournaments(),
     fetchRecentAnnouncementsCount()
   ]);
-  const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
-  console.log('Rendering Home page with events:', eventsToPass);
+  const events = mapMatchesToEvents(rawMatches ?? []);
+  const eventsToPass = resolveMatchTournamentLogos(events);
+  console.log('Rendering Home page with events:', eventsToPass.length);
   console.log('Tournaments for homepage:', tournaments.length);
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">

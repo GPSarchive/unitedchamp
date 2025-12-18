@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Calendar, Clock, MapPin, ChevronRight, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import TeamFilter from "@/components/TeamFilter";
+import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 
 // =========================================================
 // Types
@@ -164,7 +165,7 @@ function NextMatchHero({ match }: { match: Match }) {
               {match.tournament_name && (
                 <div className="flex items-center gap-2">
                   {match.tournament_logo ? (
-                    <img src={match.tournament_logo} alt={match.tournament_name} className="h-3.5 w-3.5 object-contain" />
+                    <img src={resolveImageUrl(match.tournament_logo, ImageType.TOURNAMENT) || match.tournament_logo} alt={match.tournament_name} className="h-3.5 w-3.5 object-contain" />
                   ) : (
                     <Trophy className="h-3.5 w-3.5" />
                   )}
@@ -221,7 +222,7 @@ function CompactMatchRow({ match }: { match: Match }) {
               {match.tournament_name && (
                 <div className="flex items-center gap-0.5 justify-center">
                   {match.tournament_logo ? (
-                    <img src={match.tournament_logo} alt={match.tournament_name} className="h-2.5 w-2.5 object-contain flex-shrink-0" />
+                    <img src={resolveImageUrl(match.tournament_logo, ImageType.TOURNAMENT) || match.tournament_logo} alt={match.tournament_name} className="h-2.5 w-2.5 object-contain flex-shrink-0" />
                   ) : (
                     <Trophy className="h-2.5 w-2.5 flex-shrink-0" />
                   )}
