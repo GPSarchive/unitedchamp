@@ -603,6 +603,38 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
       else { bump(A, { drawn: 1, points: 1 }); bump(B, { drawn: 1, points: 1 }); }
     }
 
+    // Apply disciplinary actions (point deductions/additions)
+    // For league stages (gid=0), match NULL group_id in disciplinary_actions
+    let disciplinaryQuery = supabase
+      .from("disciplinary_actions")
+      .select("team_id, points_adjustment")
+      .eq("stage_id", stageId);
+
+    if (gid === 0) {
+      disciplinaryQuery = disciplinaryQuery.is("group_id", null);
+    } else {
+      disciplinaryQuery = disciplinaryQuery.eq("group_id", gid);
+    }
+
+    const { data: disciplinaryActions } = await disciplinaryQuery;
+
+    if (disciplinaryActions && disciplinaryActions.length > 0) {
+      // Sum all adjustments per team
+      const adjustmentsByTeam = new Map<number, number>();
+      for (const action of disciplinaryActions) {
+        const current = adjustmentsByTeam.get(action.team_id) || 0;
+        adjustmentsByTeam.set(action.team_id, current + action.points_adjustment);
+      }
+
+      // Apply total adjustments
+      for (const [team_id, totalAdjustment] of adjustmentsByTeam.entries()) {
+        const teamStats = stats.get(team_id);
+        if (teamStats) {
+          teamStats.points = Math.max(0, teamStats.points + totalAdjustment);
+        }
+      }
+    }
+
     // Sort by points, GD, GF; then deterministic by team_id
     const ranked = [...stats.entries()]
       .map(([team_id, s]) => ({ team_id, gd: s.gf - s.ga, ...s }))
