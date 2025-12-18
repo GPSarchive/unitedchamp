@@ -13,6 +13,7 @@ type Props = {
 };
 
 type TeamLite = { name: string | null; logo: string | null };
+type TournamentLite = { id: number; name: string | null };
 type MatchRow = {
   id: number;
   match_date: string | null;
@@ -21,6 +22,11 @@ type MatchRow = {
   team_b_score: number | null;
   teamA: TeamLite[] | TeamLite | null;
   teamB: TeamLite[] | TeamLite | null;
+  tournament: TournamentLite[] | TournamentLite | null;
+  stage_id: number | null;
+  group_id: number | null;
+  matchday: number | null;
+  round: number | null;
 };
 
 const PLACEHOLDER = '/placeholder.png';
@@ -83,8 +89,10 @@ export default function RecentMatchesTabs({
           .from('matches')
           .select(
             `id, match_date, status, team_a_score, team_b_score,
+             stage_id, group_id, matchday, round,
              teamA:teams!matches_team_a_id_fkey (name, logo),
-             teamB:teams!matches_team_b_id_fkey (name, logo)`,
+             teamB:teams!matches_team_b_id_fkey (name, logo),
+             tournament:tournament_id (id, name)`,
             { count: 'exact' }
           );
 
@@ -213,6 +221,15 @@ export default function RecentMatchesTabs({
                   const aScore = typeof m.team_a_score === 'number' ? m.team_a_score : null;
                   const bScore = typeof m.team_b_score === 'number' ? m.team_b_score : null;
 
+                  // Tournament and matchday/round info
+                  const tournament = one(m.tournament);
+                  const tournamentName = tournament?.name ?? null;
+                  const matchdayRound = m.round
+                    ? `Round ${m.round}`
+                    : m.matchday
+                    ? `Αγωνιστική ${m.matchday}`
+                    : null;
+
                   return (
                     <li key={m.id} className="relative px-5 sm:px-6 py-6 hover:bg-white/5 transition-colors">
                       <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -239,6 +256,12 @@ export default function RecentMatchesTabs({
                           <div className="mt-2 text-[13px] text-white/60 leading-none whitespace-nowrap">
                             {formatLocal(m.match_date)}
                           </div>
+                          {(tournamentName || matchdayRound) && (
+                            <div className="mt-1.5 flex flex-col items-center gap-0.5 text-[11px] text-white/50 leading-tight">
+                              {tournamentName && <div className="font-semibold">{tournamentName}</div>}
+                              {matchdayRound && <div>{matchdayRound}</div>}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 justify-end min-w-0 w-full sm:w-auto sm:justify-start">
                           <span className="truncate font-extrabold text-white uppercase tracking-wide text-lg text-right sm:text-left">
