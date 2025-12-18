@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { Trophy } from 'lucide-react';
 import { supabase } from '@/app/lib/supabase/supabaseClient';
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 };
 
 type TeamLite = { name: string | null; logo: string | null };
-type TournamentLite = { id: number; name: string | null };
+type TournamentLite = { id: number; name: string | null; logo: string | null };
 type MatchRow = {
   id: number;
   match_date: string | null;
@@ -92,7 +93,7 @@ export default function RecentMatchesTabs({
              stage_id, group_id, matchday, round,
              teamA:teams!matches_team_a_id_fkey (name, logo),
              teamB:teams!matches_team_b_id_fkey (name, logo),
-             tournament:tournament_id (id, name)`,
+             tournament:tournament_id (id, name, logo)`,
             { count: 'exact' }
           );
 
@@ -224,6 +225,7 @@ export default function RecentMatchesTabs({
                   // Tournament and matchday/round info
                   const tournament = one(m.tournament);
                   const tournamentName = tournament?.name ?? null;
+                  const tournamentLogo = tournament?.logo ?? null;
                   const matchdayRound = m.round
                     ? `Round ${m.round}`
                     : m.matchday
@@ -258,7 +260,16 @@ export default function RecentMatchesTabs({
                           </div>
                           {(tournamentName || matchdayRound) && (
                             <div className="mt-1.5 flex flex-col items-center gap-0.5 text-[11px] text-white/50 leading-tight">
-                              {tournamentName && <div className="font-semibold">{tournamentName}</div>}
+                              {tournamentName && (
+                                <div className="flex items-center gap-1">
+                                  {tournamentLogo ? (
+                                    <img src={tournamentLogo} alt={tournamentName} className="h-3 w-3 object-contain" />
+                                  ) : (
+                                    <Trophy className="h-3 w-3" />
+                                  )}
+                                  <span className="font-semibold">{tournamentName}</span>
+                                </div>
+                              )}
                               {matchdayRound && <div>{matchdayRound}</div>}
                             </div>
                           )}

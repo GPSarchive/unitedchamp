@@ -21,6 +21,7 @@ export type Match = {
   score?: [number, number];
   venue?: string;
   tournament_name?: string | null;
+  tournament_logo?: string | null;
   matchday?: number | null;
   round?: number | null;
 };
@@ -162,7 +163,11 @@ function NextMatchHero({ match }: { match: Match }) {
             <div className="mt-3 flex flex-col items-center gap-1 text-xs text-white/60 border-t border-white/10 pt-3">
               {match.tournament_name && (
                 <div className="flex items-center gap-2">
-                  <Trophy className="h-3.5 w-3.5" />
+                  {match.tournament_logo ? (
+                    <img src={match.tournament_logo} alt={match.tournament_name} className="h-3.5 w-3.5 object-contain" />
+                  ) : (
+                    <Trophy className="h-3.5 w-3.5" />
+                  )}
                   <span className="font-semibold">{match.tournament_name}</span>
                 </div>
               )}
@@ -213,7 +218,16 @@ function CompactMatchRow({ match }: { match: Match }) {
           <div className="text-lg font-bold text-white group-hover:text-orange-400">{timeText}</div>
           {(match.tournament_name || matchdayRound) && (
             <div className="mt-1 text-[10px] text-white/40 leading-tight">
-              {match.tournament_name && <div className="font-semibold truncate max-w-[70px]">{match.tournament_name}</div>}
+              {match.tournament_name && (
+                <div className="flex items-center gap-0.5 justify-center">
+                  {match.tournament_logo ? (
+                    <img src={match.tournament_logo} alt={match.tournament_name} className="h-2.5 w-2.5 object-contain flex-shrink-0" />
+                  ) : (
+                    <Trophy className="h-2.5 w-2.5 flex-shrink-0" />
+                  )}
+                  <span className="font-semibold truncate max-w-[60px]">{match.tournament_name}</span>
+                </div>
+              )}
               {matchdayRound && <div>{matchdayRound}</div>}
             </div>
           )}

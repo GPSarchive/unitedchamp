@@ -145,7 +145,7 @@ async function fetchMatchesWithTeams() {
         round,
         teamA:teams!matches_team_a_id_fkey (name, logo),
         teamB:teams!matches_team_b_id_fkey (name, logo),
-        tournament:tournament_id (id, name)
+        tournament:tournament_id (id, name, logo)
       `
       )
       .order('match_date', { ascending: true })) as unknown as SupaResp;
@@ -259,6 +259,7 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   // Tournament and matchday/round info
   const tournament = (m as any).tournament ?? null;
   const tournamentName = tournament?.name ?? null;
+  const tournamentLogo = tournament?.logo ?? null;
   const matchday = (m as any).matchday ?? null;
   const round = (m as any).round ?? null;
 
@@ -282,6 +283,7 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
 
     // Tournament and matchday/round info
     tournament_name: tournamentName,
+    tournament_logo: tournamentLogo,
     matchday,
     round,
   };

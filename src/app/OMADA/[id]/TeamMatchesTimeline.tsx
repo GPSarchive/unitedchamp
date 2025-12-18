@@ -240,6 +240,7 @@ export default function TeamMatchesTimeline({
 
               // Tournament and matchday/round info
               const tournamentName = match.tournament?.name ?? null;
+              const tournamentLogo = match.tournament?.logo ?? null;
               const matchdayRound = match.round
                 ? `Round ${match.round}`
                 : match.matchday
@@ -311,7 +312,16 @@ export default function TeamMatchesTimeline({
                       </div>
                       {(tournamentName || matchdayRound) && (
                         <div className="mt-2 flex flex-col items-center gap-0.5 text-[11px] text-white/50 leading-tight">
-                          {tournamentName && <div className="font-semibold">{tournamentName}</div>}
+                          {tournamentName && (
+                            <div className="flex items-center gap-1">
+                              {tournamentLogo ? (
+                                <img src={tournamentLogo} alt={tournamentName} className="h-3 w-3 object-contain" />
+                              ) : (
+                                <Trophy className="h-3 w-3" />
+                              )}
+                              <span className="font-semibold">{tournamentName}</span>
+                            </div>
+                          )}
                           {matchdayRound && <div>{matchdayRound}</div>}
                         </div>
                       )}
