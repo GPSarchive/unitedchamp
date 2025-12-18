@@ -139,8 +139,13 @@ async function fetchMatchesWithTeams() {
         team_a_score,
         team_b_score,
         status,
+        stage_id,
+        group_id,
+        matchday,
+        round,
         teamA:teams!matches_team_a_id_fkey (name, logo),
-        teamB:teams!matches_team_b_id_fkey (name, logo)
+        teamB:teams!matches_team_b_id_fkey (name, logo),
+        tournament:tournament_id (id, name)
       `
       )
       .order('match_date', { ascending: true })) as unknown as SupaResp;
@@ -251,6 +256,12 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   const teamBScore = (m as any).team_b_score ?? null;
   const status = (m as any).status ?? null; // 'scheduled' | 'finished'
 
+  // Tournament and matchday/round info
+  const tournament = (m as any).tournament ?? null;
+  const tournamentName = tournament?.name ?? null;
+  const matchday = (m as any).matchday ?? null;
+  const round = (m as any).round ?? null;
+
   // NOTE: CalendarEvent doesn't know these extra fields, but it's fine to attach them.
   const ev: CalendarEvent & any = {
     id: String(m.id),
@@ -268,6 +279,11 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
     score: (typeof teamAScore === 'number' && typeof teamBScore === 'number')
       ? [teamAScore, teamBScore]
       : undefined,
+
+    // Tournament and matchday/round info
+    tournament_name: tournamentName,
+    matchday,
+    round,
   };
 
   return ev;
