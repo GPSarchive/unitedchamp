@@ -87,9 +87,10 @@ function PointAdjustmentModal({
 
       if (result.success) {
         addLog(`✅ Επιτυχία!`);
-        addLog(`   Προηγούμενοι βαθμοί: ${result.previousPoints}`);
-        addLog(`   Νέοι βαθμοί: ${result.newPoints}`);
-        addLog(`   Μεταβολή: ${result.adjustment > 0 ? '+' : ''}${result.adjustment}`);
+        addLog(`   Προηγούμενοι βαθμοί: ${result.previousPoints ?? 0}`);
+        addLog(`   Νέοι βαθμοί: ${result.newPoints ?? 0}`);
+        const adjustment = result.adjustment ?? pointsAdjustment;
+        addLog(`   Μεταβολή: ${adjustment > 0 ? '+' : ''}${adjustment}`);
 
         setTimeout(() => {
           onSuccess();
