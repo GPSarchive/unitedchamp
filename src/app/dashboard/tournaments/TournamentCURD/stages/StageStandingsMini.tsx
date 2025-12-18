@@ -46,10 +46,16 @@ function PointAdjustmentModal({
   const [reason, setReason] = React.useState<string>("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = React.useState<string[]>([]);
+
+  const addLog = (message: string) => {
+    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString('el-GR')}] ${message}`]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setDebugLogs([]);
 
     const pointsAdjustment = parseInt(adjustment);
     if (isNaN(pointsAdjustment) || pointsAdjustment === 0) {
@@ -63,7 +69,14 @@ function PointAdjustmentModal({
     }
 
     setIsSubmitting(true);
+    addLog(`📝 Αποστολή αίτησης προσαρμογής βαθμών...`);
+    addLog(`   Ομάδα: ${teamName} (ID: ${teamId})`);
+    addLog(`   Στάδιο: ${stageId}, Όμιλος: ${groupId ?? 'League'}`);
+    addLog(`   Προσαρμογή: ${pointsAdjustment > 0 ? '+' : ''}${pointsAdjustment} βαθμοί`);
+
     try {
+      addLog(`🔐 Έλεγχος δικαιωμάτων διαχειριστή...`);
+
       const result = await applyPointAdjustmentAction({
         stageId,
         groupId,
@@ -73,15 +86,27 @@ function PointAdjustmentModal({
       });
 
       if (result.success) {
-        onSuccess();
-        onClose();
-        setAdjustment("");
-        setReason("");
+        addLog(`✅ Επιτυχία!`);
+        addLog(`   Προηγούμενοι βαθμοί: ${result.previousPoints ?? 0}`);
+        addLog(`   Νέοι βαθμοί: ${result.newPoints ?? 0}`);
+        const adjustment = result.adjustment ?? pointsAdjustment;
+        addLog(`   Μεταβολή: ${adjustment > 0 ? '+' : ''}${adjustment}`);
+
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+          setAdjustment("");
+          setReason("");
+          setDebugLogs([]);
+        }, 2000);
       } else {
+        addLog(`❌ Αποτυχία: ${result.error}`);
         setError(result.error || "Αποτυχία εφαρμογής προσαρμογής βαθμών");
       }
     } catch (err) {
-      setError("Παρουσιάστηκε σφάλμα κατά την εφαρμογή της προσαρμογής");
+      const errorMsg = err instanceof Error ? err.message : "Άγνωστο σφάλμα";
+      addLog(`❌ Εξαίρεση: ${errorMsg}`);
+      setError(`Παρουσιάστηκε σφάλμα: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -143,6 +168,17 @@ function PointAdjustmentModal({
           {error && (
             <div className="text-red-400 text-sm bg-red-950/30 border border-red-500/20 rounded px-3 py-2">
               {error}
+            </div>
+          )}
+
+          {debugLogs.length > 0 && (
+            <div className="bg-slate-950/50 border border-blue-500/20 rounded p-3 max-h-48 overflow-y-auto">
+              <div className="text-xs text-blue-400 font-semibold mb-2">Αρχείο Καταγραφής:</div>
+              <div className="text-xs text-white/80 font-mono space-y-1">
+                {debugLogs.map((log, idx) => (
+                  <div key={idx} className="whitespace-pre-wrap">{log}</div>
+                ))}
+              </div>
             </div>
           )}
 
