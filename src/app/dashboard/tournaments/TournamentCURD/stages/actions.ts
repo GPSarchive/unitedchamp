@@ -88,11 +88,14 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
     const currentPoints = currentStanding.points || 0;
 
     // 3. Create audit trail in disciplinary_actions (this is the source of truth)
+    // Normalize group_id: league stages (groupId=0) should be stored as NULL
+    const normalizedGroupId = (groupId === null || groupId === 0) ? null : groupId;
+
     console.log('[DEBUG] Inserting into disciplinary_actions:', {
       tournament_id: stage.tournament_id,
       stage_id: stageId,
       team_id: teamId,
-      group_id: groupId,
+      group_id: normalizedGroupId,
       points_adjustment: pointsAdjustment,
       reason: reason.trim(),
       applied_by: user.id,
@@ -104,7 +107,7 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
         tournament_id: stage.tournament_id,
         stage_id: stageId,
         team_id: teamId,
-        group_id: groupId,
+        group_id: normalizedGroupId,
         points_adjustment: pointsAdjustment,
         reason: reason.trim(),
         applied_by: user.id,
