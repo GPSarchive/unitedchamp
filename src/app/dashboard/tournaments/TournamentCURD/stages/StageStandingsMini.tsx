@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { applyPointAdjustmentAction } from "./actions";
 
 type Kind = "league" | "groups";
 
@@ -15,10 +16,158 @@ type StandingRow = {
   lost: number;
   gf: number;
   ga: number;
-  gd?: number;   // optional in DB; we’ll derive if missing
+  gd?: number;   // optional in DB; we'll derive if missing
   points: number;
   rank?: number | null;
 };
+
+type PointAdjustmentModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  teamId: number;
+  teamName: string;
+  currentPoints: number;
+  stageId: number;
+  groupId: number | null;
+  onSuccess: () => void;
+};
+
+function PointAdjustmentModal({
+  isOpen,
+  onClose,
+  teamId,
+  teamName,
+  currentPoints,
+  stageId,
+  groupId,
+  onSuccess,
+}: PointAdjustmentModalProps) {
+  const [adjustment, setAdjustment] = React.useState<string>("");
+  const [reason, setReason] = React.useState<string>("");
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const pointsAdjustment = parseInt(adjustment);
+    if (isNaN(pointsAdjustment) || pointsAdjustment === 0) {
+      setError("Παρακαλώ εισάγετε έγκυρο αριθμό βαθμών (θετικό ή αρνητικό)");
+      return;
+    }
+
+    if (!reason.trim()) {
+      setError("Παρακαλώ εισάγετε αιτιολογία");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const result = await applyPointAdjustmentAction({
+        stageId,
+        groupId,
+        teamId,
+        pointsAdjustment,
+        reason: reason.trim(),
+      });
+
+      if (result.success) {
+        onSuccess();
+        onClose();
+        setAdjustment("");
+        setReason("");
+      } else {
+        setError(result.error || "Αποτυχία εφαρμογής προσαρμογής βαθμών");
+      }
+    } catch (err) {
+      setError("Παρουσιάστηκε σφάλμα κατά την εφαρμογή της προσαρμογής");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const newPoints = currentPoints + (parseInt(adjustment) || 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-slate-900 rounded-lg border border-white/20 p-6 max-w-md w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold text-white mb-4">Προσαρμογή Βαθμών</h2>
+        <div className="text-sm text-white/70 mb-4">
+          <div className="mb-2">Ομάδα: <span className="text-white font-medium">{teamName}</span></div>
+          <div>Τρέχοντες Βαθμοί: <span className="text-white font-medium">{currentPoints}</span></div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm text-white/80 mb-2">
+              Προσαρμογή Βαθμών (αρνητικός για αφαίρεση)
+            </label>
+            <input
+              type="number"
+              value={adjustment}
+              onChange={(e) => setAdjustment(e.target.value)}
+              placeholder="π.χ. -3 ή +2"
+              className="w-full px-3 py-2 bg-slate-800 border border-white/20 rounded text-white focus:outline-none focus:border-blue-500"
+              disabled={isSubmitting}
+              autoFocus
+            />
+            {adjustment && (
+              <div className="mt-2 text-sm">
+                Νέοι Βαθμοί: <span className={`font-semibold ${newPoints < currentPoints ? 'text-red-400' : 'text-green-400'}`}>
+                  {Math.max(0, newPoints)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm text-white/80 mb-2">
+              Αιτιολογία
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="π.χ. Πειθαρχική ποινή για ανάρμοστη συμπεριφορά"
+              rows={3}
+              className="w-full px-3 py-2 bg-slate-800 border border-white/20 rounded text-white focus:outline-none focus:border-blue-500 resize-none"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {error && (
+            <div className="text-red-400 text-sm bg-red-950/30 border border-red-500/20 rounded px-3 py-2">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm text-white/70 hover:text-white border border-white/20 rounded hover:bg-white/5 transition-colors disabled:opacity-50"
+            >
+              Ακύρωση
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "Εφαρμογή..." : "Εφαρμογή Προσαρμογής"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function StageStandingsMini({
   stageIdx,
@@ -42,6 +191,15 @@ export default function StageStandingsMini({
   const getTeamLogo =
     useTournamentStore((s: any) => (s.getTeamLogo as ((id: number) => string | null) | undefined)) ??
     (() => null);
+
+  // Modal state for point adjustments
+  const [editingTeam, setEditingTeam] = React.useState<{
+    teamId: number;
+    teamName: string;
+    currentPoints: number;
+    groupId: number | null;
+  } | null>(null);
+  const [refreshKey, setRefreshKey] = React.useState(0);
 
   // Prefer the explicit DB id when provided
   const stageId = stageIdOverride ?? stageIdByIndex?.[stageIdx];
@@ -139,6 +297,15 @@ export default function StageStandingsMini({
   const Table: React.FC<{ rows: StandingRow[] }> = ({ rows }) => {
     const sorted = sortRows(rows);
 
+    const handleEditClick = (r: StandingRow) => {
+      setEditingTeam({
+        teamId: r.team_id,
+        teamName: getTeamName?.(r.team_id) ?? `Team #${r.team_id}`,
+        currentPoints: r.points,
+        groupId: r.group_id ?? null,
+      });
+    };
+
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm text-white/90">
@@ -154,6 +321,7 @@ export default function StageStandingsMini({
               <th className="w-12 text-right" title="Γκολ Κατά">Γκολ Κατά</th>
               <th className="w-12 text-right" title="Διαφορά τερμάτων">GD</th>
               <th className="w-12 text-right" title="Βαθμοί">Βαθμοί</th>
+              <th className="w-20 text-center">Ενέργειες</th>
             </tr>
           </thead>
           <tbody>
@@ -163,7 +331,7 @@ export default function StageStandingsMini({
               return (
                 <tr
                   key={`${r.team_id}-${r.group_id ?? "0"}`}
-                  className="[&>td]:px-2 [&>td]:py-1 border-b border-white/5"
+                  className="[&>td]:px-2 [&>td]:py-1 border-b border-white/5 hover:bg-white/5"
                 >
                   <td className="text-right">{rank}</td>
                   <td className="text-left">
@@ -177,6 +345,15 @@ export default function StageStandingsMini({
                   <td className="text-right">{r.ga}</td>
                   <td className="text-right">{gd}</td>
                   <td className="text-right font-semibold">{r.points}</td>
+                  <td className="text-center">
+                    <button
+                      onClick={() => handleEditClick(r)}
+                      className="px-2 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded transition-colors"
+                      title="Επεξεργασία Βαθμών"
+                    >
+                      Επεξ.
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -189,10 +366,28 @@ export default function StageStandingsMini({
   if (kind === "league") {
     const rows = byGroup.get(0) ?? [];
     return (
-      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
-        <header className="text-sm text-white/80 font-medium">Βαθμολογία (League)</header>
-        <Table rows={rows} />
-      </section>
+      <>
+        <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
+          <header className="text-sm text-white/80 font-medium">Βαθμολογία (League)</header>
+          <Table rows={rows} />
+        </section>
+        {editingTeam && hasStage && (
+          <PointAdjustmentModal
+            isOpen={true}
+            onClose={() => setEditingTeam(null)}
+            teamId={editingTeam.teamId}
+            teamName={editingTeam.teamName}
+            currentPoints={editingTeam.currentPoints}
+            stageId={stageId!}
+            groupId={editingTeam.groupId}
+            onSuccess={() => {
+              setRefreshKey((k) => k + 1);
+              // Trigger a store refresh if needed
+              window.location.reload();
+            }}
+          />
+        )}
+      </>
     );
   }
 
@@ -221,16 +416,34 @@ export default function StageStandingsMini({
           }));
 
   return (
-    <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
-      <header className="text-sm text-white/80 font-medium">Βαθμολογίες Ομίλων</header>
-      <div className="grid gap-3 md:grid-cols-2">
-        {groupsForRender.map((g) => (
-          <div key={g.key} className="rounded-md border border-white/10 bg-white/5 p-2">
-            <div className="text-xs text-white/70 mb-2">{g.label}</div>
-            <Table rows={g.rows} />
-          </div>
-        ))}
-      </div>
-    </section>
+    <>
+      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
+        <header className="text-sm text-white/80 font-medium">Βαθμολογίες Ομίλων</header>
+        <div className="grid gap-3 md:grid-cols-2">
+          {groupsForRender.map((g) => (
+            <div key={g.key} className="rounded-md border border-white/10 bg-white/5 p-2">
+              <div className="text-xs text-white/70 mb-2">{g.label}</div>
+              <Table rows={g.rows} />
+            </div>
+          ))}
+        </div>
+      </section>
+      {editingTeam && hasStage && (
+        <PointAdjustmentModal
+          isOpen={true}
+          onClose={() => setEditingTeam(null)}
+          teamId={editingTeam.teamId}
+          teamName={editingTeam.teamName}
+          currentPoints={editingTeam.currentPoints}
+          stageId={stageId!}
+          groupId={editingTeam.groupId}
+          onSuccess={() => {
+            setRefreshKey((k) => k + 1);
+            // Trigger a store refresh if needed
+            window.location.reload();
+          }}
+        />
+      )}
+    </>
   );
 }
