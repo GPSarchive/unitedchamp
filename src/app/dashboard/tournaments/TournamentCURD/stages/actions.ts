@@ -62,7 +62,7 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       return { success: false, error: 'Stage not found' };
     }
 
-    // 2. Get current standings for this team
+    // 2. Get current standings for this team (for reporting)
     const { data: currentStanding, error: standingError } = await supabase
       .from('stage_standings')
       .select('*')
@@ -75,24 +75,9 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       return { success: false, error: 'Team not found in stage standings' };
     }
 
-    // 3. Calculate new points
     const currentPoints = currentStanding.points || 0;
-    const newPoints = Math.max(0, currentPoints + pointsAdjustment); // Don't allow negative points
 
-    // 4. Update stage_standings
-    const { error: updateError } = await supabase
-      .from('stage_standings')
-      .update({ points: newPoints })
-      .eq('stage_id', stageId)
-      .eq('team_id', teamId)
-      .eq('group_id', groupId ?? 0);
-
-    if (updateError) {
-      console.error('Failed to update standings:', updateError);
-      return { success: false, error: 'Failed to update standings' };
-    }
-
-    // 5. Create audit trail in disciplinary_actions
+    // 3. Create audit trail in disciplinary_actions (this is the source of truth)
     const { error: auditError } = await supabase
       .from('disciplinary_actions')
       .insert({
@@ -111,13 +96,24 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       // Don't fail the operation if audit trail fails, but log it
     }
 
-    // 6. Recalculate rankings for the stage
+    // 4. Recalculate standings (this will apply all disciplinary actions)
     try {
       await recomputeStandingsNow(stageId);
     } catch (err) {
       console.error('Failed to recalculate standings:', err);
       // Don't fail the entire operation if standings recalc fails
     }
+
+    // 5. Get new points after recalculation
+    const { data: updatedStanding } = await supabase
+      .from('stage_standings')
+      .select('points')
+      .eq('stage_id', stageId)
+      .eq('team_id', teamId)
+      .eq('group_id', groupId ?? 0)
+      .single();
+
+    const newPoints = updatedStanding?.points || currentPoints;
 
     return {
       success: true,
