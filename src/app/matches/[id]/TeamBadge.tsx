@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Stars } from "lucide-react";
 import * as React from "react";
 import type { Id } from "@/app/lib/types";
-import { TeamImage } from "@/app/lib/OptimizedImage";
+import { SquareTeamLogo } from "@/app/components/TeamLogo";
 
 function initials(name: string) {
   return name
@@ -86,50 +86,23 @@ export default function TeamBadge({
 
       <div className="relative z-10 flex items-center gap-4">
         {/* Crest */}
-        <motion.div
-          className={
-            `relative shrink-0 h-14 w-14 md:h-16 md:w-16 lg:h-20 lg:w-20 aspect-square overflow-hidden rounded-2xl ${ringClass} bg-black`
-          }
-          title={team.name}
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          {/* moving highlight ring */}
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 rounded-2xl"
-            style={{
-              background:
-                "conic-gradient(from 0deg, rgba(255,255,255,0.06), transparent 25%, rgba(255,255,255,0.06) 50%, transparent 75%, rgba(255,255,255,0.06))",
-            }}
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 12, ease: "linear" }}
+        <div className="relative shrink-0">
+          <SquareTeamLogo
+            src={team.logo}
+            alt={`${team.name} logo`}
+            size="lg"
+            borderStyle={highlight ? "neon" : "subtle"}
+            rounded="lg"
+            priority={false}
+            animate={true}
+            className="!h-14 !w-14 md:!h-16 md:!w-16 lg:!h-20 lg:!w-20"
           />
-
-          {/* logo / fallback - using TeamImage */}
-          {team.logo ? (
-            <TeamImage
-              src={team.logo}
-              alt={`${team.name} logo`}
-              fill
-              objectFit="contain"
-              sizes="(min-width: 1280px) 96px, (min-width: 1024px) 80px, (min-width: 768px) 64px, 56px"
-              priority={false}
-              animate={true}
-            />
-          ) : (
-            <div className="grid h-full w-full place-items-center">
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-300 bg-fuchsia-500/10">
-                {initials(team.name) || "—"}
-              </span>
-            </div>
-          )}
 
           {/* Winning trophy & stardust */}
           <AnimatePresence>
             {highlight && (
               <motion.div
-                className="absolute -right-1 -top-1"
+                className="absolute -right-1 -top-1 z-10"
                 initial={{ opacity: 0, rotate: -15, scale: 0.7 }}
                 animate={{ opacity: 1, rotate: 0, scale: 1 }}
                 exit={{ opacity: 0 }}
@@ -139,7 +112,7 @@ export default function TeamBadge({
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
 
         {/* Name + meta */}
         <div className="leading-tight min-w-0 flex-1">

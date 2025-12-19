@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TeamImage } from "@/app/lib/OptimizedImage";
+import { SquareTeamLogo } from "@/app/components/TeamLogo";
 import { Trophy, Goal } from "lucide-react";
 import type { Id } from "@/app/lib/types";
 
@@ -203,28 +203,19 @@ function TeamDisplay({
     >
       {/* Team Logo */}
       <div className="relative pointer-events-none">
-        <div
-          className={`relative h-20 w-20 overflow-hidden rounded-2xl border-2 md:h-28 md:w-28 lg:h-32 lg:w-32 ${
+        <SquareTeamLogo
+          src={team.logo}
+          alt={team.name}
+          size="xl"
+          borderStyle={isWinner ? "strong" : "normal"}
+          rounded="lg"
+          priority
+          className={`!h-20 !w-20 md:!h-28 md:!w-28 lg:!h-32 lg:!w-32 ${
             isWinner
-              ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]"
-              : "border-white/20"
-          } bg-black p-2`}
-        >
-          {team.logo ? (
-            <TeamImage
-              src={team.logo}
-              alt={team.name}
-              fill
-              objectFit="contain"
-              sizes="(min-width: 1024px) 128px, (min-width: 768px) 112px, 80px"
-              priority
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/40">
-              {team.name.charAt(0)}
-            </div>
-          )}
-        </div>
+              ? "shadow-[0_0_30px_rgba(251,191,36,0.5)]"
+              : ""
+          }`}
+        />
 
         {/* Winner Trophy */}
         {isWinner && (
@@ -232,7 +223,7 @@ function TeamDisplay({
             initial={{ scale: 0, rotate: -45 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="absolute -right-2 -top-2 pointer-events-none"
+            className="absolute -right-2 -top-2 pointer-events-none z-10"
           >
             <div className="rounded-full bg-amber-400 p-2 shadow-lg">
               <Trophy className="h-5 w-5 text-amber-900" />

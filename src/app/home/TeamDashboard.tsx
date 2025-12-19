@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Calendar, Clock, MapPin, ChevronRight, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import TeamFilter from "@/components/TeamFilter";
+import TeamLogo from "@/app/components/TeamLogo";
 
 // =========================================================
 // Types
@@ -112,9 +113,14 @@ function NextMatchHero({ match }: { match: Match }) {
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 items-center mb-6">
             {/* Team A */}
             <div className="flex flex-col items-center">
-              <div className="relative h-20 w-20 md:h-32 md:w-32 mb-3">
-                <Image src={logoA} alt={teamA} fill className="object-contain drop-shadow-2xl" sizes="(max-width: 768px) 80px, 128px" priority />
-              </div>
+              <TeamLogo
+                src={logoA}
+                alt={teamA}
+                size="xl"
+                borderStyle="subtle"
+                priority
+                className="mb-3 !h-20 !w-20 md:!h-32 md:!w-32 drop-shadow-2xl"
+              />
               <h3 className="text-lg md:text-xl font-bold text-white text-center">{teamA}</h3>
             </div>
 
@@ -129,9 +135,14 @@ function NextMatchHero({ match }: { match: Match }) {
 
             {/* Team B */}
             <div className="flex flex-col items-center">
-              <div className="relative h-20 w-20 md:h-32 md:w-32 mb-3">
-                <Image src={logoB} alt={teamB} fill className="object-contain drop-shadow-2xl" sizes="(max-width: 768px) 80px, 128px" priority />
-              </div>
+              <TeamLogo
+                src={logoB}
+                alt={teamB}
+                size="xl"
+                borderStyle="subtle"
+                priority
+                className="mb-3 !h-20 !w-20 md:!h-32 md:!w-32 drop-shadow-2xl"
+              />
               <h3 className="text-lg md:text-xl font-bold text-white text-center">{teamB}</h3>
             </div>
           </div>
@@ -190,9 +201,13 @@ function CompactMatchRow({ match }: { match: Match }) {
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Team A */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="relative h-10 w-10 flex-shrink-0">
-              <Image src={logoA} alt={teamA} fill className="object-contain" sizes="40px" />
-            </div>
+            <TeamLogo
+              src={logoA}
+              alt={teamA}
+              size="sm"
+              borderStyle="subtle"
+              className="flex-shrink-0"
+            />
             <span className="text-sm font-semibold text-white truncate">{teamA}</span>
           </div>
 
@@ -201,9 +216,13 @@ function CompactMatchRow({ match }: { match: Match }) {
           {/* Team B */}
           <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
             <span className="text-sm font-semibold text-white truncate">{teamB}</span>
-            <div className="relative h-10 w-10 flex-shrink-0">
-              <Image src={logoB} alt={teamB} fill className="object-contain" sizes="40px" />
-            </div>
+            <TeamLogo
+              src={logoB}
+              alt={teamB}
+              size="sm"
+              borderStyle="subtle"
+              className="flex-shrink-0"
+            />
           </div>
         </div>
 
