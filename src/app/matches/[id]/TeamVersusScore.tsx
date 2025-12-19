@@ -203,19 +203,16 @@ function TeamDisplay({
     >
       {/* Team Logo */}
       <div className="relative pointer-events-none">
-        <SquareTeamLogo
-          src={team.logo}
-          alt={team.name}
-          size="xl"
-          borderStyle={isWinner ? "strong" : "normal"}
-          rounded="lg"
-          priority
-          className={`!h-20 !w-20 md:!h-28 md:!w-28 lg:!h-32 lg:!w-32 ${
-            isWinner
-              ? "shadow-[0_0_30px_rgba(251,191,36,0.5)]"
-              : ""
-          }`}
-        />
+        <div className={isWinner ? "shadow-[0_0_30px_rgba(251,191,36,0.5)]" : ""}>
+          <SquareTeamLogo
+            src={team.logo}
+            alt={team.name}
+            size="xl"
+            borderStyle={isWinner ? "strong" : "normal"}
+            rounded="lg"
+            priority
+          />
+        </div>
 
         {/* Winner Trophy */}
         {isWinner && (

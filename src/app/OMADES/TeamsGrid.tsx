@@ -64,14 +64,12 @@ export default function TeamsGrid({ teams }: TeamsGridProps) {
 
             {/* slightly reduced inner blur and padding */}
             <div className="flex h-full w-full flex-col items-center justify-center p-2 sm:p-2 backdrop-blur-[1px] sm:backdrop-blur-0">
-              <motion.div variants={logoVariants} className="mb-1">
+              <motion.div variants={logoVariants} className="mb-1 opacity-90 group-hover:opacity-100 transition-opacity">
                 <TeamLogo
                   src={team.logo}
                   alt={`${team.name} logo`}
                   size="lg"
                   borderStyle="subtle"
-                  animate={false}
-                  className="!h-10 !w-10 sm:!h-24 sm:!w-24 lg:!h-28 lg:!w-28 opacity-90 transition-opacity group-hover:opacity-100"
                 />
               </motion.div>
               <p className="mt-1 max-w-[90%] truncate text-[10px] sm:text-[11px] font-medium text-white/85 text-center">

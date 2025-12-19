@@ -1,7 +1,7 @@
 // components/TeamLogo.tsx
 "use client";
 
-import { TeamImage } from "@/app/lib/OptimizedImage";
+import Image from "next/image";
 
 export type TeamLogoSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 export type TeamLogoBorderStyle = "none" | "subtle" | "normal" | "strong" | "neon";
@@ -16,13 +16,13 @@ export interface TeamLogoProps {
   animate?: boolean;
 }
 
-const sizeClasses: Record<TeamLogoSize, string> = {
-  xs: "h-8 w-8",        // 32px - small inline logos
-  sm: "h-12 w-12",      // 48px - compact lists
-  md: "h-16 w-16",      // 64px - standard display
-  lg: "h-24 w-24",      // 96px - featured display
-  xl: "h-32 w-32",      // 128px - hero sections
-  "2xl": "h-40 w-40",   // 160px - large hero sections
+const sizeMap: Record<TeamLogoSize, number> = {
+  xs: 32,       // 32px - small inline logos
+  sm: 48,       // 48px - compact lists
+  md: 64,       // 64px - standard display
+  lg: 96,       // 96px - featured display
+  xl: 128,      // 128px - hero sections
+  "2xl": 160,   // 160px - large hero sections
 };
 
 const borderClasses: Record<TeamLogoBorderStyle, string> = {
@@ -40,20 +40,22 @@ export default function TeamLogo({
   borderStyle = "subtle",
   className = "",
   priority = false,
-  animate = false,
 }: TeamLogoProps) {
-  const sizeClass = sizeClasses[size];
+  const pixelSize = sizeMap[size];
   const borderClass = borderClasses[borderStyle];
 
   // Fallback for missing logos
   if (!src) {
     return (
       <div
-        className={`${sizeClass} ${borderClass} ${className} aspect-square rounded-full bg-zinc-800/50 grid place-items-center text-white/40`}
+        className={`${borderClass} ${className} aspect-square rounded-full bg-zinc-800/50 grid place-items-center text-white/40 flex-shrink-0`}
+        style={{ width: pixelSize, height: pixelSize }}
         title="No logo available"
       >
         <svg
-          className="w-1/2 h-1/2 opacity-30"
+          className="opacity-30"
+          width={pixelSize / 2}
+          height={pixelSize / 2}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -71,16 +73,21 @@ export default function TeamLogo({
 
   return (
     <div
-      className={`${sizeClass} ${borderClass} ${className} aspect-square rounded-full overflow-hidden bg-white/5 p-1.5 flex items-center justify-center`}
+      className={`${borderClass} ${className} aspect-square rounded-full overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0`}
+      style={{
+        width: pixelSize,
+        height: pixelSize,
+        padding: pixelSize * 0.05 // 5% padding
+      }}
     >
-      <TeamImage
+      <Image
         src={src}
         alt={alt}
-        fill
-        objectFit="contain"
+        width={pixelSize}
+        height={pixelSize}
+        className="w-full h-full object-contain"
         priority={priority}
-        animate={animate}
-        className="!w-full !h-full"
+        loading={priority ? undefined : "lazy"}
       />
     </div>
   );
@@ -110,7 +117,7 @@ export function SquareTeamLogo({
   className = "",
   ...props
 }: SquareTeamLogoProps) {
-  const sizeClass = sizeClasses[props.size || "md"];
+  const pixelSize = sizeMap[props.size || "md"];
   const borderClass = borderClasses[borderStyle];
   const roundedClass = {
     none: "rounded-none",
@@ -123,11 +130,14 @@ export function SquareTeamLogo({
   if (!props.src) {
     return (
       <div
-        className={`${sizeClass} ${borderClass} ${roundedClass} ${className} aspect-square bg-zinc-800/50 grid place-items-center text-white/40`}
+        className={`${borderClass} ${roundedClass} ${className} aspect-square bg-zinc-800/50 grid place-items-center text-white/40 flex-shrink-0`}
+        style={{ width: pixelSize, height: pixelSize }}
         title="No logo available"
       >
         <svg
-          className="w-1/2 h-1/2 opacity-30"
+          className="opacity-30"
+          width={pixelSize / 2}
+          height={pixelSize / 2}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -145,16 +155,21 @@ export function SquareTeamLogo({
 
   return (
     <div
-      className={`${sizeClass} ${borderClass} ${roundedClass} ${className} aspect-square overflow-hidden bg-white/5 p-2 flex items-center justify-center`}
+      className={`${borderClass} ${roundedClass} ${className} aspect-square overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0`}
+      style={{
+        width: pixelSize,
+        height: pixelSize,
+        padding: pixelSize * 0.08 // 8% padding for square variant
+      }}
     >
-      <TeamImage
+      <Image
         src={props.src}
         alt={props.alt}
-        fill
-        objectFit="contain"
+        width={pixelSize}
+        height={pixelSize}
+        className="w-full h-full object-contain"
         priority={props.priority}
-        animate={props.animate}
-        className="!w-full !h-full"
+        loading={props.priority ? undefined : "lazy"}
       />
     </div>
   );

@@ -113,14 +113,15 @@ function NextMatchHero({ match }: { match: Match }) {
           <div className="grid grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 items-center mb-6">
             {/* Team A */}
             <div className="flex flex-col items-center">
-              <TeamLogo
-                src={logoA}
-                alt={teamA}
-                size="xl"
-                borderStyle="subtle"
-                priority
-                className="mb-3 !h-20 !w-20 md:!h-32 md:!w-32 drop-shadow-2xl"
-              />
+              <div className="mb-3 drop-shadow-2xl">
+                <TeamLogo
+                  src={logoA}
+                  alt={teamA}
+                  size="xl"
+                  borderStyle="subtle"
+                  priority
+                />
+              </div>
               <h3 className="text-lg md:text-xl font-bold text-white text-center">{teamA}</h3>
             </div>
 
@@ -135,14 +136,15 @@ function NextMatchHero({ match }: { match: Match }) {
 
             {/* Team B */}
             <div className="flex flex-col items-center">
-              <TeamLogo
-                src={logoB}
-                alt={teamB}
-                size="xl"
-                borderStyle="subtle"
-                priority
-                className="mb-3 !h-20 !w-20 md:!h-32 md:!w-32 drop-shadow-2xl"
-              />
+              <div className="mb-3 drop-shadow-2xl">
+                <TeamLogo
+                  src={logoB}
+                  alt={teamB}
+                  size="xl"
+                  borderStyle="subtle"
+                  priority
+                />
+              </div>
               <h3 className="text-lg md:text-xl font-bold text-white text-center">{teamB}</h3>
             </div>
           </div>
@@ -206,7 +208,6 @@ function CompactMatchRow({ match }: { match: Match }) {
               alt={teamA}
               size="sm"
               borderStyle="subtle"
-              className="flex-shrink-0"
             />
             <span className="text-sm font-semibold text-white truncate">{teamA}</span>
           </div>
@@ -221,7 +222,6 @@ function CompactMatchRow({ match }: { match: Match }) {
               alt={teamB}
               size="sm"
               borderStyle="subtle"
-              className="flex-shrink-0"
             />
           </div>
         </div>
