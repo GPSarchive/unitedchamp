@@ -267,9 +267,9 @@ function DesktopSingleMatch({ item }: { item: ClusterItem }) {
             {item.tournament_name && (
               <div className="flex items-center gap-1 w-full justify-center min-w-0">
                 {item.tournament_logo ? (
-                  <img src={item.tournament_logo} alt={item.tournament_name} className="h-2.5 w-2.5 object-contain flex-shrink-0" />
+                  <img src={item.tournament_logo} alt={item.tournament_name} className="h-4 w-4 object-contain flex-shrink-0" />
                 ) : (
-                  <Trophy className="h-2.5 w-2.5 flex-shrink-0" />
+                  <Trophy className="h-4 w-4 flex-shrink-0" />
                 )}
                 <AutoFitText
                   text={item.tournament_name}
@@ -464,9 +464,9 @@ function MobileSingleMatch({ item }: { item: ClusterItem }) {
                   {item.tournament_name && (
                     <div className="flex items-center gap-1 w-full justify-center min-w-0">
                       {item.tournament_logo ? (
-                        <img src={item.tournament_logo} alt={item.tournament_name} className="h-2.5 w-2.5 object-contain flex-shrink-0" />
+                        <img src={item.tournament_logo} alt={item.tournament_name} className="h-3.5 w-3.5 object-contain flex-shrink-0" />
                       ) : (
-                        <Trophy className="h-2.5 w-2.5 flex-shrink-0" />
+                        <Trophy className="h-3.5 w-3.5 flex-shrink-0" />
                       )}
                       <AutoFitText
                         text={item.tournament_name}

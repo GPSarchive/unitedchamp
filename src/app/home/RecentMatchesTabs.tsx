@@ -265,9 +265,9 @@ export default function RecentMatchesTabs({
                               {tournamentName && (
                                 <div className="flex items-center gap-1">
                                   {tournamentLogo ? (
-                                    <img src={tournamentLogo} alt={tournamentName} className="h-3 w-3 object-contain" />
+                                    <img src={tournamentLogo} alt={tournamentName} className="h-4 w-4 object-contain" />
                                   ) : (
-                                    <Trophy className="h-3 w-3" />
+                                    <Trophy className="h-4 w-4" />
                                   )}
                                   <span className="font-semibold">{tournamentName}</span>
                                 </div>
