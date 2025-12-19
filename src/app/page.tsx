@@ -18,6 +18,7 @@ import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
+import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -139,8 +140,13 @@ async function fetchMatchesWithTeams() {
         team_a_score,
         team_b_score,
         status,
+        stage_id,
+        group_id,
+        matchday,
+        round,
         teamA:teams!matches_team_a_id_fkey (name, logo),
-        teamB:teams!matches_team_b_id_fkey (name, logo)
+        teamB:teams!matches_team_b_id_fkey (name, logo),
+        tournament:tournament_id (id, name, logo)
       `
       )
       .order('match_date', { ascending: true })) as unknown as SupaResp;
@@ -251,6 +257,13 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   const teamBScore = (m as any).team_b_score ?? null;
   const status = (m as any).status ?? null; // 'scheduled' | 'finished'
 
+  // Tournament and matchday/round info
+  const tournament = (m as any).tournament ?? null;
+  const tournamentName = tournament?.name ?? null;
+  const tournamentLogo = tournament?.logo ?? null;
+  const matchday = (m as any).matchday ?? null;
+  const round = (m as any).round ?? null;
+
   // NOTE: CalendarEvent doesn't know these extra fields, but it's fine to attach them.
   const ev: CalendarEvent & any = {
     id: String(m.id),
@@ -268,6 +281,12 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
     score: (typeof teamAScore === 'number' && typeof teamBScore === 'number')
       ? [teamAScore, teamBScore]
       : undefined,
+
+    // Tournament and matchday/round info
+    tournament_name: tournamentName,
+    tournament_logo: tournamentLogo,
+    matchday,
+    round,
   };
 
   return ev;
@@ -280,6 +299,17 @@ function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
   console.log(`Events mapped for calendar: ${events.length}`);
   console.log('Events (after formation, up to 5):\n', pretty(events.slice(0, 5)));
   return events;
+}
+
+function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
+  // Resolve tournament logos to public URLs
+  return events.map((e: any) => {
+    if (e.tournament_logo) {
+      const resolvedLogo = resolveImageUrl(e.tournament_logo, ImageType.TOURNAMENT);
+      return { ...e, tournament_logo: resolvedLogo };
+    }
+    return e;
+  });
 }
 
 /**
@@ -296,8 +326,9 @@ export default async function Home() {
     fetchTournaments(),
     fetchRecentAnnouncementsCount()
   ]);
-  const eventsToPass = mapMatchesToEvents(rawMatches ?? []);
-  console.log('Rendering Home page with events:', eventsToPass);
+  const events = mapMatchesToEvents(rawMatches ?? []);
+  const eventsToPass = resolveMatchTournamentLogos(events);
+  console.log('Rendering Home page with events:', eventsToPass.length);
   console.log('Tournaments for homepage:', tournaments.length);
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">

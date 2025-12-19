@@ -4,7 +4,7 @@ import React, { useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MultiMatchCluster from './MultiMatchCluster';
 
@@ -45,6 +45,10 @@ export type ClusterItem = {
   score?: [number, number] | null;
   home_score?: number;
   away_score?: number;
+  tournament_name?: string | null;
+  tournament_logo?: string | null;
+  matchday?: number | null;
+  round?: number | null;
 };
 
 export type EventPillShrimpProps = {
@@ -223,6 +227,13 @@ function DesktopSingleMatch({ item }: { item: ClusterItem }) {
   const maybeScore = scoreText(item);
   const accent = accentFor(`${a}-${b}`);
 
+  // Tournament and matchday/round info
+  const matchdayRound = item.round
+    ? `Round ${item.round}`
+    : item.matchday
+    ? `Αγωνιστική ${item.matchday}`
+    : null;
+
   return (
     <Link
       href={`/matches/${item.id}`}
@@ -249,6 +260,35 @@ function DesktopSingleMatch({ item }: { item: ClusterItem }) {
             className="font-extrabold leading-tight tracking-wide text-white"
           />
         </div>
+
+        {/* Tournament and matchday/round */}
+        {(item.tournament_name || matchdayRound) && (
+          <div className="relative z-10 w-full flex flex-col items-center justify-center px-1 min-w-0 mt-0.5 gap-0.5">
+            {item.tournament_name && (
+              <div className="flex items-center gap-1 w-full justify-center min-w-0">
+                {item.tournament_logo ? (
+                  <img src={item.tournament_logo} alt={item.tournament_name} className="h-4 w-4 object-contain flex-shrink-0" />
+                ) : (
+                  <Trophy className="h-4 w-4 flex-shrink-0" />
+                )}
+                <AutoFitText
+                  text={item.tournament_name}
+                  maxPx={11}
+                  minPx={8}
+                  className="font-semibold leading-tight text-white/60"
+                />
+              </div>
+            )}
+            {matchdayRound && (
+              <AutoFitText
+                text={matchdayRound}
+                maxPx={10}
+                minPx={7}
+                className="font-medium leading-tight text-white/50"
+              />
+            )}
+          </div>
+        )}
 
         {/* Logos + VS/Score */}
         <div className="relative z-10 mt-1 md:mt-2 grid grid-cols-[1fr_auto_1fr] gap-2 md:gap-4 px-1 md:px-2 w-full max-w-[92%] mx-auto">
@@ -291,6 +331,13 @@ function MobileSingleMatch({ item }: { item: ClusterItem }) {
   const maybeScore = scoreText(item);
   const centerText = maybeScore ?? shortDate(item.start); // score if finished, else date
   const accent = accentFor(`${a}-${b}`);
+
+  // Tournament and matchday/round info
+  const matchdayRound = item.round
+    ? `Round ${item.round}`
+    : item.matchday
+    ? `Αγωνιστική ${item.matchday}`
+    : null;
 
   const handleContainerClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -410,6 +457,35 @@ function MobileSingleMatch({ item }: { item: ClusterItem }) {
                   className="font-extrabold leading-tight tracking-wide text-white"
                 />
               </div>
+
+              {/* Tournament and matchday/round */}
+              {(item.tournament_name || matchdayRound) && (
+                <div className="relative z-10 w-full flex flex-col items-center justify-center px-1 min-w-0 mb-1 gap-0.5">
+                  {item.tournament_name && (
+                    <div className="flex items-center gap-1 w-full justify-center min-w-0">
+                      {item.tournament_logo ? (
+                        <img src={item.tournament_logo} alt={item.tournament_name} className="h-3.5 w-3.5 object-contain flex-shrink-0" />
+                      ) : (
+                        <Trophy className="h-3.5 w-3.5 flex-shrink-0" />
+                      )}
+                      <AutoFitText
+                        text={item.tournament_name}
+                        maxPx={10}
+                        minPx={7}
+                        className="font-semibold leading-tight text-white/60"
+                      />
+                    </div>
+                  )}
+                  {matchdayRound && (
+                    <AutoFitText
+                      text={matchdayRound}
+                      maxPx={9}
+                      minPx={7}
+                      className="font-medium leading-tight text-white/50"
+                    />
+                  )}
+                </div>
+              )}
 
               {/* A logo + name */}
               <div className="flex flex-col items-center">

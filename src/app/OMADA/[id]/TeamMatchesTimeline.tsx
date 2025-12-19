@@ -238,6 +238,15 @@ export default function TeamMatchesTimeline({
 
               const showScore = typeof myScore === 'number' && typeof oppScore === 'number';
 
+              // Tournament and matchday/round info
+              const tournamentName = match.tournament?.name ?? null;
+              const tournamentLogo = match.tournament?.logo ?? null;
+              const matchdayRound = match.round
+                ? `Round ${match.round}`
+                : match.matchday
+                ? `Αγωνιστική ${match.matchday}`
+                : null;
+
               return (
                 <motion.li
                   key={match.id}
@@ -301,6 +310,21 @@ export default function TeamMatchesTimeline({
                         <Calendar className="w-3 h-3" />
                         {formatDate(match.match_date)}
                       </div>
+                      {(tournamentName || matchdayRound) && (
+                        <div className="mt-2 flex flex-col items-center gap-0.5 text-[11px] text-white/50 leading-tight">
+                          {tournamentName && (
+                            <div className="flex items-center gap-1">
+                              {tournamentLogo ? (
+                                <img src={tournamentLogo} alt={tournamentName} className="h-4 w-4 object-contain" />
+                              ) : (
+                                <Trophy className="h-4 w-4" />
+                              )}
+                              <span className="font-semibold">{tournamentName}</span>
+                            </div>
+                          )}
+                          {matchdayRound && <div>{matchdayRound}</div>}
+                        </div>
+                      )}
                     </div>
 
                     {/* Opponent */}

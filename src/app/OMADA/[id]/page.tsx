@@ -183,9 +183,13 @@ export default async function TeamPage({ params }: TeamPageProps) {
         team_a_score,
         team_b_score,
         winner_team_id,
+        stage_id,
+        group_id,
+        matchday,
+        round,
         team_a:teams!matches_team_a_id_fkey (id, name, logo),
         team_b:teams!matches_team_b_id_fkey (id, name, logo),
-        tournament:tournament_id (id, name, season, slug)
+        tournament:tournament_id (id, name, season, slug, logo)
       `
     )
     .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)

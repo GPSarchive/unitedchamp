@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Calendar, Clock, MapPin, ChevronRight, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import TeamFilter from "@/components/TeamFilter";
+import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 
 // =========================================================
 // Types
@@ -20,6 +21,10 @@ export type Match = {
   status?: "scheduled" | "live" | "finished";
   score?: [number, number];
   venue?: string;
+  tournament_name?: string | null;
+  tournament_logo?: string | null;
+  matchday?: number | null;
+  round?: number | null;
 };
 
 export type TeamDashboardProps = {
@@ -154,6 +159,27 @@ function NextMatchHero({ match }: { match: Match }) {
             )}
           </div>
 
+          {/* Tournament and matchday/round */}
+          {(match.tournament_name || match.matchday || match.round) && (
+            <div className="mt-3 flex flex-col items-center gap-1 text-xs text-white/60 border-t border-white/10 pt-3">
+              {match.tournament_name && (
+                <div className="flex items-center gap-2">
+                  {match.tournament_logo ? (
+                    <img src={resolveImageUrl(match.tournament_logo, ImageType.TOURNAMENT) || match.tournament_logo} alt={match.tournament_name} className="h-5 w-5 object-contain" />
+                  ) : (
+                    <Trophy className="h-5 w-5" />
+                  )}
+                  <span className="font-semibold">{match.tournament_name}</span>
+                </div>
+              )}
+              {(match.round || match.matchday) && (
+                <div className="font-medium text-white/50">
+                  {match.round ? `Round ${match.round}` : `Αγωνιστική ${match.matchday}`}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* CTA */}
           <div className="mt-6 flex justify-center">
             <span className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-full transition-colors">
@@ -177,6 +203,13 @@ function CompactMatchRow({ match }: { match: Match }) {
   const dateText = formatDate(match.start).split(" ").slice(0, 2).join(" "); // "Τετάρτη 3"
   const timeText = formatTime(match.start);
 
+  // Tournament and matchday/round info
+  const matchdayRound = match.round
+    ? `Round ${match.round}`
+    : match.matchday
+    ? `Αγ. ${match.matchday}`
+    : null;
+
   return (
     <Link href={`/matches/${match.id}`}>
       <motion.div whileHover={{ x: 4 }} className="flex items-center gap-3 p-4 bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800/50 hover:border-orange-400/30 rounded-xl transition-all group">
@@ -184,6 +217,21 @@ function CompactMatchRow({ match }: { match: Match }) {
         <div className="flex-shrink-0 text-center min-w-[70px]">
           <div className="text-xs font-semibold text-white/50 uppercase">{dateText}</div>
           <div className="text-lg font-bold text-white group-hover:text-orange-400">{timeText}</div>
+          {(match.tournament_name || matchdayRound) && (
+            <div className="mt-1 text-[10px] text-white/40 leading-tight">
+              {match.tournament_name && (
+                <div className="flex items-center gap-0.5 justify-center">
+                  {match.tournament_logo ? (
+                    <img src={resolveImageUrl(match.tournament_logo, ImageType.TOURNAMENT) || match.tournament_logo} alt={match.tournament_name} className="h-3.5 w-3.5 object-contain flex-shrink-0" />
+                  ) : (
+                    <Trophy className="h-3.5 w-3.5 flex-shrink-0" />
+                  )}
+                  <span className="font-semibold truncate max-w-[60px]">{match.tournament_name}</span>
+                </div>
+              )}
+              {matchdayRound && <div>{matchdayRound}</div>}
+            </div>
+          )}
         </div>
 
         {/* Teams */}
