@@ -3,6 +3,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import { MediumTeamLogo } from "@/app/components/TeamLogo";
 
 type TeamCardProps = {
   team: {
@@ -38,10 +39,10 @@ const TeamCard: React.FC<TeamCardProps> = ({ team, stageId }) => {
       whileTap={{ scale: 0.95 }}
     >
       <div className="flex items-center gap-4 mb-6">
-        <img
-          src={team.logo || "/default-team-logo.png"}
+        <MediumTeamLogo
+          src={team.logo}
           alt={`${team.name} logo`}
-          className="h-16 w-16 object-cover rounded-full border-4 border-orange-500"
+          borderStyle="strong"
         />
         <div>
           <h3 className="text-2xl font-semibold">{team.name}</h3>

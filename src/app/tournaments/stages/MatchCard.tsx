@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import TeamLogo from "@/app/components/TeamLogo";
 import type { DraftMatch } from "../useTournamentData";
 
 interface MatchCardProps {
@@ -69,19 +70,12 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
           <div className="flex items-center justify-between gap-4">
             {/* Team A */}
             <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="relative">
-                {teamALogo ? (
-                  <img
-                    src={teamALogo}
-                    alt={teamAName}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-orange-500"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center border-4 border-orange-500">
-                    <span className="text-2xl font-bold text-gray-400">?</span>
-                  </div>
-                )}
-              </div>
+              <TeamLogo
+                src={teamALogo}
+                alt={teamAName}
+                size="lg"
+                borderStyle="strong"
+              />
               <span className="text-sm font-bold text-white text-center line-clamp-2">
                 {teamAName}
               </span>
@@ -118,19 +112,12 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
 
             {/* Team B */}
             <div className="flex-1 flex flex-col items-center gap-3">
-              <div className="relative">
-                {teamBLogo ? (
-                  <img
-                    src={teamBLogo}
-                    alt={teamBName}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-orange-500"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center border-4 border-orange-500">
-                    <span className="text-2xl font-bold text-gray-400">?</span>
-                  </div>
-                )}
-              </div>
+              <TeamLogo
+                src={teamBLogo}
+                alt={teamBName}
+                size="lg"
+                borderStyle="strong"
+              />
               <span className="text-sm font-bold text-white text-center line-clamp-2">
                 {teamBName}
               </span>

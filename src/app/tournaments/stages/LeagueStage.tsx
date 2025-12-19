@@ -4,6 +4,7 @@ import React from "react";
 import type { Stage } from "../useTournamentData";
 import { useTournamentData } from "../useTournamentData";
 import MatchCarousel from "./MatchCarousel";
+import { SmallTeamLogo } from "@/app/components/TeamLogo";
 
 const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   const stageIdx = useTournamentData((s) => s.ids.stageIndexById[stage.id]);
@@ -75,13 +76,11 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        {getTeamLogo(standing.team_id) && (
-                          <img
-                            src={getTeamLogo(standing.team_id)!}
-                            alt=""
-                            className="w-10 h-10 rounded-full object-cover border-2 border-orange-500"
-                          />
-                        )}
+                        <SmallTeamLogo
+                          src={getTeamLogo(standing.team_id)}
+                          alt={getTeamName(standing.team_id)}
+                          borderStyle="normal"
+                        />
                         <span className="font-semibold text-white">
                           {getTeamName(standing.team_id)}
                         </span>
