@@ -126,7 +126,7 @@ function PlayersFilterHeaderComponent({
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
-              placeholder="Αναζήτηση παίκτη ή ομάδας..."
+              placeholder='Π.χ. "Γιώργος", "team:Παναθηναϊκός", "position:Forward goals:>10"'
               className="w-full bg-white/5 border border-white/10 px-4 py-2.5 md:py-3 pl-10 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-cyan-400/50 focus:bg-white/[0.07] transition-all md:rounded-none rounded-md"
             />
             <svg
@@ -142,6 +142,15 @@ function PlayersFilterHeaderComponent({
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
+            {/* Help text for search syntax */}
+            <div className="mt-1.5 text-[10px] text-white/40 px-1">
+              <span className="hidden md:inline">💡 Χρήση: </span>
+              <code className="text-cyan-400/60">team:όνομα</code>
+              <span className="text-white/30 mx-1">•</span>
+              <code className="text-cyan-400/60">position:θέση</code>
+              <span className="text-white/30 mx-1">•</span>
+              <code className="text-cyan-400/60">goals:&gt;10</code>
+            </div>
           </div>
           <div className="flex items-center justify-center gap-2 px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 md:rounded-none rounded-md whitespace-nowrap">
             <span className="text-white/50 text-sm">Σύνολο:</span>

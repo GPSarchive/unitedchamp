@@ -70,8 +70,8 @@ export default function PlayersClient({
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
   const [q, setQ] = useState(initialSearchQuery ?? "");
-  // ✅ Debounce search query to reduce rerenders while typing
-  const debouncedQ = useDebounce(q, 300);
+  // ✅ Debounce search query to reduce server requests while typing
+  const debouncedQ = useDebounce(q, 500);
 
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
@@ -217,95 +217,11 @@ export default function PlayersClient({
     setIsLoading(false);
   }, [initialPlayers]);
 
-  // Filter + search + sort (client-side for instant response)
-  // ✅ Use debounced query to prevent excessive filtering while typing
+  // Players are already filtered and sorted server-side
+  // Just apply topN limit if needed (client-side for instant feedback)
   const players = useMemo(() => {
-    // Step 1: Filter by search query
-    const needle = debouncedQ.trim().toLowerCase();
-    let filtered = base;
-    if (needle) {
-      filtered = base.filter((p) => {
-        const hay = `${p.first_name} ${p.last_name} ${p.team?.name ?? ""} ${
-          p.position
-        }`.toLowerCase();
-        return hay.includes(needle);
-      });
-    }
-
-    // Step 2: Apply tournament-aware sorting
-    // ✅ Helper to get the correct metric (tournament-scoped or global)
-    const isTournamentScoped = !!clientTournamentId;
-    const getMetric = (
-      player: PLWithTGoals,
-      globalField: keyof PLWithTGoals,
-      tournamentField: keyof PLWithTGoals
-    ): number => {
-      if (isTournamentScoped) {
-        const tValue = player[tournamentField];
-        if (typeof tValue === "number") return tValue;
-      }
-      const gValue = player[globalField];
-      return typeof gValue === "number" ? gValue : 0;
-    };
-
-    const sorted = [...filtered];
-    switch (clientSort) {
-      case "goals":
-      case "tournament_goals":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "goals", "tournament_goals") -
-            getMetric(a, "goals", "tournament_goals")
-        );
-        break;
-      case "matches":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "matches", "tournament_matches") -
-            getMetric(a, "matches", "tournament_matches")
-        );
-        break;
-      case "wins":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "wins", "tournament_wins") -
-            getMetric(a, "wins", "tournament_wins")
-        );
-        break;
-      case "assists":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "assists", "tournament_assists") -
-            getMetric(a, "assists", "tournament_assists")
-        );
-        break;
-      case "mvp":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "mvp", "tournament_mvp") -
-            getMetric(a, "mvp", "tournament_mvp")
-        );
-        break;
-      case "bestgk":
-        sorted.sort(
-          (a, b) =>
-            getMetric(b, "best_gk", "tournament_best_gk") -
-            getMetric(a, "best_gk", "tournament_best_gk")
-        );
-        break;
-      case "alpha":
-      default:
-        // Alphabetical sorting
-        sorted.sort((a, b) => {
-          const aName = `${a.last_name} ${a.first_name}`.toLowerCase();
-          const bName = `${b.last_name} ${b.first_name}`.toLowerCase();
-          return aName.localeCompare(bName);
-        });
-        break;
-    }
-
-    return topLimit != null ? sorted.slice(0, topLimit) : sorted;
-  }, [base, debouncedQ, clientSort, clientTournamentId, topLimit]);
+    return topLimit != null ? base.slice(0, topLimit) : base;
+  }, [base, topLimit]);
 
   // Quick lookup for card
   const byId = useMemo(
