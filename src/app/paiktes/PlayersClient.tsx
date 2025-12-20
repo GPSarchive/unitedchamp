@@ -71,7 +71,8 @@ export default function PlayersClient({
 
   const [q, setQ] = useState(initialSearchQuery ?? "");
   // ✅ Debounce search query to reduce server requests while typing
-  const debouncedQ = useDebounce(q, 500);
+  // Increased to 1000ms to allow comfortable typing without interruption
+  const debouncedQ = useDebounce(q, 1000);
 
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
@@ -372,12 +373,27 @@ export default function PlayersClient({
       >
         {/* LEFT PANEL - Players List with Filters */}
         <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 overflow-hidden">
+          {/* Filter Header - outside scrollable area to prevent blocking */}
+          <PlayersFilterHeader
+            selectedSort={clientSort}
+            selectedTournamentId={clientTournamentId}
+            topInputValue={clientTopInput}
+            tournaments={tournaments}
+            searchQuery={q}
+            playerCount={players.length}
+            onSortChange={onSortChange}
+            onTournamentChange={onTournamentChange}
+            onTopChange={onTopChange}
+            onTopInputChange={setClientTopInput}
+            onSearchChange={setQ}
+            onReset={handleReset}
+          />
 
           {/* Players List */}
           <div className="flex-1 overflow-hidden flex flex-col relative">
-            {/* ✅ Loading Overlay */}
+            {/* ✅ Loading Overlay - only covers the list, not the header */}
             {isLoading && (
-              <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+              <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
                   <div className="text-white/70 text-sm font-medium">Φόρτωση παικτών...</div>
@@ -386,22 +402,6 @@ export default function PlayersClient({
             )}
 
             <div className="flex-1 overflow-y-auto">
-              {/* Filter Header - now inside scrollable container */}
-              <PlayersFilterHeader
-                selectedSort={clientSort}
-                selectedTournamentId={clientTournamentId}
-                topInputValue={clientTopInput}
-                tournaments={tournaments}
-                searchQuery={q}
-                playerCount={players.length}
-                onSortChange={onSortChange}
-                onTournamentChange={onTournamentChange}
-                onTopChange={onTopChange}
-                onTopInputChange={setClientTopInput}
-                onSearchChange={setQ}
-                onReset={handleReset}
-              />
-
               <PlayersList
                 players={players}
                 activeId={activeId}
