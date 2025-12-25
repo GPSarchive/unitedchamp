@@ -2,6 +2,11 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite } from "./types";
+import {
+  parseSearchQuery,
+  normalizeForSearch,
+  removeGreekDiacritics,
+} from "@/app/lib/searchUtils";
 
 export const revalidate = 300;
 
@@ -87,17 +92,13 @@ export default async function PaiktesPage({
   const topN =
     Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
-  const searchTerm = sp?.q ? sp.q.trim() : "";
+  const rawSearchTerm = sp?.q ? sp.q.trim() : "";
 
-  // HYBRID PAGINATION
-  const hasFilters =
-    sortMode !== "alpha" ||
-    tournamentId !== null ||
-    searchTerm.length > 0 ||
-    topN !== null;
-  const usePagination = !hasFilters;
+  // Parse search query for field-specific searches
+  const parsedSearch = parseSearchQuery(rawSearchTerm);
 
-  const pageSize = usePagination ? DEFAULT_PAGE_SIZE : 999999;
+  // UNIFIED PAGINATION - Always use pagination for consistency
+  const pageSize = DEFAULT_PAGE_SIZE;
 
   // Fetch tournaments
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
@@ -112,7 +113,44 @@ export default async function PaiktesPage({
     season: string | null;
   }[];
 
-  const offset = usePagination ? (page - 1) * pageSize : 0;
+  const offset = (page - 1) * pageSize;
+
+  // TEAM FILTER → player ids (from parsed search)
+  let teamFilteredPlayerIds: number[] | null = null;
+  if (parsedSearch.team && parsedSearch.team.length > 0) {
+    // Get all search variants for each team term
+    const teamSearchVariants = parsedSearch.team.flatMap((teamTerm) =>
+      normalizeForSearch(teamTerm)
+    );
+
+    // Build OR conditions for team name search
+    const teamConditions = teamSearchVariants
+      .map((variant) => `name.ilike.%${variant}%`)
+      .join(",");
+
+    const { data: matchingTeams } = await supabaseAdmin
+      .from("teams")
+      .select("id")
+      .or(teamConditions);
+
+    if (matchingTeams && matchingTeams.length > 0) {
+      const teamIds = matchingTeams.map((t) => t.id);
+
+      // Get players belonging to these teams
+      const { data: playerTeams } = await supabaseAdmin
+        .from("player_teams")
+        .select("player_id")
+        .in("team_id", teamIds);
+
+      const playerIdSet = new Set(
+        (playerTeams ?? []).map((pt: { player_id: number }) => pt.player_id)
+      );
+      teamFilteredPlayerIds = Array.from(playerIdSet);
+    } else {
+      // No matching teams found, return empty result
+      teamFilteredPlayerIds = [];
+    }
+  }
 
   // TOURNAMENT FILTER → player ids
   let tournamentPlayerIds: number[] | null = null;
@@ -141,18 +179,75 @@ export default async function PaiktesPage({
     }
   }
 
-  // Fetch players
+  // Combine filters (team + tournament)
+  let combinedPlayerIds: number[] | null = null;
+
+  if (teamFilteredPlayerIds !== null && tournamentPlayerIds !== null) {
+    // Both filters active - find intersection
+    const teamSet = new Set(teamFilteredPlayerIds);
+    combinedPlayerIds = tournamentPlayerIds.filter((id) => teamSet.has(id));
+  } else if (teamFilteredPlayerIds !== null) {
+    // Only team filter
+    combinedPlayerIds = teamFilteredPlayerIds;
+  } else if (tournamentPlayerIds !== null) {
+    // Only tournament filter
+    combinedPlayerIds = tournamentPlayerIds;
+  }
+
+  // Fetch players with search filters
   let playersQuery = supabaseAdmin
     .from("player")
     .select("id, first_name, last_name, photo, position, height_cm, birth_date", {
       count: "exact",
     });
 
-  if (tournamentPlayerIds !== null) {
-    if (tournamentPlayerIds.length === 0) {
+  // Apply combined ID filter (team + tournament)
+  if (combinedPlayerIds !== null) {
+    if (combinedPlayerIds.length === 0) {
       playersQuery = playersQuery.in("id", [-1]);
     } else {
-      playersQuery = playersQuery.in("id", tournamentPlayerIds);
+      playersQuery = playersQuery.in("id", combinedPlayerIds);
+    }
+  }
+
+  // Apply position filter from parsed search
+  if (parsedSearch.position && parsedSearch.position.length > 0) {
+    // Create case-insensitive search for positions
+    const posFilters = parsedSearch.position
+      .flatMap((pos) => normalizeForSearch(pos))
+      .map((variant) => variant.toLowerCase());
+
+    // Use OR condition for multiple position variants
+    const positionConditions = posFilters
+      .map((_, idx) => `position.ilike.%${posFilters[idx]}%`)
+      .join(",");
+
+    if (posFilters.length === 1) {
+      playersQuery = playersQuery.ilike("position", `%${posFilters[0]}%`);
+    } else {
+      // For multiple position searches, we need to use or syntax
+      // Supabase format: .or('position.ilike.%Forward%,position.ilike.%Goalkeeper%')
+      playersQuery = playersQuery.or(positionConditions);
+    }
+  }
+
+  // Apply text search from parsed search (name search)
+  if (parsedSearch.text.length > 0) {
+    // Combine all text search terms
+    const textSearchTerms = parsedSearch.text.join(" ");
+    const searchVariants = normalizeForSearch(textSearchTerms);
+
+    // Build OR conditions for first_name and last_name across all variants
+    const nameConditions: string[] = [];
+
+    for (const variant of searchVariants) {
+      const pattern = `%${variant}%`;
+      nameConditions.push(`first_name.ilike.${pattern}`);
+      nameConditions.push(`last_name.ilike.${pattern}`);
+    }
+
+    if (nameConditions.length > 0) {
+      playersQuery = playersQuery.or(nameConditions.join(","));
     }
   }
 
@@ -292,7 +387,7 @@ export default async function PaiktesPage({
 
   const now = new Date();
 
-  const enriched: PLWithTGoals[] = p.map((pl) => {
+  let enriched: PLWithTGoals[] = p.map((pl) => {
     const age = pl.birth_date
       ? Math.floor(
           (now.getTime() - new Date(pl.birth_date).getTime()) /
@@ -365,6 +460,17 @@ export default async function PaiktesPage({
       wins,
     };
   });
+
+  // Apply stats filters from parsed search
+  if (parsedSearch.minGoals !== undefined) {
+    enriched = enriched.filter((p) => p.goals >= parsedSearch.minGoals!);
+  }
+  if (parsedSearch.minMatches !== undefined) {
+    enriched = enriched.filter((p) => p.matches >= parsedSearch.minMatches!);
+  }
+  if (parsedSearch.minAssists !== undefined) {
+    enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
+  }
 
   // TOURNAMENT-SCOPED STATS
   if (tournamentId) {
@@ -554,8 +660,8 @@ export default async function PaiktesPage({
         totalCount={totalCount ?? 0}
         currentPage={page}
         pageSize={pageSize}
-        usePagination={usePagination}
-        initialSearchQuery={searchTerm}
+        usePagination={true}
+        initialSearchQuery={rawSearchTerm}
       />
     </div>
   );
