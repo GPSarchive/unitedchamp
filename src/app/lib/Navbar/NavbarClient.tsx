@@ -22,15 +22,6 @@ const NAV_LINKS = [
   { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
 ] as const;
 
-/* ===================== Styles ===================== */
-const TILE_CLASS =
-  "relative group block shrink-0 rounded-xl overflow-hidden " +
-  "border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900 " +
-  "hover:border-white/30 hover:shadow-lg hover:shadow-white/10 transition-all duration-300 " +
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 " +
-  "focus-visible:ring-offset-2 focus-visible:ring-offset-black " +
-  "w-[180px] h-[64px] md:w-[260px] md:h-[84px] xl:w-[300px] xl:h-[90px]";
-
 /* ===================== Sub-components ===================== */
 
 const NavLink = memo(({ href, label, isActive, onClick }: {
@@ -42,15 +33,14 @@ const NavLink = memo(({ href, label, isActive, onClick }: {
   <Link
     href={href}
     aria-current={isActive}
-    className={TILE_CLASS}
+    className="relative px-3 py-2 text-white/90 text-sm font-medium tracking-wide hover:text-white transition-colors duration-200 focus:outline-none focus-visible:text-white focus-visible:underline decoration-2 underline-offset-4"
     role="listitem"
     onClick={onClick}
   >
-    <div className="absolute inset-0 flex items-center justify-center">
-      <span className="text-white text-lg font-semibold tracking-wide">
-        {label}
-      </span>
-    </div>
+    {label}
+    {isActive && (
+      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/80 rounded-full" />
+    )}
   </Link>
 ));
 NavLink.displayName = "NavLink";
@@ -65,13 +55,12 @@ const MobileNavLink = memo(({ href, label, isActive, onClick }: {
     href={href}
     onClick={onClick}
     aria-current={isActive}
-    className="relative group block w-full h-[70px] rounded-lg overflow-hidden border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900 hover:border-white/30 transition active:scale-[0.98]"
+    className="relative block w-full px-4 py-3.5 text-white/90 text-base font-medium tracking-wide hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 active:scale-[0.98]"
   >
-    <div className="absolute inset-0 flex items-center justify-center">
-      <span className="text-white text-sm font-semibold tracking-wide">
-        {label}
-      </span>
-    </div>
+    {label}
+    {isActive && (
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/80 rounded-r-full" />
+    )}
   </Link>
 ));
 MobileNavLink.displayName = "MobileNavLink";
@@ -317,7 +306,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
       >
         <nav
           aria-label="Main"
-          className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-28"
+          className="relative isolate w-full h-16 md:h-20 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-16"
           data-scrolled={scrolled}
         >
           <AnimatedBackground />
@@ -341,9 +330,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               <span className="text-base font-semibold tracking-wide">Ultra Champ</span>
             </Link>
 
-            {/* Desktop tile links */}
+            {/* Desktop navigation links */}
             <div
-              className="hidden md:flex items-center gap-4 overflow-x-auto desktop-scroll pr-1 max-w-[78vw] lg:max-w-[82vw] xl:max-w-[86vw]"
+              className="hidden md:flex items-center gap-1 overflow-x-auto desktop-scroll pr-1 max-w-[85vw] lg:max-w-[88vw] xl:max-w-[90vw]"
               role="list"
               aria-label="Primary navigation"
             >
@@ -457,8 +446,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               <div className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll">
                 {/* Top fade gradient */}
                 <div className="pointer-events-none sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-zinc-950/90 to-transparent z-10" />
-                
-                <div className="flex flex-col gap-3 px-4 pb-4">
+
+                <div className="flex flex-col gap-1.5 px-4 pb-4">
                   {NAV_LINKS.map(({ href, label }, index) => (
                     <motion.div
                       key={href}
