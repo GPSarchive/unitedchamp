@@ -34,7 +34,7 @@ const NavLink = memo(({ href, label, isActive, onClick }: {
     href={href}
     aria-current={isActive}
     className={`
-      relative px-4 py-2 text-sm font-semibold tracking-wide uppercase
+      relative px-5 py-2 text-sm font-semibold tracking-wider uppercase
       transition-all duration-300 ease-out
       ${isActive
         ? 'text-[#f6e27a]'
@@ -358,7 +358,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
             {/* Desktop navigation links */}
             <div
-              className="hidden md:flex items-center gap-1 overflow-x-auto desktop-scroll pr-1 max-w-[85vw] lg:max-w-[88vw] xl:max-w-[90vw]"
+              className="hidden md:flex items-center gap-3 lg:gap-4 xl:gap-6 overflow-x-auto desktop-scroll pr-1 flex-1 justify-center max-w-[85vw] lg:max-w-[88vw] xl:max-w-none"
               role="list"
               aria-label="Primary navigation"
             >
