@@ -33,14 +33,32 @@ const NavLink = memo(({ href, label, isActive, onClick }: {
   <Link
     href={href}
     aria-current={isActive}
-    className="relative px-3 py-2 text-white/90 text-sm font-medium tracking-wide hover:text-white transition-colors duration-200 focus:outline-none focus-visible:text-white focus-visible:underline decoration-2 underline-offset-4"
+    className={`
+      relative px-4 py-2 text-sm font-semibold tracking-wide uppercase
+      transition-all duration-300 ease-out
+      ${isActive
+        ? 'text-[#f6e27a]'
+        : 'text-white/75 hover:text-[#e8c66a]'
+      }
+      focus:outline-none focus-visible:text-[#f6e27a]
+      group
+    `}
     role="listitem"
     onClick={onClick}
   >
     {label}
-    {isActive && (
-      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/80 rounded-full" />
-    )}
+    {/* Gold gradient underline */}
+    <span
+      className={`
+        absolute bottom-0 left-0 right-0 h-[2px] rounded-full
+        bg-gradient-to-r from-[#f6e27a] via-[#e8c66a] to-[#caa94d]
+        transition-all duration-300 ease-out
+        ${isActive
+          ? 'opacity-100 shadow-[0_0_8px_rgba(246,226,122,0.6)]'
+          : 'opacity-0 group-hover:opacity-80 group-hover:shadow-[0_0_6px_rgba(246,226,122,0.4)]'
+        }
+      `}
+    />
   </Link>
 ));
 NavLink.displayName = "NavLink";
@@ -55,11 +73,19 @@ const MobileNavLink = memo(({ href, label, isActive, onClick }: {
     href={href}
     onClick={onClick}
     aria-current={isActive}
-    className="relative block w-full px-4 py-3.5 text-white/90 text-base font-medium tracking-wide hover:text-white hover:bg-white/5 rounded-lg transition-all duration-200 active:scale-[0.98]"
+    className={`
+      relative block w-full px-4 py-3.5 text-base font-semibold tracking-wide uppercase
+      rounded-lg transition-all duration-300 ease-out active:scale-[0.98]
+      ${isActive
+        ? 'text-[#f6e27a] bg-gradient-to-r from-white/8 to-white/5 border border-[#e8c66a]/30 shadow-[0_0_12px_rgba(246,226,122,0.15)]'
+        : 'text-white/75 hover:text-[#e8c66a] hover:bg-white/5 border border-transparent hover:border-[#e8c66a]/20'
+      }
+    `}
   >
     {label}
+    {/* Gold accent bar for active state */}
     {isActive && (
-      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white/80 rounded-r-full" />
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 bg-gradient-to-b from-[#f6e27a] via-[#e8c66a] to-[#caa94d] rounded-r-full shadow-[0_0_8px_rgba(246,226,122,0.6)]" />
     )}
   </Link>
 ));
