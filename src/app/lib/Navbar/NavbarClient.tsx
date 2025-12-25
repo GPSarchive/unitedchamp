@@ -11,15 +11,15 @@ import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser"
 
 /* ===================== Data ===================== */
 const NAV_LINKS = [
-  { href: "/home", label: "HOME", img: "/field2.jpg" },
-  { href: "/anakoinoseis", label: "ΑΝΑΚΟΙΝΩΣΕΙΣ", img: "/ανακοινωσεις.jpg" },
-  { href: "/OMADES", label: "ΟΜΑΔΕΣ", img: "/Ομαδες.jpg" },
-  { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ", img: "/tournamentPhoto.png" },
-  { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ", img: "/επικοινωνια.jpg" },
-  { href: "/paiktes", label: "ΠΑΙΚΤΕΣ", img: "/παικτες.jpg" },
-  { href: "/matches", label: "ΑΓΩΝΕΣ", img: "/αγωνες.jpg" },
-  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ", img: "/γενικη-καταταξη.jpg" },
-  { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ", img: "/κανονισμος.jpg" },
+  { href: "/home", label: "HOME" },
+  { href: "/OMADES", label: "ΟΜΑΔΕΣ" },
+  { href: "/paiktes", label: "ΠΑΙΚΤΕΣ" },
+  { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ" },
+  { href: "/anakoinoseis", label: "ΑΝΑΚΟΙΝΩΣΕΙΣ" },
+  { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ" },
+  { href: "/matches", label: "ΑΓΩΝΕΣ" },
+  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ" },
+  { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
 ] as const;
 
 /* ===================== Styles ===================== */
@@ -33,10 +33,9 @@ const TILE_CLASS =
 
 /* ===================== Sub-components ===================== */
 
-const NavLink = memo(({ href, label, img, isActive, onClick }: {
+const NavLink = memo(({ href, label, isActive, onClick }: {
   href: string;
   label: string;
-  img: string;
   isActive?: "page";
   onClick?: () => void;
 }) => (
@@ -47,15 +46,8 @@ const NavLink = memo(({ href, label, img, isActive, onClick }: {
     role="listitem"
     onClick={onClick}
   >
-    <Image
-      src={img}
-      alt={label}
-      fill
-      sizes="(min-width: 1280px) 300px, (min-width: 768px) 260px, 180px"
-      className="object-cover transition-transform duration-500 will-change-transform group-hover:scale-110"
-    />
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="rounded-md bg-black/30 px-3 py-1 text-white text-lg font-semibold tracking-wide backdrop-blur-[2px]">
+    <div className="absolute inset-0 flex items-center justify-center">
+      <span className="text-white text-lg font-semibold tracking-wide">
         {label}
       </span>
     </div>
@@ -63,10 +55,9 @@ const NavLink = memo(({ href, label, img, isActive, onClick }: {
 ));
 NavLink.displayName = "NavLink";
 
-const MobileNavLink = memo(({ href, label, img, isActive, onClick }: {
+const MobileNavLink = memo(({ href, label, isActive, onClick }: {
   href: string;
   label: string;
-  img: string;
   isActive?: "page";
   onClick: () => void;
 }) => (
@@ -76,15 +67,8 @@ const MobileNavLink = memo(({ href, label, img, isActive, onClick }: {
     aria-current={isActive}
     className="relative group block w-full h-[70px] rounded-lg overflow-hidden border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900 hover:border-white/30 transition active:scale-[0.98]"
   >
-    <Image
-      src={img}
-      alt={label}
-      fill
-      sizes="100vw"
-      className="object-cover transition-transform duration-500 group-hover:scale-105"
-    />
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="rounded bg-black/30 px-2.5 py-0.5 text-white text-sm font-semibold tracking-wide backdrop-blur-[2px]">
+    <div className="absolute inset-0 flex items-center justify-center">
+      <span className="text-white text-sm font-semibold tracking-wide">
         {label}
       </span>
     </div>
@@ -363,12 +347,11 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               role="list"
               aria-label="Primary navigation"
             >
-              {NAV_LINKS.map(({ href, label, img }) => (
+              {NAV_LINKS.map(({ href, label }) => (
                 <NavLink
                   key={href}
                   href={href}
                   label={label}
-                  img={img}
                   isActive={isActive(href)}
                 />
               ))}
@@ -476,12 +459,12 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 <div className="pointer-events-none sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-zinc-950/90 to-transparent z-10" />
                 
                 <div className="flex flex-col gap-3 px-4 pb-4">
-                  {NAV_LINKS.map(({ href, label, img }, index) => (
+                  {NAV_LINKS.map(({ href, label }, index) => (
                     <motion.div
                       key={href}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ 
+                      transition={{
                         delay: prefersReduced ? 0 : index * 0.04,
                         duration: prefersReduced ? 0 : 0.3,
                         ease: [0.22, 1, 0.36, 1]
@@ -490,7 +473,6 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                       <MobileNavLink
                         href={href}
                         label={label}
-                        img={img}
                         isActive={isActive(href)}
                         onClick={closeMobile}
                       />
