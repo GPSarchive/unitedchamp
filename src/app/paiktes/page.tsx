@@ -6,7 +6,9 @@ import {
   parseSearchQuery,
   normalizeForSearch,
   removeGreekDiacritics,
+  validateSearchInput,
 } from "@/app/lib/searchUtils";
+import { isRateLimited, RATE_LIMITS } from "@/app/lib/rateLimit";
 
 export const revalidate = 300;
 
@@ -94,8 +96,41 @@ export default async function PaiktesPage({
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
   const rawSearchTerm = sp?.q ? sp.q.trim() : "";
 
+  // SECURITY: Rate limiting check
+  const hasSearchQuery = rawSearchTerm.length > 0;
+  if (hasSearchQuery) {
+    const rateLimited = await isRateLimited(RATE_LIMITS.SEARCH);
+    if (rateLimited) {
+      console.warn("[paiktes] Rate limit exceeded for search");
+      // Return empty results on rate limit (could also redirect to error page)
+      return (
+        <div className="h-screen bg-black overflow-hidden flex items-center justify-center">
+          <div className="text-white/70 text-center max-w-md px-6">
+            <h2 className="text-2xl font-bold mb-4">Too Many Requests</h2>
+            <p>
+              You've made too many search requests. Please wait a moment before
+              trying again.
+            </p>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // SECURITY: Validate and sanitize search input
+  const validation = validateSearchInput(rawSearchTerm);
+  if (!validation.isValid) {
+    console.warn("[paiktes] Invalid search input:", validation.error);
+    // Use sanitized version or empty string
+    // For now, treat invalid input as empty search
+  }
+
+  const sanitizedSearchTerm = validation.isValid
+    ? validation.sanitized
+    : "";
+
   // Parse search query for field-specific searches
-  const parsedSearch = parseSearchQuery(rawSearchTerm);
+  const parsedSearch = parseSearchQuery(sanitizedSearchTerm);
 
   // UNIFIED PAGINATION - Always use pagination for consistency
   const pageSize = DEFAULT_PAGE_SIZE;
@@ -118,20 +153,23 @@ export default async function PaiktesPage({
   // TEAM FILTER → player ids (from parsed search)
   let teamFilteredPlayerIds: number[] | null = null;
   if (parsedSearch.team && parsedSearch.team.length > 0) {
-    // Get all search variants for each team term
-    const teamSearchVariants = parsedSearch.team.flatMap((teamTerm) =>
-      normalizeForSearch(teamTerm)
-    );
+    // SECURITY: Limit number of team search variants to prevent query explosion
+    const MAX_TEAM_VARIANTS = 10;
+    const teamSearchVariants = parsedSearch.team
+      .flatMap((teamTerm) => normalizeForSearch(teamTerm))
+      .slice(0, MAX_TEAM_VARIANTS);
 
     // Build OR conditions for team name search
     const teamConditions = teamSearchVariants
       .map((variant) => `name.ilike.%${variant}%`)
       .join(",");
 
+    // SECURITY: Limit number of matching teams to prevent huge joins
     const { data: matchingTeams } = await supabaseAdmin
       .from("teams")
       .select("id")
-      .or(teamConditions);
+      .or(teamConditions)
+      .limit(50); // Max 50 teams to prevent large joins
 
     if (matchingTeams && matchingTeams.length > 0) {
       const teamIds = matchingTeams.map((t) => t.id);
@@ -212,10 +250,12 @@ export default async function PaiktesPage({
 
   // Apply position filter from parsed search
   if (parsedSearch.position && parsedSearch.position.length > 0) {
-    // Create case-insensitive search for positions
+    // SECURITY: Limit number of position search variants
+    const MAX_POSITION_VARIANTS = 10;
     const posFilters = parsedSearch.position
       .flatMap((pos) => normalizeForSearch(pos))
-      .map((variant) => variant.toLowerCase());
+      .map((variant) => variant.toLowerCase())
+      .slice(0, MAX_POSITION_VARIANTS);
 
     // Use OR condition for multiple position variants
     const positionConditions = posFilters
@@ -233,14 +273,22 @@ export default async function PaiktesPage({
 
   // Apply text search from parsed search (name search)
   if (parsedSearch.text.length > 0) {
-    // Combine all text search terms
-    const textSearchTerms = parsedSearch.text.join(" ");
+    // SECURITY: Limit text search terms to prevent query explosion
+    const MAX_TEXT_TERMS = 3;
+    const limitedTextTerms = parsedSearch.text.slice(0, MAX_TEXT_TERMS);
+
+    // Combine text search terms
+    const textSearchTerms = limitedTextTerms.join(" ");
     const searchVariants = normalizeForSearch(textSearchTerms);
+
+    // SECURITY: Limit number of search variants
+    const MAX_NAME_VARIANTS = 8;
+    const limitedVariants = searchVariants.slice(0, MAX_NAME_VARIANTS);
 
     // Build OR conditions for first_name and last_name across all variants
     const nameConditions: string[] = [];
 
-    for (const variant of searchVariants) {
+    for (const variant of limitedVariants) {
       const pattern = `%${variant}%`;
       nameConditions.push(`first_name.ilike.${pattern}`);
       nameConditions.push(`last_name.ilike.${pattern}`);
@@ -661,7 +709,7 @@ export default async function PaiktesPage({
         currentPage={page}
         pageSize={pageSize}
         usePagination={true}
-        initialSearchQuery={rawSearchTerm}
+        initialSearchQuery={sanitizedSearchTerm}
       />
     </div>
   );
