@@ -251,10 +251,14 @@ export default async function PaiktesPage({
     }
   }
 
-  // IMPORTANT: When tournament filter is active, we need to fetch ALL players first,
-  // then calculate tournament stats, then sort, then paginate.
-  // Otherwise top scorers with last names late in alphabet won't appear.
-  const shouldDeferPagination = !!tournamentId;
+  // IMPORTANT: When tournament filter OR stats filters are active, we need to fetch ALL players first,
+  // then calculate stats/apply filters, then sort, then paginate.
+  // Otherwise top scorers/performers with last names late in alphabet won't appear.
+  const hasStatsFilters =
+    parsedSearch.minGoals !== undefined ||
+    parsedSearch.minMatches !== undefined ||
+    parsedSearch.minAssists !== undefined;
+  const shouldDeferPagination = !!tournamentId || hasStatsFilters;
 
   let playersQueryWithOrder = playersQuery
     .order("last_name", { ascending: true })
