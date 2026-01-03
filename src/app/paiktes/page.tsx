@@ -251,14 +251,25 @@ export default async function PaiktesPage({
     }
   }
 
+  // IMPORTANT: When tournament filter is active, we need to fetch ALL players first,
+  // then calculate tournament stats, then sort, then paginate.
+  // Otherwise top scorers with last names late in alphabet won't appear.
+  const shouldDeferPagination = !!tournamentId;
+
+  let playersQueryWithOrder = playersQuery
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
+
+  // Only apply pagination now if NOT tournament-filtered
+  if (!shouldDeferPagination) {
+    playersQueryWithOrder = playersQueryWithOrder.range(offset, offset + pageSize - 1);
+  }
+
   const {
     data: players,
     error: pErr,
     count: totalCount,
-  } = await playersQuery
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true })
-    .range(offset, offset + pageSize - 1);
+  } = await playersQueryWithOrder;
 
   if (pErr) console.error("[paiktes] players query error:", pErr.message);
   const p = (players ?? []) as PlayerRow[];
@@ -652,12 +663,22 @@ export default async function PaiktesPage({
       break;
   }
 
+  // Apply pagination AFTER sorting when tournament filter is active
+  // (for non-tournament filters, pagination was already applied in the query)
+  let finalTotalCount = totalCount ?? 0;
+  if (shouldDeferPagination) {
+    // When we defer pagination, the totalCount should be the count AFTER all filters
+    // (including stats filters) but BEFORE slicing for pagination
+    finalTotalCount = enriched.length;
+    enriched = enriched.slice(offset, offset + pageSize);
+  }
+
   return (
     <div className="h-screen bg-black overflow-hidden">
       <PlayersClient
         initialPlayers={enriched}
         tournaments={tournaments}
-        totalCount={totalCount ?? 0}
+        totalCount={finalTotalCount}
         currentPage={page}
         pageSize={pageSize}
         usePagination={true}
