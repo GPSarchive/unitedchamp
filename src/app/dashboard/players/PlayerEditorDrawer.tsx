@@ -155,6 +155,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
   const [height, setHeight] = useState("");
   const [position, setPosition] = useState("");
   const [birth, setBirth] = useState("");
+  const [playerNumber, setPlayerNumber] = useState("");
   const [yc, setYC] = useState("");
   const [rc, setRC] = useState("");
   const [bc, setBC] = useState("");
@@ -182,6 +183,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
     setHeight(player?.height_cm == null ? "" : String(player.height_cm));
     setPosition(player?.position ?? "");
     setBirth(player?.birth_date ? String(player.birth_date).slice(0, 10) : "");
+    setPlayerNumber(player?.player_number == null ? "" : String(player.player_number));
 
     // Μετρητές καρτών
     setYC(s?.yellow_cards == null ? "" : String(s.yellow_cards));
@@ -206,6 +208,7 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
       height_cm: height === "" ? null : Number(height),
       position: position.trim() || null,
       birth_date: birth ? new Date(birth).toISOString() : null,
+      player_number: playerNumber === "" ? null : Number(playerNumber),
 
       // Μετρητές στατιστικών
       yellow_cards: yc === "" ? 0 : Number(yc),
@@ -367,6 +370,17 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
               value={birth}
               onChange={(e) => setBirth(e.target.value)}
               className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-white/80">Αριθμός φανέλας</span>
+            <input
+              value={playerNumber}
+              onChange={(e) => setPlayerNumber(e.target.value)}
+              inputMode="numeric"
+              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+              placeholder="π.χ. 10"
             />
           </label>
 
