@@ -48,6 +48,7 @@ export interface PlayerRow {
   height_cm: number | null;
   position: string | null;
   birth_date: string | null; // 'YYYY-MM-DD'
+  player_number: number | null; // Player's jersey/shirt number (not unique)
 
   // optional timestamps (exist in table but not always selected)
   created_at?: string | null;
@@ -281,6 +282,7 @@ export function normalizeTeamPlayers(
         height_cm: null,
         position: null,
         birth_date: null,
+        player_number: null,
         created_at: null,
         updated_at: null,
 
@@ -299,6 +301,7 @@ export function normalizeTeamPlayers(
       height_cm: base.height_cm,
       position: base.position,
       birth_date: base.birth_date,
+      player_number: base.player_number,
       created_at: base.created_at ?? null,
       updated_at: base.updated_at ?? null,
 

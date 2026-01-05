@@ -59,6 +59,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       height_cm,
       position,
       birth_date,
+      player_number,
       player_statistics (
         id,
         age,
@@ -122,6 +123,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
     if (body.birth_date !== undefined) {
       patchPlayer.birth_date = body.birth_date == null || body.birth_date === "" ? null : String(body.birth_date);
+    }
+    if (body.player_number !== undefined) {
+      const v = body.player_number === "" || body.player_number == null ? null : Number(body.player_number);
+      if (v !== null && (Number.isNaN(v) || v < 0)) {
+        return NextResponse.json({ error: "Invalid player_number" }, { status: 400 });
+      }
+      patchPlayer.player_number = v;
     }
 
     if (patchPlayer.first_name !== undefined && patchPlayer.first_name.length < 1) {
@@ -197,6 +205,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         height_cm,
         position,
         birth_date,
+        player_number,
         player_statistics (
           id,
           age,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, Search, UserPlus } from "lucide-react";
 import type {
   PlayerRow as Player,
@@ -50,6 +51,23 @@ export default function PlayersPanel({
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [age, setAge] = useState<number | "" | null>(null);
+
+  // Extended player fields
+  const [photo, setPhoto] = useState("");
+  const [height, setHeight] = useState<number | "" | null>(null);
+  const [position, setPosition] = useState("");
+  const [birth, setBirth] = useState("");
+  const [playerNumber, setPlayerNumber] = useState<number | "" | null>(null);
+
+  // Card statistics
+  const [yellowCards, setYellowCards] = useState<number | "" | null>(0);
+  const [redCards, setRedCards] = useState<number | "" | null>(0);
+  const [blueCards, setBlueCards] = useState<number | "" | null>(0);
+
+  // Goals and assists
+  const [goals, setGoals] = useState<number | "" | null>(0);
+  const [assists, setAssists] = useState<number | "" | null>(0);
+
   const validCreate = !!(first.trim() && last.trim());
 
   async function search() {
@@ -100,6 +118,16 @@ export default function PlayersPanel({
           first_name: first.trim(),
           last_name: last.trim(),
           age: age === "" ? null : age,
+          total_goals: goals === "" ? 0 : goals,
+          total_assists: assists === "" ? 0 : assists,
+          photo: photo.trim() || null,
+          height_cm: height === "" ? null : height,
+          position: position.trim() || null,
+          birth_date: birth || null,
+          player_number: playerNumber === "" ? null : playerNumber,
+          yellow_cards: yellowCards === "" ? 0 : yellowCards,
+          red_cards: redCards === "" ? 0 : redCards,
+          blue_cards: blueCards === "" ? 0 : blueCards,
         }),
       });
       const data = (await safeJson(res)) ?? {};
@@ -107,7 +135,21 @@ export default function PlayersPanel({
 
       const player = data.player as Player;
       await addExisting(player.id);
-      setFirst(""); setLast(""); setAge(null);
+
+      // Reset all fields
+      setFirst("");
+      setLast("");
+      setAge(null);
+      setPhoto("");
+      setHeight(null);
+      setPosition("");
+      setBirth("");
+      setPlayerNumber(null);
+      setGoals(0);
+      setAssists(0);
+      setYellowCards(0);
+      setRedCards(0);
+      setBlueCards(0);
     } catch (e: any) {
       alert(e?.message ?? String(e));
     }
@@ -214,28 +256,29 @@ export default function PlayersPanel({
       </div>
 
       {/* Side drawer for adding players */}
-      <div 
-        className={`fixed inset-0 z-50 transition-opacity duration-300 ${
-          open ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-        aria-hidden={!open}
-      >
+      {typeof window !== 'undefined' && createPortal(
+        <div
+          className={`fixed inset-0 z-50 transition ${
+            open ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+          aria-hidden={!open}
+        >
         {/* Backdrop */}
-        <div 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${
             open ? "opacity-100" : "opacity-0"
           }`}
           onClick={() => setOpen(false)}
         />
-        
+
         {/* Side panel */}
         <div
-  className={`absolute right-0 top-0 h-full w-full sm:w-full bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 ${
+  className={`absolute right-0 top-0 h-full w-full sm:w-[600px] md:w-[700px] lg:w-[800px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform flex flex-col ${
     open ? "translate-x-0" : "translate-x-full"
   }`}
 >
           {/* Panel header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/50">
+          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/50 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 className={`px-3 py-1.5 rounded text-sm transition-colors ${
@@ -268,9 +311,10 @@ export default function PlayersPanel({
           </div>
 
           {/* Panel content */}
-          <div className="p-6 space-y-4 h-[calc(100vh-5rem)] overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col flex-1 min-h-0">
             {tab === "existing" ? (
-              <>
+              <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                <>
                 <label className="flex items-center gap-2">
                   <Search className="h-4 w-4 text-white/70" />
                   <input
@@ -327,58 +371,206 @@ export default function PlayersPanel({
                     })
                   )}
                 </div>
-              </>
+                </>
+              </div>
             ) : (
               <>
-                <div className="space-y-4">
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Όνομα *</span>
-                    <input
-                      value={first}
-                      onChange={(e) => setFirst(e.target.value)}
-                      placeholder="π.χ. Γιάννης"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Επώνυμο *</span>
-                    <input
-                      value={last}
-                      onChange={(e) => setLast(e.target.value)}
-                      placeholder="π.χ. Παπαδόπουλος"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Ηλικία</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={age === null ? "" : age}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setAge(v === "" ? "" : Number(v));
-                      }}
-                      placeholder="π.χ. 25"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
+                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-4">
+                  {/* Basic Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Όνομα *</span>
+                      <input
+                        value={first}
+                        onChange={(e) => setFirst(e.target.value)}
+                        placeholder="π.χ. Γιάννης"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Επώνυμο *</span>
+                      <input
+                        value={last}
+                        onChange={(e) => setLast(e.target.value)}
+                        placeholder="π.χ. Παπαδόπουλος"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ηλικία</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={age === null ? "" : age}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAge(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 25"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Αριθμός φανέλας</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={playerNumber === null ? "" : playerNumber}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPlayerNumber(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 10"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Γκολ</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={goals === null ? "" : goals}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGoals(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ασίστ</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={assists === null ? "" : assists}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAssists(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Extended Profile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2 sm:col-span-2">
+                      <span className="text-sm text-white/80 font-medium">Φωτογραφία (διαδρομή)</span>
+                      <input
+                        value={photo}
+                        onChange={(e) => setPhoto(e.target.value)}
+                        placeholder="π.χ. players/john-doe/photo.jpg"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ύψος (cm)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={height === null ? "" : height}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setHeight(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 180"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Θέση</span>
+                      <input
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                        placeholder="π.χ. RW, CF"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2 sm:col-span-2">
+                      <span className="text-sm text-white/80 font-medium">Ημερομηνία γέννησης</span>
+                      <input
+                        type="date"
+                        value={birth}
+                        onChange={(e) => setBirth(e.target.value)}
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Card Statistics */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Κίτρινες κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={yellowCards === null ? "" : yellowCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setYellowCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Κόκκινες κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={redCards === null ? "" : redCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setRedCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Μπλε κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={blueCards === null ? "" : blueCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setBlueCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+                  </div>
                 </div>
-                <div className="flex justify-end pt-4">
-                  <button
-                    type="button"
-                    disabled={!validCreate}
-                    onClick={createAndAdd}
-                    className="px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Δημιουργία & προσθήκη
-                  </button>
+
+                <div className="p-4 border-t border-white/10 bg-zinc-950">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      disabled={!validCreate}
+                      onClick={createAndAdd}
+                      className="px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Δημιουργία & προσθήκη
+                    </button>
+                  </div>
                 </div>
               </>
             )}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
+    )}
 
       {/* Custom scrollbar styles */}
       <style jsx>{`
