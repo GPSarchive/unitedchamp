@@ -50,6 +50,23 @@ export default function PlayersPanel({
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [age, setAge] = useState<number | "" | null>(null);
+
+  // Extended player fields
+  const [photo, setPhoto] = useState("");
+  const [height, setHeight] = useState<number | "" | null>(null);
+  const [position, setPosition] = useState("");
+  const [birth, setBirth] = useState("");
+  const [playerNumber, setPlayerNumber] = useState<number | "" | null>(null);
+
+  // Card statistics
+  const [yellowCards, setYellowCards] = useState<number | "" | null>(0);
+  const [redCards, setRedCards] = useState<number | "" | null>(0);
+  const [blueCards, setBlueCards] = useState<number | "" | null>(0);
+
+  // Goals and assists
+  const [goals, setGoals] = useState<number | "" | null>(0);
+  const [assists, setAssists] = useState<number | "" | null>(0);
+
   const validCreate = !!(first.trim() && last.trim());
 
   async function search() {
@@ -100,6 +117,16 @@ export default function PlayersPanel({
           first_name: first.trim(),
           last_name: last.trim(),
           age: age === "" ? null : age,
+          total_goals: goals === "" ? 0 : goals,
+          total_assists: assists === "" ? 0 : assists,
+          photo: photo.trim() || null,
+          height_cm: height === "" ? null : height,
+          position: position.trim() || null,
+          birth_date: birth || null,
+          player_number: playerNumber === "" ? null : playerNumber,
+          yellow_cards: yellowCards === "" ? 0 : yellowCards,
+          red_cards: redCards === "" ? 0 : redCards,
+          blue_cards: blueCards === "" ? 0 : blueCards,
         }),
       });
       const data = (await safeJson(res)) ?? {};
@@ -107,7 +134,21 @@ export default function PlayersPanel({
 
       const player = data.player as Player;
       await addExisting(player.id);
-      setFirst(""); setLast(""); setAge(null);
+
+      // Reset all fields
+      setFirst("");
+      setLast("");
+      setAge(null);
+      setPhoto("");
+      setHeight(null);
+      setPosition("");
+      setBirth("");
+      setPlayerNumber(null);
+      setGoals(0);
+      setAssists(0);
+      setYellowCards(0);
+      setRedCards(0);
+      setBlueCards(0);
     } catch (e: any) {
       alert(e?.message ?? String(e));
     }
@@ -330,41 +371,182 @@ export default function PlayersPanel({
               </>
             ) : (
               <>
-                <div className="space-y-4">
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Όνομα *</span>
-                    <input
-                      value={first}
-                      onChange={(e) => setFirst(e.target.value)}
-                      placeholder="π.χ. Γιάννης"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Επώνυμο *</span>
-                    <input
-                      value={last}
-                      onChange={(e) => setLast(e.target.value)}
-                      placeholder="π.χ. Παπαδόπουλος"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="text-sm text-white/80 font-medium">Ηλικία</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={age === null ? "" : age}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setAge(v === "" ? "" : Number(v));
-                      }}
-                      placeholder="π.χ. 25"
-                      className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                    />
-                  </label>
+                <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto custom-scrollbar pr-2">
+                  {/* Basic Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Όνομα *</span>
+                      <input
+                        value={first}
+                        onChange={(e) => setFirst(e.target.value)}
+                        placeholder="π.χ. Γιάννης"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Επώνυμο *</span>
+                      <input
+                        value={last}
+                        onChange={(e) => setLast(e.target.value)}
+                        placeholder="π.χ. Παπαδόπουλος"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Statistics */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ηλικία</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={age === null ? "" : age}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAge(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 25"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Αριθμός φανέλας</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={playerNumber === null ? "" : playerNumber}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPlayerNumber(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 10"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Γκολ</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={goals === null ? "" : goals}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setGoals(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ασίστ</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={assists === null ? "" : assists}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAssists(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Extended Profile */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-2 sm:col-span-2">
+                      <span className="text-sm text-white/80 font-medium">Φωτογραφία (διαδρομή)</span>
+                      <input
+                        value={photo}
+                        onChange={(e) => setPhoto(e.target.value)}
+                        placeholder="π.χ. players/john-doe/photo.jpg"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Ύψος (cm)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={height === null ? "" : height}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setHeight(v === "" ? "" : Number(v));
+                        }}
+                        placeholder="π.χ. 180"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Θέση</span>
+                      <input
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value)}
+                        placeholder="π.χ. RW, CF"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2 sm:col-span-2">
+                      <span className="text-sm text-white/80 font-medium">Ημερομηνία γέννησης</span>
+                      <input
+                        type="date"
+                        value={birth}
+                        onChange={(e) => setBirth(e.target.value)}
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
+
+                  {/* Card Statistics */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Κίτρινες κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={yellowCards === null ? "" : yellowCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setYellowCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Κόκκινες κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={redCards === null ? "" : redCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setRedCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                      <span className="text-sm text-white/80 font-medium">Μπλε κάρτες</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={blueCards === null ? "" : blueCards}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setBlueCards(v === "" ? 0 : Number(v));
+                        }}
+                        placeholder="0"
+                        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                      />
+                    </label>
+                  </div>
                 </div>
-                <div className="flex justify-end pt-4">
+
+                <div className="flex justify-end pt-4 border-t border-white/10 mt-4">
                   <button
                     type="button"
                     disabled={!validCreate}
