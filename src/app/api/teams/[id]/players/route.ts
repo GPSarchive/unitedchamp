@@ -294,9 +294,23 @@ export async function POST(req: Request, ctx: Ctx) {
       const red_cards     = toNum((reqBody as any).red_cards, 0);
       const blue_cards    = toNum((reqBody as any).blue_cards, 0);
 
+      // Extended player profile fields
+      const photoInput = typeof (reqBody as any).photo === "string" ? (reqBody as any).photo.trim() : "";
+      const photo = photoInput || "/player-placeholder.jpg";
+      const height_cm = (reqBody as any).height_cm == null || (reqBody as any).height_cm === "" ? null : Number((reqBody as any).height_cm);
+      const position = (reqBody as any).position == null || (reqBody as any).position === "" ? null : String((reqBody as any).position).trim();
+      const birth_date = (reqBody as any).birth_date == null || (reqBody as any).birth_date === "" ? null : String((reqBody as any).birth_date);
+      const player_number = (reqBody as any).player_number == null || (reqBody as any).player_number === "" ? null : Number((reqBody as any).player_number);
+
       if (!first || !last) return NextResponse.json({ error: "First/last name required" }, { status: 400, headers });
       if (age !== null && (Number.isNaN(age) || age < 0 || age > 120)) {
         return NextResponse.json({ error: "Invalid age" }, { status: 400, headers });
+      }
+      if (height_cm !== null && (Number.isNaN(height_cm) || height_cm < 0)) {
+        return NextResponse.json({ error: "Invalid height_cm" }, { status: 400, headers });
+      }
+      if (player_number !== null && (Number.isNaN(player_number) || player_number < 0)) {
+        return NextResponse.json({ error: "Invalid player_number" }, { status: 400, headers });
       }
       if ([total_goals, total_assists, yellow_cards, red_cards, blue_cards].some(n => Number.isNaN(n) || n < 0)) {
         return NextResponse.json({ error: "Invalid stats" }, { status: 400, headers });
@@ -306,7 +320,15 @@ export async function POST(req: Request, ctx: Ctx) {
       const tCreatePlayer0 = now();
       const { data: pRow, error: pErr, status: pStatus } = await supabaseAdmin
         .from("player")
-        .insert({ first_name: first, last_name: last, photo: "/player-placeholder.jpg" })
+        .insert({
+          first_name: first,
+          last_name: last,
+          photo,
+          height_cm,
+          position,
+          birth_date,
+          player_number
+        })
         .select("id")
         .single();
       const tCreatePlayer1 = now();

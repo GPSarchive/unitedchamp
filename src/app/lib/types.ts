@@ -48,6 +48,7 @@ export interface PlayerRow {
   height_cm: number | null;
   position: string | null;
   birth_date: string | null; // 'YYYY-MM-DD'
+  player_number: number | null; // Player's jersey/shirt number (not unique)
 
   // optional timestamps (exist in table but not always selected)
   created_at?: string | null;

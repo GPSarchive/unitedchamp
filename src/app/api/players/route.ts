@@ -48,6 +48,7 @@ export async function GET(req: Request) {
       height_cm,
       position,
       birth_date,
+      player_number,
       player_statistics (
         id,
         age,
@@ -117,6 +118,10 @@ export async function POST(req: Request) {
     }
     const position   = body.position == null || body.position === "" ? null : String(body.position).trim();
     const birth_date = body.birth_date == null || body.birth_date === "" ? null : String(body.birth_date);
+    const player_number = body.player_number == null || body.player_number === "" ? null : Number(body.player_number);
+    if (player_number !== null && (Number.isNaN(player_number) || player_number < 0)) {
+      return NextResponse.json({ error: "Invalid player_number" }, { status: 400 });
+    }
 
     // Stats fields
     const age           = body.age == null || body.age === "" ? null : Number(body.age);
@@ -141,11 +146,12 @@ export async function POST(req: Request) {
     insertPlayer.height_cm = height_cm;
     insertPlayer.position = position;
     insertPlayer.birth_date = birth_date;
+    insertPlayer.player_number = player_number;
 
     const { data: player, error: pErr } = await supa
       .from("player")
       .insert(insertPlayer)
-      .select("id, first_name, last_name, photo, height_cm, position, birth_date")
+      .select("id, first_name, last_name, photo, height_cm, position, birth_date, player_number")
       .single();
     if (pErr || !player) return NextResponse.json({ error: pErr?.message || "Create failed" }, { status: 400 });
 

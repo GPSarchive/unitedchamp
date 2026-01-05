@@ -13,6 +13,7 @@ export type PlayerFormPayload = {
   height_cm?: number | null;
   position?: string | null;
   birth_date?: string | null; // 'YYYY-MM-DD'
+  player_number?: number | null; // Player's jersey/shirt number (not unique)
   yellow_cards?: number;
   red_cards?: number;
   blue_cards?: number;
