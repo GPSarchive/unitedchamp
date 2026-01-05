@@ -258,7 +258,7 @@ export default function PlayersPanel({
       {/* Side drawer for adding players */}
       {typeof window !== 'undefined' && createPortal(
         <div
-          className={`fixed inset-0 z-50 transition ${
+          className={`fixed inset-0 z-[100] transition ${
             open ? "pointer-events-auto" : "pointer-events-none"
           }`}
           aria-hidden={!open}
