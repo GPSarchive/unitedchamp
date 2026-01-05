@@ -237,7 +237,7 @@ export default function AddPlayerToTeamModal({
   }
 
   return typeof window !== 'undefined' && createPortal(
-    <div className={`fixed inset-0 z-50 transition ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
+    <div className={`fixed inset-0 z-[100] transition ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
       <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
       <div className={`absolute right-0 top-0 h-full w-full sm:w-[520px] bg-zinc-950/95 backdrop-blur border-l border-white/10 shadow-2xl transition-transform ${open ? "translate-x-0" : "translate-x-full"} flex flex-col`}>
         {/* Header */}
