@@ -262,8 +262,8 @@ export default function PlayersPanel({
         aria-hidden={!open}
       >
         {/* Backdrop */}
-        <div 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        <div
+          className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 z-40 ${
             open ? "opacity-100" : "opacity-0"
           }`}
           onClick={() => setOpen(false)}
@@ -271,7 +271,7 @@ export default function PlayersPanel({
         
         {/* Side panel */}
         <div
-  className={`absolute right-0 top-0 h-full w-full sm:w-[600px] md:w-[700px] lg:w-[800px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 flex flex-col ${
+  className={`fixed right-0 top-0 h-screen w-full sm:w-[600px] md:w-[700px] lg:w-[800px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 flex flex-col z-50 ${
     open ? "translate-x-0" : "translate-x-full"
   }`}
 >
