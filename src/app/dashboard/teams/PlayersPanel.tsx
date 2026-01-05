@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2, Search, UserPlus } from "lucide-react";
 import type {
   PlayerRow as Player,
@@ -255,12 +256,13 @@ export default function PlayersPanel({
       </div>
 
       {/* Side drawer for adding players */}
-      <div
-        className={`fixed inset-0 z-50 transition ${
-          open ? "pointer-events-auto" : "pointer-events-none"
-        }`}
-        aria-hidden={!open}
-      >
+      {typeof window !== 'undefined' && createPortal(
+        <div
+          className={`fixed inset-0 z-50 transition ${
+            open ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+          aria-hidden={!open}
+        >
         {/* Backdrop */}
         <div
           className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${
@@ -566,7 +568,9 @@ export default function PlayersPanel({
             )}
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
+    )}
 
       {/* Custom scrollbar styles */}
       <style jsx>{`
