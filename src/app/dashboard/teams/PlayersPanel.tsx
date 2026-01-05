@@ -255,23 +255,23 @@ export default function PlayersPanel({
       </div>
 
       {/* Side drawer for adding players */}
-      <div 
-        className={`fixed inset-0 z-50 transition-opacity duration-300 ${
+      <div
+        className={`fixed inset-0 z-50 transition ${
           open ? "pointer-events-auto" : "pointer-events-none"
         }`}
         aria-hidden={!open}
       >
         {/* Backdrop */}
         <div
-          className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 z-40 ${
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${
             open ? "opacity-100" : "opacity-0"
           }`}
           onClick={() => setOpen(false)}
         />
-        
+
         {/* Side panel */}
         <div
-  className={`fixed right-0 top-0 h-screen w-full sm:w-[600px] md:w-[700px] lg:w-[800px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 flex flex-col z-50 ${
+  className={`absolute right-0 top-0 h-full w-full sm:w-[600px] md:w-[700px] lg:w-[800px] bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform flex flex-col ${
     open ? "translate-x-0" : "translate-x-full"
   }`}
 >
