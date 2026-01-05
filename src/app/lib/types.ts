@@ -282,6 +282,7 @@ export function normalizeTeamPlayers(
         height_cm: null,
         position: null,
         birth_date: null,
+        player_number: null,
         created_at: null,
         updated_at: null,
 
@@ -300,6 +301,7 @@ export function normalizeTeamPlayers(
       height_cm: base.height_cm,
       position: base.position,
       birth_date: base.birth_date,
+      player_number: base.player_number,
       created_at: base.created_at ?? null,
       updated_at: base.updated_at ?? null,
 
