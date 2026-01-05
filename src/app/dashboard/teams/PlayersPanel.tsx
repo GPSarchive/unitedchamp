@@ -271,12 +271,12 @@ export default function PlayersPanel({
         
         {/* Side panel */}
         <div
-  className={`absolute right-0 top-0 h-full w-full sm:w-full bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 ${
+  className={`absolute right-0 top-0 h-full w-full sm:w-full bg-zinc-950 border-l border-white/10 shadow-2xl transition-transform duration-300 flex flex-col ${
     open ? "translate-x-0" : "translate-x-full"
   }`}
 >
           {/* Panel header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/50">
+          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-900/50 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 className={`px-3 py-1.5 rounded text-sm transition-colors ${
@@ -309,7 +309,7 @@ export default function PlayersPanel({
           </div>
 
           {/* Panel content */}
-          <div className="flex flex-col h-[calc(100vh-5rem)]">
+          <div className="flex flex-col flex-1 min-h-0">
             {tab === "existing" ? (
               <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
                 <>
