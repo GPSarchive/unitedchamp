@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Search, Plus, UserPlus, Loader2 } from "lucide-react";
 import type { PlayerRow as Player } from "@/app/lib/types";
 import { safeJson } from "./teamHelpers";
@@ -235,16 +236,18 @@ export default function AddPlayerToTeamModal({
     }
   }
 
-  return (
-    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
-      <div className={`absolute inset-0 bg-black/50 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
-      <div className={`absolute left-1/2 top-[10%] -translate-x-1/2 w-[92%] max-w-xl bg-zinc-950 border border-white/10 rounded-2xl shadow-xl transition-transform ${open ? "scale-100" : "scale-95"}`}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+  return typeof window !== 'undefined' && createPortal(
+    <div className={`fixed inset-0 z-50 transition ${open ? "pointer-events-auto" : "pointer-events-none"}`} aria-hidden={!open}>
+      <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
+      <div className={`absolute right-0 top-0 h-full w-full sm:w-[520px] bg-zinc-950/95 backdrop-blur border-l border-white/10 shadow-2xl transition-transform ${open ? "translate-x-0" : "translate-x-full"} flex flex-col`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
           <h3 className="text-white font-semibold">Add player to team</h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-white/10"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="px-4 pt-3">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-4 pt-3">
           <div className="inline-flex rounded-lg border border-white/10 overflow-hidden mb-4">
             <button onClick={() => setTab("existing")} className={`px-3 py-1.5 text-sm ${tab==="existing"?"bg-white/10":""}`}>Add existing</button>
             <button onClick={() => setTab("create")} className={`px-3 py-1.5 text-sm ${tab==="create"?"bg-white/10":""}`}>Create & add</button>
@@ -377,10 +380,12 @@ export default function AddPlayerToTeamModal({
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-white/10 flex justify-end">
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-white/10 flex justify-end shrink-0">
           <button onClick={onClose} className="px-3 py-2 text-sm rounded-lg hover:bg-white/10">Close</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
