@@ -323,7 +323,7 @@ export default function AddPlayerToTeamModal({
                   <label className="block text-xs text-white/60 mb-1">Photo</label>
                   {photo ? (
                     <div className="mb-2">
-                      <PlayerPhoto bucket={BUCKET} path={photo} />
+                      <PlayerPhoto bucket={BUCKET} path={photo} alt={`${firstName} ${lastName}`.trim() || "Player photo"} />
                     </div>
                   ) : null}
                   <input
