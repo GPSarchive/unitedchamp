@@ -309,9 +309,10 @@ export default function PlayersPanel({
           </div>
 
           {/* Panel content */}
-          <div className="p-6 space-y-4 h-[calc(100vh-5rem)] overflow-y-auto custom-scrollbar">
+          <div className="flex flex-col h-[calc(100vh-5rem)]">
             {tab === "existing" ? (
-              <>
+              <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                <>
                 <label className="flex items-center gap-2">
                   <Search className="h-4 w-4 text-white/70" />
                   <input
@@ -368,10 +369,12 @@ export default function PlayersPanel({
                     })
                   )}
                 </div>
-              </>
+                </>
+              </div>
             ) : (
               <>
-                <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto custom-scrollbar pr-2">
+                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-4">
                   {/* Basic Info */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="flex flex-col gap-2">
@@ -544,17 +547,20 @@ export default function PlayersPanel({
                       />
                     </label>
                   </div>
+                  </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-white/10 mt-4">
-                  <button
-                    type="button"
-                    disabled={!validCreate}
-                    onClick={createAndAdd}
-                    className="px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Δημιουργία & προσθήκη
-                  </button>
+                <div className="p-4 border-t border-white/10 bg-zinc-950">
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      disabled={!validCreate}
+                      onClick={createAndAdd}
+                      className="px-4 py-2 rounded-lg border border-emerald-400/40 text-white bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Δημιουργία & προσθήκη
+                    </button>
+                  </div>
                 </div>
               </>
             )}
