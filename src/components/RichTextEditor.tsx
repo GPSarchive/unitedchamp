@@ -68,6 +68,7 @@ const MenuButton = ({
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [showHelp, setShowHelp] = React.useState(true);
 
   if (!editor) {
     return null;
