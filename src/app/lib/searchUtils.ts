@@ -147,6 +147,72 @@ export function normalizeForSearch(text: string): string[] {
 }
 
 /**
+ * Validate and sanitize search input
+ * Prevents DoS attacks via overly long or malicious input
+ */
+export function validateSearchInput(input: string): {
+  isValid: boolean;
+  sanitized: string;
+  error?: string;
+} {
+  // Trim whitespace
+  const trimmed = input.trim();
+
+  // Max length check (prevent memory exhaustion)
+  const MAX_SEARCH_LENGTH = 200;
+  if (trimmed.length > MAX_SEARCH_LENGTH) {
+    return {
+      isValid: false,
+      sanitized: trimmed.substring(0, MAX_SEARCH_LENGTH),
+      error: `Search query too long (max ${MAX_SEARCH_LENGTH} characters)`,
+    };
+  }
+
+  // Check for excessive special characters (potential SQL injection attempt)
+  const specialCharCount = (trimmed.match(/[^a-zA-Zα-ωΑ-Ω0-9\s:>-]/g) || [])
+    .length;
+  if (specialCharCount > 20) {
+    return {
+      isValid: false,
+      sanitized: trimmed.replace(/[^a-zA-Zα-ωΑ-Ω0-9\s:>-]/g, ""),
+      error: "Too many special characters in search query",
+    };
+  }
+
+  // Check for SQL injection patterns (defense in depth)
+  const sqlPatterns = [
+    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b)/i,
+    /(--|;|\/\*|\*\/|xp_|sp_)/i,
+    /(\bUNION\b.*\bSELECT\b)/i,
+  ];
+
+  for (const pattern of sqlPatterns) {
+    if (pattern.test(trimmed)) {
+      return {
+        isValid: false,
+        sanitized: "",
+        error: "Invalid characters in search query",
+      };
+    }
+  }
+
+  // Limit number of field filters (prevent query complexity explosion)
+  const fieldCount = (trimmed.match(/\w+:/g) || []).length;
+  if (fieldCount > 5) {
+    return {
+      isValid: false,
+      sanitized: trimmed,
+      error: "Too many search filters (max 5)",
+    };
+  }
+
+  return {
+    isValid: true,
+    sanitized: trimmed,
+  };
+}
+
+/**
  * Parsed search query structure
  */
 export type ParsedSearchQuery = {
