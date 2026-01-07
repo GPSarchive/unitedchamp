@@ -141,16 +141,62 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     }
   };
 
+  const [showHelp, setShowHelp] = React.useState(true);
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* Help text */}
-      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-100">
-        <p className="font-semibold mb-1">💡 Οδηγίες χρήσης:</p>
-        <ul className="space-y-1 text-xs text-blue-200">
-          <li>• Επιλέξτε κείμενο και πατήστε τα κουμπιά για μορφοποίηση</li>
-          <li>• Τα ενεργά κουμπιά έχουν <span className="font-bold text-white">μπλε χρώμα</span></li>
-          <li>• Περάστε το ποντίκι πάνω από κάθε κουμπί για λεπτομέρειες</li>
-        </ul>
+      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setShowHelp(!showHelp)}
+          className="w-full flex items-center justify-between p-4 text-left hover:bg-blue-600/10 transition-colors"
+        >
+          <p className="font-semibold text-base text-blue-100">💡 Πώς να χρησιμοποιήσετε τον επεξεργαστή</p>
+          <span className="text-blue-200 text-sm">{showHelp ? '▼ Απόκρυψη' : '▶ Εμφάνιση'}</span>
+        </button>
+        {showHelp && (
+          <div className="p-4 pt-0 text-sm text-blue-100">
+        <div className="grid md:grid-cols-2 gap-3 text-xs text-blue-200">
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Έντονα/Πλάγια/Υπογράμμιση:</p>
+            <p>1. Επιλέξτε το κείμενο με το ποντίκι</p>
+            <p>2. Πατήστε το κουμπί (B, I, U)</p>
+            <p>3. Το κείμενο αλλάζει αμέσως!</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Επικεφαλίδες (H1, H2, H3):</p>
+            <p>1. Βάλτε τον κέρσορα σε κενή γραμμή</p>
+            <p>2. Πατήστε H1, H2 ή H3</p>
+            <p>3. Γράψτε τον τίτλο σας</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Λίστες (•  1.):</p>
+            <p>1. Πατήστε το κουμπί λίστας</p>
+            <p>2. Γράψτε το πρώτο στοιχείο</p>
+            <p>3. Πατήστε Enter για νέο στοιχείο</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Παράθεση (" ):</p>
+            <p>1. Πατήστε το κουμπί παράθεσης</p>
+            <p>2. Γράψτε το κείμενο που θέλετε</p>
+            <p>3. Θα εμφανιστεί με ειδική μορφή</p>
+          </div>
+        </div>
+        <div className="mt-3 space-y-2 border-t border-blue-400/30 pt-3">
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Εικόνες (📷):</p>
+            <p>1. Πατήστε το κουμπί εικόνας (📷)</p>
+            <p>2. Επιλέξτε: <span className="font-semibold">OK</span> = ανέβασμα από υπολογιστή | <span className="font-semibold">Άκυρο</span> = εισαγωγή URL</p>
+            <p>3. Η εικόνα θα εμφανιστεί αμέσως στο κείμενο!</p>
+            <p className="text-blue-300 italic">• Οι εικόνες αποθηκεύονται στο Supabase Storage (φάκελος: articles/)</p>
+            <p className="text-blue-300 italic">• Θα είναι ορατές στο δημοσιευμένο άρθρο στη σελίδα /article/[slug]</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-blue-300 border-t border-blue-400/30 pt-2">
+          <span className="font-semibold">💡 Σημείωση:</span> Τα ενεργά κουμπιά έχουν <span className="font-bold text-white">μπλε χρώμα και φωτεινό περίγραμμα</span>
+        </p>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 p-3 border border-white/20 bg-black/30 rounded-lg">
@@ -186,21 +232,21 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <MenuButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             active={editor.isActive('heading', { level: 1 })}
-            title="Επικεφαλίδα 1 - Μεγάλος τίτλος"
+            title="Επικεφαλίδα 1 (Μεγάλος Τίτλος) - Βάλτε κέρσορα σε κενή γραμμή και πατήστε"
           >
             <Heading1 size={18} />
           </MenuButton>
           <MenuButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             active={editor.isActive('heading', { level: 2 })}
-            title="Επικεφαλίδα 2 - Μεσαίος τίτλος"
+            title="Επικεφαλίδα 2 (Μεσαίος Τίτλος) - Βάλτε κέρσορα σε κενή γραμμή και πατήστε"
           >
             <Heading2 size={18} />
           </MenuButton>
           <MenuButton
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             active={editor.isActive('heading', { level: 3 })}
-            title="Επικεφαλίδα 3 - Μικρός τίτλος"
+            title="Επικεφαλίδα 3 (Μικρός Τίτλος) - Βάλτε κέρσορα σε κενή γραμμή και πατήστε"
           >
             <Heading3 size={18} />
           </MenuButton>
@@ -213,14 +259,14 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <MenuButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             active={editor.isActive('bulletList')}
-            title="Λίστα με κουκκίδες - Δημιουργήστε λίστα με κουκκίδες"
+            title="Λίστα με Κουκκίδες (• • •) - Πατήστε, γράψτε, Enter για νέο στοιχείο"
           >
             <List size={18} />
           </MenuButton>
           <MenuButton
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             active={editor.isActive('orderedList')}
-            title="Αριθμημένη λίστα - Δημιουργήστε αριθμημένη λίστα"
+            title="Αριθμημένη Λίστα (1. 2. 3.) - Πατήστε, γράψτε, Enter για νέο στοιχείο"
           >
             <ListOrdered size={18} />
           </MenuButton>
@@ -233,7 +279,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <MenuButton
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             active={editor.isActive('blockquote')}
-            title="Παράθεση - Προσθέστε παράθεση κειμένου"
+            title='Παράθεση (") - Πατήστε και γράψτε κείμενο που θέλετε να παραθέσετε'
           >
             <Quote size={18} />
           </MenuButton>
@@ -344,9 +390,54 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
   }, [content, editor]);
 
   return (
-    <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
-      <MenuBar editor={editor} />
-      <EditorContent editor={editor} />
+    <div className="space-y-3">
+      <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
+        <MenuBar editor={editor} />
+        <EditorContent editor={editor} />
+      </div>
+
+      {/* Visual Examples */}
+      <details className="bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
+        <summary className="cursor-pointer p-3 font-semibold text-emerald-200 hover:bg-emerald-600/20 rounded-lg transition-colors">
+          📚 Παραδείγματα Μορφοποίησης (πατήστε για να δείτε)
+        </summary>
+        <div className="p-4 space-y-3 text-sm text-white/90">
+          <div className="space-y-2 border-b border-emerald-500/20 pb-3">
+            <p className="font-semibold text-emerald-300">Επικεφαλίδες:</p>
+            <h1 className="text-3xl font-bold">Επικεφαλίδα 1 - Πολύ Μεγάλη</h1>
+            <h2 className="text-2xl font-bold">Επικεφαλίδα 2 - Μεσαία</h2>
+            <h3 className="text-xl font-bold">Επικεφαλίδα 3 - Μικρή</h3>
+          </div>
+
+          <div className="space-y-2 border-b border-emerald-500/20 pb-3">
+            <p className="font-semibold text-emerald-300">Μορφοποίηση Κειμένου:</p>
+            <p><strong>Έντονο κείμενο</strong> (B)</p>
+            <p><em>Πλάγιο κείμενο</em> (I)</p>
+            <p><u>Υπογραμμισμένο κείμενο</u> (U)</p>
+          </div>
+
+          <div className="space-y-2 border-b border-emerald-500/20 pb-3">
+            <p className="font-semibold text-emerald-300">Λίστες:</p>
+            <ul className="list-disc pl-6">
+              <li>Πρώτο στοιχείο λίστας</li>
+              <li>Δεύτερο στοιχείο</li>
+              <li>Τρίτο στοιχείο</li>
+            </ul>
+            <ol className="list-decimal pl-6">
+              <li>Πρώτο στοιχείο</li>
+              <li>Δεύτερο στοιχείο</li>
+              <li>Τρίτο στοιχείο</li>
+            </ol>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-semibold text-emerald-300">Παράθεση:</p>
+            <blockquote className="border-l-4 border-emerald-500 pl-4 italic text-white/70">
+              "Αυτό είναι ένα παράδειγμα παράθεσης. Χρησιμοποιήστε το για να επισημάνετε σημαντικό κείμενο."
+            </blockquote>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
