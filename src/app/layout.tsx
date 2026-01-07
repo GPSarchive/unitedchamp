@@ -119,7 +119,7 @@ export default async function RootLayout({
           React.createElement(Navbar, { key: "nav" }),
           React.createElement(
             "main",
-            { key: "main", className: "pt-16 md:pt-32" },
+            { key: "main", className: "pt-16 md:pt-20" },
             children
           ),
 
