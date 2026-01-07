@@ -142,8 +142,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     }
   };
 
-  const [showHelp, setShowHelp] = React.useState(true);
-
   return (
     <div className="space-y-3">
       {/* Help text */}
