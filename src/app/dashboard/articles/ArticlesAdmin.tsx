@@ -67,7 +67,7 @@ export default function ArticlesAdmin() {
       setArticles((prev) => prev.concat(json.data ?? []));
       setNextOffset(json.nextOffset);
     } catch (e: any) {
-      setError(e.message ?? 'Failed to load articles');
+      setError(e.message ?? 'Αποτυχία φόρτωσης άρθρων');
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ export default function ArticlesAdmin() {
 
   async function create(status: 'draft' | 'published') {
     if (!title.trim()) {
-      setError('Title is required');
+      setError('Ο τίτλος είναι υποχρεωτικός');
       return;
     }
     setLoading(true);
@@ -99,7 +99,7 @@ export default function ArticlesAdmin() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create article');
+      if (!res.ok) throw new Error(json.error || 'Αποτυχία δημιουργίας άρθρου');
 
       // Prepend new article and reset form
       setArticles((prev) => [json.data as Article, ...prev]);
@@ -108,7 +108,7 @@ export default function ArticlesAdmin() {
       setContent(null);
       setExcerpt('');
     } catch (e: any) {
-      setError(e.message ?? 'Failed to create article');
+      setError(e.message ?? 'Αποτυχία δημιουργίας άρθρου');
     } finally {
       setLoading(false);
     }
@@ -124,26 +124,26 @@ export default function ArticlesAdmin() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to update article');
+      if (!res.ok) throw new Error(json.error || 'Αποτυχία ενημέρωσης άρθρου');
       setArticles((prev) => prev.map((a) => (a.id === id ? (json.data as Article) : a)));
     } catch (e: any) {
-      setError(e.message ?? 'Failed to update article');
+      setError(e.message ?? 'Αποτυχία ενημέρωσης άρθρου');
     } finally {
       setLoading(false);
     }
   }
 
   async function remove(id: number) {
-    if (!confirm('Delete this article?')) return;
+    if (!confirm('Διαγραφή αυτού του άρθρου;')) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/articles/${id}`, { method: 'DELETE' });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to delete article');
+      if (!res.ok) throw new Error(json.error || 'Αποτυχία διαγραφής άρθρου');
       setArticles((prev) => prev.filter((a) => a.id !== id));
     } catch (e: any) {
-      setError(e.message ?? 'Failed to delete article');
+      setError(e.message ?? 'Αποτυχία διαγραφής άρθρου');
     } finally {
       setLoading(false);
     }
@@ -151,23 +151,23 @@ export default function ArticlesAdmin() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <h2 className="text-2xl font-semibold text-zinc-50">Articles Management</h2>
+      <h2 className="text-2xl font-semibold text-zinc-50">Διαχείριση Άρθρων</h2>
 
       {/* Create Article Form */}
       <div className="rounded-xl border border-white/20 bg-black/50 p-6 text-zinc-100 backdrop-blur-sm shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-white">Create New Article</h3>
+          <h3 className="text-lg font-semibold text-white">Δημιουργία Νέου Άρθρου</h3>
           <button
             onClick={() => setShowPreview(!showPreview)}
             className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/20 transition-colors"
           >
             {showPreview ? (
               <>
-                <EyeOff size={16} /> Hide Preview
+                <EyeOff size={16} /> Απόκρυψη Προεπισκόπησης
               </>
             ) : (
               <>
-                <Eye size={16} /> Show Preview
+                <Eye size={16} /> Εμφάνιση Προεπισκόπησης
               </>
             )}
           </button>
@@ -177,48 +177,48 @@ export default function ArticlesAdmin() {
           {/* Editor Column */}
           <div className="space-y-4">
             <label className="flex flex-col gap-2">
-              <span className="text-sm text-white/90 font-medium">Title *</span>
+              <span className="text-sm text-white/90 font-medium">Τίτλος *</span>
               <input
                 className="border border-white/20 bg-black/40 rounded-lg px-4 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter article title..."
+                placeholder="Εισάγετε τίτλο άρθρου..."
               />
             </label>
 
             <label className="flex flex-col gap-2">
               <span className="text-sm text-white/90 font-medium">
-                URL Slug <span className="text-white/60 font-normal">(auto-generated)</span>
+                URL Slug <span className="text-white/60 font-normal">(δημιουργείται αυτόματα)</span>
               </span>
               <input
                 className="border border-white/20 bg-black/40 rounded-lg px-4 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="article-url-slug"
+                placeholder="arthro-url-slug"
               />
               {slug && (
                 <span className="text-xs text-white/60">
-                  Will be available at: /article/{slug}
+                  Θα είναι διαθέσιμο στο: /article/{slug}
                 </span>
               )}
             </label>
 
             <label className="flex flex-col gap-2">
-              <span className="text-sm text-white/90 font-medium">Excerpt (Optional)</span>
+              <span className="text-sm text-white/90 font-medium">Περίληψη (Προαιρετικό)</span>
               <textarea
                 className="border border-white/20 bg-black/40 rounded-lg px-4 py-2 min-h-[80px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Short description for SEO and previews..."
+                placeholder="Σύντομη περιγραφή για SEO και προεπισκοπήσεις..."
               />
             </label>
 
             <label className="flex flex-col gap-2">
-              <span className="text-sm text-white/90 font-medium">Content *</span>
+              <span className="text-sm text-white/90 font-medium">Περιεχόμενο *</span>
               <RichTextEditor
                 content={content}
                 onChange={setContent}
-                placeholder="Start writing your article..."
+                placeholder="Αρχίστε να γράφετε το άρθρο σας..."
               />
             </label>
 
@@ -228,14 +228,14 @@ export default function ArticlesAdmin() {
                 disabled={loading}
                 className="px-4 py-2 rounded-lg border border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 shadow-sm transition-colors"
               >
-                Publish Now
+                Δημοσίευση Τώρα
               </button>
               <button
                 onClick={() => create('draft')}
                 disabled={loading}
                 className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60 backdrop-blur-sm transition-colors"
               >
-                Save as Draft
+                Αποθήκευση ως Πρόχειρο
               </button>
               {error && <span className="text-sm text-rose-400 self-center">{error}</span>}
             </div>
@@ -246,10 +246,10 @@ export default function ArticlesAdmin() {
             <div className="border border-white/20 rounded-lg bg-black/40 p-6 backdrop-blur-sm">
               <div className="mb-4 pb-4 border-b border-white/20">
                 <h4 className="text-sm font-semibold text-white/60 uppercase tracking-wide mb-2">
-                  Live Preview
+                  Ζωντανή Προεπισκόπηση
                 </h4>
               </div>
-              <ArticlePreview content={content} title={title || 'Untitled Article'} />
+              <ArticlePreview content={content} title={title || 'Άρθρο χωρίς τίτλο'} />
             </div>
           )}
         </div>
@@ -258,11 +258,11 @@ export default function ArticlesAdmin() {
       {/* Articles List */}
       <div className="rounded-xl border border-white/20 bg-black/50 overflow-hidden backdrop-blur-sm shadow-lg">
         <div className="p-4 border-b border-white/10">
-          <h3 className="text-lg font-semibold text-white">Existing Articles</h3>
+          <h3 className="text-lg font-semibold text-white">Υπάρχοντα Άρθρα</h3>
         </div>
 
         {articles.length === 0 && !loading ? (
-          <div className="p-6 text-center text-sm text-white/70">No articles yet.</div>
+          <div className="p-6 text-center text-sm text-white/70">Δεν υπάρχουν άρθρα ακόμα.</div>
         ) : null}
 
         <ul className="divide-y divide-white/10">
@@ -278,10 +278,10 @@ export default function ArticlesAdmin() {
               disabled={loading}
               className="px-4 py-2 rounded-lg border border-white/30 bg-white/10 text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60 backdrop-blur-sm"
             >
-              {loading ? 'Loading...' : 'Load More'}
+              {loading ? 'Φόρτωση...' : 'Φόρτωση Περισσότερων'}
             </button>
           ) : (
-            <span className="text-xs text-white/60">All articles loaded</span>
+            <span className="text-xs text-white/60">Όλα τα άρθρα φορτώθηκαν</span>
           )}
           {error && <span className="text-sm text-rose-400">{error}</span>}
         </div>
@@ -318,11 +318,11 @@ function ArticleRow({
   const Status =
     article.status === 'published' ? (
       <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-600/20 border border-emerald-500/40 text-emerald-200 uppercase font-semibold">
-        Published
+        Δημοσιευμένο
       </span>
     ) : (
       <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-700/40 border border-zinc-600/50 text-zinc-200 uppercase font-semibold">
-        Draft
+        Πρόχειρο
       </span>
     );
 
@@ -335,7 +335,7 @@ function ArticleRow({
             <time className="text-[11px] text-white/60">{greekDate(article.created_at)}</time>
             {article.published_at && (
               <span className="text-[11px] text-emerald-400/80">
-                Published: {greekDate(article.published_at)}
+                Δημοσιεύτηκε: {greekDate(article.published_at)}
               </span>
             )}
           </div>
@@ -356,7 +356,7 @@ function ArticleRow({
                 className="w-full border border-white/20 bg-black/40 rounded px-3 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Title"
+                placeholder="Τίτλος"
               />
               <input
                 className="w-full border border-white/20 bg-black/40 rounded px-3 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
@@ -368,15 +368,15 @@ function ArticleRow({
                 className="w-full border border-white/20 bg-black/40 rounded px-3 py-2 min-h-[60px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Excerpt"
+                placeholder="Περίληψη"
               />
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm text-white/90">Content:</span>
+                <span className="text-sm text-white/90">Περιεχόμενο:</span>
                 <button
                   onClick={() => setShowPreview(!showPreview)}
                   className="text-xs px-2 py-1 rounded border border-white/30 bg-white/10 text-white hover:bg-white/20"
                 >
-                  {showPreview ? 'Hide' : 'Show'} Preview
+                  {showPreview ? 'Απόκρυψη' : 'Εμφάνιση'} Προεπισκόπησης
                 </button>
               </div>
               <div className={`grid ${showPreview ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
@@ -397,26 +397,26 @@ function ArticleRow({
                   onClick={() => setEditing(true)}
                   className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors"
                 >
-                  Edit
+                  Επεξεργασία
                 </button>
                 <button
                   onClick={togglePublish}
                   className="px-3 py-1.5 text-sm rounded-md border border-emerald-600/50 bg-emerald-600/10 text-emerald-100 hover:bg-emerald-600/20 backdrop-blur-sm transition-colors"
                 >
-                  {article.status === 'published' ? 'Unpublish' : 'Publish'}
+                  {article.status === 'published' ? 'Απόσυρση' : 'Δημοσίευση'}
                 </button>
                 <Link
                   href={`/article/${article.slug}`}
                   target="_blank"
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-blue-600/50 bg-blue-600/10 text-blue-100 hover:bg-blue-600/20 backdrop-blur-sm transition-colors"
                 >
-                  View <ExternalLink size={14} />
+                  Προβολή <ExternalLink size={14} />
                 </Link>
                 <button
                   onClick={() => onDelete(article.id)}
                   className="px-3 py-1.5 text-sm rounded-md border border-rose-600/50 bg-rose-600/10 text-rose-200 hover:bg-rose-600/20 backdrop-blur-sm transition-colors"
                 >
-                  Delete
+                  Διαγραφή
                 </button>
               </>
             ) : (
@@ -425,7 +425,7 @@ function ArticleRow({
                   onClick={save}
                   className="px-3 py-1.5 text-sm rounded-md border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition-colors"
                 >
-                  Save Changes
+                  Αποθήκευση Αλλαγών
                 </button>
                 <button
                   onClick={() => {
@@ -438,7 +438,7 @@ function ArticleRow({
                   }}
                   className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors"
                 >
-                  Cancel
+                  Άκυρο
                 </button>
               </>
             )}
