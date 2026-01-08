@@ -320,6 +320,13 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
         class:
           'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
       },
+      handleClick: (view, pos, event) => {
+        // Clear stored marks on click to prevent unexpected formatting
+        const { tr } = view.state;
+        tr.setStoredMarks([]);
+        view.dispatch(tr);
+        return false; // Let the default click handler continue
+      },
     },
   });
 
