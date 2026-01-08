@@ -339,6 +339,12 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     onUpdate: ({ editor }) => {
       onChange(editor.getJSON());
     },
+    onSelectionUpdate: ({ editor }) => {
+      // Clear stored marks when selection changes to prevent unexpected formatting
+      const { state, view } = editor;
+      const tr = state.tr.setStoredMarks([]);
+      view.dispatch(tr);
+    },
     editorProps: {
       attributes: {
         class:
