@@ -594,11 +594,19 @@ select option:checked {
   position: relative;
 }
 
-/* Ensure the editor is always clickable */
+/* Ensure the editor is always clickable and maintains focus */
 .ProseMirror {
   cursor: text;
   min-height: 300px;
   position: relative;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Ensure focus is visible when needed */
+.ProseMirror:focus {
+  outline: none;
 }
 
 /* Make empty editor more obvious to click */
@@ -612,6 +620,12 @@ select option:checked {
   display: inline-block;
   width: 0;
   height: 1em;
+}
+
+/* Prevent text selection outside editor from interfering */
+.ProseMirror * {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Editor background with lines */
