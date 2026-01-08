@@ -455,12 +455,21 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       hasUserInteractedRef.current = true;
     };
 
+    // Track mousedown/click events immediately (before focus completes)
+    const handleMouseDown = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    const editorElement = editor.view.dom;
+
     editor.on('focus', handleFocus);
     editor.on('update', handleUpdate);
+    editorElement.addEventListener('mousedown', handleMouseDown);
 
     return () => {
       editor.off('focus', handleFocus);
       editor.off('update', handleUpdate);
+      editorElement.removeEventListener('mousedown', handleMouseDown);
     };
   }, [editor]);
 
