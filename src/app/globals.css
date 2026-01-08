@@ -588,6 +588,46 @@ select option:checked {
   pointer-events: none;
 }
 
+/* Make empty paragraphs clickable and properly sized */
+.ProseMirror p {
+  min-height: 1.5em;
+  position: relative;
+}
+
+/* Ensure the editor is always clickable and maintains focus */
+.ProseMirror {
+  cursor: text;
+  min-height: 300px;
+  position: relative;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Ensure focus is visible when needed */
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Make empty editor more obvious to click */
+.ProseMirror.is-editor-empty {
+  min-height: 300px;
+}
+
+/* Ensure proper click handling on empty paragraphs */
+.ProseMirror p:empty::before {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 1em;
+}
+
+/* Prevent text selection outside editor from interfering */
+.ProseMirror * {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* Editor background with lines */
 .editor-lined-bg {
   background-color: rgba(0, 0, 0, 0.4);

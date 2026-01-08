@@ -25,6 +25,58 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
+// Error boundary to catch TipTap crashes
+class EditorErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('TipTap Editor Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="border border-rose-500/50 bg-rose-900/20 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-semibold text-rose-200 mb-2">
+            Σφάλμα Επεξεργαστή
+          </h3>
+          <p className="text-sm text-rose-300/80 mb-4">
+            Παρουσιάστηκε πρόβλημα με τον επεξεργαστή κειμένου. Παρακαλώ ανανεώστε τη σελίδα.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors"
+          >
+            Ανανέωση Σελίδας
+          </button>
+          {this.state.error && (
+            <details className="mt-4 text-left">
+              <summary className="text-xs text-rose-400 cursor-pointer hover:text-rose-300">
+                Τεχνικές Λεπτομέρειες
+              </summary>
+              <pre className="mt-2 text-xs text-rose-200/70 bg-black/30 p-3 rounded overflow-auto">
+                {this.state.error.toString()}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const MenuButton = ({
   onClick,
   active,
@@ -60,7 +112,7 @@ const MenuButton = ({
   </button>
 );
 
-const MenuBar = ({ editor }: { editor: Editor | null }) => {
+const MenuBar = React.memo(({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
   const [uploadCount, setUploadCount] = React.useState(0);
@@ -314,11 +366,36 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       />
     </div>
   );
+});
+
+// Validate TipTap JSON content structure
+const isValidTipTapContent = (content: any): boolean => {
+  if (!content || typeof content !== 'object') return false;
+  if (content.type !== 'doc') return false;
+  if (!Array.isArray(content.content)) return false;
+  return true;
 };
 
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   // Track if the update is coming from the editor itself (to avoid circular updates)
   const isInternalUpdate = React.useRef(false);
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Debounced onChange to reduce parent re-renders during typing
+  const debouncedOnChange = React.useCallback((json: any) => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(() => {
+      isInternalUpdate.current = true;
+      onChange(json);
+      // Keep flag set longer to prevent sync issues
+      setTimeout(() => {
+        isInternalUpdate.current = false;
+      }, 100);
+    }, 300); // 300ms debounce - adjust if needed
+  }, [onChange]);
 
   const editor = useEditor({
     extensions: [
@@ -330,78 +407,112 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
         },
       }),
     ],
-    content: content || {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
+    content: isValidTipTapContent(content)
+      ? content
+      : {
+          type: 'doc',
           content: [
             {
-              type: 'text',
-              text: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Σβήστε για να αρχίσετε να γράφετε το άρθρο σας',
+                },
+              ],
             },
           ],
         },
-      ],
-    },
     onUpdate: ({ editor }) => {
-      // Mark this as an internal update before calling onChange
-      isInternalUpdate.current = true;
-      onChange(editor.getJSON());
-      // Reset the flag after a microtask to allow React to process the update
-      Promise.resolve().then(() => {
-        isInternalUpdate.current = false;
-      });
+      // Debounce the onChange call to reduce re-renders
+      debouncedOnChange(editor.getJSON());
     },
     editorProps: {
       attributes: {
         class:
-          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
+          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg cursor-text',
+        tabindex: '0',
       },
     },
+    autofocus: false,
+    // Ensure editor retains focus during interactions
+    editable: true,
   });
 
   // Sync external content changes to the editor (e.g., when loading an article to edit)
+  const currentContentRef = React.useRef<any>(null);
+  const hasUserInteractedRef = React.useRef(false);
+
+  // Track when user starts interacting with the editor
+  React.useEffect(() => {
+    if (!editor) return;
+
+    const handleFocus = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    const handleUpdate = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    editor.on('focus', handleFocus);
+    editor.on('update', handleUpdate);
+
+    return () => {
+      editor.off('focus', handleFocus);
+      editor.off('update', handleUpdate);
+    };
+  }, [editor]);
+
   React.useEffect(() => {
     // Don't sync if this is an internal update (user typing)
-    if (!editor || isInternalUpdate.current) {
+    if (!editor || isInternalUpdate.current || !content) {
       return;
     }
 
-    // Only update if content is provided and different from current editor content
-    if (content) {
-      const currentContent = editor.getJSON();
-      // Use a simple reference check first, then lightweight comparison
-      if (content !== currentContent) {
-        // Check if content structure is actually different
-        const isDifferent =
-          !currentContent ||
-          content.type !== currentContent.type ||
-          (content.content?.length || 0) !== (currentContent.content?.length || 0);
+    // Don't sync if user has ever interacted with this editor instance
+    if (hasUserInteractedRef.current) {
+      return;
+    }
 
-        if (isDifferent) {
+    // Don't update content if editor is currently focused
+    if (editor.isFocused) {
+      return;
+    }
+
+    // Only check if content reference changed (not deep equality)
+    if (content !== currentContentRef.current) {
+      currentContentRef.current = content;
+
+      // Batch this update to avoid blocking the main thread
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed && !editor.isFocused && !hasUserInteractedRef.current) {
           editor.commands.setContent(content, { emitUpdate: false });
         }
-      }
+      });
     }
   }, [content, editor]);
 
-  // Cleanup: Destroy editor instance when component unmounts to prevent memory leaks
+  // Cleanup: Destroy editor instance and clear timeouts when component unmounts
   React.useEffect(() => {
     return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
       editor?.destroy();
     };
   }, [editor]);
 
   return (
-    <div className="space-y-3">
-      <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
-        <MenuBar editor={editor} />
-        <EditorContent editor={editor} />
-      </div>
+    <EditorErrorBoundary>
+      <div className="space-y-3">
+        <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
+          <MenuBar editor={editor} />
+          <EditorContent editor={editor} />
+        </div>
 
-      {/* Visual Examples */}
-      <details className="bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
+        {/* Visual Examples */}
+        <details className="bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
         <summary className="cursor-pointer p-3 font-semibold text-emerald-200 hover:bg-emerald-600/20 rounded-lg transition-colors">
           📚 Παραδείγματα Μορφοποίησης (πατήστε για να δείτε)
         </summary>
@@ -435,6 +546,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </div>
         </div>
       </details>
-    </div>
+      </div>
+    </EditorErrorBoundary>
   );
 }
