@@ -409,6 +409,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       }),
       Placeholder.configure({
         placeholder: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
+        emptyEditorClass: 'is-editor-empty',
       }),
     ],
     content: isValidTipTapContent(content) ? content : undefined,
@@ -419,9 +420,11 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     editorProps: {
       attributes: {
         class:
-          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
+          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg cursor-text',
       },
     },
+    // Auto-focus on mount for better UX
+    autofocus: false,
   });
 
   // Sync external content changes to the editor (e.g., when loading an article to edit)
@@ -457,12 +460,43 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     };
   }, [editor]);
 
+  // Handle clicks on the editor container to ensure proper focus
+  const handleEditorClick = React.useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!editor) return;
+
+      // Get the click coordinates
+      const { clientX, clientY } = e;
+      const target = e.target as HTMLElement;
+
+      // Check if click is on empty space (not on text)
+      const isEmptySpace =
+        target.classList.contains('ProseMirror') ||
+        target.closest('.ProseMirror') === target;
+
+      if (isEmptySpace || !editor.isFocused) {
+        // Try to position cursor at click location
+        const pos = editor.view.posAtCoords({ left: clientX, top: clientY });
+        if (pos) {
+          editor.commands.focus();
+          editor.commands.setTextSelection(pos.pos);
+        } else {
+          // Fallback: focus at the end
+          editor.commands.focus('end');
+        }
+      }
+    },
+    [editor]
+  );
+
   return (
     <EditorErrorBoundary>
       <div className="space-y-3">
         <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
           <MenuBar editor={editor} />
-          <EditorContent editor={editor} />
+          <div onClick={handleEditorClick} className="cursor-text">
+            <EditorContent editor={editor} />
+          </div>
         </div>
 
         {/* Visual Examples */}
