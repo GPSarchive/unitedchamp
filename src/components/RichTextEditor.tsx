@@ -4,6 +4,7 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -100,7 +101,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       }
 
       // Step 3: Get public URL
-      const publicURL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${path}`;
+      const publicURL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodeURIComponent(path)}`;
 
       // Insert image into editor
       editor.chain().focus().setImage({ src: publicURL }).run();
@@ -314,21 +315,11 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           class: 'max-w-full h-auto rounded-lg my-4',
         },
       }),
+      Placeholder.configure({
+        placeholder: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
+      }),
     ],
-    content: content || {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'text',
-              text: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
-            },
-          ],
-        },
-      ],
-    },
+    content: content || '',
     onUpdate: ({ editor }) => {
       onChange(editor.getJSON());
     },

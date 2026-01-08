@@ -25,22 +25,37 @@ const PAGE_SIZE = 20;
 const greekDate = (d: string) =>
   new Date(d).toLocaleString('el-GR', { dateStyle: 'medium', timeStyle: 'short' });
 
+// Helper to check if TipTap content is empty
+const isContentEmpty = (content: any): boolean => {
+  if (!content || !content.content || content.content.length === 0) return true;
+
+  // Check if all nodes are empty paragraphs
+  return content.content.every((node: any) => {
+    if (node.type === 'paragraph') {
+      return !node.content || node.content.length === 0;
+    }
+    return false;
+  });
+};
+
 export default function ArticlesAdmin() {
   const [articles, setArticles] = React.useState<Article[]>([]);
   const [nextOffset, setNextOffset] = React.useState<number | null>(0);
   const [loading, setLoading] = React.useState(false);
+  const [loadingArticleId, setLoadingArticleId] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   // Create form state
   const [title, setTitle] = React.useState('');
   const [slug, setSlug] = React.useState('');
+  const [slugManuallyEdited, setSlugManuallyEdited] = React.useState(false);
   const [content, setContent] = React.useState<any>(null);
   const [excerpt, setExcerpt] = React.useState('');
   const [showPreview, setShowPreview] = React.useState(false);
 
   // Auto-generate slug from title
   React.useEffect(() => {
-    if (title && !slug) {
+    if (title && !slugManuallyEdited) {
       const generatedSlug = title
         .toLowerCase()
         .normalize('NFKD')
@@ -52,7 +67,7 @@ export default function ArticlesAdmin() {
         .substring(0, 100);
       setSlug(generatedSlug);
     }
-  }, [title, slug]);
+  }, [title, slugManuallyEdited]);
 
   async function loadMore() {
     if (nextOffset === null) return;
@@ -83,6 +98,10 @@ export default function ArticlesAdmin() {
       setError('Ο τίτλος είναι υποχρεωτικός');
       return;
     }
+    if (isContentEmpty(content)) {
+      setError('Το περιεχόμενο του άρθρου είναι υποχρεωτικό');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -105,6 +124,7 @@ export default function ArticlesAdmin() {
       setArticles((prev) => [json.data as Article, ...prev]);
       setTitle('');
       setSlug('');
+      setSlugManuallyEdited(false);
       setContent(null);
       setExcerpt('');
     } catch (e: any) {
@@ -115,7 +135,7 @@ export default function ArticlesAdmin() {
   }
 
   async function patch(id: number, data: Partial<Article>) {
-    setLoading(true);
+    setLoadingArticleId(id);
     setError(null);
     try {
       const res = await fetch(`/api/articles/${id}`, {
@@ -129,13 +149,13 @@ export default function ArticlesAdmin() {
     } catch (e: any) {
       setError(e.message ?? 'Αποτυχία ενημέρωσης άρθρου');
     } finally {
-      setLoading(false);
+      setLoadingArticleId(null);
     }
   }
 
   async function remove(id: number) {
     if (!confirm('Διαγραφή αυτού του άρθρου;')) return;
-    setLoading(true);
+    setLoadingArticleId(id);
     setError(null);
     try {
       const res = await fetch(`/api/articles/${id}`, { method: 'DELETE' });
@@ -145,7 +165,7 @@ export default function ArticlesAdmin() {
     } catch (e: any) {
       setError(e.message ?? 'Αποτυχία διαγραφής άρθρου');
     } finally {
-      setLoading(false);
+      setLoadingArticleId(null);
     }
   }
 
@@ -193,7 +213,10 @@ export default function ArticlesAdmin() {
               <input
                 className="border border-white/20 bg-black/40 rounded-lg px-4 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={slug}
-                onChange={(e) => setSlug(e.target.value)}
+                onChange={(e) => {
+                  setSlug(e.target.value);
+                  setSlugManuallyEdited(true);
+                }}
                 placeholder="arthro-url-slug"
               />
               {slug && (
@@ -267,7 +290,13 @@ export default function ArticlesAdmin() {
 
         <ul className="divide-y divide-white/10">
           {articles.map((article) => (
-            <ArticleRow key={article.id} article={article} onPatch={patch} onDelete={remove} />
+            <ArticleRow
+              key={article.id}
+              article={article}
+              onPatch={patch}
+              onDelete={remove}
+              isLoading={loadingArticleId === article.id}
+            />
           ))}
         </ul>
 
@@ -295,10 +324,12 @@ function ArticleRow({
   article,
   onPatch,
   onDelete,
+  isLoading,
 }: {
   article: Article;
   onPatch: (id: number, data: Partial<Article>) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
+  isLoading: boolean;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [title, setTitle] = React.useState(article.title);
@@ -395,13 +426,15 @@ function ArticleRow({
               <>
                 <button
                   onClick={() => setEditing(true)}
-                  className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors"
+                  disabled={isLoading}
+                  className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Επεξεργασία
                 </button>
                 <button
                   onClick={togglePublish}
-                  className="px-3 py-1.5 text-sm rounded-md border border-emerald-600/50 bg-emerald-600/10 text-emerald-100 hover:bg-emerald-600/20 backdrop-blur-sm transition-colors"
+                  disabled={isLoading}
+                  className="px-3 py-1.5 text-sm rounded-md border border-emerald-600/50 bg-emerald-600/10 text-emerald-100 hover:bg-emerald-600/20 backdrop-blur-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {article.status === 'published' ? 'Απόσυρση' : 'Δημοσίευση'}
                 </button>
@@ -414,7 +447,8 @@ function ArticleRow({
                 </Link>
                 <button
                   onClick={() => onDelete(article.id)}
-                  className="px-3 py-1.5 text-sm rounded-md border border-rose-600/50 bg-rose-600/10 text-rose-200 hover:bg-rose-600/20 backdrop-blur-sm transition-colors"
+                  disabled={isLoading}
+                  className="px-3 py-1.5 text-sm rounded-md border border-rose-600/50 bg-rose-600/10 text-rose-200 hover:bg-rose-600/20 backdrop-blur-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Διαγραφή
                 </button>
@@ -423,7 +457,8 @@ function ArticleRow({
               <>
                 <button
                   onClick={save}
-                  className="px-3 py-1.5 text-sm rounded-md border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition-colors"
+                  disabled={isLoading}
+                  className="px-3 py-1.5 text-sm rounded-md border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Αποθήκευση Αλλαγών
                 </button>
@@ -436,7 +471,8 @@ function ArticleRow({
                     setContent(article.content);
                     setShowPreview(false);
                   }}
-                  className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors"
+                  disabled={isLoading}
+                  className="px-3 py-1.5 text-sm rounded-md border border-white/30 bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Άκυρο
                 </button>
