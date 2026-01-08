@@ -3,7 +3,6 @@
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import DOMPurify from 'dompurify';
 
@@ -19,12 +18,6 @@ export default function ArticlePreview({ content, title, className = '' }: Artic
     ? generateHTML(content, [
         StarterKit,
         Underline,
-        Link.configure({
-          openOnClick: true,
-          HTMLAttributes: {
-            class: 'text-blue-400 underline hover:text-blue-300',
-          },
-        }),
         Image.configure({
           HTMLAttributes: {
             class: 'max-w-full h-auto rounded-lg my-4',

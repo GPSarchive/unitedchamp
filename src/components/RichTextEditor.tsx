@@ -3,7 +3,6 @@
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
@@ -15,9 +14,6 @@ import {
   Heading1,
   Heading2,
   Heading3,
-  Quote,
-  Code,
-  LinkIcon,
   ImageIcon,
   Undo,
   Redo,
@@ -72,35 +68,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) {
     return null;
   }
-
-  const addLink = () => {
-    // If link is already active, remove it
-    if (editor.isActive('link')) {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-
-    // Otherwise, add a new link
-    const url = window.prompt('Εισάγετε τη διεύθυνση URL:');
-    if (url) {
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange('link')
-        .setLink({ href: url })
-        // Insert space after link and clear marks
-        .insertContent(' ')
-        .command(({ tr, dispatch }) => {
-          if (dispatch) {
-            // Remove the link mark from stored marks
-            tr.removeStoredMark(tr.doc.type.schema.marks.link);
-            dispatch(tr);
-          }
-          return true;
-        })
-        .run();
-    }
-  };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
@@ -187,18 +154,6 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <p>1. Πατήστε το κουμπί λίστας</p>
             <p>2. Γράψτε το πρώτο στοιχείο</p>
             <p>3. Πατήστε Enter για νέο στοιχείο</p>
-          </div>
-          <div className="space-y-1.5">
-            <p className="font-semibold text-white">Για Παράθεση (" ):</p>
-            <p>1. Πατήστε το κουμπί παράθεσης</p>
-            <p>2. Γράψτε το κείμενο που θέλετε</p>
-            <p>3. Θα εμφανιστεί με ειδική μορφή</p>
-          </div>
-          <div className="space-y-1.5">
-            <p className="font-semibold text-white">Για Σύνδεσμο (🔗):</p>
-            <p>1. Επιλέξτε το κείμενο που θέλετε</p>
-            <p>2. Πατήστε το κουμπί συνδέσμου</p>
-            <p>3. Για αφαίρεση: πατήστε το κουμπί ξανά</p>
           </div>
         </div>
         <div className="mt-3 space-y-2 border-t border-blue-400/30 pt-3">
@@ -292,35 +247,8 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
 
         <div className="w-px bg-white/20" />
 
-        {/* Block elements */}
-        <div className="flex gap-1.5">
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            active={editor.isActive('blockquote')}
-            title='Παράθεση (") - Πατήστε και γράψτε κείμενο που θέλετε να παραθέσετε'
-          >
-            <Quote size={18} />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            active={editor.isActive('codeBlock')}
-            title="Κώδικας - Προσθέστε μπλοκ κώδικα"
-          >
-            <Code size={18} />
-          </MenuButton>
-        </div>
-
-        <div className="w-px bg-white/20" />
-
         {/* Media */}
         <div className="flex gap-1.5">
-          <MenuButton
-            onClick={addLink}
-            active={editor.isActive('link')}
-            title="Σύνδεσμος - Προσθέστε σύνδεσμο (επιλέξτε κείμενο πρώτα) ή πατήστε ξανά για αφαίρεση"
-          >
-            <LinkIcon size={18} />
-          </MenuButton>
           <MenuButton
             onClick={addImage}
             disabled={uploading}
@@ -374,12 +302,6 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     extensions: [
       StarterKit,
       Underline,
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-400 underline hover:text-blue-300',
-        },
-      }),
       Image.configure({
         HTMLAttributes: {
           class: 'max-w-full h-auto rounded-lg my-4',
@@ -434,7 +356,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
             <p><u>Υπογραμμισμένο κείμενο</u> (U)</p>
           </div>
 
-          <div className="space-y-2 border-b border-emerald-500/20 pb-3">
+          <div className="space-y-2">
             <p className="font-semibold text-emerald-300">Λίστες:</p>
             <ul className="list-disc pl-6">
               <li>Πρώτο στοιχείο λίστας</li>
@@ -446,13 +368,6 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
               <li>Δεύτερο στοιχείο</li>
               <li>Τρίτο στοιχείο</li>
             </ol>
-          </div>
-
-          <div className="space-y-2">
-            <p className="font-semibold text-emerald-300">Παράθεση:</p>
-            <blockquote className="border-l-4 border-emerald-500 pl-4 italic text-white/70">
-              "Αυτό είναι ένα παράδειγμα παράθεσης. Χρησιμοποιήστε το για να επισημάνετε σημαντικό κείμενο."
-            </blockquote>
           </div>
         </div>
       </details>
