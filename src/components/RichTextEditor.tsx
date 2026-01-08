@@ -88,9 +88,17 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         .focus()
         .extendMarkRange('link')
         .setLink({ href: url })
-        .command(({ tr }) => {
-          // Clear all stored marks to prevent link from continuing
-          tr.setStoredMarks([]);
+        // Move cursor to the end of selection
+        .command(({ state, dispatch }) => {
+          if (dispatch) {
+            const { $to } = state.selection;
+            // Insert a space after the link
+            const tr = state.tr.insertText(' ', $to.pos);
+            // Position cursor after the space and clear marks
+            tr.setSelection(state.selection.constructor.near(tr.doc.resolve($to.pos + 1)));
+            tr.removeStoredMark(state.schema.marks.link);
+            dispatch(tr);
+          }
           return true;
         })
         .run();
