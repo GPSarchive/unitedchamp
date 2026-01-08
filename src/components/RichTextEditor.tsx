@@ -63,53 +63,65 @@ const MenuButton = ({
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [uploadCount, setUploadCount] = React.useState(0);
+  const uploadQueueRef = React.useRef<Promise<void>>(Promise.resolve());
 
   if (!editor) {
     return null;
   }
 
   const handleImageUpload = async (file: File) => {
-    setUploading(true);
-    try {
-      // Step 1: Get signed upload URL
-      const signRes = await fetch('/api/storage/article-img', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contentType: file.type,
-        }),
-      });
+    // Queue this upload after any pending uploads
+    uploadQueueRef.current = uploadQueueRef.current.then(async () => {
+      setUploading(true);
+      setUploadCount((prev) => prev + 1);
+      try {
+        // Step 1: Get signed upload URL
+        const signRes = await fetch('/api/storage/article-img', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contentType: file.type,
+          }),
+        });
 
-      if (!signRes.ok) {
-        throw new Error('Αποτυχία λήψης URL μεταφόρτωσης');
+        if (!signRes.ok) {
+          throw new Error('Αποτυχία λήψης URL μεταφόρτωσης');
+        }
+
+        const { signedUrl, path, bucket } = await signRes.json();
+
+        // Step 2: Upload file to signed URL
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type,
+          },
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error('Αποτυχία μεταφόρτωσης εικόνας');
+        }
+
+        // Step 3: Get public URL
+        const publicURL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${path}`;
+
+        // Insert image into editor
+        editor.chain().focus().setImage({ src: publicURL }).run();
+      } catch (error) {
+        console.error('Image upload error:', error);
+        alert('Αποτυχία μεταφόρτωσης εικόνας. Παρακαλώ δοκιμάστε ξανά.');
+      } finally {
+        setUploadCount((prev) => {
+          const newCount = prev - 1;
+          if (newCount === 0) {
+            setUploading(false);
+          }
+          return newCount;
+        });
       }
-
-      const { signedUrl, path, bucket } = await signRes.json();
-
-      // Step 2: Upload file to signed URL
-      const uploadRes = await fetch(signedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Αποτυχία μεταφόρτωσης εικόνας');
-      }
-
-      // Step 3: Get public URL
-      const publicURL = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(bucket)}/${path}`;
-
-      // Insert image into editor
-      editor.chain().focus().setImage({ src: publicURL }).run();
-    } catch (error) {
-      console.error('Image upload error:', error);
-      alert('Αποτυχία μεταφόρτωσης εικόνας. Παρακαλώ δοκιμάστε ξανά.');
-    } finally {
-      setUploading(false);
-    }
+    });
   };
 
   const addImage = () => {
@@ -259,7 +271,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <MenuButton
             onClick={addImage}
             disabled={uploading}
-            title={uploading ? "Μεταφόρτωση..." : "Εικόνα - Ανεβάστε ή προσθέστε εικόνα"}
+            title={uploading ? `Μεταφόρτωση${uploadCount > 1 ? ` (${uploadCount} εικόνες)` : '...'}` : "Εικόνα - Ανεβάστε ή προσθέστε εικόνα"}
           >
             <ImageIcon size={18} />
           </MenuButton>
@@ -305,6 +317,9 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
 };
 
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
+  // Track if the update is coming from the editor itself (to avoid circular updates)
+  const isInternalUpdate = React.useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -330,7 +345,13 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       ],
     },
     onUpdate: ({ editor }) => {
+      // Mark this as an internal update before calling onChange
+      isInternalUpdate.current = true;
       onChange(editor.getJSON());
+      // Reset the flag after a microtask to allow React to process the update
+      Promise.resolve().then(() => {
+        isInternalUpdate.current = false;
+      });
     },
     editorProps: {
       attributes: {
@@ -340,11 +361,37 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     },
   });
 
+  // Sync external content changes to the editor (e.g., when loading an article to edit)
   React.useEffect(() => {
-    if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
-      editor.commands.setContent(content);
+    // Don't sync if this is an internal update (user typing)
+    if (!editor || isInternalUpdate.current) {
+      return;
+    }
+
+    // Only update if content is provided and different from current editor content
+    if (content) {
+      const currentContent = editor.getJSON();
+      // Use a simple reference check first, then lightweight comparison
+      if (content !== currentContent) {
+        // Check if content structure is actually different
+        const isDifferent =
+          !currentContent ||
+          content.type !== currentContent.type ||
+          (content.content?.length || 0) !== (currentContent.content?.length || 0);
+
+        if (isDifferent) {
+          editor.commands.setContent(content, { emitUpdate: false });
+        }
+      }
     }
   }, [content, editor]);
+
+  // Cleanup: Destroy editor instance when component unmounts to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      editor?.destroy();
+    };
+  }, [editor]);
 
   return (
     <div className="space-y-3">
