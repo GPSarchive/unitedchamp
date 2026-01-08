@@ -146,13 +146,15 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     <div className="space-y-3">
       {/* Help text */}
       <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg overflow-hidden">
-        <button
-          onClick={() => setShowHelp(!showHelp)}
-          className="w-full flex items-center justify-between p-4 text-left hover:bg-blue-600/10 transition-colors"
-        >
+        <div className="p-4 flex items-center justify-between">
           <p className="font-semibold text-base text-blue-100">💡 Πώς να χρησιμοποιήσετε τον επεξεργαστή</p>
-          <span className="text-blue-200 text-sm">{showHelp ? '▼ Απόκρυψη' : '▶ Εμφάνιση'}</span>
-        </button>
+          <button
+            onClick={() => setShowHelp(!showHelp)}
+            className="px-3 py-1.5 text-sm rounded bg-blue-600/40 hover:bg-blue-600/60 text-blue-100 transition-colors flex-shrink-0"
+          >
+            {showHelp ? '▼ Απόκρυψη' : '▶ Εμφάνιση'}
+          </button>
+        </div>
         {showHelp && (
           <div className="p-4 pt-0 text-sm text-blue-100">
         <div className="grid md:grid-cols-2 gap-3 text-xs text-blue-200">
