@@ -68,7 +68,6 @@ const MenuButton = ({
 const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
-  const [showHelp, setShowHelp] = React.useState(true);
 
   if (!editor) {
     return null;
@@ -145,18 +144,9 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   return (
     <div className="space-y-3">
       {/* Help text */}
-      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg overflow-hidden">
-        <div className="p-4 flex items-center justify-between">
-          <p className="font-semibold text-base text-blue-100">💡 Πώς να χρησιμοποιήσετε τον επεξεργαστή</p>
-          <button
-            onClick={() => setShowHelp(!showHelp)}
-            className="px-3 py-1.5 text-sm rounded bg-blue-600/40 hover:bg-blue-600/60 text-blue-100 transition-colors flex-shrink-0"
-          >
-            {showHelp ? '▼ Απόκρυψη' : '▶ Εμφάνιση'}
-          </button>
-        </div>
-        {showHelp && (
-          <div className="p-4 pt-0 text-sm text-blue-100">
+      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4">
+        <p className="font-semibold text-base text-blue-100 mb-3">💡 Πώς να χρησιμοποιήσετε τον επεξεργαστή</p>
+        <div className="text-sm text-blue-100">
         <div className="grid md:grid-cols-2 gap-3 text-xs text-blue-200">
           <div className="space-y-1.5">
             <p className="font-semibold text-white">Για Έντονα/Πλάγια/Υπογράμμιση:</p>
@@ -196,8 +186,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         <p className="mt-3 text-xs text-blue-300 border-t border-blue-400/30 pt-2">
           <span className="font-semibold">💡 Σημείωση:</span> Τα ενεργά κουμπιά έχουν <span className="font-bold text-white">μπλε χρώμα και φωτεινό περίγραμμα</span>
         </p>
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 p-3 border border-white/20 bg-black/30 rounded-lg">
