@@ -4,7 +4,6 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -407,12 +406,23 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           class: 'max-w-full h-auto rounded-lg my-4',
         },
       }),
-      Placeholder.configure({
-        placeholder: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
-        emptyEditorClass: 'is-editor-empty',
-      }),
     ],
-    content: isValidTipTapContent(content) ? content : undefined,
+    content: isValidTipTapContent(content)
+      ? content
+      : {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Σβήστε για να αρχίσετε να γράφετε το άρθρο σας',
+                },
+              ],
+            },
+          ],
+        },
     onUpdate: ({ editor }) => {
       // Debounce the onChange call to reduce re-renders
       debouncedOnChange(editor.getJSON());
