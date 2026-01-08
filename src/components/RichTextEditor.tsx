@@ -305,6 +305,9 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
 };
 
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
+  // Track if the update is coming from the editor itself (to avoid circular updates)
+  const isInternalUpdate = React.useRef(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -330,7 +333,13 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       ],
     },
     onUpdate: ({ editor }) => {
+      // Mark this as an internal update before calling onChange
+      isInternalUpdate.current = true;
       onChange(editor.getJSON());
+      // Reset the flag after a microtask to allow React to process the update
+      Promise.resolve().then(() => {
+        isInternalUpdate.current = false;
+      });
     },
     editorProps: {
       attributes: {
@@ -340,9 +349,28 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     },
   });
 
+  // Sync external content changes to the editor (e.g., when loading an article to edit)
   React.useEffect(() => {
-    if (editor && content && JSON.stringify(editor.getJSON()) !== JSON.stringify(content)) {
-      editor.commands.setContent(content);
+    // Don't sync if this is an internal update (user typing)
+    if (!editor || isInternalUpdate.current) {
+      return;
+    }
+
+    // Only update if content is provided and different from current editor content
+    if (content) {
+      const currentContent = editor.getJSON();
+      // Use a simple reference check first, then lightweight comparison
+      if (content !== currentContent) {
+        // Check if content structure is actually different
+        const isDifferent =
+          !currentContent ||
+          content.type !== currentContent.type ||
+          (content.content?.length || 0) !== (currentContent.content?.length || 0);
+
+        if (isDifferent) {
+          editor.commands.setContent(content, false); // false = don't emit update event
+        }
+      }
     }
   }, [content, editor]);
 
