@@ -391,10 +391,10 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     updateTimeoutRef.current = setTimeout(() => {
       isInternalUpdate.current = true;
       onChange(json);
-      // Reset flag synchronously in next tick
+      // Keep flag set longer to prevent sync issues
       setTimeout(() => {
         isInternalUpdate.current = false;
-      }, 0);
+      }, 100);
     }, 300); // 300ms debounce - adjust if needed
   }, [onChange]);
 
@@ -430,8 +430,29 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
   });
 
   // Sync external content changes to the editor (e.g., when loading an article to edit)
-  // Use useMemo to cache the current content JSON to avoid repeated serialization
   const currentContentRef = React.useRef<any>(null);
+  const hasUserInteractedRef = React.useRef(false);
+
+  // Track when user starts interacting with the editor
+  React.useEffect(() => {
+    if (!editor) return;
+
+    const handleFocus = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    const handleUpdate = () => {
+      hasUserInteractedRef.current = true;
+    };
+
+    editor.on('focus', handleFocus);
+    editor.on('update', handleUpdate);
+
+    return () => {
+      editor.off('focus', handleFocus);
+      editor.off('update', handleUpdate);
+    };
+  }, [editor]);
 
   React.useEffect(() => {
     // Don't sync if this is an internal update (user typing)
@@ -439,7 +460,12 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       return;
     }
 
-    // Don't update content if editor is currently focused (user is actively editing)
+    // Don't sync if user has ever interacted with this editor instance
+    if (hasUserInteractedRef.current) {
+      return;
+    }
+
+    // Don't update content if editor is currently focused
     if (editor.isFocused) {
       return;
     }
@@ -450,7 +476,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
 
       // Batch this update to avoid blocking the main thread
       requestAnimationFrame(() => {
-        if (editor && !editor.isDestroyed && !editor.isFocused) {
+        if (editor && !editor.isDestroyed && !editor.isFocused && !hasUserInteractedRef.current) {
           editor.commands.setContent(content, { emitUpdate: false });
         }
       });
