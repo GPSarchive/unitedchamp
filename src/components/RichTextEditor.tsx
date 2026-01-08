@@ -368,7 +368,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           (content.content?.length || 0) !== (currentContent.content?.length || 0);
 
         if (isDifferent) {
-          editor.commands.setContent(content, false); // false = don't emit update event
+          editor.commands.setContent(content, { emitUpdate: false });
         }
       }
     }
