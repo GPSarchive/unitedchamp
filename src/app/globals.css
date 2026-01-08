@@ -587,3 +587,17 @@ select option:checked {
   height: 0;
   pointer-events: none;
 }
+
+/* Editor background with lines */
+.editor-lined-bg {
+  background-color: rgba(0, 0, 0, 0.4);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255, 255, 255, 0.08) 39px,
+      rgba(255, 255, 255, 0.08) 40px
+    );
+  background-size: 100% 40px;
+}

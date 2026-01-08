@@ -326,7 +326,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     editorProps: {
       attributes: {
         class:
-          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
+          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none editor-lined-bg rounded-b-lg',
       },
     },
   });
