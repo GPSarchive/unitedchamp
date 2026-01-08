@@ -173,6 +173,14 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       </div>
 
       <div className="flex flex-wrap gap-2 p-3 border border-white/20 bg-black/30 rounded-lg">
+        {/* Invisible dummy button to prevent first button bug */}
+        <button
+          type="button"
+          className="w-0 h-0 opacity-0 pointer-events-none absolute"
+          onClick={() => {}}
+          aria-hidden="true"
+        />
+
         {/* Text formatting */}
         <div className="flex gap-1.5">
           <MenuButton
