@@ -452,3 +452,152 @@ select option:checked {
     height: 44px;
   }
 }
+
+/* ================== TipTap Editor Styles ================== */
+/* Ensure lists are visible in the editor */
+.ProseMirror ul,
+.ProseMirror ol,
+.article-content ul,
+.article-content ol {
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ProseMirror ul,
+.article-content ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol,
+.article-content ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li,
+.article-content li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Nested lists */
+.ProseMirror ul ul,
+.article-content ul ul {
+  list-style-type: circle;
+}
+
+.ProseMirror ul ul ul,
+.article-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Blockquotes */
+.ProseMirror blockquote,
+.article-content blockquote {
+  border-left: 4px solid #6366f1;
+  padding-left: 1rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Headings */
+.ProseMirror h1,
+.article-content h1 {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.ProseMirror h2,
+.article-content h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.ProseMirror h3,
+.article-content h3 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+/* Paragraphs */
+.ProseMirror p,
+.article-content p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Code blocks */
+.ProseMirror pre,
+.article-content pre {
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ProseMirror code,
+.article-content code {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+/* Links */
+.ProseMirror a,
+.article-content a {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+
+.ProseMirror a:hover,
+.article-content a:hover {
+  color: #93c5fd;
+}
+
+/* Images */
+.ProseMirror img,
+.article-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Fix for placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: rgba(255, 255, 255, 0.4);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Editor background with lines */
+.editor-lined-bg {
+  background-color: rgba(0, 0, 0, 0.4);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(255, 255, 255, 0.08) 39px,
+      rgba(255, 255, 255, 0.08) 40px
+    );
+  background-size: 100% 40px;
+}
