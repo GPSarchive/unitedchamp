@@ -176,21 +176,45 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         {/* Text formatting */}
         <div className="flex gap-1.5">
           <MenuButton
-            onClick={() => editor.chain().focus().toggleBold().run()}
+            onClick={() => {
+              editor.chain().focus().toggleBold().run();
+              // Clear stored marks after toggle to prevent unexpected behavior
+              setTimeout(() => {
+                const { state, view } = editor;
+                const tr = state.tr.setStoredMarks([]);
+                view.dispatch(tr);
+              }, 0);
+            }}
             active={editor.isActive('bold')}
             title="Έντονα (Ctrl+B) - Κάντε το κείμενο έντονο"
           >
             <Bold size={18} />
           </MenuButton>
           <MenuButton
-            onClick={() => editor.chain().focus().toggleItalic().run()}
+            onClick={() => {
+              editor.chain().focus().toggleItalic().run();
+              // Clear stored marks after toggle to prevent unexpected behavior
+              setTimeout(() => {
+                const { state, view } = editor;
+                const tr = state.tr.setStoredMarks([]);
+                view.dispatch(tr);
+              }, 0);
+            }}
             active={editor.isActive('italic')}
             title="Πλάγια (Ctrl+I) - Κάντε το κείμενο πλάγιο"
           >
             <Italic size={18} />
           </MenuButton>
           <MenuButton
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            onClick={() => {
+              editor.chain().focus().toggleUnderline().run();
+              // Clear stored marks after toggle to prevent unexpected behavior
+              setTimeout(() => {
+                const { state, view } = editor;
+                const tr = state.tr.setStoredMarks([]);
+                view.dispatch(tr);
+              }, 0);
+            }}
             active={editor.isActive('underline')}
             title="Υπογράμμιση (Ctrl+U) - Υπογραμμίστε το κείμενο"
           >
@@ -319,13 +343,6 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       attributes: {
         class:
           'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
-      },
-      handleClick: (view, pos, event) => {
-        // Clear stored marks on click to prevent unexpected formatting
-        const { tr } = view.state;
-        tr.setStoredMarks([]);
-        view.dispatch(tr);
-        return false; // Let the default click handler continue
       },
     },
   });
