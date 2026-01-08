@@ -83,7 +83,18 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
     // Otherwise, add a new link
     const url = window.prompt('Εισάγετε τη διεύθυνση URL:');
     if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
+      // Add the link and then move cursor after it to prevent new text from being linked
+      editor
+        .chain()
+        .focus()
+        .setLink({ href: url })
+        .command(({ tr, commands }) => {
+          // Move cursor to the end and disable link mark for new text
+          const { selection } = tr;
+          tr.removeStoredMark(editor.schema.marks.link);
+          return true;
+        })
+        .run();
     }
   };
 
