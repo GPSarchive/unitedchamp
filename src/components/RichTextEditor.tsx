@@ -113,7 +113,7 @@ const MenuButton = ({
   </button>
 );
 
-const MenuBar = ({ editor }: { editor: Editor | null }) => {
+const MenuBar = React.memo(({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
   const [uploadCount, setUploadCount] = React.useState(0);
@@ -367,7 +367,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
       />
     </div>
   );
-};
+});
 
 // Validate TipTap JSON content structure
 const isValidTipTapContent = (content: any): boolean => {
@@ -380,6 +380,23 @@ const isValidTipTapContent = (content: any): boolean => {
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   // Track if the update is coming from the editor itself (to avoid circular updates)
   const isInternalUpdate = React.useRef(false);
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout>();
+
+  // Debounced onChange to reduce parent re-renders during typing
+  const debouncedOnChange = React.useCallback((json: any) => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(() => {
+      isInternalUpdate.current = true;
+      onChange(json);
+      // Reset flag synchronously in next tick
+      setTimeout(() => {
+        isInternalUpdate.current = false;
+      }, 0);
+    }, 300); // 300ms debounce - adjust if needed
+  }, [onChange]);
 
   const editor = useEditor({
     extensions: [
@@ -396,13 +413,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     ],
     content: isValidTipTapContent(content) ? content : undefined,
     onUpdate: ({ editor }) => {
-      // Mark this as an internal update before calling onChange
-      isInternalUpdate.current = true;
-      onChange(editor.getJSON());
-      // Reset the flag after a microtask to allow React to process the update
-      Promise.resolve().then(() => {
-        isInternalUpdate.current = false;
-      });
+      // Debounce the onChange call to reduce re-renders
+      debouncedOnChange(editor.getJSON());
     },
     editorProps: {
       attributes: {
@@ -413,33 +425,34 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
   });
 
   // Sync external content changes to the editor (e.g., when loading an article to edit)
+  // Use useMemo to cache the current content JSON to avoid repeated serialization
+  const currentContentRef = React.useRef<any>(null);
+
   React.useEffect(() => {
     // Don't sync if this is an internal update (user typing)
-    if (!editor || isInternalUpdate.current) {
+    if (!editor || isInternalUpdate.current || !content) {
       return;
     }
 
-    // Only update if content is provided and different from current editor content
-    if (content) {
-      const currentContent = editor.getJSON();
-      // Use a simple reference check first, then lightweight comparison
-      if (content !== currentContent) {
-        // Check if content structure is actually different
-        const isDifferent =
-          !currentContent ||
-          content.type !== currentContent.type ||
-          (content.content?.length || 0) !== (currentContent.content?.length || 0);
+    // Only check if content reference changed (not deep equality)
+    if (content !== currentContentRef.current) {
+      currentContentRef.current = content;
 
-        if (isDifferent) {
+      // Batch this update to avoid blocking the main thread
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
           editor.commands.setContent(content, { emitUpdate: false });
         }
-      }
+      });
     }
   }, [content, editor]);
 
-  // Cleanup: Destroy editor instance when component unmounts to prevent memory leaks
+  // Cleanup: Destroy editor instance and clear timeouts when component unmounts
   React.useEffect(() => {
     return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
       editor?.destroy();
     };
   }, [editor]);
