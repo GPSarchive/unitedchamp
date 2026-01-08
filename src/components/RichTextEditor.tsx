@@ -4,6 +4,7 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -23,6 +24,58 @@ interface RichTextEditorProps {
   content: any;
   onChange: (content: any) => void;
   placeholder?: string;
+}
+
+// Error boundary to catch TipTap crashes
+class EditorErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('TipTap Editor Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="border border-rose-500/50 bg-rose-900/20 rounded-lg p-6 text-center">
+          <h3 className="text-lg font-semibold text-rose-200 mb-2">
+            Σφάλμα Επεξεργαστή
+          </h3>
+          <p className="text-sm text-rose-300/80 mb-4">
+            Παρουσιάστηκε πρόβλημα με τον επεξεργαστή κειμένου. Παρακαλώ ανανεώστε τη σελίδα.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition-colors"
+          >
+            Ανανέωση Σελίδας
+          </button>
+          {this.state.error && (
+            <details className="mt-4 text-left">
+              <summary className="text-xs text-rose-400 cursor-pointer hover:text-rose-300">
+                Τεχνικές Λεπτομέρειες
+              </summary>
+              <pre className="mt-2 text-xs text-rose-200/70 bg-black/30 p-3 rounded overflow-auto">
+                {this.state.error.toString()}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 const MenuButton = ({
@@ -316,6 +369,14 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   );
 };
 
+// Validate TipTap JSON content structure
+const isValidTipTapContent = (content: any): boolean => {
+  if (!content || typeof content !== 'object') return false;
+  if (content.type !== 'doc') return false;
+  if (!Array.isArray(content.content)) return false;
+  return true;
+};
+
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   // Track if the update is coming from the editor itself (to avoid circular updates)
   const isInternalUpdate = React.useRef(false);
@@ -329,21 +390,11 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           class: 'max-w-full h-auto rounded-lg my-4',
         },
       }),
+      Placeholder.configure({
+        placeholder: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
+      }),
     ],
-    content: content || {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'text',
-              text: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
-            },
-          ],
-        },
-      ],
-    },
+    content: isValidTipTapContent(content) ? content : undefined,
     onUpdate: ({ editor }) => {
       // Mark this as an internal update before calling onChange
       isInternalUpdate.current = true;
@@ -394,14 +445,15 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
   }, [editor]);
 
   return (
-    <div className="space-y-3">
-      <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
-        <MenuBar editor={editor} />
-        <EditorContent editor={editor} />
-      </div>
+    <EditorErrorBoundary>
+      <div className="space-y-3">
+        <div className="border border-white/20 rounded-lg bg-black/50 backdrop-blur-sm shadow-lg">
+          <MenuBar editor={editor} />
+          <EditorContent editor={editor} />
+        </div>
 
-      {/* Visual Examples */}
-      <details className="bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
+        {/* Visual Examples */}
+        <details className="bg-emerald-600/10 border border-emerald-500/30 rounded-lg">
         <summary className="cursor-pointer p-3 font-semibold text-emerald-200 hover:bg-emerald-600/20 rounded-lg transition-colors">
           📚 Παραδείγματα Μορφοποίησης (πατήστε για να δείτε)
         </summary>
@@ -435,6 +487,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </div>
         </div>
       </details>
-    </div>
+      </div>
+    </EditorErrorBoundary>
   );
 }
