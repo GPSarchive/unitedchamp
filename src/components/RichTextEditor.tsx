@@ -6,6 +6,7 @@ import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
+  Bold,
   Italic,
   Underline as UnderlineIcon,
   List,
@@ -137,9 +138,9 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         <div className="text-sm text-blue-100">
         <div className="grid md:grid-cols-2 gap-3 text-xs text-blue-200">
           <div className="space-y-1.5">
-            <p className="font-semibold text-white">Για Πλάγια/Υπογράμμιση:</p>
+            <p className="font-semibold text-white">Για Έντονα/Πλάγια/Υπογράμμιση:</p>
             <p>1. Επιλέξτε το κείμενο με το ποντίκι</p>
-            <p>2. Πατήστε το κουμπί (I, U)</p>
+            <p>2. Πατήστε το κουμπί (B, I, U)</p>
             <p>3. Το κείμενο αλλάζει αμέσως!</p>
           </div>
           <div className="space-y-1.5">
@@ -175,30 +176,21 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
         {/* Text formatting */}
         <div className="flex gap-1.5">
           <MenuButton
-            onClick={() => {
-              editor.chain().focus().toggleItalic().run();
-              // Clear stored marks after toggle to prevent unexpected behavior
-              setTimeout(() => {
-                const { state, view } = editor;
-                const tr = state.tr.setStoredMarks([]);
-                view.dispatch(tr);
-              }, 0);
-            }}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive('bold')}
+            title="Έντονα (Ctrl+B) - Κάντε το κείμενο έντονο"
+          >
+            <Bold size={18} />
+          </MenuButton>
+          <MenuButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
             active={editor.isActive('italic')}
             title="Πλάγια (Ctrl+I) - Κάντε το κείμενο πλάγιο"
           >
             <Italic size={18} />
           </MenuButton>
           <MenuButton
-            onClick={() => {
-              editor.chain().focus().toggleUnderline().run();
-              // Clear stored marks after toggle to prevent unexpected behavior
-              setTimeout(() => {
-                const { state, view } = editor;
-                const tr = state.tr.setStoredMarks([]);
-                view.dispatch(tr);
-              }, 0);
-            }}
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
             active={editor.isActive('underline')}
             title="Υπογράμμιση (Ctrl+U) - Υπογραμμίστε το κείμενο"
           >
@@ -308,9 +300,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        bold: false, // Disable bold completely
-      }),
+      StarterKit,
       Underline,
       Image.configure({
         HTMLAttributes: {
@@ -324,12 +314,6 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getJSON());
-    },
-    onSelectionUpdate: ({ editor }) => {
-      // Clear stored marks when selection changes to prevent unexpected formatting
-      const { state, view } = editor;
-      const tr = state.tr.setStoredMarks([]);
-      view.dispatch(tr);
     },
     editorProps: {
       attributes: {
@@ -367,6 +351,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
 
           <div className="space-y-2 border-b border-emerald-500/20 pb-3">
             <p className="font-semibold text-emerald-300">Μορφοποίηση Κειμένου:</p>
+            <p><strong>Έντονο κείμενο</strong> (B)</p>
             <p><em>Πλάγιο κείμενο</em> (I)</p>
             <p><u>Υπογραμμισμένο κείμενο</u> (U)</p>
           </div>
