@@ -4,7 +4,6 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -315,18 +314,28 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           class: 'max-w-full h-auto rounded-lg my-4',
         },
       }),
-      Placeholder.configure({
-        placeholder: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
-      }),
     ],
-    content,
+    content: content || {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: placeholder || 'Αρχίστε να γράφετε το άρθρο σας...',
+            },
+          ],
+        },
+      ],
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.getJSON());
     },
     editorProps: {
       attributes: {
         class:
-          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none editor-lined-bg rounded-b-lg',
+          'prose prose-invert max-w-none min-h-[300px] p-4 focus:outline-none bg-black/40 rounded-b-lg',
       },
     },
   });
