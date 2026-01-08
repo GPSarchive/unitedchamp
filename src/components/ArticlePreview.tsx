@@ -4,7 +4,7 @@ import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
-import DOMPurify from 'dompurify';
+import DOMPurify from 'isomorphic-dompurify';
 
 interface ArticlePreviewProps {
   content: any;
@@ -26,8 +26,8 @@ export default function ArticlePreview({ content, title, className = '' }: Artic
       ])
     : '';
 
-  // Sanitize HTML for security
-  const sanitizedHTML = typeof window !== 'undefined' ? DOMPurify.sanitize(html) : html;
+  // Sanitize HTML for security (works on both server and client with isomorphic-dompurify)
+  const sanitizedHTML = DOMPurify.sanitize(html);
 
   return (
     <div className={`prose prose-invert max-w-none ${className}`}>
