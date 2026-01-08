@@ -380,7 +380,7 @@ const isValidTipTapContent = (content: any): boolean => {
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   // Track if the update is coming from the editor itself (to avoid circular updates)
   const isInternalUpdate = React.useRef(false);
-  const updateTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const updateTimeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Debounced onChange to reduce parent re-renders during typing
   const debouncedOnChange = React.useCallback((json: any) => {
