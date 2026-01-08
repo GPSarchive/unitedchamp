@@ -74,6 +74,13 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
   }
 
   const addLink = () => {
+    // If link is already active, remove it
+    if (editor.isActive('link')) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+
+    // Otherwise, add a new link
     const url = window.prompt('Εισάγετε τη διεύθυνση URL:');
     if (url) {
       editor.chain().focus().setLink({ href: url }).run();
@@ -171,6 +178,12 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
             <p>1. Πατήστε το κουμπί παράθεσης</p>
             <p>2. Γράψτε το κείμενο που θέλετε</p>
             <p>3. Θα εμφανιστεί με ειδική μορφή</p>
+          </div>
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Σύνδεσμο (🔗):</p>
+            <p>1. Επιλέξτε το κείμενο που θέλετε</p>
+            <p>2. Πατήστε το κουμπί συνδέσμου</p>
+            <p>3. Για αφαίρεση: πατήστε το κουμπί ξανά</p>
           </div>
         </div>
         <div className="mt-3 space-y-2 border-t border-blue-400/30 pt-3">
@@ -289,7 +302,7 @@ const MenuBar = ({ editor }: { editor: Editor | null }) => {
           <MenuButton
             onClick={addLink}
             active={editor.isActive('link')}
-            title="Σύνδεσμος - Προσθέστε σύνδεσμο (επιλέξτε κείμενο πρώτα)"
+            title="Σύνδεσμος - Προσθέστε σύνδεσμο (επιλέξτε κείμενο πρώτα) ή πατήστε ξανά για αφαίρεση"
           >
             <LinkIcon size={18} />
           </MenuButton>
