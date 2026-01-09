@@ -174,75 +174,81 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Article header */}
-        <header className="mb-8 pb-8 border-b border-neutral-800">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
-            {article.title}
-          </h1>
-
-          {article.excerpt && (
-            <p className="text-xl text-[#ffffff] mb-6 leading-relaxed">{article.excerpt}</p>
+        {/* White content container */}
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Featured image */}
+          {article.featured_image && (
+            <div className="w-full">
+              <img
+                src={article.featured_image}
+                alt={article.title}
+                className="w-full h-auto object-cover max-h-[500px]"
+              />
+            </div>
           )}
 
-          {/* Article metadata */}
-          <div className="flex items-center gap-4 flex-wrap text-sm text-neutral-500">
-            {publishedDate && (
-              <time className="flex items-center gap-1.5" dateTime={article.published_at!}>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {publishedDate}
-              </time>
-            )}
+          {/* Article content wrapper with padding */}
+          <div className="px-8 md:px-12 py-10">
+            {/* Article header */}
+            <header className="mb-8 pb-8 border-b border-neutral-200">
+              <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-4 leading-tight">
+                {article.title}
+              </h1>
 
-            <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {formatReadTime(readTime)}
-            </span>
+              {article.excerpt && (
+                <p className="text-xl text-neutral-600 mb-6 leading-relaxed">{article.excerpt}</p>
+              )}
 
-            <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              {formatViewCount(viewCount)}
-            </span>
-          </div>
-        </header>
+              {/* Article metadata */}
+              <div className="flex items-center gap-4 flex-wrap text-sm text-neutral-500">
+                {publishedDate && (
+                  <time className="flex items-center gap-1.5" dateTime={article.published_at!}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {publishedDate}
+                  </time>
+                )}
 
-        {/* Featured image */}
-        {article.featured_image && (
-          <div className="mb-8">
-            <img
-              src={article.featured_image}
-              alt={article.title}
-              className="w-full h-auto rounded-xl shadow-2xl"
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {formatReadTime(readTime)}
+                </span>
+
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  {formatViewCount(viewCount)}
+                </span>
+              </div>
+            </header>
+
+            {/* Article content */}
+            <div
+              className="prose prose-lg max-w-none
+                prose-headings:text-neutral-900 prose-headings:font-bold
+                prose-h1:text-3xl prose-h1:mb-4
+                prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
+                prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
+                prose-p:text-neutral-700 prose-p:leading-relaxed prose-p:mb-4
+                prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-700
+                prose-strong:text-neutral-900 prose-strong:font-semibold
+                prose-ul:text-neutral-700 prose-ul:list-disc prose-ul:pl-6
+                prose-ol:text-neutral-700 prose-ol:list-decimal prose-ol:pl-6
+                prose-li:mb-2 prose-li:text-neutral-700
+                prose-blockquote:border-l-4 prose-blockquote:border-blue-500
+                prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600 prose-blockquote:bg-neutral-50
+                prose-code:text-emerald-600 prose-code:bg-neutral-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
+                prose-img:rounded-lg prose-img:shadow-lg"
+              dangerouslySetInnerHTML={{ __html: contentHTML }}
             />
           </div>
-        )}
-
-        {/* Article content */}
-        <div
-          className="prose prose-lg max-w-none
-            prose-headings:text-[#ffffff] prose-headings:font-bold
-            prose-h1:text-3xl prose-h1:mb-4
-            prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
-            prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-            prose-p:text-[#ffffff] prose-p:leading-relaxed prose-p:mb-4
-            prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300
-            prose-strong:text-[#ffffff] prose-strong:font-semibold
-            prose-ul:text-[#ffffff] prose-ul:list-disc prose-ul:pl-6
-            prose-ol:text-[#ffffff] prose-ol:list-decimal prose-ol:pl-6
-            prose-li:mb-2 prose-li:text-[#ffffff]
-            prose-blockquote:border-l-4 prose-blockquote:border-blue-500
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-[#ffffff] prose-blockquote:bg-blue-500/5
-            prose-code:text-emerald-400 prose-code:bg-neutral-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-            prose-pre:bg-neutral-950 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
-            prose-img:rounded-lg prose-img:shadow-2xl"
-          dangerouslySetInnerHTML={{ __html: contentHTML }}
-        />
+        </div>
 
         {/* Article Navigation (Previous/Next) */}
         <ArticleNavigation previousArticle={previousArticle} nextArticle={nextArticle} />
