@@ -19,7 +19,7 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
   }
 
   return (
-    <div className="mt-16 pt-12 border-t border-white/10">
+    <div className="mt-16 pt-12 border-t border-slate-700/50">
       <h2 className="text-2xl font-bold text-white mb-8">Πρόσφατα Άρθρα</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -36,11 +36,11 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
             <Link
               key={article.id}
               href={`/article/${article.slug}`}
-              className="group block bg-white/5 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-white/5"
+              className="group block bg-slate-800/40 rounded-lg overflow-hidden border border-slate-700/50 hover:border-slate-500 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/10"
             >
               {/* Article Image */}
               {article.featured_image ? (
-                <div className="aspect-video w-full overflow-hidden bg-black/30">
+                <div className="aspect-video w-full overflow-hidden bg-slate-900">
                   <img
                     src={article.featured_image}
                     alt={article.title}
@@ -48,9 +48,9 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
                   />
                 </div>
               ) : (
-                <div className="aspect-video w-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                <div className="aspect-video w-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                   <svg
-                    className="w-16 h-16 text-white/20"
+                    className="w-16 h-16 text-slate-600"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -66,19 +66,19 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
               )}
 
               {/* Article Content */}
-              <div className="p-5">
+              <div className="p-5 bg-slate-800/60">
                 <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
                   {article.title}
                 </h3>
 
                 {article.excerpt && (
-                  <p className="text-sm text-white/60 mb-3 line-clamp-2">
+                  <p className="text-sm text-slate-300 mb-3 line-clamp-2">
                     {article.excerpt}
                   </p>
                 )}
 
                 {publishedDate && (
-                  <time className="text-xs text-white/40" dateTime={article.published_at!}>
+                  <time className="text-xs text-slate-400" dateTime={article.published_at!}>
                     {publishedDate}
                   </time>
                 )}

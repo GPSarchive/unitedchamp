@@ -16,16 +16,16 @@ export default function ArticleNavigation({ previousArticle, nextArticle }: Arti
   }
 
   return (
-    <nav className="mt-12 pt-8 border-t border-white/10">
+    <nav className="mt-12 pt-8 border-t border-slate-700/50">
       <div className="flex items-center justify-between gap-4">
         {/* Previous Article */}
         {previousArticle ? (
           <Link
             href={`/article/${previousArticle.slug}`}
-            className="group flex items-center gap-3 px-4 py-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)]"
+            className="group flex items-center gap-3 px-4 py-3 bg-slate-800/40 rounded-lg border border-slate-700/50 hover:border-slate-500 hover:bg-slate-800/60 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)]"
           >
             <svg
-              className="w-5 h-5 text-white/50 group-hover:text-white transition-colors flex-shrink-0"
+              className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -33,7 +33,7 @@ export default function ArticleNavigation({ previousArticle, nextArticle }: Arti
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             <div className="min-w-0">
-              <div className="text-xs text-white/40 uppercase tracking-wide mb-1">Προηγούμενο</div>
+              <div className="text-xs text-slate-500 uppercase tracking-wide mb-1">Προηγούμενο</div>
               <div className="text-sm text-white font-medium truncate group-hover:text-blue-400 transition-colors">
                 {previousArticle.title}
               </div>
@@ -47,16 +47,16 @@ export default function ArticleNavigation({ previousArticle, nextArticle }: Arti
         {nextArticle ? (
           <Link
             href={`/article/${nextArticle.slug}`}
-            className="group flex items-center gap-3 px-4 py-3 bg-white/5 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)] justify-end text-right"
+            className="group flex items-center gap-3 px-4 py-3 bg-slate-800/40 rounded-lg border border-slate-700/50 hover:border-slate-500 hover:bg-slate-800/60 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)] justify-end text-right"
           >
             <div className="min-w-0">
-              <div className="text-xs text-white/40 uppercase tracking-wide mb-1">Επόμενο</div>
+              <div className="text-xs text-slate-500 uppercase tracking-wide mb-1">Επόμενο</div>
               <div className="text-sm text-white font-medium truncate group-hover:text-blue-400 transition-colors">
                 {nextArticle.title}
               </div>
             </div>
             <svg
-              className="w-5 h-5 text-white/50 group-hover:text-white transition-colors flex-shrink-0"
+              className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors flex-shrink-0"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

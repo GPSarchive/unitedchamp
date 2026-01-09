@@ -28,15 +28,15 @@ export default async function ArticlesPage() {
   const articles = await getArticles();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Hero Section */}
-      <div className="border-b border-white/10 bg-black/30 backdrop-blur-sm">
+      <div className="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-16">
           <div className="text-center animate-fade-in">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
               Άρθρα
             </h1>
-            <p className="text-xl text-white/70 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
               Διαβάστε τα τελευταία νέα, αναλύσεις αγώνων και ενημερώσεις
             </p>
           </div>
@@ -47,9 +47,9 @@ export default async function ArticlesPage() {
       <div className="max-w-7xl mx-auto px-4 py-16">
         {articles.length === 0 ? (
           <div className="text-center py-20">
-            <div className="inline-block p-6 rounded-full bg-white/5 mb-6">
+            <div className="inline-block p-6 rounded-full bg-slate-800/50 mb-6">
               <svg
-                className="w-16 h-16 text-white/30"
+                className="w-16 h-16 text-slate-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -63,7 +63,7 @@ export default async function ArticlesPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Δεν υπάρχουν άρθρα</h2>
-            <p className="text-white/60">Τα άρθρα θα εμφανιστούν εδώ μόλις δημοσιευτούν</p>
+            <p className="text-slate-400">Τα άρθρα θα εμφανιστούν εδώ μόλις δημοσιευτούν</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -90,10 +90,10 @@ export default async function ArticlesPage() {
                     animationFillMode: 'forwards',
                   }}
                 >
-                  <article className="h-full bg-white/5 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-white/10">
+                  <article className="h-full bg-slate-800/40 rounded-xl overflow-hidden border border-slate-700/50 hover:border-slate-500 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/10">
                     {/* Article Image */}
                     {article.featured_image ? (
-                      <div className="aspect-video w-full overflow-hidden bg-black/30">
+                      <div className="aspect-video w-full overflow-hidden bg-slate-900">
                         <img
                           src={article.featured_image}
                           alt={article.title}
@@ -101,9 +101,9 @@ export default async function ArticlesPage() {
                         />
                       </div>
                     ) : (
-                      <div className="aspect-video w-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
+                      <div className="aspect-video w-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
                         <svg
-                          className="w-20 h-20 text-white/20 transition-transform duration-500 group-hover:scale-110"
+                          className="w-20 h-20 text-slate-600 transition-transform duration-500 group-hover:scale-110"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -119,9 +119,9 @@ export default async function ArticlesPage() {
                     )}
 
                     {/* Article Content */}
-                    <div className="p-6">
+                    <div className="p-6 bg-slate-800/60">
                       {/* Metadata */}
-                      <div className="flex items-center gap-3 mb-4 text-xs text-white/50">
+                      <div className="flex items-center gap-3 mb-4 text-xs text-slate-400">
                         {publishedDate && (
                           <time className="flex items-center gap-1">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,13 +154,13 @@ export default async function ArticlesPage() {
 
                       {/* Excerpt */}
                       {article.excerpt && (
-                        <p className="text-white/70 mb-4 line-clamp-3 leading-relaxed">
+                        <p className="text-slate-300 mb-4 line-clamp-3 leading-relaxed">
                           {article.excerpt}
                         </p>
                       )}
 
                       {/* Read More */}
-                      <div className="flex items-center gap-2 text-blue-400 font-medium group-hover:gap-3 transition-all duration-300">
+                      <div className="flex items-center gap-2 text-blue-400 font-medium group-hover:gap-3 group-hover:text-blue-300 transition-all duration-300">
                         <span>Διαβάστε περισσότερα</span>
                         <svg
                           className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1"
@@ -182,7 +182,7 @@ export default async function ArticlesPage() {
         {/* Article Count */}
         {articles.length > 0 && (
           <div className="text-center mt-16 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-            <p className="text-white/50">
+            <p className="text-slate-400">
               Εμφάνιση {articles.length} {articles.length === 1 ? 'άρθρου' : 'άρθρων'}
             </p>
           </div>

@@ -149,18 +149,18 @@ export default async function ArticlePage({ params }: PageProps) {
   const viewCount = article.view_count || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* View counter (hidden, just for tracking) */}
       <ArticleViewCounter slug={slug} />
 
       {/* Header with back navigation */}
-      <div className="border-b border-white/10 bg-black/30 backdrop-blur-sm">
+      <div className="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <a
-            href="/"
-            className="inline-flex items-center text-sm text-white/70 hover:text-white transition-colors"
+            href="/articles"
+            className="inline-flex items-center text-sm text-slate-300 hover:text-white transition-colors"
           >
-            ← Back to Home
+            ← Πίσω στα Άρθρα
           </a>
         </div>
       </div>
@@ -175,17 +175,17 @@ export default async function ArticlePage({ params }: PageProps) {
         )}
 
         {/* Article header */}
-        <header className="mb-8 pb-8 border-b border-white/10">
+        <header className="mb-8 pb-8 border-b border-slate-700/50">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="text-xl text-white/70 mb-6 leading-relaxed">{article.excerpt}</p>
+            <p className="text-xl text-slate-300 mb-6 leading-relaxed">{article.excerpt}</p>
           )}
 
           {/* Article metadata */}
-          <div className="flex items-center gap-4 flex-wrap text-sm text-white/50">
+          <div className="flex items-center gap-4 flex-wrap text-sm text-slate-400">
             {publishedDate && (
               <time className="flex items-center gap-1.5" dateTime={article.published_at!}>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,16 +230,16 @@ export default async function ArticlePage({ params }: PageProps) {
             prose-h1:text-3xl prose-h1:mb-4
             prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
             prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-            prose-p:text-white/90 prose-p:leading-relaxed prose-p:mb-4
-            prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+            prose-p:text-slate-200 prose-p:leading-relaxed prose-p:mb-4
+            prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300
             prose-strong:text-white prose-strong:font-semibold
-            prose-ul:text-white/90 prose-ul:list-disc prose-ul:pl-6
-            prose-ol:text-white/90 prose-ol:list-decimal prose-ol:pl-6
-            prose-li:mb-2
-            prose-blockquote:border-l-4 prose-blockquote:border-white/30
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-white/70
-            prose-code:text-emerald-400 prose-code:bg-black/50 prose-code:px-1 prose-code:rounded
-            prose-pre:bg-black/70 prose-pre:border prose-pre:border-white/20 prose-pre:rounded-lg
+            prose-ul:text-slate-200 prose-ul:list-disc prose-ul:pl-6
+            prose-ol:text-slate-200 prose-ol:list-decimal prose-ol:pl-6
+            prose-li:mb-2 prose-li:text-slate-200
+            prose-blockquote:border-l-4 prose-blockquote:border-slate-600
+            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-300
+            prose-code:text-emerald-400 prose-code:bg-slate-900/70 prose-code:px-1 prose-code:rounded
+            prose-pre:bg-slate-900/70 prose-pre:border prose-pre:border-slate-700 prose-pre:rounded-lg
             prose-img:rounded-lg prose-img:shadow-xl"
           dangerouslySetInnerHTML={{ __html: contentHTML }}
         />
@@ -251,13 +251,13 @@ export default async function ArticlePage({ params }: PageProps) {
         <RelatedArticles articles={relatedArticles} />
 
         {/* Article footer */}
-        <footer className="mt-12 pt-8 border-t border-white/10">
+        <footer className="mt-12 pt-8 border-t border-slate-700/50">
           <div className="flex items-center justify-between">
             <a
-              href="/"
-              className="text-sm text-white/70 hover:text-white transition-colors"
+              href="/articles"
+              className="text-sm text-slate-400 hover:text-white transition-colors"
             >
-              ← Back to Home
+              ← Πίσω στα Άρθρα
             </a>
           </div>
         </footer>
