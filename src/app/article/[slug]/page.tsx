@@ -149,16 +149,16 @@ export default async function ArticlePage({ params }: PageProps) {
   const viewCount = article.view_count || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900">
+    <div className="min-h-screen bg-white">
       {/* View counter (hidden, just for tracking) */}
       <ArticleViewCounter slug={slug} />
 
       {/* Header with back navigation */}
-      <div className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur-sm">
+      <div className="border-b border-neutral-200 bg-white/90 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <a
             href="/articles"
-            className="inline-flex items-center text-sm text-neutral-400 hover:text-white transition-colors"
+            className="inline-flex items-center text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             ← Πίσω στα Άρθρα
           </a>
@@ -257,11 +257,11 @@ export default async function ArticlePage({ params }: PageProps) {
         <RelatedArticles articles={relatedArticles} />
 
         {/* Article footer */}
-        <footer className="mt-12 pt-8 border-t border-neutral-800">
+        <footer className="mt-12 pt-8 border-t border-neutral-200">
           <div className="flex items-center justify-between">
             <a
               href="/articles"
-              className="text-sm text-neutral-500 hover:text-white transition-colors"
+              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
             >
               ← Πίσω στα Άρθρα
             </a>

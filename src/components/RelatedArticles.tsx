@@ -19,8 +19,8 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
   }
 
   return (
-    <div className="mt-16 pt-12 border-t border-neutral-800">
-      <h2 className="text-2xl font-bold text-white mb-8">Πρόσφατα Άρθρα</h2>
+    <div className="mt-16 pt-12 border-t border-neutral-200">
+      <h2 className="text-2xl font-bold text-neutral-900 mb-8">Πρόσφατα Άρθρα</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {articles.map((article) => {
@@ -36,11 +36,11 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
             <Link
               key={article.id}
               href={`/article/${article.slug}`}
-              className="group block bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800 hover:border-blue-500 transition-all duration-500 hover:scale-[1.08] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-2"
+              className="group block bg-white rounded-lg overflow-hidden border border-neutral-200 hover:border-blue-500 transition-all duration-500 hover:scale-[1.08] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-2"
             >
               {/* Article Image */}
               {article.featured_image ? (
-                <div className="aspect-video w-full overflow-hidden bg-neutral-900">
+                <div className="aspect-video w-full overflow-hidden bg-neutral-100">
                   <img
                     src={article.featured_image}
                     alt={article.title}
@@ -48,9 +48,9 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
                   />
                 </div>
               ) : (
-                <div className="aspect-video w-full bg-gradient-to-br from-neutral-900 to-neutral-950 flex items-center justify-center">
+                <div className="aspect-video w-full bg-gradient-to-br from-neutral-100 to-neutral-50 flex items-center justify-center">
                   <svg
-                    className="w-16 h-16 text-neutral-700"
+                    className="w-16 h-16 text-neutral-300"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -67,12 +67,12 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
 
               {/* Article Content */}
               <div className="p-5">
-                <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
+                <h3 className="text-lg font-bold text-neutral-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                   {article.title}
                 </h3>
 
                 {article.excerpt && (
-                  <p className="text-sm text-[#ffffff] mb-3 line-clamp-2">
+                  <p className="text-sm text-neutral-600 mb-3 line-clamp-2">
                     {article.excerpt}
                   </p>
                 )}
