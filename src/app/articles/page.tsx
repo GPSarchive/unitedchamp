@@ -28,7 +28,7 @@ export default async function ArticlesPage() {
   const articles = await getArticles();
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900">
       {/* Hero Section */}
       <div className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 py-16">
@@ -36,7 +36,7 @@ export default async function ArticlesPage() {
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
               Άρθρα
             </h1>
-            <p className="text-xl text-white max-w-2xl mx-auto">
+            <p className="text-xl text-[#ffffff] max-w-2xl mx-auto">
               Διαβάστε τα τελευταία νέα, αναλύσεις αγώνων και ενημερώσεις
             </p>
           </div>
@@ -154,7 +154,7 @@ export default async function ArticlesPage() {
 
                       {/* Excerpt */}
                       {article.excerpt && (
-                        <p className="text-white mb-4 line-clamp-3 leading-relaxed">
+                        <p className="text-[#ffffff] mb-4 line-clamp-3 leading-relaxed">
                           {article.excerpt}
                         </p>
                       )}

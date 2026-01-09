@@ -149,7 +149,7 @@ export default async function ArticlePage({ params }: PageProps) {
   const viewCount = article.view_count || 0;
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900">
       {/* View counter (hidden, just for tracking) */}
       <ArticleViewCounter slug={slug} />
 
@@ -181,7 +181,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </h1>
 
           {article.excerpt && (
-            <p className="text-xl text-white mb-6 leading-relaxed">{article.excerpt}</p>
+            <p className="text-xl text-[#ffffff] mb-6 leading-relaxed">{article.excerpt}</p>
           )}
 
           {/* Article metadata */}
@@ -226,18 +226,18 @@ export default async function ArticlePage({ params }: PageProps) {
         {/* Article content */}
         <div
           className="prose prose-invert prose-lg max-w-none
-            prose-headings:text-white prose-headings:font-bold
+            prose-headings:text-[#ffffff] prose-headings:font-bold
             prose-h1:text-3xl prose-h1:mb-4
             prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
             prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-            prose-p:text-white prose-p:leading-relaxed prose-p:mb-4
+            prose-p:text-[#ffffff] prose-p:leading-relaxed prose-p:mb-4
             prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300
-            prose-strong:text-white prose-strong:font-semibold
-            prose-ul:text-white prose-ul:list-disc prose-ul:pl-6
-            prose-ol:text-white prose-ol:list-decimal prose-ol:pl-6
-            prose-li:mb-2 prose-li:text-white
+            prose-strong:text-[#ffffff] prose-strong:font-semibold
+            prose-ul:text-[#ffffff] prose-ul:list-disc prose-ul:pl-6
+            prose-ol:text-[#ffffff] prose-ol:list-decimal prose-ol:pl-6
+            prose-li:mb-2 prose-li:text-[#ffffff]
             prose-blockquote:border-l-4 prose-blockquote:border-neutral-700
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-white
+            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-[#ffffff]
             prose-code:text-emerald-400 prose-code:bg-neutral-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
             prose-pre:bg-neutral-950 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
             prose-img:rounded-lg prose-img:shadow-2xl"
