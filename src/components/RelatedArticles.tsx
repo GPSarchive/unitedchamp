@@ -72,7 +72,7 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
                 </h3>
 
                 {article.excerpt && (
-                  <p className="text-sm text-white/80 mb-3 line-clamp-2">
+                  <p className="text-sm text-white mb-3 line-clamp-2">
                     {article.excerpt}
                   </p>
                 )}
