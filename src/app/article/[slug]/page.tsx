@@ -149,16 +149,16 @@ export default async function ArticlePage({ params }: PageProps) {
   const viewCount = article.view_count || 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-black">
       {/* View counter (hidden, just for tracking) */}
       <ArticleViewCounter slug={slug} />
 
       {/* Header with back navigation */}
-      <div className="border-b border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+      <div className="border-b border-neutral-800 bg-neutral-950/90 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <a
             href="/articles"
-            className="inline-flex items-center text-sm text-slate-300 hover:text-white transition-colors"
+            className="inline-flex items-center text-sm text-neutral-400 hover:text-white transition-colors"
           >
             ← Πίσω στα Άρθρα
           </a>
@@ -175,17 +175,17 @@ export default async function ArticlePage({ params }: PageProps) {
         )}
 
         {/* Article header */}
-        <header className="mb-8 pb-8 border-b border-slate-700/50">
+        <header className="mb-8 pb-8 border-b border-neutral-800">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="text-xl text-slate-300 mb-6 leading-relaxed">{article.excerpt}</p>
+            <p className="text-xl text-neutral-300 mb-6 leading-relaxed">{article.excerpt}</p>
           )}
 
           {/* Article metadata */}
-          <div className="flex items-center gap-4 flex-wrap text-sm text-slate-400">
+          <div className="flex items-center gap-4 flex-wrap text-sm text-neutral-500">
             {publishedDate && (
               <time className="flex items-center gap-1.5" dateTime={article.published_at!}>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -230,17 +230,17 @@ export default async function ArticlePage({ params }: PageProps) {
             prose-h1:text-3xl prose-h1:mb-4
             prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
             prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-            prose-p:text-slate-200 prose-p:leading-relaxed prose-p:mb-4
+            prose-p:text-neutral-200 prose-p:leading-relaxed prose-p:mb-4
             prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300
             prose-strong:text-white prose-strong:font-semibold
-            prose-ul:text-slate-200 prose-ul:list-disc prose-ul:pl-6
-            prose-ol:text-slate-200 prose-ol:list-decimal prose-ol:pl-6
-            prose-li:mb-2 prose-li:text-slate-200
-            prose-blockquote:border-l-4 prose-blockquote:border-slate-600
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-300
-            prose-code:text-emerald-400 prose-code:bg-slate-900/70 prose-code:px-1 prose-code:rounded
-            prose-pre:bg-slate-900/70 prose-pre:border prose-pre:border-slate-700 prose-pre:rounded-lg
-            prose-img:rounded-lg prose-img:shadow-xl"
+            prose-ul:text-neutral-200 prose-ul:list-disc prose-ul:pl-6
+            prose-ol:text-neutral-200 prose-ol:list-decimal prose-ol:pl-6
+            prose-li:mb-2 prose-li:text-neutral-200
+            prose-blockquote:border-l-4 prose-blockquote:border-neutral-700
+            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-300
+            prose-code:text-emerald-400 prose-code:bg-neutral-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+            prose-pre:bg-neutral-950 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
+            prose-img:rounded-lg prose-img:shadow-2xl"
           dangerouslySetInnerHTML={{ __html: contentHTML }}
         />
 
@@ -251,11 +251,11 @@ export default async function ArticlePage({ params }: PageProps) {
         <RelatedArticles articles={relatedArticles} />
 
         {/* Article footer */}
-        <footer className="mt-12 pt-8 border-t border-slate-700/50">
+        <footer className="mt-12 pt-8 border-t border-neutral-800">
           <div className="flex items-center justify-between">
             <a
               href="/articles"
-              className="text-sm text-slate-400 hover:text-white transition-colors"
+              className="text-sm text-neutral-500 hover:text-white transition-colors"
             >
               ← Πίσω στα Άρθρα
             </a>
