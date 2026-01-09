@@ -36,7 +36,7 @@ export default async function ArticlesPage() {
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
               Άρθρα
             </h1>
-            <p className="text-xl text-neutral-300 max-w-2xl mx-auto">
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
               Διαβάστε τα τελευταία νέα, αναλύσεις αγώνων και ενημερώσεις
             </p>
           </div>
@@ -154,7 +154,7 @@ export default async function ArticlesPage() {
 
                       {/* Excerpt */}
                       {article.excerpt && (
-                        <p className="text-neutral-300 mb-4 line-clamp-3 leading-relaxed">
+                        <p className="text-white/90 mb-4 line-clamp-3 leading-relaxed">
                           {article.excerpt}
                         </p>
                       )}

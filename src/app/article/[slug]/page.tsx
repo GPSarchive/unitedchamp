@@ -181,7 +181,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </h1>
 
           {article.excerpt && (
-            <p className="text-xl text-neutral-300 mb-6 leading-relaxed">{article.excerpt}</p>
+            <p className="text-xl text-white/80 mb-6 leading-relaxed">{article.excerpt}</p>
           )}
 
           {/* Article metadata */}
@@ -230,14 +230,14 @@ export default async function ArticlePage({ params }: PageProps) {
             prose-h1:text-3xl prose-h1:mb-4
             prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
             prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-            prose-p:text-neutral-200 prose-p:leading-relaxed prose-p:mb-4
+            prose-p:text-white/90 prose-p:leading-relaxed prose-p:mb-4
             prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-300
             prose-strong:text-white prose-strong:font-semibold
-            prose-ul:text-neutral-200 prose-ul:list-disc prose-ul:pl-6
-            prose-ol:text-neutral-200 prose-ol:list-decimal prose-ol:pl-6
-            prose-li:mb-2 prose-li:text-neutral-200
+            prose-ul:text-white/90 prose-ul:list-disc prose-ul:pl-6
+            prose-ol:text-white/90 prose-ol:list-decimal prose-ol:pl-6
+            prose-li:mb-2 prose-li:text-white/90
             prose-blockquote:border-l-4 prose-blockquote:border-neutral-700
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-300
+            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-white/70
             prose-code:text-emerald-400 prose-code:bg-neutral-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
             prose-pre:bg-neutral-950 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
             prose-img:rounded-lg prose-img:shadow-2xl"
