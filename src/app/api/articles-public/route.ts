@@ -21,16 +21,17 @@ export async function GET() {
         .eq('status', 'published')
         .order('published_at', { ascending: false });
 
-      articles = fallbackResult.data;
       error = fallbackResult.error;
 
       // Add missing fields with default values
-      if (articles) {
-        articles = articles.map(article => ({
+      if (fallbackResult.data) {
+        articles = fallbackResult.data.map(article => ({
           ...article,
           featured_image: null,
           view_count: 0,
         }));
+      } else {
+        articles = null;
       }
     }
 
