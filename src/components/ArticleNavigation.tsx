@@ -22,7 +22,7 @@ export default function ArticleNavigation({ previousArticle, nextArticle }: Arti
         {previousArticle ? (
           <Link
             href={`/article/${previousArticle.slug}`}
-            className="group flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 hover:border-neutral-600 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)]"
+            className="group flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 hover:border-blue-500 hover:bg-blue-500/10 transition-all duration-500 flex-1 max-w-[calc(50%-0.5rem)] hover:scale-105 hover:shadow-[0_10px_40px_-15px_rgba(59,130,246,0.5)]"
           >
             <svg
               className="w-5 h-5 text-neutral-500 group-hover:text-white transition-colors flex-shrink-0"
@@ -47,7 +47,7 @@ export default function ArticleNavigation({ previousArticle, nextArticle }: Arti
         {nextArticle ? (
           <Link
             href={`/article/${nextArticle.slug}`}
-            className="group flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 hover:border-neutral-600 transition-all duration-300 flex-1 max-w-[calc(50%-0.5rem)] justify-end text-right"
+            className="group flex items-center gap-3 px-4 py-3 bg-neutral-950 rounded-lg border border-neutral-800 hover:border-blue-500 hover:bg-blue-500/10 transition-all duration-500 flex-1 max-w-[calc(50%-0.5rem)] justify-end text-right hover:scale-105 hover:shadow-[0_10px_40px_-15px_rgba(59,130,246,0.5)]"
           >
             <div className="min-w-0">
               <div className="text-xs text-neutral-600 uppercase tracking-wide mb-1">Επόμενο</div>

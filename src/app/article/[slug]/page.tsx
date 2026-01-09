@@ -225,7 +225,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
         {/* Article content */}
         <div
-          className="prose prose-invert prose-lg max-w-none
+          className="prose prose-lg max-w-none
             prose-headings:text-[#ffffff] prose-headings:font-bold
             prose-h1:text-3xl prose-h1:mb-4
             prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
@@ -236,8 +236,8 @@ export default async function ArticlePage({ params }: PageProps) {
             prose-ul:text-[#ffffff] prose-ul:list-disc prose-ul:pl-6
             prose-ol:text-[#ffffff] prose-ol:list-decimal prose-ol:pl-6
             prose-li:mb-2 prose-li:text-[#ffffff]
-            prose-blockquote:border-l-4 prose-blockquote:border-neutral-700
-            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-[#ffffff]
+            prose-blockquote:border-l-4 prose-blockquote:border-blue-500
+            prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-[#ffffff] prose-blockquote:bg-blue-500/5
             prose-code:text-emerald-400 prose-code:bg-neutral-900 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
             prose-pre:bg-neutral-950 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
             prose-img:rounded-lg prose-img:shadow-2xl"

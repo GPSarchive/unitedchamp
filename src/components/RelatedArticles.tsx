@@ -36,7 +36,7 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
             <Link
               key={article.id}
               href={`/article/${article.slug}`}
-              className="group block bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800 hover:border-neutral-600 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-blue-500/20"
+              className="group block bg-neutral-950 rounded-lg overflow-hidden border border-neutral-800 hover:border-blue-500 transition-all duration-500 hover:scale-[1.08] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-2"
             >
               {/* Article Image */}
               {article.featured_image ? (
@@ -44,7 +44,7 @@ export default function RelatedArticles({ articles }: RelatedArticlesProps) {
                   <img
                     src={article.featured_image}
                     alt={article.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
                   />
                 </div>
               ) : (

@@ -90,14 +90,14 @@ export default async function ArticlesPage() {
                     animationFillMode: 'forwards',
                   }}
                 >
-                  <article className="h-full bg-neutral-950 rounded-xl overflow-hidden border border-neutral-800 hover:border-neutral-600 transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/20">
+                  <article className="h-full bg-neutral-950 rounded-xl overflow-hidden border border-neutral-800 hover:border-blue-500 transition-all duration-500 hover:scale-[1.08] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-2">
                     {/* Article Image */}
                     {article.featured_image ? (
                       <div className="aspect-video w-full overflow-hidden bg-neutral-900">
                         <img
                           src={article.featured_image}
                           alt={article.title}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-125"
                         />
                       </div>
                     ) : (
