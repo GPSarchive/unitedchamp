@@ -467,20 +467,20 @@ select option:checked {
 .ProseMirror ul,
 .article-content ul {
   list-style-type: disc;
-  color: #ffffff;
+  color: #27272a;
 }
 
 .ProseMirror ol,
 .article-content ol {
   list-style-type: decimal;
-  color: #ffffff;
+  color: #27272a;
 }
 
 .ProseMirror li,
 .article-content li {
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
-  color: #ffffff;
+  color: #27272a;
 }
 
 /* Nested lists */
@@ -497,12 +497,16 @@ select option:checked {
 /* Blockquotes */
 .ProseMirror blockquote,
 .article-content blockquote {
-  border-left: 4px solid #6366f1;
+  border-left: 4px solid #3b82f6;
   padding-left: 1rem;
   font-style: italic;
-  color: #ffffff;
+  color: #3f3f46;
+  background-color: #fafafa;
   margin-top: 1rem;
   margin-bottom: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  border-radius: 0 0.5rem 0.5rem 0;
 }
 
 /* Headings */
@@ -513,7 +517,7 @@ select option:checked {
   margin-top: 1.5rem;
   margin-bottom: 1rem;
   line-height: 1.2;
-  color: #ffffff;
+  color: #18181b;
 }
 
 .ProseMirror h2,
@@ -523,7 +527,7 @@ select option:checked {
   margin-top: 1.25rem;
   margin-bottom: 0.75rem;
   line-height: 1.3;
-  color: #ffffff;
+  color: #18181b;
 }
 
 .ProseMirror h3,
@@ -533,7 +537,7 @@ select option:checked {
   margin-top: 1rem;
   margin-bottom: 0.5rem;
   line-height: 1.4;
-  color: #ffffff;
+  color: #18181b;
 }
 
 /* Paragraphs */
@@ -541,7 +545,7 @@ select option:checked {
 .article-content p {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
-  color: #ffffff;
+  color: #27272a;
 }
 
 /* Code blocks */
@@ -558,8 +562,9 @@ select option:checked {
 .ProseMirror code,
 .article-content code {
   font-family: 'Courier New', monospace;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 0.125rem 0.25rem;
+  background-color: #d1fae5;
+  color: #047857;
+  padding: 0.125rem 0.5rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
 }
@@ -567,13 +572,14 @@ select option:checked {
 /* Links */
 .ProseMirror a,
 .article-content a {
-  color: #60a5fa;
+  color: #2563eb;
   text-decoration: underline;
+  font-weight: 500;
 }
 
 .ProseMirror a:hover,
 .article-content a:hover {
-  color: #93c5fd;
+  color: #1d4ed8;
 }
 
 /* Images */
@@ -588,7 +594,7 @@ select option:checked {
 
 /* Fix for placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(0, 0, 0, 0.4);
   content: attr(data-placeholder);
   float: left;
   height: 0;
