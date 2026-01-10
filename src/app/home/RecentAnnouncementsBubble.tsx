@@ -19,7 +19,7 @@ export default function RecentAnnouncementsBubble({ count }: Props) {
       <div className="relative">
         <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-white/95 transition-colors" />
         {count > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-blue-500 text-white text-[10px] sm:text-xs font-bold">
+          <span className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold">
             {count > 9 ? "9+" : count}
           </span>
         )}

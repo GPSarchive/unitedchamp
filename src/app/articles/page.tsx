@@ -363,15 +363,6 @@ export default function UnifiedContentPage() {
               })}
             </div>
           )}
-
-          {/* Count */}
-          {filteredItems.length > 0 && (
-            <div className="text-center mt-16">
-              <p className="text-white/75">
-                Εμφάνιση {filteredItems.length} {filteredItems.length === 1 ? 'στοιχείου' : 'στοιχείων'}
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </section>
