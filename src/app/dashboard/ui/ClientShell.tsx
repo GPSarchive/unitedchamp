@@ -14,6 +14,7 @@ const NAV = [
   { href: "/dashboard/matches", label: "Αγώνες" },
   { href: "/dashboard/tournaments", label: "Διοργανώσεις" },
   { href: "/dashboard/announcements", label: "Ανακοινώσεις" },
+  { href: "/dashboard/articles", label: "Άρθρα" },
 ];
 
 export default function ClientShell({
