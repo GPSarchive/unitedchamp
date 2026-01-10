@@ -187,7 +187,7 @@ export default function UnifiedContentPage() {
                     : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
                 }`}
               >
-                Όλα ({items.length})
+                Όλα
               </button>
               <button
                 onClick={() => setFilter('articles')}
@@ -197,7 +197,7 @@ export default function UnifiedContentPage() {
                     : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
                 }`}
               >
-                Άρθρα ({articlesCount})
+                Άρθρα
               </button>
               <button
                 onClick={() => setFilter('announcements')}
@@ -207,7 +207,7 @@ export default function UnifiedContentPage() {
                     : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
                 }`}
               >
-                Ανακοινώσεις ({announcementsCount})
+                Ανακοινώσεις
               </button>
             </div>
           </div>
