@@ -210,26 +210,39 @@ async function fetchTournaments() {
   });
 }
 
-async function fetchRecentAnnouncementsCount() {
-  return withConsoleTiming('db:recent-announcements', async () => {
+async function fetchRecentContentCount() {
+  return withConsoleTiming('db:recent-content', async () => {
     // Calculate date 2 days ago
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     const twoDaysAgoISO = twoDaysAgo.toISOString();
 
-    const { count, error } = await supabaseAdmin
+    // Fetch recent announcements count
+    const { count: announcementsCount, error: announcementsError } = await supabaseAdmin
       .from('announcements')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'published')
       .gte('created_at', twoDaysAgoISO);
 
-    if (error) {
-      console.error('Error fetching recent announcements count:', error.message);
-      return { recentAnnouncementsCount: 0 };
+    if (announcementsError) {
+      console.error('Error fetching recent announcements count:', announcementsError.message);
     }
 
-    console.log(`Recent announcements count: ${count ?? 0}`);
-    return { recentAnnouncementsCount: count ?? 0 };
+    // Fetch recent articles count
+    const { count: articlesCount, error: articlesError } = await supabaseAdmin
+      .from('articles')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+      .gte('published_at', twoDaysAgoISO);
+
+    if (articlesError) {
+      console.error('Error fetching recent articles count:', articlesError.message);
+    }
+
+    const totalCount = (announcementsCount ?? 0) + (articlesCount ?? 0);
+    console.log(`Recent content count: ${announcementsCount ?? 0} announcements + ${articlesCount ?? 0} articles = ${totalCount}`);
+
+    return { recentContentCount: totalCount };
   });
 }
 
@@ -320,11 +333,11 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentAnnouncementsCount }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
-    fetchRecentAnnouncementsCount()
+    fetchRecentContentCount()
   ]);
   const events = mapMatchesToEvents(rawMatches ?? []);
   const eventsToPass = resolveMatchTournamentLogos(events);
@@ -501,8 +514,8 @@ export default async function Home() {
         </div>
       </footer>
 
-      {/* Recent Announcements Bubble */}
-      <RecentAnnouncementsBubble count={recentAnnouncementsCount} />
+      {/* Recent Content Bubble */}
+      <RecentAnnouncementsBubble count={recentContentCount} />
     </div>
   );
 }

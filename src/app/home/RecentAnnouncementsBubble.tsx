@@ -12,9 +12,9 @@ export default function RecentAnnouncementsBubble({ count }: Props) {
 
   return (
     <Link
-      href="/anakoinoseis"
+      href="/articles"
       className="group fixed top-32 left-4 sm:left-6 z-50 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-full bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40 transition-all duration-200 hover:scale-105 active:scale-95"
-      aria-label={`${count} νέες ανακοινώσεις`}
+      aria-label={`${count} νέα άρθρα & ανακοινώσεις`}
     >
       <div className="relative">
         <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-white group-hover:text-white/95 transition-colors" />
@@ -25,7 +25,7 @@ export default function RecentAnnouncementsBubble({ count }: Props) {
         )}
       </div>
       <span className="text-xs sm:text-sm font-medium text-white/90 group-hover:text-white transition-colors">
-        Νέες Ανακοινώσεις
+        Νέο Περιεχόμενο
       </span>
     </Link>
   );
