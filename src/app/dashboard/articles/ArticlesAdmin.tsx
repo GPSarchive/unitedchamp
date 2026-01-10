@@ -209,7 +209,7 @@ export default function ArticlesAdmin() {
                 className="border border-white/20 bg-black/40 rounded-lg px-4 py-2 min-h-[80px] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 backdrop-blur-sm"
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Σύντομη περιγραφή για SEO και προεπισκοπήσεις..."
+                placeholder="Εισάγετε περίληψη..."
               />
             </label>
 
