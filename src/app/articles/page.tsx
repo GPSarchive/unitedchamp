@@ -249,6 +249,52 @@ export default function UnifiedContentPage() {
                   day: 'numeric',
                 });
 
+                // Different layout for announcements vs articles
+                if (item.type === 'announcement') {
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.link}
+                      className="group block"
+                    >
+                      <article className="h-full bg-black/80 backdrop-blur-lg rounded-2xl border-2 border-white/20 hover:border-amber-500 transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_20px_60px_-15px_rgba(245,158,11,0.5)] p-6">
+                        {/* Header with Badge and Pin */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg bg-amber-500 text-white">
+                            Ανακοίνωση
+                          </span>
+                          {item.pinned && (
+                            <span className="text-xs px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 text-neutral-700 font-medium shadow-lg">
+                              📌 Pinned
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Date */}
+                        <div className="flex items-center gap-2 mb-4 text-xs text-white/60">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <time dateTime={item.date}>{publishedDate}</time>
+                        </div>
+
+                        {/* Title */}
+                        <h2 className="text-xl font-semibold text-white mb-4 group-hover:text-amber-300 transition-colors duration-300">
+                          {item.title}
+                        </h2>
+
+                        {/* Excerpt */}
+                        {item.excerpt && (
+                          <p className="text-white/75 mb-0 leading-relaxed line-clamp-4">
+                            {item.excerpt}
+                          </p>
+                        )}
+                      </article>
+                    </Link>
+                  );
+                }
+
+                // Article layout with image
                 return (
                   <Link
                     key={item.id}
@@ -258,14 +304,8 @@ export default function UnifiedContentPage() {
                     <article className="h-full bg-black/60 backdrop-blur-lg rounded-xl overflow-hidden border-2 border-white/20 hover:border-blue-500 transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-1">
                       {/* Content Type Badge & Pin */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-                        <span
-                          className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg ${
-                            item.type === 'article'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-amber-500 text-white'
-                          }`}
-                        >
-                          {item.type === 'article' ? 'Άρθρο' : 'Ανακοίνωση'}
+                        <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg bg-blue-600 text-white">
+                          Άρθρο
                         </span>
                         {item.pinned && (
                           <span className="text-xs px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 text-neutral-700 font-medium shadow-lg">
