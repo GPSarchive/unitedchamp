@@ -7,7 +7,6 @@ import  KnockoutConfigFromLeague from "./leauge/KnockoutConfigFromLeague";
 import GroupsBoard from "./groups/GroupsBoard";
 import KnockoutBoard from "./KnockoutTree/newknockout/KnockoutBoard";
 import GroupsConfigKOIntake from "./groups/GroupsConfigKOIntake";
-import KnockoutConfigFromGroups from "./KnockoutTree/newknockout/KnockoutConfigFromGroups";
 import InlineMatchPlanner from "../preview/InlineMatchPlanner";
 import StageStandingsMini from "./StageStandingsMini";
 
@@ -441,27 +440,12 @@ export default function StageCard({
       {/* Config: Knockout */}
       {isKnockout && (
         <div className="mt-4">
-          {(() => {
-            const srcIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
-              ? Number((cfg as any).from_stage_idx)
-              : null;
-            const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
-            return srcStage?.kind === "groups" ? (
-              <KnockoutConfigFromGroups
-                cfg={cfg}
-                setCfg={(p: Partial<StageConfig>) => setCfg(p)}
-                allStages={allStages}
-                stageIndex={index}
-              />
-            ) : (
-              <KnockoutConfigFromLeague
-                cfg={cfg}
-                setCfg={(p: Partial<StageConfig>) => setCfg(p)}
-                allStages={allStages}
-                stageIndex={index}
-              />
-            );
-          })()}
+          <KnockoutConfigFromLeague
+            cfg={cfg}
+            setCfg={(p: Partial<StageConfig>) => setCfg(p)}
+            allStages={allStages}
+            stageIndex={index}
+          />
         </div>
       )}
     </div>
