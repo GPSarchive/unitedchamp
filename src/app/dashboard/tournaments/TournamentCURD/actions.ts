@@ -519,6 +519,32 @@ export async function createTournamentAction(formData: FormData) {
     }
   }
 
+  // NEW: Auto-seed KO stages from their source stages (league/groups)
+  const progression = await import('@/app/dashboard/tournaments/TournamentCURD/progression');
+  for (let i = 0; i < payload.stages.length; i++) {
+    const stage = payload.stages[i];
+    if (stage.kind === 'knockout') {
+      const cfg = (stage.config ?? {}) as any;
+      const fromIdx = Number(cfg.from_stage_idx);
+      if (Number.isFinite(fromIdx) && fromIdx < i) {
+        const srcStage = payload.stages[fromIdx];
+        const srcStageId = stageIdByIndex[fromIdx];
+        if (srcStageId) {
+          try {
+            if (srcStage.kind === 'groups') {
+              await progression.seedNextKnockoutFromGroupsIfConfigured(srcStageId, { reseed: true, allowEarly: true });
+            } else if (srcStage.kind === 'league') {
+              await progression.seedNextKnockoutFromLeagueIfConfigured(srcStageId, { reseed: true, allowEarly: true });
+            }
+          } catch (err) {
+            console.error(`Failed to auto-seed KO stage ${i}:`, err);
+            // Don't block tournament creation on seeding failure
+          }
+        }
+      }
+    }
+  }
+
   revalidatePath('/tournoua');
   redirect(`/tournoua/${tRow.slug ?? payload.tournament.slug ?? ''}`);
 }
@@ -1097,6 +1123,32 @@ export async function updateTournamentAction(formData: FormData) {
         })
         .eq('id', u.id);
       if (error) return { ok: false, error: error.message };
+    }
+  }
+
+  // NEW: Auto-seed KO stages from their source stages (league/groups)
+  const progression = await import('@/app/dashboard/tournaments/TournamentCURD/progression');
+  for (let i = 0; i < payload.stages.length; i++) {
+    const stage = payload.stages[i];
+    if (stage.kind === 'knockout') {
+      const cfg = (stage.config ?? {}) as any;
+      const fromIdx = Number(cfg.from_stage_idx);
+      if (Number.isFinite(fromIdx) && fromIdx < i) {
+        const srcStage = payload.stages[fromIdx];
+        const srcStageId = stageIdByIndex[fromIdx];
+        if (srcStageId) {
+          try {
+            if (srcStage.kind === 'groups') {
+              await progression.seedNextKnockoutFromGroupsIfConfigured(srcStageId, { reseed: true, allowEarly: true });
+            } else if (srcStage.kind === 'league') {
+              await progression.seedNextKnockoutFromLeagueIfConfigured(srcStageId, { reseed: true, allowEarly: true });
+            }
+          } catch (err) {
+            console.error(`Failed to auto-seed KO stage ${i}:`, err);
+            // Don't block tournament update on seeding failure
+          }
+        }
+      }
     }
   }
 
