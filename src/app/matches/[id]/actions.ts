@@ -223,13 +223,18 @@ export async function saveAllStatsAction(formData: FormData) {
   // -----------------------
   // Guard stats by participation (NO awards applied here - will use RPC)
   // -----------------------
-  const participatedIds = new Set<number>(toUpsertParticipants.map((r) => r.player_id));
+  // ✅ FIXED: Track (team_id, player_id) pairs instead of just player_id
+  // This prevents stats from being saved for a player on Team B when they only played for Team A
+  const participatedKeys = new Set<string>(
+    toUpsertParticipants.map((r) => `${r.team_id}:${r.player_id}`)
+  );
   const statUpserts: Row[] = [];
   const statDeletes: number[] = [];
 
   for (const r of statsRows.values()) {
     const markedDelete = (r as any)._delete;
-    const isParticipant = participatedIds.has(r.player_id);
+    const participantKey = `${r.team_id}:${r.player_id}`;
+    const isParticipant = participatedKeys.has(participantKey);
 
     if (markedDelete || !isParticipant) {
       statDeletes.push(r.player_id);
@@ -255,8 +260,25 @@ export async function saveAllStatsAction(formData: FormData) {
     if (error) throw error;
   }
 
-  // Upsert all stats (without awards)
+  // ✅ ADDITIONAL VALIDATION: Check for duplicate player_ids in stats before upsert
+  // This catches cases where form data has stats for same player on both teams
   if (statUpserts.length) {
+    const playerIdCount = new Map<number, number>();
+    for (const stat of statUpserts) {
+      const count = playerIdCount.get(stat.player_id) || 0;
+      playerIdCount.set(stat.player_id, count + 1);
+    }
+    const duplicateStats = Array.from(playerIdCount.entries())
+      .filter(([_, count]) => count > 1)
+      .map(([playerId, _]) => playerId);
+
+    if (duplicateStats.length > 0) {
+      throw new Error(
+        `Database constraint error: Player(s) ${duplicateStats.join(', ')} have stats for both teams. ` +
+        `This should have been caught earlier. Please ensure each player is only marked as played for ONE team.`
+      );
+    }
+
     const { error } = await supabase
       .from('match_player_stats')
       .upsert(statUpserts, { onConflict: 'match_id,player_id' });
