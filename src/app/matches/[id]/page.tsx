@@ -332,11 +332,11 @@ export default async function Page({
                 {duplicatePlayerIds.size > 0 && (
                   <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
                     <p className="font-semibold text-amber-200 text-sm">
-                      ⚠️ Warning: {duplicatePlayerIds.size} player(s) appear on both team rosters
+                      ⚠️ Προσοχή: {duplicatePlayerIds.size} παίκτης/παίκτες βρίσκονται και στις δύο ομάδες
                     </p>
                     <p className="mt-1 text-xs text-amber-200/80">
-                      Make sure to only mark each player as "played" for ONE team.
-                      Marking a player as played for both teams will cause an error.
+                      Βεβαιωθείτε ότι επισημαίνετε κάθε παίκτη ως "συμμετοχή" μόνο σε ΜΙΑ ομάδα.
+                      Η επισήμανση παίκτη στις δύο ομάδες θα προκαλέσει σφάλμα.
                     </p>
                   </div>
                 )}

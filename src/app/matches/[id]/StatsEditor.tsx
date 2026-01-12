@@ -153,9 +153,9 @@ export default function StatsEditor({
                   {isDuplicatePlayer && (
                     <span
                       className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-300"
-                      title="This player is on both team rosters. Only mark as played for ONE team."
+                      title="Ο παίκτης βρίσκεται και στις δύο ομάδες. Επισημάνετε συμμετοχή μόνο σε ΜΙΑ ομάδα."
                     >
-                      ⚠️ Both Teams
+                      ⚠️ Δύο Ομάδες
                     </span>
                   )}
 
