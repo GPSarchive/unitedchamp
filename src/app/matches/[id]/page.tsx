@@ -85,6 +85,16 @@ export default async function Page({
   const standings =
     standingsRes.status === "fulfilled" ? standingsRes.value : [];
 
+  // ✅ Detect players who appear on both rosters
+  const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
+  const teamBPlayerIds = new Set(teamBPlayers.map(p => p.player.id));
+  const duplicatePlayerIds = new Set<number>();
+  for (const playerId of teamAPlayerIds) {
+    if (teamBPlayerIds.has(playerId)) {
+      duplicatePlayerIds.add(playerId);
+    }
+  }
+
   // Debug: log standings data
   console.log("[Match Page] Standings result:", {
     status: standingsRes.status,
@@ -317,6 +327,20 @@ export default async function Page({
 
               <form id="stats-form" action={saveAllStatsAction}>
                 <input type="hidden" name="match_id" value={String(match.id)} />
+
+                {/* Warning banner for players on both rosters */}
+                {duplicatePlayerIds.size > 0 && (
+                  <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
+                    <p className="font-semibold text-amber-200 text-sm">
+                      ⚠️ Warning: {duplicatePlayerIds.size} player(s) appear on both team rosters
+                    </p>
+                    <p className="mt-1 text-xs text-amber-200/80">
+                      Make sure to only mark each player as "played" for ONE team.
+                      Marking a player as played for both teams will cause an error.
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 gap-6">
                   <StatsEditor
                     teamId={match.team_a.id}
@@ -324,6 +348,7 @@ export default async function Page({
                     associations={teamAPlayers}
                     existing={existingStats}
                     participants={participants}
+                    duplicatePlayerIds={duplicatePlayerIds}
                   />
                   <StatsEditor
                     teamId={match.team_b.id}
@@ -331,6 +356,7 @@ export default async function Page({
                     associations={teamBPlayers}
                     existing={existingStats}
                     participants={participants}
+                    duplicatePlayerIds={duplicatePlayerIds}
                   />
                 </div>
 

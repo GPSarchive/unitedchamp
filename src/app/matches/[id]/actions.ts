@@ -179,6 +179,29 @@ export async function saveAllStatsAction(formData: FormData) {
     .filter((r) => !r.played)
     .map((r) => r.player_id);
 
+  // ✅ VALIDATION: Check if any player is marked as played for both teams
+  const playerTeamCount = new Map<number, number[]>();
+  for (const p of toUpsertParticipants) {
+    if (!playerTeamCount.has(p.player_id)) {
+      playerTeamCount.set(p.player_id, []);
+    }
+    playerTeamCount.get(p.player_id)!.push(p.team_id);
+  }
+
+  const duplicatePlayers: Array<{playerId: number, teams: number[]}> = [];
+  for (const [playerId, teams] of playerTeamCount.entries()) {
+    if (teams.length > 1) {
+      duplicatePlayers.push({ playerId, teams });
+    }
+  }
+
+  if (duplicatePlayers.length > 0) {
+    const errors = duplicatePlayers.map(({ playerId, teams }) =>
+      `Player ID ${playerId} is marked as played for multiple teams (${teams.join(', ')})`
+    ).join('; ');
+    throw new Error(`Validation error: A player cannot participate for both teams in the same match. ${errors}`);
+  }
+
   if (toUpsertParticipants.length) {
     // Strip UI-only 'played' before upsert
     const clean = toUpsertParticipants.map(({ played, ...r }) => r);

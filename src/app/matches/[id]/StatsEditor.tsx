@@ -17,6 +17,7 @@ export default function StatsEditor({
   associations,
   existing,
   participants,
+  duplicatePlayerIds,
   readOnly = false,
 }: {
   teamId: Id;
@@ -24,6 +25,7 @@ export default function StatsEditor({
   associations: PlayerAssociation[];
   existing: Map<number, MatchPlayerStatRow>;
   participants: Map<number, ParticipantRow>;
+  duplicatePlayerIds?: Set<number>;
   readOnly?: boolean;
 }) {
   // Local "played" state per player
@@ -106,6 +108,9 @@ export default function StatsEditor({
           const bc = String(stats?.blue_cards ?? 0);
           const playerNumber = String(stats?.player_number ?? "");
 
+          // Check if this player appears on both rosters
+          const isDuplicatePlayer = duplicatePlayerIds?.has(p.id) ?? false;
+
           return (
             <div
               key={p.id}
@@ -143,6 +148,16 @@ export default function StatsEditor({
                   <div className="font-medium text-gray-900">
                     {p.first_name} {p.last_name}
                   </div>
+
+                  {/* Warning badge for players on both rosters */}
+                  {isDuplicatePlayer && (
+                    <span
+                      className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-300"
+                      title="This player is on both team rosters. Only mark as played for ONE team."
+                    >
+                      ⚠️ Both Teams
+                    </span>
+                  )}
 
                   {/* Quick stats badges */}
                   {playedOn && (
