@@ -112,9 +112,10 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       <div className="fixed top-0 right-0 w-96 h-96 bg-gradient-to-br from-yellow-500/30 to-amber-500/30 rounded-full blur-3xl animate-pulse pointer-events-none" />
       <div className="fixed bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
 
-      <div className="relative container mx-auto max-w-7xl px-4 py-12 space-y-12">
-        {/* Tournament Header - Hero Section */}
-        <motion.header
+      {/* Tournament Header - Hero Section */}
+      <section className="relative w-full py-12">
+        <div className="container mx-auto max-w-7xl px-4">
+          <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
@@ -204,10 +205,13 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </motion.div>
             </div>
           </div>
-        </motion.header>
+          </motion.header>
+        </div>
+      </section>
 
-        {/* Stages Section */}
-        <section className="space-y-8">
+      {/* Stages Section */}
+      <section className="relative w-full py-12">
+        <div className="container mx-auto max-w-7xl px-4 space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -316,10 +320,12 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </AnimatePresence>
             </div>
           )}
-        </section>
+        </div>
+      </section>
 
-        {/* Player Statistics Section */}
-        <section aria-label="Player Statistics">
+      {/* Player Statistics Section */}
+      <section className="relative w-full py-12" aria-label="Player Statistics">
+        <div className="container mx-auto max-w-7xl px-4">
           {(() => {
             console.log('[TournamentClient] Rendering PlayerStatistics section:', {
               hasPlayers: !!players,
@@ -353,8 +359,8 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </motion.div>
             );
           })()}
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 };
