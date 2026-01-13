@@ -62,6 +62,18 @@ const KOStageDisplay = () => {
     return (matches ?? []).filter((match) => match.stageIdx === knockoutStageIdx);
   }, [knockoutStageIdx, matches]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('[KOStageDisplay] Debug info:', {
+      knockoutStageIdx,
+      totalMatches: matches?.length ?? 0,
+      knockoutMatches: knockoutMatches.length,
+      matchesWithRoundAndPos: knockoutMatches.filter(
+        (m) => (m.round ?? null) != null && (m.bracket_pos ?? null) != null
+      ).length,
+    });
+  }, [knockoutStageIdx, matches, knockoutMatches]);
+
   // Spacing controls
   const SCALE = 1.5;          // single knob to spread everything out
   const BOX_W = 220;
@@ -148,38 +160,70 @@ const KOStageDisplay = () => {
     return team?.name ?? `Team #${id}`;
   };
 
+  // Determine what to show
+  const validMatches = knockoutMatches.filter(
+    (m) => (m.round ?? null) != null && (m.bracket_pos ?? null) != null
+  );
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-center text-white">Knockout Stage</h2>
-      <div className="overflow-auto bg-zinc-950/60 p-4 rounded-2xl border border-white/10 shadow-lg">
-        <KOStageViewer
-          nodes={nodes}
-          connections={connections}
-          nodeContent={(n) => {
-            const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
-            const nameA = getTeamName(teamsNode.A);
-            const nameB = getTeamName(teamsNode.B);
-            return (
-              <div className="flex items-center justify-center gap-4 text-white h-full">
-                {/* Logo Rings with Team Names */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-amber-400/60">A</span>
+
+      {/* Show appropriate content based on data state */}
+      {knockoutStageIdx === -1 ? (
+        // No KO stage exists
+        <div className="bg-zinc-950/60 p-8 rounded-2xl border border-white/10 shadow-lg text-center">
+          <p className="text-white/70">No knockout stage has been configured for this tournament.</p>
+        </div>
+      ) : knockoutMatches.length === 0 ? (
+        // KO stage exists but no matches
+        <div className="bg-zinc-950/60 p-8 rounded-2xl border border-white/10 shadow-lg text-center">
+          <p className="text-white/70">No knockout matches have been created yet.</p>
+          <p className="text-white/50 text-sm mt-2">Matches will appear here once they are generated.</p>
+        </div>
+      ) : validMatches.length === 0 ? (
+        // Matches exist but lack round/bracket_pos data
+        <div className="bg-zinc-950/60 p-8 rounded-2xl border border-orange-500/20 shadow-lg text-center">
+          <p className="text-orange-400/90 font-medium">⚠️ Knockout matches exist but are missing bracket position data</p>
+          <p className="text-white/60 text-sm mt-2">
+            Found {knockoutMatches.length} match{knockoutMatches.length !== 1 ? 'es' : ''} without valid round and bracket position values.
+          </p>
+          <p className="text-white/50 text-sm mt-1">
+            Please regenerate the knockout bracket or ensure matches have proper round and bracket_pos values.
+          </p>
+        </div>
+      ) : (
+        // Valid data - show the bracket
+        <div className="overflow-auto bg-zinc-950/60 p-4 rounded-2xl border border-white/10 shadow-lg">
+          <KOStageViewer
+            nodes={nodes}
+            connections={connections}
+            nodeContent={(n) => {
+              const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
+              const nameA = getTeamName(teamsNode.A);
+              const nameB = getTeamName(teamsNode.B);
+              return (
+                <div className="flex items-center justify-center gap-4 text-white h-full">
+                  {/* Logo Rings with Team Names */}
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-amber-400/60">A</span>
+                    </div>
+                    <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
                   </div>
-                  <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
-                </div>
-                <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-orange-400/60">B</span>
+                  <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-orange-400/60">B</span>
+                    </div>
+                    <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
                   </div>
-                  <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
                 </div>
-              </div>
-            );
-          }}
-        />
-      </div>
+              );
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
