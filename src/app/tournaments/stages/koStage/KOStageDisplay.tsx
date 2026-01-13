@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTournamentData } from "@/app/tournaments/useTournamentData";
+import { useStages } from "@/app/tournaments/useStages";
 import KOStageViewer from "./KOStageViewer";
 
 // Types for knockout
@@ -41,9 +42,9 @@ interface NodeBox {
 
 const KOStageDisplay = () => {
   const tournament = useTournamentData((state) => state.tournament);
-  const stages = useTournamentData((state) => state.stages);
   const teams = useTournamentData((state) => state.teams);
   const matches = useTournamentData((state) => state.matches);
+  const { stages: sortedStages } = useStages(); // Use sorted stages to match match indexing
 
   const [nodes, setNodes] = useState<NodeBox[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -53,8 +54,8 @@ const KOStageDisplay = () => {
   >({});
 
   const knockoutStageIdx = useMemo(
-    () => stages?.findIndex((stage) => stage.kind === "knockout") ?? -1,
-    [stages]
+    () => sortedStages?.findIndex((stage) => stage.kind === "knockout") ?? -1,
+    [sortedStages]
   );
 
   const knockoutMatches = useMemo(() => {
@@ -66,13 +67,23 @@ const KOStageDisplay = () => {
   useEffect(() => {
     console.log('[KOStageDisplay] Debug info:', {
       knockoutStageIdx,
+      sortedStagesCount: sortedStages?.length ?? 0,
+      sortedStages: sortedStages?.map(s => ({ id: s.id, name: s.name, kind: s.kind, ordering: s.ordering })),
       totalMatches: matches?.length ?? 0,
       knockoutMatches: knockoutMatches.length,
       matchesWithRoundAndPos: knockoutMatches.filter(
         (m) => (m.round ?? null) != null && (m.bracket_pos ?? null) != null
       ).length,
+      sampleKOMatches: knockoutMatches.slice(0, 3).map(m => ({
+        db_id: m.db_id,
+        stageIdx: m.stageIdx,
+        round: m.round,
+        bracket_pos: m.bracket_pos,
+        team_a_id: m.team_a_id,
+        team_b_id: m.team_b_id
+      })),
     });
-  }, [knockoutStageIdx, matches, knockoutMatches]);
+  }, [knockoutStageIdx, sortedStages, matches, knockoutMatches]);
 
   // Spacing controls
   const SCALE = 1.5;          // single knob to spread everything out
