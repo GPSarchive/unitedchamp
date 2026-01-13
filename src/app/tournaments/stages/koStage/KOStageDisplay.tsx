@@ -148,6 +148,12 @@ const KOStageDisplay = () => {
     return team?.name ?? `Team #${id}`;
   };
 
+  const getTeamLogo = (id: number | null) => {
+    if (id == null) return null;
+    const team = teams?.find((t) => t.id === id);
+    return team?.logo ?? null;
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-center text-white">Knockout Stage</h2>
@@ -159,20 +165,38 @@ const KOStageDisplay = () => {
             const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
             const nameA = getTeamName(teamsNode.A);
             const nameB = getTeamName(teamsNode.B);
+            const logoA = getTeamLogo(teamsNode.A);
+            const logoB = getTeamLogo(teamsNode.B);
             return (
               <div className="flex items-center justify-center gap-4 text-white h-full">
                 {/* Logo Rings with Team Names */}
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-amber-400/60">A</span>
-                  </div>
+                  {logoA ? (
+                    <img
+                      src={logoA}
+                      alt={nameA}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/40"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-amber-400/60">A</span>
+                    </div>
+                  )}
                   <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
                 </div>
                 <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
-                    <span className="text-xs text-orange-400/60">B</span>
-                  </div>
+                  {logoB ? (
+                    <img
+                      src={logoB}
+                      alt={nameB}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-orange-400/40"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
+                      <span className="text-xs text-orange-400/60">B</span>
+                    </div>
+                  )}
                   <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
                 </div>
               </div>
