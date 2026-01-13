@@ -113,7 +113,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       <div className="fixed bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
 
       {/* Tournament Header - Hero Section */}
-      <section className="relative w-full py-12">
+      <section className="relative w-full py-12 bg-gradient-to-b from-zinc-950/50 to-transparent border-b border-yellow-500/10">
         <div className="container mx-auto max-w-7xl px-4">
           <motion.header
           initial={{ opacity: 0, y: -20 }}
@@ -210,7 +210,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       </section>
 
       {/* Stages Section */}
-      <section className="relative w-full py-12">
+      <section className="relative w-full py-12 bg-zinc-950/30 border-b border-yellow-500/10">
         <div className="container mx-auto max-w-7xl px-4 space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -324,7 +324,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       </section>
 
       {/* Player Statistics Section */}
-      <section className="relative w-full py-12" aria-label="Player Statistics">
+      <section className="relative w-full py-12 bg-gradient-to-t from-zinc-950/50 to-transparent" aria-label="Player Statistics">
         <div className="container mx-auto max-w-7xl px-4">
           {(() => {
             console.log('[TournamentClient] Rendering PlayerStatistics section:', {
