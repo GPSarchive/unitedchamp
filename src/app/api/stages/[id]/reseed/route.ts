@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 export const runtime = "nodejs";
 export const revalidate = 0;
@@ -154,6 +155,23 @@ export async function POST(
   ctx: any // compatible with 14 & 15; normalized via readParams()
 ) {
   try {
+    // Authentication check
+    const userClient = await createSupabaseRouteClient();
+    const {
+      data: { user },
+      error: userErr,
+    } = await userClient.auth.getUser();
+
+    if (userErr || !user) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check for admin role
+    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
+    if (!roles.includes("admin")) {
+      return NextResponse.json({ ok: false, error: "Forbidden - admin role required" }, { status: 403 });
+    }
+
     const { id } = await readParams(ctx);
     const koStageId = Number(id);
     if (!Number.isFinite(koStageId)) {
