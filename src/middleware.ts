@@ -99,12 +99,11 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(url, { headers: res.headers })
     }
 
-    const roles = Array.isArray(user.app_metadata?.roles) 
-      ? (user.app_metadata!.roles as string[]) 
+    const roles = Array.isArray(user.app_metadata?.roles)
+      ? (user.app_metadata!.roles as string[])
       : []
     const isAdmin = roles.includes('admin')
-    const emailIsAdmin = !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
-    if (!isAdmin && !emailIsAdmin) {
+    if (!isAdmin) {
       const url = req.nextUrl.clone()
       url.pathname = '/403'
       url.searchParams.delete('next')

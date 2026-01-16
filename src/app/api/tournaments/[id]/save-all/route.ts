@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -136,6 +137,20 @@ export async function POST(
   const rid = req.headers.get("x-debug-id") ?? "no-id";
   const phase = req.headers.get("x-debug-phase") ?? "n/a";
   const { id } = await params;
+
+  // Authentication and authorization check
+  const supa = await createSupabaseRouteClient();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supa.auth.getUser();
+  if (userErr || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
+  if (!roles.includes("admin")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   let body: SaveAllRequest;
   try {
