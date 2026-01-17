@@ -10,10 +10,16 @@ type PageProps = {
 async function getAnnouncement(id: string) {
   const supabase = await createSupabaseRSCClient();
 
+  // Convert string ID to number
+  const numericId = Number(id);
+  if (!Number.isFinite(numericId) || numericId <= 0) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('announcements')
     .select('*')
-    .eq('id', id)
+    .eq('id', numericId)
     .eq('status', 'published')
     .maybeSingle();
 

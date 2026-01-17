@@ -317,7 +317,7 @@ function CardRow({
                   Διαγραφή
                 </button>
                 <Link
-                  href={`/annoucement/${a.id}`}
+                  href={`/announcement/${a.id}`}
                   className="ml-auto text-xs font-semibold text-white/80 hover:text-white underline underline-offset-4"
                 >
                   Προβολή →
