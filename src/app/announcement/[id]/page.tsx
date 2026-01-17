@@ -8,26 +8,38 @@ type PageProps = {
 };
 
 async function getAnnouncement(id: string) {
-  const supabase = await createSupabaseRSCClient();
+  try {
+    const supabase = await createSupabaseRSCClient();
 
-  // Convert string ID to number
-  const numericId = Number(id);
-  if (!Number.isFinite(numericId) || numericId <= 0) {
+    // Convert string ID to number
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId) || numericId <= 0) {
+      console.log(`Invalid announcement ID: ${id}`);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('id', numericId)
+      .eq('status', 'published')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Error fetching announcement ${numericId}:`, error);
+      return null;
+    }
+
+    if (!data) {
+      console.log(`No announcement found with ID ${numericId}`);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Unexpected error in getAnnouncement:', err);
     return null;
   }
-
-  const { data, error } = await supabase
-    .from('announcements')
-    .select('*')
-    .eq('id', numericId)
-    .eq('status', 'published')
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
 }
 
 function renderBody(body: string | null, format: 'md' | 'html' | 'plain' | null | undefined) {
@@ -49,19 +61,26 @@ function renderBody(body: string | null, format: 'md' | 'html' | 'plain' | null 
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;
-  const announcement = await getAnnouncement(id);
+  try {
+    const { id } = await params;
+    const announcement = await getAnnouncement(id);
 
-  if (!announcement) {
+    if (!announcement) {
+      return {
+        title: 'Announcement Not Found',
+      };
+    }
+
     return {
-      title: 'Announcement Not Found',
+      title: announcement.title ?? 'Announcement',
+      description: (announcement.body ?? '').substring(0, 160),
+    };
+  } catch (error) {
+    console.error('Error generating announcement metadata:', error);
+    return {
+      title: 'Announcement',
     };
   }
-
-  return {
-    title: announcement.title,
-    description: (announcement.body ?? '').substring(0, 160),
-  };
 }
 
 export default async function AnnouncementPage({ params }: PageProps) {
