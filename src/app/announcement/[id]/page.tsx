@@ -30,16 +30,22 @@ async function getAnnouncement(id: string) {
   return data;
 }
 
-function renderBody(body: string, format: 'md' | 'html' | 'plain') {
-  if (format === 'html') {
-    return DOMPurify.sanitize(body);
+function renderBody(body: string | null, format: 'md' | 'html' | 'plain' | null | undefined) {
+  // Handle null/undefined body
+  const safeBody = body ?? '';
+
+  // Default to 'plain' if format is null/undefined
+  const safeFormat = format ?? 'plain';
+
+  if (safeFormat === 'html') {
+    return DOMPurify.sanitize(safeBody);
   }
-  if (format === 'md') {
-    const html = marked.parse(body, { async: false }) as string;
+  if (safeFormat === 'md') {
+    const html = marked.parse(safeBody, { async: false }) as string;
     return DOMPurify.sanitize(html);
   }
   // plain
-  return body.replace(/\n/g, '<br/>');
+  return safeBody.replace(/\n/g, '<br/>');
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -54,28 +60,29 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: announcement.title,
-    description: announcement.body.substring(0, 160),
+    description: (announcement.body ?? '').substring(0, 160),
   };
 }
 
 export default async function AnnouncementPage({ params }: PageProps) {
-  const { id } = await params;
-  const announcement = await getAnnouncement(id);
+  try {
+    const { id } = await params;
+    const announcement = await getAnnouncement(id);
 
-  if (!announcement) {
-    notFound();
-  }
+    if (!announcement) {
+      notFound();
+    }
 
-  const displayDate = announcement.start_at || announcement.created_at;
-  const formattedDate = displayDate
-    ? new Date(displayDate).toLocaleDateString('el-GR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : null;
+    const displayDate = announcement.start_at || announcement.created_at;
+    const formattedDate = displayDate
+      ? new Date(displayDate).toLocaleDateString('el-GR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null;
 
-  const contentHTML = renderBody(announcement.body, announcement.format);
+    const contentHTML = renderBody(announcement.body, announcement.format);
 
   return (
     <div className="min-h-screen bg-white">
@@ -165,4 +172,8 @@ export default async function AnnouncementPage({ params }: PageProps) {
       </article>
     </div>
   );
+  } catch (error) {
+    console.error('Error rendering announcement:', error);
+    notFound();
+  }
 }
