@@ -79,7 +79,7 @@ export type MiniAnnouncementsProps = {
 export default function MiniAnnouncements({
   limit = 4,
   pinnedPageSize = 3,
-  basePath = "/annoucement",
+  basePath = "/announcement",
   allLinkHref = "/announcements",
   className,
 }: MiniAnnouncementsProps) {

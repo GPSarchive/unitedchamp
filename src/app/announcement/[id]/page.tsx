@@ -1,75 +1,121 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
 async function getAnnouncement(id: string) {
-  const supabase = await createSupabaseRSCClient();
+  try {
+    const supabase = await createSupabaseRSCClient();
 
-  const { data, error } = await supabase
-    .from('announcements')
-    .select('*')
-    .eq('id', id)
-    .eq('status', 'published')
-    .maybeSingle();
+    // Convert string ID to number
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId) || numericId <= 0) {
+      console.log(`Invalid announcement ID: ${id}`);
+      return null;
+    }
 
-  if (error || !data) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('id', numericId)
+      .eq('status', 'published')
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Error fetching announcement ${numericId}:`, error);
+      return null;
+    }
+
+    if (!data) {
+      console.log(`No announcement found with ID ${numericId}`);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Unexpected error in getAnnouncement:', err);
     return null;
   }
-
-  return data;
 }
 
-function renderBody(body: string, format: 'md' | 'html' | 'plain') {
-  if (format === 'html') {
-    return DOMPurify.sanitize(body);
+function renderBody(body: string | null, format: 'md' | 'html' | 'plain' | null | undefined) {
+  // Handle null/undefined body
+  const safeBody = body ?? '';
+
+  // Default to 'plain' if format is null/undefined
+  const safeFormat = format ?? 'plain';
+
+  if (safeFormat === 'html') {
+    return sanitizeHtml(safeBody, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        a: ['href', 'name', 'target', 'rel'],
+      },
+    });
   }
-  if (format === 'md') {
-    const html = marked.parse(body, { async: false }) as string;
-    return DOMPurify.sanitize(html);
+  if (safeFormat === 'md') {
+    const html = marked.parse(safeBody, { async: false }) as string;
+    return sanitizeHtml(html, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        a: ['href', 'name', 'target', 'rel'],
+      },
+    });
   }
   // plain
-  return body.replace(/\n/g, '<br/>');
+  return safeBody.replace(/\n/g, '<br/>');
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id } = await params;
-  const announcement = await getAnnouncement(id);
+  try {
+    const { id } = await params;
+    const announcement = await getAnnouncement(id);
 
-  if (!announcement) {
+    if (!announcement) {
+      return {
+        title: 'Announcement Not Found',
+      };
+    }
+
     return {
-      title: 'Announcement Not Found',
+      title: announcement.title ?? 'Announcement',
+      description: (announcement.body ?? '').substring(0, 160),
+    };
+  } catch (error) {
+    console.error('Error generating announcement metadata:', error);
+    return {
+      title: 'Announcement',
     };
   }
-
-  return {
-    title: announcement.title,
-    description: announcement.body.substring(0, 160),
-  };
 }
 
 export default async function AnnouncementPage({ params }: PageProps) {
-  const { id } = await params;
-  const announcement = await getAnnouncement(id);
+  try {
+    const { id } = await params;
+    const announcement = await getAnnouncement(id);
 
-  if (!announcement) {
-    notFound();
-  }
+    if (!announcement) {
+      notFound();
+    }
 
-  const displayDate = announcement.start_at || announcement.created_at;
-  const formattedDate = displayDate
-    ? new Date(displayDate).toLocaleDateString('el-GR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : null;
+    const displayDate = announcement.start_at || announcement.created_at;
+    const formattedDate = displayDate
+      ? new Date(displayDate).toLocaleDateString('el-GR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null;
 
-  const contentHTML = renderBody(announcement.body, announcement.format);
+    const contentHTML = renderBody(announcement.body, announcement.format);
 
   return (
     <div className="min-h-screen bg-white">
@@ -159,4 +205,8 @@ export default async function AnnouncementPage({ params }: PageProps) {
       </article>
     </div>
   );
+  } catch (error) {
+    console.error('Error rendering announcement:', error);
+    notFound();
+  }
 }
