@@ -320,8 +320,11 @@ async function fetchTopScorers() {
       const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
 
       // Resolve image URLs to public URLs
-      const photoUrl = resolveImageUrl(player?.photo, ImageType.PLAYER) ?? '/player-placeholder.jpg';
       const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
+      const playerPhotoUrl = player?.photo ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
+
+      // Use player photo, fallback to team logo, then to placeholder
+      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
 
       return {
         id: stat.player_id,
