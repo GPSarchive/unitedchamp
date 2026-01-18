@@ -321,7 +321,7 @@ async function fetchTopScorers() {
 
       // Resolve image URLs to public URLs
       const photoUrl = resolveImageUrl(player?.photo, ImageType.PLAYER) ?? '/player-placeholder.jpg';
-      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : undefined;
+      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
 
       return {
         id: stat.player_id,
@@ -332,7 +332,7 @@ async function fetchTopScorers() {
         assists: stat.total_assists ?? 0,
         matches,
         teamName: team?.name ?? undefined,
-        teamLogo: teamLogoUrl,
+        teamLogo: teamLogoUrl ?? undefined,
       };
     });
 
