@@ -41,11 +41,29 @@ export default function TopScorers({ scorers }: TopScorersProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Medal colors for 1st, 2nd, 3rd
-  const podiumColors = [
-    { bg: 'bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600', glow: 'shadow-[0_0_60px_rgba(251,191,36,0.6)]', border: 'border-amber-400' }, // Gold
-    { bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400', glow: 'shadow-[0_0_50px_rgba(192,192,192,0.5)]', border: 'border-gray-300' }, // Silver
-    { bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700', glow: 'shadow-[0_0_40px_rgba(234,88,12,0.5)]', border: 'border-orange-500' }, // Bronze
+  // Medal colors and labels for 1st, 2nd, 3rd
+  const podiumData = [
+    {
+      bg: 'bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600',
+      glow: 'shadow-[0_0_60px_rgba(251,191,36,0.6)]',
+      border: 'border-amber-400',
+      label: '1ST',
+      textColor: 'text-amber-900'
+    }, // Gold
+    {
+      bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400',
+      glow: 'shadow-[0_0_50px_rgba(192,192,192,0.5)]',
+      border: 'border-gray-300',
+      label: '2ND',
+      textColor: 'text-gray-700'
+    }, // Silver
+    {
+      bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700',
+      glow: 'shadow-[0_0_40px_rgba(234,88,12,0.5)]',
+      border: 'border-orange-500',
+      label: '3RD',
+      textColor: 'text-orange-900'
+    }, // Bronze
   ];
 
   return (
@@ -79,7 +97,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
         {/* Scorers Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {scorers.map((scorer, index) => {
-            const colors = podiumColors[index] || podiumColors[2];
+            const podium = podiumData[index] || podiumData[2];
 
             return (
               <motion.div
@@ -94,16 +112,22 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                 }}
                 className="group relative"
               >
-                {/* Rank Badge */}
+                {/* Rank Badge - Hexagon Shape */}
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={isVisible ? { scale: 1, rotate: 0 } : {}}
                   transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
-                  className={`absolute -top-6 -left-6 z-20 w-16 h-16 ${colors.bg} ${colors.glow} border-4 ${colors.border} flex items-center justify-center`}
+                  className={`absolute -top-8 -left-8 z-20 ${podium.bg} ${podium.glow} border-4 ${podium.border} overflow-hidden`}
+                  style={{ width: '90px', height: '90px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
                 >
-                  <span className="text-3xl font-black text-white drop-shadow-lg">
-                    {index + 1}
-                  </span>
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <span className={`text-xs font-black ${podium.textColor} tracking-wider`}>
+                      {podium.label}
+                    </span>
+                    <span className={`text-4xl font-black ${podium.textColor} drop-shadow-md leading-none mt-1`}>
+                      {index + 1}
+                    </span>
+                  </div>
                 </motion.div>
 
                 {/* Card Container */}
