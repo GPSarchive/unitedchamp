@@ -218,6 +218,12 @@ const MenuBar = React.memo(({ editor }: { editor: Editor | null }) => {
             <p>2. Γράψτε το πρώτο στοιχείο</p>
             <p>3. Πατήστε Enter για νέο στοιχείο</p>
           </div>
+          <div className="space-y-1.5">
+            <p className="font-semibold text-white">Για Αποστάσεις Παραγράφων:</p>
+            <p>• <span className="font-semibold">Enter</span> = Νέα παράγραφος (κανονική απόσταση)</p>
+            <p>• <span className="font-semibold">Enter Enter</span> = Κενή γραμμή (μεγάλη απόσταση)</p>
+            <p>• <span className="font-semibold">Shift+Enter</span> = Αλλαγή γραμμής (μικρή απόσταση)</p>
+          </div>
         </div>
         <div className="mt-3 space-y-2 border-t border-blue-400/30 pt-3">
           <div className="space-y-1.5">
@@ -399,7 +405,12 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Preserve empty paragraphs for spacing control
+        paragraph: {
+          // Allow empty paragraphs
+        },
+      }),
       Underline,
       Image.configure({
         HTMLAttributes: {
