@@ -16,6 +16,7 @@ import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
+import TopScorers from './home/TopScorers';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -246,6 +247,96 @@ async function fetchRecentContentCount() {
   });
 }
 
+async function fetchTopScorers() {
+  return withConsoleTiming('db:top-scorers', async () => {
+    // Fetch top 3 scorers from player_statistics
+    const { data: statsData, error: statsError } = await supabaseAdmin
+      .from('player_statistics')
+      .select('player_id, total_goals, total_assists')
+      .order('total_goals', { ascending: false })
+      .limit(3);
+
+    if (statsError) {
+      console.error('Error fetching top scorers stats:', statsError.message);
+      return { topScorers: [] };
+    }
+
+    if (!statsData || statsData.length === 0) {
+      console.log('No scorer data found');
+      return { topScorers: [] };
+    }
+
+    const playerIds = statsData.map(s => s.player_id);
+
+    // Fetch player details
+    const { data: playersData, error: playersError } = await supabaseAdmin
+      .from('player')
+      .select('id, first_name, last_name, photo')
+      .in('id', playerIds);
+
+    if (playersError) {
+      console.error('Error fetching player details:', playersError.message);
+      return { topScorers: [] };
+    }
+
+    // Fetch match_player_stats to count matches
+    const { data: mpsData } = await supabaseAdmin
+      .from('match_player_stats')
+      .select('player_id, match_id')
+      .in('player_id', playerIds);
+
+    // Count unique matches per player
+    const matchesByPlayer = new Map<number, Set<number>>();
+    for (const row of (mpsData ?? [])) {
+      if (!matchesByPlayer.has(row.player_id)) {
+        matchesByPlayer.set(row.player_id, new Set());
+      }
+      matchesByPlayer.get(row.player_id)!.add(row.match_id);
+    }
+
+    // Fetch player teams (get main team)
+    const { data: playerTeamsData } = await supabaseAdmin
+      .from('player_teams')
+      .select('player_id, team_id')
+      .in('player_id', playerIds);
+
+    // Fetch team details
+    const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
+    const { data: teamsData } = teamIds.length > 0
+      ? await supabaseAdmin
+          .from('teams')
+          .select('id, name, logo')
+          .in('id', teamIds)
+      : { data: [] };
+
+    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
+    const playerTeamMap = new Map((playerTeamsData ?? []).map(pt => [pt.player_id, pt.team_id]));
+
+    // Combine all data
+    const topScorers = statsData.map(stat => {
+      const player = playersData?.find(p => p.id === stat.player_id);
+      const teamId = playerTeamMap.get(stat.player_id);
+      const team = teamId ? teamMap.get(teamId) : null;
+      const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
+
+      return {
+        id: stat.player_id,
+        firstName: player?.first_name ?? '',
+        lastName: player?.last_name ?? '',
+        photo: player?.photo ?? '/player-placeholder.jpg',
+        goals: stat.total_goals ?? 0,
+        assists: stat.total_assists ?? 0,
+        matches,
+        teamName: team?.name ?? undefined,
+        teamLogo: team?.logo ?? undefined,
+      };
+    });
+
+    console.log(`Top scorers fetched: ${topScorers.length}`);
+    return { topScorers };
+  });
+}
+
 /**
  * ------------------------------
  * Mapping functions
@@ -333,11 +424,12 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
-    fetchRecentContentCount()
+    fetchRecentContentCount(),
+    fetchTopScorers()
   ]);
   const events = mapMatchesToEvents(rawMatches ?? []);
   const eventsToPass = resolveMatchTournamentLogos(events);
@@ -406,9 +498,9 @@ export default async function Home() {
           </div>
         </div>
        </GridBgSection>
-       
 
-
+      {/* Top Scorers Section */}
+      <TopScorers scorers={topScorers} />
 
         {/* Features Section */}
         <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
