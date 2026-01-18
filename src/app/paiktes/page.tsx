@@ -251,10 +251,11 @@ export default async function PaiktesPage({
     }
   }
 
-  // IMPORTANT: When tournament filter is active, we need to fetch ALL players first,
-  // then calculate tournament stats, then sort, then paginate.
+  // IMPORTANT: When tournament filter is active OR when using non-alpha sort,
+  // we need to fetch ALL players first, then calculate stats, then sort, then paginate.
   // Otherwise top scorers with last names late in alphabet won't appear.
-  const shouldDeferPagination = !!tournamentId;
+  // Only use early pagination for alphabetical sorting (where DB ordering matches display order).
+  const shouldDeferPagination = !!tournamentId || sortMode !== "alpha";
 
   let playersQueryWithOrder = playersQuery
     .order("last_name", { ascending: true })
