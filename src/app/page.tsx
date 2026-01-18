@@ -322,11 +322,8 @@ async function fetchTopScorers() {
       // Resolve image URLs to public URLs
       const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
 
-      // Check if player has a real photo (not a placeholder)
-      const hasRealPhoto = player?.photo &&
-        !player.photo.includes('placeholder') &&
-        !player.photo.includes('default') &&
-        player.photo !== '/player-placeholder.jpg';
+      // Check if player has a real photo (only /player-placeholder.jpg is treated as placeholder)
+      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
 
       const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
 
