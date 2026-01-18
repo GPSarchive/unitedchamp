@@ -123,10 +123,21 @@ export default async function ArticlePage({ params }: PageProps) {
     ? generateHTML(article.content, [
         StarterKit.configure({
           paragraph: false, // Disable default paragraph to use custom one
+          hardBreak: {
+            keepMarks: true,
+          },
         }),
-        Paragraph.configure({
-          HTMLAttributes: {
-            class: 'mb-6',
+        Paragraph.extend({
+          renderHTML({ node, HTMLAttributes }) {
+            // Check if paragraph is empty (used for extra spacing)
+            const isEmpty = !node.textContent || node.textContent.trim() === '';
+            const classes = isEmpty ? 'mb-6 min-h-[24px]' : 'mb-6';
+
+            return [
+              'p',
+              { ...HTMLAttributes, class: classes },
+              0,
+            ];
           },
         }),
         Underline,
@@ -252,7 +263,8 @@ export default async function ArticlePage({ params }: PageProps) {
                 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600 prose-blockquote:bg-neutral-50
                 prose-code:text-emerald-600 prose-code:bg-neutral-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
                 prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
-                prose-img:rounded-lg prose-img:shadow-lg"
+                prose-img:rounded-lg prose-img:shadow-lg
+                [&_br]:block [&_br]:my-2"
               dangerouslySetInnerHTML={{ __html: contentHTML }}
             />
           </div>
