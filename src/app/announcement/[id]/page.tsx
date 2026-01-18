@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -50,11 +50,25 @@ function renderBody(body: string | null, format: 'md' | 'html' | 'plain' | null 
   const safeFormat = format ?? 'plain';
 
   if (safeFormat === 'html') {
-    return DOMPurify.sanitize(safeBody);
+    return sanitizeHtml(safeBody, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        a: ['href', 'name', 'target', 'rel'],
+      },
+    });
   }
   if (safeFormat === 'md') {
     const html = marked.parse(safeBody, { async: false }) as string;
-    return DOMPurify.sanitize(html);
+    return sanitizeHtml(html, {
+      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2']),
+      allowedAttributes: {
+        ...sanitizeHtml.defaults.allowedAttributes,
+        img: ['src', 'alt', 'title', 'width', 'height'],
+        a: ['href', 'name', 'target', 'rel'],
+      },
+    });
   }
   // plain
   return safeBody.replace(/\n/g, '<br/>');
