@@ -319,16 +319,20 @@ async function fetchTopScorers() {
       const team = teamId ? teamMap.get(teamId) : null;
       const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
 
+      // Resolve image URLs to public URLs
+      const photoUrl = resolveImageUrl(player?.photo, ImageType.PLAYER) ?? '/player-placeholder.jpg';
+      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : undefined;
+
       return {
         id: stat.player_id,
         firstName: player?.first_name ?? '',
         lastName: player?.last_name ?? '',
-        photo: player?.photo ?? '/player-placeholder.jpg',
+        photo: photoUrl,
         goals: stat.total_goals ?? 0,
         assists: stat.total_assists ?? 0,
         matches,
         teamName: team?.name ?? undefined,
-        teamLogo: team?.logo ?? undefined,
+        teamLogo: teamLogoUrl,
       };
     });
 
