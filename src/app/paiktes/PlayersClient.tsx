@@ -84,6 +84,10 @@ export default function PlayersClient({
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // ✅ Auto-hide filters on scroll (mobile only)
+  const [hideFilters, setHideFilters] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   // Router + URL sync helpers
   const router = useRouter();
   const sp = useSearchParams();
@@ -195,7 +199,10 @@ export default function PlayersClient({
 
   // When we grow to desktop, ensure list+card layout is visible
   useEffect(() => {
-    if (isXL) setDetailOpen(false);
+    if (isXL) {
+      setDetailOpen(false);
+      setHideFilters(false); // Reset filter hiding on desktop
+    }
   }, [isXL]);
 
   // ✅ Sync client state with URL params (e.g., on mount or browser back/forward)
@@ -269,6 +276,33 @@ export default function PlayersClient({
       if (isXL) setActiveId(id);
     },
     [isXL]
+  );
+
+  const handleListScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      // Only apply autohide on mobile (not XL)
+      if (isXL) return;
+
+      const currentScrollY = e.currentTarget.scrollTop;
+      const scrollDelta = currentScrollY - lastScrollY;
+
+      // Threshold to prevent jittery hiding/showing
+      const SCROLL_THRESHOLD = 5;
+
+      if (Math.abs(scrollDelta) < SCROLL_THRESHOLD) return;
+
+      // Hide filters when scrolling down, show when scrolling up
+      if (scrollDelta > 0 && currentScrollY > 50) {
+        // Scrolling down and past initial threshold
+        setHideFilters(true);
+      } else if (scrollDelta < 0) {
+        // Scrolling up
+        setHideFilters(false);
+      }
+
+      setLastScrollY(currentScrollY);
+    },
+    [isXL, lastScrollY]
   );
 
   // ✅ Use client sort state for UI to be instantly responsive
@@ -392,6 +426,7 @@ export default function PlayersClient({
             onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
+            hideOnMobile={hideFilters}
           />
 
           {/* Players List */}
@@ -406,7 +441,7 @@ export default function PlayersClient({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto" onScroll={handleListScroll}>
               <PlayersList
                 players={players}
                 activeId={activeId}

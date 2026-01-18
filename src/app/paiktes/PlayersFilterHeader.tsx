@@ -18,6 +18,7 @@ type Props = {
   onTopInputChange: (value: string) => void;
   onSearchChange: (query: string) => void;
   onReset: () => void;
+  hideOnMobile?: boolean;
 };
 
 // ✅ Move sortOptions outside to prevent recreation
@@ -54,6 +55,7 @@ function PlayersFilterHeaderComponent({
   onTopInputChange,
   onSearchChange,
   onReset,
+  hideOnMobile = false,
 }: Props) {
   // ✅ Wrap event handlers in useCallback
   const handleSearchChange = useCallback(
@@ -112,7 +114,14 @@ function PlayersFilterHeaderComponent({
     : "Δεν έχουν εφαρμοστεί πρόσθετα φίλτρα";
 
   return (
-    <div className="z-20 bg-zinc-950 border-b border-white/10">
+    <div
+      className={`
+        z-20 bg-zinc-950 border-b border-white/10
+        sticky top-0
+        transition-transform duration-300 ease-in-out
+        ${hideOnMobile ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}
+      `}
+    >
       {/* Search & Count Row */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-white/5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
