@@ -281,7 +281,7 @@ export default function PlayersClient({
   const showPagination = usePagination && totalPages > 1;
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
+    <div className="w-screen min-h-screen xl:h-screen flex flex-col bg-black xl:overflow-hidden">
       {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
       {!isXL && detailOpen && active && (
         <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
@@ -377,7 +377,7 @@ export default function PlayersClient({
         }`}
       >
         {/* LEFT PANEL - Players List with Filters */}
-        <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 overflow-hidden">
+        <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 xl:overflow-hidden">
           {/* Filter Header - outside scrollable area to prevent blocking */}
           <PlayersFilterHeader
             selectedSort={clientSort}
@@ -395,7 +395,7 @@ export default function PlayersClient({
           />
 
           {/* Players List */}
-          <div className="flex-1 overflow-hidden flex flex-col relative">
+          <div className="flex-1 xl:overflow-hidden flex flex-col relative">
             {/* ✅ Loading Overlay - only covers the list, not the header */}
             {isLoading && (
               <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
@@ -406,7 +406,7 @@ export default function PlayersClient({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 xl:overflow-y-auto">
               <PlayersList
                 players={players}
                 activeId={activeId}
@@ -420,7 +420,7 @@ export default function PlayersClient({
 
             {/* Pagination Controls */}
             {showPagination && (
-              <div className="sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
+              <div className="xl:sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
                 {/* Mobile Pagination - Compact */}
                 <div className="flex sm:hidden items-center justify-between gap-2">
                   <button
