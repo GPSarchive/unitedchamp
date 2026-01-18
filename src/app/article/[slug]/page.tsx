@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
+import { Paragraph } from '@tiptap/extension-paragraph';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 import { calculateReadTime, formatViewCount, formatReadTime } from '@/lib/articleUtils';
 import ArticleViewCounter from '@/components/ArticleViewCounter';
@@ -120,7 +121,14 @@ export default async function ArticlePage({ params }: PageProps) {
   // Generate HTML from TipTap JSON
   const contentHTML = article.content
     ? generateHTML(article.content, [
-        StarterKit,
+        StarterKit.configure({
+          paragraph: false, // Disable default paragraph to use custom one
+        }),
+        Paragraph.configure({
+          HTMLAttributes: {
+            class: 'mb-6',
+          },
+        }),
         Underline,
         Link.configure({
           openOnClick: true,
@@ -234,7 +242,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 prose-h1:text-3xl prose-h1:mb-4
                 prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
                 prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-                prose-p:text-neutral-700 prose-p:leading-relaxed prose-p:mb-6
+                prose-p:text-neutral-700 prose-p:leading-relaxed
                 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-700
                 prose-strong:text-neutral-900 prose-strong:font-semibold
                 prose-ul:text-neutral-700 prose-ul:list-disc prose-ul:pl-6
