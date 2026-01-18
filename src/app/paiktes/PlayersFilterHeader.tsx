@@ -66,14 +66,9 @@ function PlayersFilterHeaderComponent({
   const handleTournamentChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const val = e.target.value;
-      if (val) {
-        onSortChange("tournament_goals");
-        onTournamentChange(val);
-      } else {
-        onTournamentChange("");
-      }
+      onTournamentChange(val);
     },
-    [onSortChange, onTournamentChange]
+    [onTournamentChange]
   );
 
   const handleTopBlur = useCallback(
