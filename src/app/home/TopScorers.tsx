@@ -90,7 +90,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
           <p className="mt-6 text-lg text-gray-400 font-light">
-            Οι κορυφαίοι μηχανές του γκολ όλων των εποχών
+            Οι κορυφαίοι γκολ σκορερ όλων των εποχών
           </p>
         </motion.div>
 
