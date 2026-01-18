@@ -84,9 +84,8 @@ export default function PlayersClient({
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // ✅ Auto-hide filters on scroll (mobile only)
+  // ✅ Toggle filters visibility on mobile
   const [hideFilters, setHideFilters] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
 
   // Router + URL sync helpers
   const router = useRouter();
@@ -278,32 +277,9 @@ export default function PlayersClient({
     [isXL]
   );
 
-  const handleListScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      // Only apply autohide on mobile (not XL)
-      if (isXL) return;
-
-      const currentScrollY = e.currentTarget.scrollTop;
-      const scrollDelta = currentScrollY - lastScrollY;
-
-      // Threshold to prevent jittery hiding/showing
-      const SCROLL_THRESHOLD = 5;
-
-      if (Math.abs(scrollDelta) < SCROLL_THRESHOLD) return;
-
-      // Hide filters when scrolling down, show when scrolling up
-      if (scrollDelta > 0 && currentScrollY > 50) {
-        // Scrolling down and past initial threshold
-        setHideFilters(true);
-      } else if (scrollDelta < 0) {
-        // Scrolling up
-        setHideFilters(false);
-      }
-
-      setLastScrollY(currentScrollY);
-    },
-    [isXL, lastScrollY]
-  );
+  const toggleFilters = useCallback(() => {
+    setHideFilters((prev) => !prev);
+  }, []);
 
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
@@ -429,6 +405,30 @@ export default function PlayersClient({
             hideOnMobile={hideFilters}
           />
 
+          {/* Floating Hamburger/X Toggle Button (Mobile Only) */}
+          {!isXL && (
+            <button
+              onClick={toggleFilters}
+              className="fixed top-4 right-4 z-30 w-12 h-12 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full shadow-lg shadow-cyan-500/30 flex items-center justify-center transition-all active:scale-95"
+              aria-label={hideFilters ? "Show filters" : "Hide filters"}
+            >
+              {hideFilters ? (
+                // Hamburger icon (filters hidden)
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+              ) : (
+                // X icon (filters visible)
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              )}
+            </button>
+          )}
+
           {/* Players List */}
           <div className="flex-1 overflow-hidden flex flex-col relative">
             {/* ✅ Loading Overlay - only covers the list, not the header */}
@@ -441,7 +441,7 @@ export default function PlayersClient({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto" onScroll={handleListScroll}>
+            <div className="flex-1 overflow-y-auto">
               <PlayersList
                 players={players}
                 activeId={activeId}
