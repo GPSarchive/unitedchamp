@@ -409,7 +409,7 @@ export default function PlayersClient({
           {!isXL && (
             <button
               onClick={toggleFilters}
-              className="fixed top-4 right-4 z-30 w-12 h-12 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full shadow-lg shadow-cyan-500/30 flex items-center justify-center transition-all active:scale-95"
+              className="fixed top-20 right-4 z-[60] w-12 h-12 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full shadow-lg shadow-cyan-500/30 flex items-center justify-center transition-all active:scale-95"
               aria-label={hideFilters ? "Show filters" : "Hide filters"}
             >
               {hideFilters ? (

@@ -117,9 +117,10 @@ function PlayersFilterHeaderComponent({
     <div
       className={`
         z-20 bg-zinc-950 border-b border-white/10
-        sticky top-0
-        transition-transform duration-300 ease-in-out
-        ${hideOnMobile ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}
+        transition-all duration-300 ease-in-out
+        ${hideOnMobile
+          ? 'absolute top-0 left-0 right-0 -translate-y-full md:sticky md:translate-y-0'
+          : 'sticky top-0 translate-y-0'}
       `}
     >
       {/* Search & Count Row */}
