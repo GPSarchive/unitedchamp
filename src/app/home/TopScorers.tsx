@@ -47,21 +47,21 @@ export default function TopScorers({ scorers }: TopScorersProps) {
       bg: 'bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600',
       glow: 'shadow-[0_0_60px_rgba(251,191,36,0.6)]',
       border: 'border-amber-400',
-      label: '1ST',
+      label: '1ΟΣ',
       textColor: 'text-amber-900'
     }, // Gold
     {
       bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400',
       glow: 'shadow-[0_0_50px_rgba(192,192,192,0.5)]',
       border: 'border-gray-300',
-      label: '2ND',
+      label: '2ΟΣ',
       textColor: 'text-gray-700'
     }, // Silver
     {
       bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700',
       glow: 'shadow-[0_0_40px_rgba(234,88,12,0.5)]',
       border: 'border-orange-500',
-      label: '3RD',
+      label: '3ΟΣ',
       textColor: 'text-orange-900'
     }, // Bronze
   ];
@@ -86,11 +86,11 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           className="text-center mb-16"
         >
           <h2 className="text-5xl sm:text-7xl font-bold text-white mb-4 tracking-tight">
-            TOP SCORERS
+            ΚΟΡΥΦΑΙΟΙ ΣΚΟΡΕΡ
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
           <p className="mt-6 text-lg text-gray-400 font-light">
-            The elite goal-scoring machines of all time
+            Οι κορυφαίοι μηχανές του γκολ όλων των εποχών
           </p>
         </motion.div>
 
@@ -174,7 +174,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                         {scorer.goals}
                       </div>
                       <div className="text-xs text-gray-300 font-light tracking-wider mt-1">
-                        GOALS
+                        ΓΚΟΛ
                       </div>
                     </div>
 
@@ -209,7 +209,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                           {scorer.assists}
                         </div>
                         <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Assists
+                          Ασίστ
                         </div>
                       </div>
 
@@ -218,7 +218,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                           {scorer.matches}
                         </div>
                         <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Matches
+                          Αγώνες
                         </div>
                       </div>
                     </div>
@@ -227,7 +227,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-400 uppercase tracking-wider">
-                          Goals/Match
+                          Γκολ/Αγώνα
                         </span>
                         <span className="text-xl font-bold text-orange-500">
                           {(scorer.goals / scorer.matches).toFixed(2)}
