@@ -146,16 +146,21 @@ export default function PlayersClient({
 
   const onTournamentChange = useCallback(
     (idStr: string) => {
-      const id = Number(idStr);
+      // ✅ Handle empty string (clearing tournament filter)
+      const trimmed = idStr.trim();
+      const id = trimmed !== "" ? Number(trimmed) : NaN;
+      const hasTournament = Number.isFinite(id);
+
       // ✅ Update client state immediately
-      setClientTournamentId(Number.isFinite(id) ? id : null);
-      setClientSort("tournament_goals");
+      setClientTournamentId(hasTournament ? id : null);
+      // ✅ When clearing tournament, reset to alphabetical sort
+      setClientSort(hasTournament ? "tournament_goals" : "alpha");
       setIsLoading(true);
 
       // Fetch from server with new tournament filter
       updateQuery({
-        sort: "tournament_goals",
-        tournament_id: Number.isFinite(id) ? id : null,
+        sort: hasTournament ? "tournament_goals" : "alpha",
+        tournament_id: hasTournament ? id : null,
         page: 1,
       });
     },
