@@ -95,27 +95,27 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           </p>
         </motion.div>
 
-        {/* Stacked Cards Container */}
-        <div className="relative max-w-2xl mx-auto" style={{ height: '700px' }}>
+        {/* Stacked Cards Container - Horizontal */}
+        <div className="relative max-w-7xl mx-auto" style={{ height: '700px' }}>
           {scorers.map((scorer, index) => {
             const podium = podiumData[index] || podiumData[2];
             const isActive = index === activeIndex;
 
-            // Calculate offset for stacked cards
-            // Active card is at the top (0)
-            // Other cards are pushed down so only 10% is visible
-            const cardHeight = 650; // Approximate card height
+            // Calculate offset for horizontal stacked cards
+            // Active card is at the left (0)
+            // Other cards are pushed to the right so only 10% is visible
+            const cardWidth = 600; // Approximate card width
             const visiblePortion = 0.1; // 10% visible
-            const stackOffset = cardHeight * (1 - visiblePortion);
+            const stackOffset = cardWidth * (1 - visiblePortion);
 
-            // Position cards: active at top, others stacked below
-            let yOffset = 0;
+            // Position cards: active at left, others stacked to the right
+            let xOffset = 0;
             let zIndex = scorers.length - index;
 
             if (!isActive) {
-              // Find position in stack (how many cards are below the active one and above this one)
+              // Find position in stack (how many cards are to the left of this one)
               const positionInStack = index > activeIndex ? index - 1 : index;
-              yOffset = stackOffset + (positionInStack * (cardHeight * visiblePortion));
+              xOffset = stackOffset + (positionInStack * (cardWidth * visiblePortion));
               zIndex = scorers.length - index;
             } else {
               zIndex = scorers.length + 10; // Active card always on top
@@ -124,12 +124,12 @@ export default function TopScorers({ scorers }: TopScorersProps) {
             return (
               <motion.div
                 key={scorer.id}
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                initial={{ opacity: 0, x: 100, scale: 0.9 }}
                 animate={
                   isVisible
                     ? {
                         opacity: 1,
-                        y: yOffset,
+                        x: xOffset,
                         scale: 1,
                       }
                     : {}
@@ -144,7 +144,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  right: 0,
+                  width: `${cardWidth}px`,
                   zIndex,
                 }}
                 className={`group ${!isActive ? 'cursor-pointer' : ''}`}
