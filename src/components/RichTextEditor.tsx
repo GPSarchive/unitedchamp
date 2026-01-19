@@ -114,11 +114,29 @@ const MenuButton = ({
   </button>
 );
 
-const MenuBar = React.memo(({ editor }: { editor: Editor | null }) => {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
   const [uploadCount, setUploadCount] = React.useState(0);
   const uploadQueueRef = React.useRef<Promise<void>>(Promise.resolve());
+
+  // Force re-render when editor selection/state changes
+  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
+
+  React.useEffect(() => {
+    if (!editor) return;
+
+    // Re-render when selection changes (to update active states)
+    const handleUpdate = () => forceUpdate();
+
+    editor.on('selectionUpdate', handleUpdate);
+    editor.on('transaction', handleUpdate);
+
+    return () => {
+      editor.off('selectionUpdate', handleUpdate);
+      editor.off('transaction', handleUpdate);
+    };
+  }, [editor]);
 
   if (!editor) {
     return null;
@@ -374,7 +392,7 @@ const MenuBar = React.memo(({ editor }: { editor: Editor | null }) => {
       />
     </div>
   );
-});
+};
 
 // Validate TipTap JSON content structure
 const isValidTipTapContent = (content: any): boolean => {
