@@ -96,13 +96,15 @@ const MenuButton = ({
     type="button"
     title={title}
     className={`
-      relative p-2 rounded-md transition-all duration-200
+      relative min-w-[48px] min-h-[48px] p-3 rounded-md transition-colors duration-150
+      flex items-center justify-center
       ${active
-        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/50 scale-105'
-        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white'
+        ? 'bg-indigo-600 text-white shadow-md'
+        : 'bg-white/10 text-white/70 hover:bg-white/20 hover:text-white active:bg-white/30'
       }
-      ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+      ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
       ${active ? 'ring-2 ring-indigo-400' : ''}
+      touch-manipulation
     `}
   >
     {children}
