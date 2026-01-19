@@ -22,6 +22,7 @@ interface TopScorersProps {
 
 export default function TopScorers({ scorers }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -94,23 +95,64 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           </p>
         </motion.div>
 
-        {/* Scorers Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        {/* Stacked Cards Container */}
+        <div className="relative max-w-2xl mx-auto" style={{ height: '700px' }}>
           {scorers.map((scorer, index) => {
             const podium = podiumData[index] || podiumData[2];
+            const isActive = index === activeIndex;
+
+            // Calculate offset for stacked cards
+            // Active card is at the top (0)
+            // Other cards are pushed down so only 10% is visible
+            const cardHeight = 650; // Approximate card height
+            const visiblePortion = 0.1; // 10% visible
+            const stackOffset = cardHeight * (1 - visiblePortion);
+
+            // Position cards: active at top, others stacked below
+            let yOffset = 0;
+            let zIndex = scorers.length - index;
+
+            if (!isActive) {
+              // Find position in stack (how many cards are below the active one and above this one)
+              const positionInStack = index > activeIndex ? index - 1 : index;
+              yOffset = stackOffset + (positionInStack * (cardHeight * visiblePortion));
+              zIndex = scorers.length - index;
+            } else {
+              zIndex = scorers.length + 10; // Active card always on top
+            }
 
             return (
               <motion.div
                 key={scorer.id}
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={isVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
+                animate={
+                  isVisible
+                    ? {
+                        opacity: 1,
+                        y: yOffset,
+                        scale: 1,
+                      }
+                    : {}
+                }
                 transition={{
                   duration: 0.6,
                   delay: index * 0.2,
                   type: 'spring',
-                  stiffness: 100
+                  stiffness: 100,
                 }}
-                className="group relative"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex,
+                }}
+                className={`group ${!isActive ? 'cursor-pointer' : ''}`}
+                onClick={() => {
+                  if (!isActive) {
+                    setActiveIndex(index);
+                  }
+                }}
               >
                 {/* Rank Badge - Hexagon Shape */}
                 <motion.div
@@ -118,21 +160,35 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                   animate={isVisible ? { scale: 1, rotate: 0 } : {}}
                   transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
                   className={`absolute -top-8 -left-8 z-20 ${podium.bg} ${podium.glow} border-4 ${podium.border} overflow-hidden`}
-                  style={{ width: '90px', height: '90px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                  style={{
+                    width: '90px',
+                    height: '90px',
+                    clipPath:
+                      'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                  }}
                 >
                   <div className="w-full h-full flex flex-col items-center justify-center">
-                    <span className={`text-xs font-black ${podium.textColor} tracking-wider`}>
+                    <span
+                      className={`text-xs font-black ${podium.textColor} tracking-wider`}
+                    >
                       {podium.label}
                     </span>
-                    <span className={`text-4xl font-black ${podium.textColor} drop-shadow-md leading-none mt-1`}>
+                    <span
+                      className={`text-4xl font-black ${podium.textColor} drop-shadow-md leading-none mt-1`}
+                    >
                       {index + 1}
                     </span>
                   </div>
                 </motion.div>
 
                 {/* Card Container */}
-                <div className="relative h-full bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
-
+                <div
+                  className={`relative h-full bg-gradient-to-b from-neutral-900 to-black border-2 overflow-hidden transition-all duration-500 ${
+                    isActive
+                      ? 'border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.3)]'
+                      : 'border-white/10 hover:border-orange-500/30'
+                  }`}
+                >
                   {/* Photo Container with Shimmer */}
                   <div className="relative h-[400px] sm:h-[500px] overflow-hidden">
                     {/* Player Photo */}
@@ -149,24 +205,36 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                     {/* Shimmer/Glare Effect */}
                     <motion.div
                       initial={{ x: '-100%', opacity: 0 }}
-                      animate={isVisible ? {
-                        x: ['100%', '200%'],
-                        opacity: [0, 0.7, 0]
-                      } : {}}
+                      animate={
+                        isVisible
+                          ? {
+                              x: ['100%', '200%'],
+                              opacity: [0, 0.7, 0],
+                            }
+                          : {}
+                      }
                       transition={{
                         duration: 2,
                         delay: index * 0.2 + 0.5,
                         repeat: Infinity,
                         repeatDelay: 5,
-                        ease: 'easeInOut'
+                        ease: 'easeInOut',
                       }}
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
                       style={{ width: '50%' }}
                     />
 
                     {/* Animated Corner Accents */}
-                    <div className="absolute top-0 left-0 w-20 h-20 border-t-4 border-l-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 right-0 w-20 h-20 border-b-4 border-r-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div
+                      className={`absolute top-0 left-0 w-20 h-20 border-t-4 border-l-4 border-orange-500 transition-opacity duration-300 ${
+                        isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    />
+                    <div
+                      className={`absolute bottom-0 right-0 w-20 h-20 border-b-4 border-r-4 border-orange-500 transition-opacity duration-300 ${
+                        isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    />
 
                     {/* Goals Count Overlay */}
                     <div className="absolute top-6 right-6 backdrop-blur-md bg-black/60 border border-orange-500/30 px-6 py-3">
@@ -246,7 +314,9 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                       repeat: Infinity,
                       ease: 'easeInOut',
                     }}
-                    className="absolute inset-0 border-2 border-orange-500/0 group-hover:border-orange-500/50 pointer-events-none"
+                    className={`absolute inset-0 border-2 pointer-events-none ${
+                      isActive ? 'border-orange-500/50' : 'border-orange-500/0'
+                    }`}
                   />
                 </div>
               </motion.div>
