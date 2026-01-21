@@ -579,8 +579,8 @@ function TeamRow({
 }) {
   const [mode, setMode] = useState<"pick" | "link">("pick");
 
-    function currentTeamId(side: string, match: MatchDraft): string | number | readonly string[] | undefined {
-        throw new Error("Function not implemented.");
+    function currentTeamId(side: "A" | "B", match: MatchDraft): number | null {
+        return side === "A" ? match.team_a_id : match.team_b_id;
     }
 
   return (
