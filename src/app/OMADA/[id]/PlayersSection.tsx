@@ -72,8 +72,6 @@ export default function PlayersSection({
                     </p>
                     <p className="text-gray-300 text-base flex items-center gap-4 mt-1">
                       <span className="flex items-center gap-1"><FaUser className="text-orange-400" /> {p.position ?? "—"}</span>
-                      {p.height_cm ? <span className="flex items-center gap-1"><FaRulerVertical className="text-orange-400" /> {p.height_cm}cm</span> : ""}
-                      {p.birth_date ? <span className="flex items-center gap-1"><FaBirthdayCake className="text-orange-400" /> {new Date(p.birth_date).toLocaleDateString()}</span> : ""}
                     </p>
                   </div>
                 </div>
