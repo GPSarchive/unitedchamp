@@ -1,4 +1,4 @@
-// File: KOStageViewer.tsx (horizontal + vertical scroll, height-fit zoom)
+// File: KOStageViewer.tsx — Elegant bracket viewer with smooth curves & sporty design
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +13,6 @@ type Props = {
   nodes: NodeBox[];
   connections: Connection[];
   nodeContent?: (n: NodeBox) => React.ReactNode;
-  snap?: number;
   minZoom?: number;
   maxZoom?: number;
 };
@@ -24,12 +23,10 @@ const KOStageViewer = ({
   nodes,
   connections,
   nodeContent,
-  snap = 10,
-  minZoom = 0.4,
-  maxZoom = 3,
+  minZoom = 0.3,
+  maxZoom = 2.5,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const trackRef = useRef<HTMLDivElement | null>(null);
 
   const nodeById = useMemo(() => {
     const m = new Map<string, NodeBox>();
@@ -37,19 +34,18 @@ const KOStageViewer = ({
     return m;
   }, [nodes]);
 
-  // Base logical size of the diagram (unscaled)
   const baseWidth = useMemo(
-    () => Math.max(800, nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 0) + 80),
+    () => Math.max(800, nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 0) + 100),
     [nodes]
   );
   const baseHeight = useMemo(
-    () => Math.max(400, nodes.reduce((my, n) => Math.max(my, n.y + n.h), 0) + 80),
+    () => Math.max(400, nodes.reduce((my, n) => Math.max(my, n.y + n.h), 0) + 100),
     [nodes]
   );
 
   const [zoom, setZoom] = useState(1);
 
-  // Fit height on mount and resize. Keeps vertical size fixed at container height.
+  // Fit height on mount & resize
   useEffect(() => {
     const fit = () => {
       const c = containerRef.current;
@@ -63,7 +59,6 @@ const KOStageViewer = ({
     return () => ro.disconnect();
   }, [baseHeight, minZoom, maxZoom]);
 
-  // Keep point under cursor while zooming (both axes)
   const setZoomAt = (next: number, clientX?: number, clientY?: number) => {
     const c = containerRef.current;
     if (!c) return;
@@ -74,7 +69,7 @@ const KOStageViewer = ({
     const cx = clientX ?? rect.left + rect.width / 2;
     const cy = clientY ?? rect.top + rect.height / 2;
 
-    const contentX = (c.scrollLeft + (cx - rect.left)) / zoom; // logical coords
+    const contentX = (c.scrollLeft + (cx - rect.left)) / zoom;
     const contentY = (c.scrollTop + (cy - rect.top)) / zoom;
 
     setZoom(newZ);
@@ -84,7 +79,7 @@ const KOStageViewer = ({
     });
   };
 
-  // Wheel: Ctrl/Cmd to zoom. Otherwise native scroll. Shift+wheel for horizontal is native.
+  // Wheel: Ctrl/Cmd to zoom
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
@@ -93,7 +88,7 @@ const KOStageViewer = ({
     }
   };
 
-  // Drag-to-pan (mouse or touch)
+  // Drag-to-pan
   const dragging = useRef<null | { x: number; y: number; sl: number; st: number }>(null);
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -117,7 +112,7 @@ const KOStageViewer = ({
     c.scrollTop = d.st + (d.y - e.clientY);
   };
 
-  // Pinch to zoom for touch (two-finger)
+  // Pinch to zoom
   const touches = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchState = useRef<null | { baseDist: number; baseZoom: number; cx: number; cy: number }>(null);
 
@@ -155,70 +150,62 @@ const KOStageViewer = ({
     if (touches.current.size < 2) pinchState.current = null;
   };
 
-  // Keyboard zoom shortcuts
+  // Keyboard zoom
   const onKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
       e.preventDefault();
-      setZoomAt(zoom * 1.1);
+      setZoomAt(zoom * 1.15);
     } else if ((e.ctrlKey || e.metaKey) && e.key === "-") {
       e.preventDefault();
-      setZoomAt(zoom / 1.1);
+      setZoomAt(zoom / 1.15);
     } else if ((e.ctrlKey || e.metaKey) && e.key === "0") {
       e.preventDefault();
       setZoomAt(clamp(containerRef.current!.clientHeight / baseHeight, minZoom, maxZoom));
     }
   };
 
-  // Track size follows zoom. Vertical size grows; both scrollbars enabled.
   const trackWidth = baseWidth * zoom;
   const trackHeight = baseHeight * zoom;
+  const zoomPct = Math.round(zoom * 100);
 
   return (
-    <div className="relative w-full rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40">
-      {/* Controls */}
-      <div className="pointer-events-auto absolute right-3 top-3 z-10">
-        {/* Zoom Controls */}
-        <div className="flex items-center gap-2 rounded-xl bg-zinc-950/90 border border-amber-500/25 p-2 backdrop-blur-sm shadow-lg shadow-orange-500/10">
-          <button
-            type="button"
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
-            onClick={() => setZoomAt(zoom / 1.1)}
-            aria-label="Zoom out"
-          >
-            −
-          </button>
-          <input
-            aria-label="Zoom"
-            className="h-6 w-28 accent-orange-500"
-            type="range"
-            min={minZoom}
-            max={maxZoom}
-            step={0.01}
-            value={zoom}
-            onChange={(e) => setZoomAt(parseFloat(e.target.value))}
-          />
-          <button
-            type="button"
-            className="rounded-lg border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/90 hover:bg-zinc-800 hover:border-orange-500/50 transition-colors"
-            onClick={() => setZoomAt(zoom * 1.1)}
-            aria-label="Zoom in"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="ml-1 rounded-lg border border-orange-500/50 bg-orange-600/30 px-2 py-1 text-xs text-amber-100 hover:bg-orange-600/50 transition-colors"
-            onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
-          >
-            Fit H
-          </button>
-        </div>
+    <div className="relative w-full h-full rounded-xl overflow-hidden">
+      {/* Zoom controls — top-right floating pill */}
+      <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-full bg-black/70 border border-white/10 px-2 py-1 backdrop-blur-md shadow-lg">
+        <button
+          type="button"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-bold"
+          onClick={() => setZoomAt(zoom / 1.2)}
+          aria-label="Zoom out"
+        >
+          -
+        </button>
+        <span className="min-w-[3ch] text-center text-[11px] font-medium text-white/50 tabular-nums">
+          {zoomPct}%
+        </span>
+        <button
+          type="button"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-bold"
+          onClick={() => setZoomAt(zoom * 1.2)}
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <div className="mx-0.5 h-3 w-px bg-white/15" />
+        <button
+          type="button"
+          className="flex h-6 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+          onClick={() => setZoomAt(containerRef.current!.clientHeight / baseHeight)}
+          aria-label="Fit to view"
+        >
+          Fit
+        </button>
       </div>
 
       {/* Scroll container */}
       <div
         ref={containerRef}
-        className="relative w-full overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y touch-none [&_*]:select-none h-96 md:h-[32rem]"
+        className="relative w-full h-full overflow-auto touch-none [&_*]:select-none cursor-grab active:cursor-grabbing"
         onWheel={onWheel}
         onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
@@ -232,15 +219,14 @@ const KOStageViewer = ({
         role="region"
         aria-label="Knockout bracket viewer"
       >
-        {/* Background Pattern - fixed to container */}
+        {/* Background */}
         <div className="absolute inset-0 pointer-events-none">
-          <BracketBackground snap={snap} />
+          <BracketBackground />
         </div>
 
-        {/* Track grows with zoom in both axes */}
-        <div ref={trackRef} className="relative" style={{ width: trackWidth, height: trackHeight }}>
-
-          {/* Logical plane scaled in place */}
+        {/* Track */}
+        <div className="relative" style={{ width: trackWidth, height: trackHeight }}>
+          {/* Scaled logical plane */}
           <div
             className="absolute top-0 left-0"
             style={{
@@ -250,30 +236,17 @@ const KOStageViewer = ({
               transformOrigin: "top left",
             }}
           >
-
-            {/* SVG connection layer */}
+            {/* SVG connections */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
-                {/* Gold/Orange/Red gradient left-to-right */}
-                <linearGradient id="edgeGradLTR" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
-                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
-                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
+                <linearGradient id="bracketLine" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(16,185,129,0.6)" />
+                  <stop offset="100%" stopColor="rgba(52,211,153,0.25)" />
                 </linearGradient>
-                {/* Gold/Orange/Red gradient right-to-left */}
-                <linearGradient id="edgeGradRTL" x1="100%" y1="0%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(251,191,36,0.5)" />
-                  <stop offset="50%" stopColor="rgba(249,115,22,0.8)" />
-                  <stop offset="100%" stopColor="rgba(239,68,68,0.95)" />
+                <linearGradient id="bracketLineRTL" x1="100%" y1="0%" x2="0%" y2="0%">
+                  <stop offset="0%" stopColor="rgba(16,185,129,0.6)" />
+                  <stop offset="100%" stopColor="rgba(52,211,153,0.25)" />
                 </linearGradient>
-                {/* Warm glow filter for depth */}
-                <filter id="warmGlow">
-                  <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
               </defs>
 
               {connections.map(([from, to], idx) => {
@@ -285,20 +258,25 @@ const KOStageViewer = ({
                 const bxc = b.x + b.w / 2;
                 const rtl = axc > bxc;
 
-                let x1 = rtl ? a.x - 6 : a.x + a.w + 6;
-                let y1 = a.y + a.h / 2;
-                let x2 = rtl ? b.x + b.w + 6 : b.x - 6;
-                let y2 = b.y + b.h / 2;
+                const x1 = rtl ? a.x : a.x + a.w;
+                const y1 = a.y + a.h / 2;
+                const x2 = rtl ? b.x + b.w : b.x;
+                const y2 = b.y + b.h / 2;
 
-                // Generate path using elbow style
                 const d = generateElbowPath({ x1, y1, x2, y2 });
 
                 return (
-                  <g key={idx} className="pointer-events-none">
-                    {/* Outer warm glow/shadow */}
-                    <path d={d} fill="none" stroke="rgba(249,115,22,0.2)" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" />
-                    {/* Main gradient stroke with warm glow filter */}
-                    <path d={d} fill="none" stroke={`url(#${rtl ? "edgeGradRTL" : "edgeGradLTR"})`} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" filter="url(#warmGlow)" />
+                  <g key={idx}>
+                    {/* Soft glow behind */}
+                    <path d={d} fill="none" stroke="rgba(16,185,129,0.08)" strokeWidth={12} strokeLinecap="round" />
+                    {/* Main line */}
+                    <path
+                      d={d}
+                      fill="none"
+                      stroke={`url(#${rtl ? "bracketLineRTL" : "bracketLine"})`}
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                    />
                   </g>
                 );
               })}
@@ -308,24 +286,23 @@ const KOStageViewer = ({
             {nodes.map((n) => (
               <div
                 key={n.id}
-                className="absolute rounded-2xl border border-amber-500/25 bg-zinc-950/85 p-2 text-white backdrop-blur-sm shadow-lg shadow-orange-500/10 hover:border-orange-500/50 hover:bg-zinc-950/95 hover:shadow-orange-500/20 transition-all"
+                className="absolute rounded-xl border border-white/[0.08] bg-zinc-900/90 backdrop-blur-sm shadow-xl shadow-black/30 overflow-hidden transition-shadow hover:shadow-emerald-900/15 hover:border-white/15"
                 style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
               >
-                <div className="flex items-center justify-between text-xs text-amber-200/90">
-                  <span className="truncate font-medium">{n.label ?? n.id}</span>
-                </div>
-                <div className="mt-1 h-[1px] w-full bg-gradient-to-r from-amber-400/20 via-orange-500/50 to-red-500/30" />
-                <div className="flex-1 min-h-0 text-sm leading-tight">
-                  {nodeContent ? <div className="h-full">{nodeContent(n)}</div> : <div className="opacity-80 text-white/90">{n.label ?? n.id}</div>}
-                </div>
+                {nodeContent ? nodeContent(n) : (
+                  <div className="flex items-center justify-center h-full text-sm text-white/60">{n.label ?? n.id}</div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-3 bottom-3 rounded-md bg-zinc-950/90 border border-amber-500/25 px-2 py-1 text-[11px] text-amber-200/80">
-        Scroll H/V · Drag to pan · Pinch/Ctrl+wheel to zoom
+      {/* Hint — bottom-left */}
+      <div className="absolute left-3 bottom-3 z-20 rounded-full bg-black/50 border border-white/[0.06] px-3 py-1 backdrop-blur-sm">
+        <span className="text-[10px] text-white/30 font-medium tracking-wide">
+          Drag to pan · Ctrl+scroll to zoom
+        </span>
       </div>
     </div>
   );

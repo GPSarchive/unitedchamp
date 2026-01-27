@@ -1,4 +1,4 @@
-// app/tournaments/koStage/KoStageDisplay.tsx
+// File: KOStageDisplay.tsx — Elegant sporty knockout bracket with big match cards & scores
 
 "use client";
 
@@ -27,7 +27,7 @@ export type DraftMatch = {
   away_source_bracket_pos?: number | null;
 };
 
-type Connection = [string, string]; // From -> To
+type Connection = [string, string];
 type NodeMeta = { round: number; bracket_pos: number };
 
 interface NodeBox {
@@ -44,15 +44,32 @@ type MatchNodeData = {
   teamB: number | null;
   scoreA: number | null;
   scoreB: number | null;
-  status: "scheduled" | "finished" | null;
+  status: string | null;
   winnerId: number | null;
+  matchDate: string | null;
 };
 
+/* ────────────────────────────────────────────────────────────────── */
+/*  Round label helper                                                */
+/* ────────────────────────────────────────────────────────────────── */
+
+function getRoundLabel(round: number, maxRound: number): string {
+  const diff = maxRound - round;
+  if (diff === 0) return "Final";
+  if (diff === 1) return "Semi-Finals";
+  if (diff === 2) return "Quarter-Finals";
+  return `Round of ${Math.pow(2, maxRound - round + 1)}`;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/*  Main component                                                    */
+/* ────────────────────────────────────────────────────────────────── */
+
 const KOStageDisplay = ({ stage }: { stage: Stage }) => {
-  const tournament = useTournamentData((state) => state.tournament);
-  const teams = useTournamentData((state) => state.teams);
-  const matches = useTournamentData((state) => state.matches);
-  const ids = useTournamentData((state) => state.ids);
+  const tournament = useTournamentData((s) => s.tournament);
+  const teams = useTournamentData((s) => s.teams);
+  const matches = useTournamentData((s) => s.matches);
+  const ids = useTournamentData((s) => s.ids);
 
   const [nodes, setNodes] = useState<NodeBox[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -66,17 +83,17 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
 
   const knockoutMatches = useMemo(() => {
     if (knockoutStageIdx === -1) return [];
-    return (matches ?? []).filter((match) => match.stageIdx === knockoutStageIdx);
+    return (matches ?? []).filter((m) => m.stageIdx === knockoutStageIdx);
   }, [knockoutStageIdx, matches]);
 
-  // Bigger cards for the new design
-  const SCALE = 1.5;
-  const BOX_W = 300;
-  const BOX_H = 160;
-  const COL_GAP = 300 * SCALE;
-  const BASE_GAP_Y = 160 * SCALE;
-  const X_MARGIN = 60 * SCALE;
-  const Y_MARGIN = 60 * SCALE;
+  // ── Layout constants — big, spacious cards ──
+  const SCALE = 1.6;
+  const BOX_W = 320;
+  const BOX_H = 170;
+  const COL_GAP = 340 * SCALE;
+  const BASE_GAP_Y = 170 * SCALE;
+  const X_MARGIN = 80 * SCALE;
+  const Y_MARGIN = 80 * SCALE;
 
   const getYPosition = (round: number, bracket_pos: number) => {
     const spacing = BASE_GAP_Y * Math.pow(2, round - 1);
@@ -97,6 +114,8 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
       return;
     }
 
+    const maxRound = Math.max(...stageRows.map((m) => m.round ?? 1));
+
     const nx: NodeBox[] = stageRows.map((m) => {
       const r = m.round ?? 1;
       const b = m.bracket_pos ?? 1;
@@ -106,7 +125,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         y: getYPosition(r, b),
         w: BOX_W,
         h: BOX_H,
-        label: tournament?.name ? `${tournament.name} • ${stage.name}` : stage.name,
+        label: getRoundLabel(r, maxRound),
       };
     });
 
@@ -143,6 +162,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         scoreB: m.team_b_score ?? null,
         status: m.status ?? null,
         winnerId: m.winner_team_id ?? null,
+        matchDate: m.match_date ?? null,
       };
     });
 
@@ -176,7 +196,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         const data = matchData[n.id];
         if (!data) return null;
 
-        const { teamA, teamB, scoreA, scoreB, status, winnerId } = data;
+        const { teamA, teamB, scoreA, scoreB, status, winnerId, matchDate } = data;
         const nameA = getTeamName(teamA);
         const nameB = getTeamName(teamB);
         const logoA = getTeamLogo(teamA);
@@ -186,42 +206,60 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         const bWon = isFinished && winnerId != null && winnerId === teamB;
 
         return (
-          <div className="flex flex-col h-full justify-center gap-0.5 px-1">
-            {/* Team A row */}
-            <TeamRow
-              logo={logoA}
-              name={nameA}
-              score={isFinished ? scoreA : null}
-              isWinner={aWon}
-              isTBD={teamA == null}
-            />
-
-            {/* Divider */}
-            <div className="mx-2 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-
-            {/* Team B row */}
-            <TeamRow
-              logo={logoB}
-              name={nameB}
-              score={isFinished ? scoreB : null}
-              isWinner={bWon}
-              isTBD={teamB == null}
-            />
-
-            {/* Status badge */}
-            {isFinished ? (
-              <div className="mt-0.5 text-center">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/80">
+          <div className="flex flex-col h-full">
+            {/* Card header — round label + status */}
+            <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/[0.06] bg-white/[0.02]">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                {n.label}
+              </span>
+              {isFinished ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   FT
                 </span>
-              </div>
-            ) : (
-              <div className="mt-0.5 text-center">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
-                  vs
+              ) : matchDate ? (
+                <span className="text-[10px] text-white/30 font-medium">
+                  {new Date(matchDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                 </span>
+              ) : (
+                <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider">
+                  Scheduled
+                </span>
+              )}
+            </div>
+
+            {/* Match body */}
+            <div className="flex-1 flex flex-col justify-center gap-1 px-1.5 py-1.5">
+              {/* Team A */}
+              <TeamRow
+                logo={logoA}
+                name={nameA}
+                score={isFinished ? scoreA : null}
+                isWinner={aWon}
+                isLoser={isFinished && !aWon && winnerId != null}
+                isTBD={teamA == null}
+              />
+
+              {/* Separator */}
+              <div className="relative mx-3">
+                <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                {!isFinished && (
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-900 px-2 text-[9px] font-bold uppercase tracking-widest text-white/20">
+                    vs
+                  </span>
+                )}
               </div>
-            )}
+
+              {/* Team B */}
+              <TeamRow
+                logo={logoB}
+                name={nameB}
+                score={isFinished ? scoreB : null}
+                isWinner={bWon}
+                isLoser={isFinished && !bWon && winnerId != null}
+                isTBD={teamB == null}
+              />
+            </div>
           </div>
         );
       }}
@@ -229,74 +267,98 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
   );
 };
 
-/* ── Team Row sub-component ── */
+/* ────────────────────────────────────────────────────────────────── */
+/*  TeamRow — a single team row inside a match card                   */
+/* ────────────────────────────────────────────────────────────────── */
 
 function TeamRow({
   logo,
   name,
   score,
   isWinner,
+  isLoser,
   isTBD,
 }: {
   logo: string | null;
   name: string;
   score: number | null;
   isWinner: boolean;
+  isLoser: boolean;
   isTBD: boolean;
 }) {
   return (
     <div
       className={`
-        flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors
-        ${isWinner ? "bg-emerald-500/10" : ""}
+        flex items-center gap-3 rounded-lg px-2.5 py-2 transition-all
+        ${isWinner ? "bg-emerald-500/[0.08]" : ""}
       `}
     >
-      {/* Logo */}
+      {/* Team logo */}
       {logo ? (
         <img
           src={logo}
           alt={name}
           className={`
-            h-9 w-9 shrink-0 rounded-full object-cover border-2
-            ${isWinner ? "border-emerald-400/60 shadow-md shadow-emerald-500/20" : "border-white/15"}
+            h-10 w-10 shrink-0 rounded-full object-cover ring-2 transition-all
+            ${isWinner
+              ? "ring-emerald-400/50 shadow-lg shadow-emerald-500/20"
+              : isLoser
+                ? "ring-white/[0.06] opacity-50"
+                : "ring-white/10"
+            }
           `}
         />
       ) : (
         <div
           className={`
-            flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2
-            ${isTBD ? "border-white/10 bg-white/5" : "border-white/15 bg-zinc-800/60"}
+            flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-2 transition-all
+            ${isTBD
+              ? "ring-white/[0.06] bg-white/[0.03]"
+              : isLoser
+                ? "ring-white/[0.06] bg-zinc-800/40 opacity-50"
+                : "ring-white/10 bg-zinc-800/60"
+            }
           `}
         >
-          <span className="text-[10px] font-bold text-white/30">
-            {isTBD ? "?" : name.charAt(0)}
+          <span className={`text-xs font-bold ${isTBD ? "text-white/15" : "text-white/30"}`}>
+            {isTBD ? "?" : name.charAt(0).toUpperCase()}
           </span>
         </div>
       )}
 
-      {/* Name */}
+      {/* Team name */}
       <span
         className={`
-          flex-1 truncate text-sm font-semibold
-          ${isWinner ? "text-white" : isTBD ? "text-white/25 italic" : "text-white/70"}
+          flex-1 truncate text-[13px] font-semibold leading-tight transition-all
+          ${isWinner
+            ? "text-white"
+            : isLoser
+              ? "text-white/30"
+              : isTBD
+                ? "text-white/20 italic"
+                : "text-white/70"
+          }
         `}
       >
         {name}
       </span>
 
-      {/* Score */}
-      {score != null && (
-        <span
+      {/* Score badge */}
+      {score != null ? (
+        <div
           className={`
-            min-w-[28px] shrink-0 rounded-md py-0.5 text-center text-base font-black tabular-nums
+            flex h-8 min-w-[32px] shrink-0 items-center justify-center rounded-lg text-base font-black tabular-nums transition-all
             ${isWinner
-              ? "bg-emerald-500/20 text-emerald-300"
-              : "bg-white/5 text-white/50"
+              ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/25"
+              : "bg-white/[0.04] text-white/35"
             }
           `}
         >
           {score}
-        </span>
+        </div>
+      ) : (
+        /* Empty score placeholder to maintain alignment */
+        <div className="h-8 min-w-[32px] shrink-0" />
       )}
     </div>
   );
