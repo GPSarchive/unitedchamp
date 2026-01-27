@@ -1,4 +1,4 @@
-// File: BracketLineStyles.tsx - Elbow line style for knockout bracket connections
+// File: BracketLineStyles.tsx — Smooth bezier curve connections for knockout bracket
 
 interface LineParams {
   x1: number;
@@ -8,10 +8,13 @@ interface LineParams {
 }
 
 /**
- * Generate SVG path for elbow (single 90° turn)
- * Creates clean L-shaped connections between nodes
+ * Generate SVG path for a smooth S-curve connection between bracket nodes.
+ * Uses cubic bezier with horizontal control points for a clean, sporty look.
  */
 export function generateElbowPath({ x1, y1, x2, y2 }: LineParams): string {
-  const midX = (x1 + x2) / 2;
-  return `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
+  const dx = Math.abs(x2 - x1);
+  const tension = dx * 0.45; // how far the control points extend horizontally
+  const cx1 = x1 + (x2 > x1 ? tension : -tension);
+  const cx2 = x2 + (x2 > x1 ? -tension : tension);
+  return `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
 }
