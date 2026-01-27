@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
@@ -22,6 +22,7 @@ interface TopScorersProps {
 
 export default function TopScorers({ scorers }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -41,35 +42,42 @@ export default function TopScorers({ scorers }: TopScorersProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Medal colors and labels for 1st, 2nd, 3rd
   const podiumData = [
     {
       bg: 'bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600',
-      glow: 'shadow-[0_0_60px_rgba(251,191,36,0.6)]',
+      glow: 'shadow-[0_0_40px_rgba(251,191,36,0.4)]',
       border: 'border-amber-400',
       label: '1ΟΣ',
-      textColor: 'text-amber-900'
-    }, // Gold
+      textColor: 'text-amber-900',
+      accent: 'orange-500',
+    },
     {
       bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400',
-      glow: 'shadow-[0_0_50px_rgba(192,192,192,0.5)]',
+      glow: 'shadow-[0_0_30px_rgba(192,192,192,0.3)]',
       border: 'border-gray-300',
       label: '2ΟΣ',
-      textColor: 'text-gray-700'
-    }, // Silver
+      textColor: 'text-gray-700',
+      accent: 'gray-400',
+    },
     {
       bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700',
-      glow: 'shadow-[0_0_40px_rgba(234,88,12,0.5)]',
+      glow: 'shadow-[0_0_30px_rgba(234,88,12,0.3)]',
       border: 'border-orange-500',
       label: '3ΟΣ',
-      textColor: 'text-orange-900'
-    }, // Bronze
+      textColor: 'text-orange-900',
+      accent: 'orange-600',
+    },
   ];
+
+  // Peek amount visible when card is collapsed (in px)
+  const PEEK = 48;
+  // Card height
+  const CARD_HEIGHT = 320;
 
   return (
     <section
       ref={sectionRef}
-      className="relative py-20 sm:py-32 overflow-hidden bg-[#0f1115]"
+      className="relative py-20 sm:py-28 overflow-hidden bg-[#0f1115]"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
@@ -83,171 +91,156 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           initial={{ opacity: 0, y: -30 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <h2 className="text-5xl sm:text-7xl font-bold text-white mb-4 tracking-tight">
+          <h2 className="text-4xl sm:text-6xl font-bold text-white mb-4 tracking-tight">
             ΚΟΡΥΦΑΙΟΙ ΣΚΟΡΕΡ
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
-          <p className="mt-6 text-lg text-gray-400 font-light">
+          <p className="mt-4 text-base text-gray-400 font-light">
             Οι κορυφαίοι γκολ σκορερ όλων των εποχών
           </p>
         </motion.div>
 
-        {/* Scorers Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        {/* Stacked Cards */}
+        <div className="max-w-lg mx-auto relative" style={{ height: `${CARD_HEIGHT + (scorers.length - 1) * PEEK}px` }}>
           {scorers.map((scorer, index) => {
             const podium = podiumData[index] || podiumData[2];
+            const isActive = activeIndex === index;
+
+            // Calculate vertical position
+            // Active card sits at its natural stacked position, others stack below
+            let yPosition: number;
+            if (index <= activeIndex) {
+              // Cards at or above active: stack normally
+              yPosition = index * PEEK;
+            } else {
+              // Cards below active: push down by full card height for the active card
+              yPosition = CARD_HEIGHT + index * PEEK;
+            }
 
             return (
               <motion.div
                 key={scorer.id}
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={isVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
+                initial={{ opacity: 0, y: 80 }}
+                animate={isVisible ? {
+                  opacity: 1,
+                  y: yPosition,
+                } : { opacity: 0, y: 80 }}
                 transition={{
-                  duration: 0.6,
-                  delay: index * 0.2,
+                  duration: 0.5,
+                  delay: isVisible ? index * 0.15 : 0,
                   type: 'spring',
-                  stiffness: 100
+                  stiffness: 200,
+                  damping: 25,
                 }}
-                className="group relative"
+                onClick={() => setActiveIndex(index)}
+                className={`absolute left-0 right-0 cursor-pointer`}
+                style={{
+                  zIndex: activeIndex === index ? 10 : scorers.length - index,
+                  height: `${CARD_HEIGHT}px`,
+                }}
               >
-                {/* Rank Badge - Hexagon Shape */}
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={isVisible ? { scale: 1, rotate: 0 } : {}}
-                  transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
-                  className={`absolute -top-8 -left-8 z-20 ${podium.bg} ${podium.glow} border-4 ${podium.border} overflow-hidden`}
-                  style={{ width: '90px', height: '90px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
-                >
-                  <div className="w-full h-full flex flex-col items-center justify-center">
-                    <span className={`text-xs font-black ${podium.textColor} tracking-wider`}>
-                      {podium.label}
-                    </span>
-                    <span className={`text-4xl font-black ${podium.textColor} drop-shadow-md leading-none mt-1`}>
-                      {index + 1}
-                    </span>
-                  </div>
-                </motion.div>
+                <div className={`relative h-full bg-gradient-to-b from-neutral-900 to-black border ${isActive ? 'border-orange-500/60' : 'border-white/10'} overflow-hidden rounded-xl transition-colors duration-300 ${isActive ? 'shadow-[0_0_30px_rgba(249,115,22,0.2)]' : 'shadow-lg shadow-black/50'}`}>
 
-                {/* Card Container */}
-                <div className="relative h-full bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
-
-                  {/* Photo Container with Shimmer */}
-                  <div className="relative h-[400px] sm:h-[500px] overflow-hidden">
-                    {/* Player Photo */}
-                    <Image
-                      src={scorer.photo || '/images/default-player.png'}
-                      alt={`${scorer.firstName} ${scorer.lastName}`}
-                      fill
-                      className="object-cover object-top transition-transform duration-700 group-hover:scale-110"
-                    />
-
-                    {/* Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-
-                    {/* Shimmer/Glare Effect */}
-                    <motion.div
-                      initial={{ x: '-100%', opacity: 0 }}
-                      animate={isVisible ? {
-                        x: ['100%', '200%'],
-                        opacity: [0, 0.7, 0]
-                      } : {}}
-                      transition={{
-                        duration: 2,
-                        delay: index * 0.2 + 0.5,
-                        repeat: Infinity,
-                        repeatDelay: 5,
-                        ease: 'easeInOut'
-                      }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
-                      style={{ width: '50%' }}
-                    />
-
-                    {/* Animated Corner Accents */}
-                    <div className="absolute top-0 left-0 w-20 h-20 border-t-4 border-l-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 right-0 w-20 h-20 border-b-4 border-r-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    {/* Goals Count Overlay */}
-                    <div className="absolute top-6 right-6 backdrop-blur-md bg-black/60 border border-orange-500/30 px-6 py-3">
-                      <div className="text-6xl font-black text-orange-500 leading-none">
+                  {/* Collapsed peek strip - visible when not active */}
+                  {!isActive && (
+                    <div className="absolute inset-0 flex items-center px-5 bg-gradient-to-r from-neutral-900 via-neutral-900 to-black z-10">
+                      {/* Rank badge */}
+                      <div
+                        className={`${podium.bg} flex-shrink-0 flex items-center justify-center mr-4`}
+                        style={{ width: '36px', height: '36px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                      >
+                        <span className={`text-lg font-black ${podium.textColor}`}>{index + 1}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-bold text-sm uppercase truncate">
+                          {scorer.firstName} {scorer.lastName}
+                        </p>
+                      </div>
+                      <div className="text-orange-500 font-black text-xl ml-3">
                         {scorer.goals}
-                      </div>
-                      <div className="text-xs text-gray-300 font-light tracking-wider mt-1">
-                        ΓΚΟΛ
+                        <span className="text-xs text-gray-500 ml-1 font-normal">γκολ</span>
                       </div>
                     </div>
+                  )}
 
-                    {/* Team Badge (if available) */}
-                    {scorer.teamLogo && (
-                      <div className="absolute bottom-6 left-6 w-16 h-16 bg-white/10 backdrop-blur-sm border border-white/20 p-2">
-                        <Image
-                          src={scorer.teamLogo}
-                          alt={scorer.teamName || 'Team'}
-                          width={48}
-                          height={48}
-                          className="object-contain"
-                        />
-                      </div>
+                  {/* Full card content - visible when active */}
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="h-full flex flex-row"
+                      >
+                        {/* Left: Photo */}
+                        <div className="relative w-2/5 h-full flex-shrink-0 overflow-hidden">
+                          <Image
+                            src={scorer.photo || '/images/default-player.png'}
+                            alt={`${scorer.firstName} ${scorer.lastName}`}
+                            fill
+                            className="object-cover object-top"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/80" />
+
+                          {/* Rank hexagon */}
+                          <div
+                            className={`absolute top-3 left-3 ${podium.bg} ${podium.glow} flex items-center justify-center`}
+                            style={{ width: '44px', height: '44px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                          >
+                            <span className={`text-xl font-black ${podium.textColor}`}>{index + 1}</span>
+                          </div>
+
+                          {/* Team badge */}
+                          {scorer.teamLogo && (
+                            <div className="absolute bottom-3 left-3 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded p-1">
+                              <Image
+                                src={scorer.teamLogo}
+                                alt={scorer.teamName || 'Team'}
+                                width={32}
+                                height={32}
+                                className="object-contain"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right: Info */}
+                        <div className="flex-1 p-5 flex flex-col justify-center">
+                          <h3 className="text-xl font-black text-white uppercase tracking-tight leading-tight">
+                            {scorer.firstName}
+                          </h3>
+                          <h3 className="text-xl font-black text-orange-500 uppercase tracking-tight leading-tight mb-4">
+                            {scorer.lastName}
+                          </h3>
+
+                          {/* Goals big number */}
+                          <div className="mb-4">
+                            <span className="text-5xl font-black text-orange-500 leading-none">{scorer.goals}</span>
+                            <span className="text-xs text-gray-400 uppercase tracking-wider ml-2">Γκολ</span>
+                          </div>
+
+                          {/* Stats row */}
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
+                              <div className="text-lg font-bold text-white">{scorer.assists}</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Ασίστ</div>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
+                              <div className="text-lg font-bold text-white">{scorer.matches}</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Αγώνες</div>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
+                              <div className="text-lg font-bold text-orange-500">{(scorer.goals / scorer.matches).toFixed(2)}</div>
+                              <div className="text-[10px] text-gray-400 uppercase tracking-wider">Γ/Α</div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
-                  </div>
-
-                  {/* Player Info Section */}
-                  <div className="p-6 bg-gradient-to-b from-black to-neutral-950">
-                    {/* Name */}
-                    <h3 className="text-3xl sm:text-4xl font-black text-white mb-1 tracking-tight uppercase">
-                      {scorer.firstName}
-                    </h3>
-                    <h3 className="text-3xl sm:text-4xl font-black text-orange-500 mb-6 tracking-tight uppercase">
-                      {scorer.lastName}
-                    </h3>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 border border-white/10 p-4 transition-all duration-300 hover:bg-orange-500/10 hover:border-orange-500/30">
-                        <div className="text-2xl font-bold text-white">
-                          {scorer.assists}
-                        </div>
-                        <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Ασίστ
-                        </div>
-                      </div>
-
-                      <div className="bg-white/5 border border-white/10 p-4 transition-all duration-300 hover:bg-orange-500/10 hover:border-orange-500/30">
-                        <div className="text-2xl font-bold text-white">
-                          {scorer.matches}
-                        </div>
-                        <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Αγώνες
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Goals per Match Ratio */}
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-400 uppercase tracking-wider">
-                          Γκολ/Αγώνα
-                        </span>
-                        <span className="text-xl font-bold text-orange-500">
-                          {(scorer.goals / scorer.matches).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Animated Border Pulse */}
-                  <motion.div
-                    animate={{
-                      opacity: [0.3, 0.6, 0.3],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                    }}
-                    className="absolute inset-0 border-2 border-orange-500/0 group-hover:border-orange-500/50 pointer-events-none"
-                  />
+                  </AnimatePresence>
                 </div>
               </motion.div>
             );
