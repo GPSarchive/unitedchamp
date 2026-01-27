@@ -39,9 +39,17 @@ interface NodeBox {
   label: string;
 }
 
+type MatchNodeData = {
+  teamA: number | null;
+  teamB: number | null;
+  scoreA: number | null;
+  scoreB: number | null;
+  status: "scheduled" | "finished" | null;
+  winnerId: number | null;
+};
+
 const KOStageDisplay = ({ stage }: { stage: Stage }) => {
   const tournament = useTournamentData((state) => state.tournament);
-  const stages = useTournamentData((state) => state.stages);
   const teams = useTournamentData((state) => state.teams);
   const matches = useTournamentData((state) => state.matches);
   const ids = useTournamentData((state) => state.ids);
@@ -49,9 +57,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
   const [nodes, setNodes] = useState<NodeBox[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [nodeMeta, setNodeMeta] = useState<Record<string, NodeMeta>>({});
-  const [teamsByNode, setTeamsByNode] = useState<
-    Record<string, { A: number | null; B: number | null }>
-  >({});
+  const [matchData, setMatchData] = useState<Record<string, MatchNodeData>>({});
 
   const knockoutStageIdx = useMemo(
     () => ids.stageIndexById[stage.id] ?? -1,
@@ -63,12 +69,12 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
     return (matches ?? []).filter((match) => match.stageIdx === knockoutStageIdx);
   }, [knockoutStageIdx, matches]);
 
-  // Spacing controls
-  const SCALE = 1.5;          // single knob to spread everything out
-  const BOX_W = 220;
-  const BOX_H = 120;
-  const COL_GAP = 240 * SCALE; // horizontal gap between rounds
-  const BASE_GAP_Y = 140 * SCALE; // base vertical gap multiplier
+  // Bigger cards for the new design
+  const SCALE = 1.5;
+  const BOX_W = 300;
+  const BOX_H = 160;
+  const COL_GAP = 300 * SCALE;
+  const BASE_GAP_Y = 160 * SCALE;
   const X_MARGIN = 60 * SCALE;
   const Y_MARGIN = 60 * SCALE;
 
@@ -87,7 +93,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
       setNodes([]);
       setConnections([]);
       setNodeMeta({});
-      setTeamsByNode({});
+      setMatchData({});
       return;
     }
 
@@ -100,7 +106,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         y: getYPosition(r, b),
         w: BOX_W,
         h: BOX_H,
-        label: tournament?.name ? `${tournament.name} • Knockout Stage` : "Knockout Stage",
+        label: tournament?.name ? `${tournament.name} • ${stage.name}` : stage.name,
       };
     });
 
@@ -126,17 +132,24 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
       if (awayKey) edges.push([awayKey, toKey]);
     });
 
-    const tbn: Record<string, { A: number | null; B: number | null }> = {};
+    const md: Record<string, MatchNodeData> = {};
     stageRows.forEach((m) => {
       const r = m.round ?? 1;
       const b = m.bracket_pos ?? 1;
-      tbn[`R${r}-B${b}`] = { A: m.team_a_id ?? null, B: m.team_b_id ?? null };
+      md[`R${r}-B${b}`] = {
+        teamA: m.team_a_id ?? null,
+        teamB: m.team_b_id ?? null,
+        scoreA: m.team_a_score ?? null,
+        scoreB: m.team_b_score ?? null,
+        status: m.status ?? null,
+        winnerId: m.winner_team_id ?? null,
+      };
     });
 
     setNodes(nx);
     setConnections(edges);
     setNodeMeta(meta);
-    setTeamsByNode(tbn);
+    setMatchData(md);
   };
 
   useEffect(() => {
@@ -156,57 +169,137 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-center text-white">Knockout Stage</h2>
-      <div className="overflow-auto bg-zinc-950/60 p-4 rounded-2xl border border-white/10 shadow-lg">
-        <KOStageViewer
-          nodes={nodes}
-          connections={connections}
-          nodeContent={(n) => {
-            const teamsNode = teamsByNode[n.id] ?? { A: null, B: null };
-            const nameA = getTeamName(teamsNode.A);
-            const nameB = getTeamName(teamsNode.B);
-            const logoA = getTeamLogo(teamsNode.A);
-            const logoB = getTeamLogo(teamsNode.B);
-            return (
-              <div className="flex items-center justify-center gap-4 text-white h-full">
-                {/* Logo Rings with Team Names */}
-                <div className="flex flex-col items-center gap-1.5">
-                  {logoA ? (
-                    <img
-                      src={logoA}
-                      alt={nameA}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/40"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full border-2 border-amber-400/40 bg-zinc-900/50 flex items-center justify-center">
-                      <span className="text-xs text-amber-400/60">A</span>
-                    </div>
-                  )}
-                  <span className="text-xs font-medium text-white/90 text-center">{nameA}</span>
-                </div>
-                <span className="text-sm text-orange-400/80 font-semibold mb-4">vs</span>
-                <div className="flex flex-col items-center gap-1.5">
-                  {logoB ? (
-                    <img
-                      src={logoB}
-                      alt={nameB}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-orange-400/40"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 bg-zinc-900/50 flex items-center justify-center">
-                      <span className="text-xs text-orange-400/60">B</span>
-                    </div>
-                  )}
-                  <span className="text-xs font-medium text-white/90 text-center">{nameB}</span>
-                </div>
+    <KOStageViewer
+      nodes={nodes}
+      connections={connections}
+      nodeContent={(n) => {
+        const data = matchData[n.id];
+        if (!data) return null;
+
+        const { teamA, teamB, scoreA, scoreB, status, winnerId } = data;
+        const nameA = getTeamName(teamA);
+        const nameB = getTeamName(teamB);
+        const logoA = getTeamLogo(teamA);
+        const logoB = getTeamLogo(teamB);
+        const isFinished = status === "finished";
+        const aWon = isFinished && winnerId != null && winnerId === teamA;
+        const bWon = isFinished && winnerId != null && winnerId === teamB;
+
+        return (
+          <div className="flex flex-col h-full justify-center gap-0.5 px-1">
+            {/* Team A row */}
+            <TeamRow
+              logo={logoA}
+              name={nameA}
+              score={isFinished ? scoreA : null}
+              isWinner={aWon}
+              isTBD={teamA == null}
+            />
+
+            {/* Divider */}
+            <div className="mx-2 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+
+            {/* Team B row */}
+            <TeamRow
+              logo={logoB}
+              name={nameB}
+              score={isFinished ? scoreB : null}
+              isWinner={bWon}
+              isTBD={teamB == null}
+            />
+
+            {/* Status badge */}
+            {isFinished ? (
+              <div className="mt-0.5 text-center">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400/80">
+                  FT
+                </span>
               </div>
-            );
-          }}
-        />
-      </div>
-    </div>
+            ) : (
+              <div className="mt-0.5 text-center">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-white/30">
+                  vs
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      }}
+    />
   );
 };
+
+/* ── Team Row sub-component ── */
+
+function TeamRow({
+  logo,
+  name,
+  score,
+  isWinner,
+  isTBD,
+}: {
+  logo: string | null;
+  name: string;
+  score: number | null;
+  isWinner: boolean;
+  isTBD: boolean;
+}) {
+  return (
+    <div
+      className={`
+        flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors
+        ${isWinner ? "bg-emerald-500/10" : ""}
+      `}
+    >
+      {/* Logo */}
+      {logo ? (
+        <img
+          src={logo}
+          alt={name}
+          className={`
+            h-9 w-9 shrink-0 rounded-full object-cover border-2
+            ${isWinner ? "border-emerald-400/60 shadow-md shadow-emerald-500/20" : "border-white/15"}
+          `}
+        />
+      ) : (
+        <div
+          className={`
+            flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2
+            ${isTBD ? "border-white/10 bg-white/5" : "border-white/15 bg-zinc-800/60"}
+          `}
+        >
+          <span className="text-[10px] font-bold text-white/30">
+            {isTBD ? "?" : name.charAt(0)}
+          </span>
+        </div>
+      )}
+
+      {/* Name */}
+      <span
+        className={`
+          flex-1 truncate text-sm font-semibold
+          ${isWinner ? "text-white" : isTBD ? "text-white/25 italic" : "text-white/70"}
+        `}
+      >
+        {name}
+      </span>
+
+      {/* Score */}
+      {score != null && (
+        <span
+          className={`
+            min-w-[28px] shrink-0 rounded-md py-0.5 text-center text-base font-black tabular-nums
+            ${isWinner
+              ? "bg-emerald-500/20 text-emerald-300"
+              : "bg-white/5 text-white/50"
+            }
+          `}
+        >
+          {score}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export default KOStageDisplay;
