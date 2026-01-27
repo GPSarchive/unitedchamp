@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useTournamentData } from "@/app/tournaments/useTournamentData";
+import { useTournamentData, type Stage } from "@/app/tournaments/useTournamentData";
 import KOStageViewer from "./KOStageViewer";
 
 // Types for knockout
@@ -39,11 +39,12 @@ interface NodeBox {
   label: string;
 }
 
-const KOStageDisplay = () => {
+const KOStageDisplay = ({ stage }: { stage: Stage }) => {
   const tournament = useTournamentData((state) => state.tournament);
   const stages = useTournamentData((state) => state.stages);
   const teams = useTournamentData((state) => state.teams);
   const matches = useTournamentData((state) => state.matches);
+  const ids = useTournamentData((state) => state.ids);
 
   const [nodes, setNodes] = useState<NodeBox[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -53,8 +54,8 @@ const KOStageDisplay = () => {
   >({});
 
   const knockoutStageIdx = useMemo(
-    () => stages?.findIndex((stage) => stage.kind === "knockout") ?? -1,
-    [stages]
+    () => ids.stageIndexById[stage.id] ?? -1,
+    [ids.stageIndexById, stage.id]
   );
 
   const knockoutMatches = useMemo(() => {

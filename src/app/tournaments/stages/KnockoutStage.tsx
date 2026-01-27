@@ -27,7 +27,7 @@ const KnockoutStage: React.FC<{ stage: Stage }> = ({ stage }) => {
       <div className="p-4 sm:p-5 md:p-6">
         {/* If your KOStageViewer uses its own fixed height, ensure it has responsive heights like h-80 md:h-[36rem] */}
         <div className="relative h-[22rem] sm:h-[26rem] md:h-[36rem] lg:h-[44rem]">
-          <KOStageDisplay />
+          <KOStageDisplay stage={stage} />
         </div>
       </div>
     </section>
