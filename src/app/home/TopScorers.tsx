@@ -49,7 +49,6 @@ export default function TopScorers({ scorers }: TopScorersProps) {
       border: 'border-amber-400',
       label: '1ΟΣ',
       textColor: 'text-amber-900',
-      accent: 'orange-500',
     },
     {
       bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400',
@@ -57,7 +56,6 @@ export default function TopScorers({ scorers }: TopScorersProps) {
       border: 'border-gray-300',
       label: '2ΟΣ',
       textColor: 'text-gray-700',
-      accent: 'gray-400',
     },
     {
       bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700',
@@ -65,14 +63,15 @@ export default function TopScorers({ scorers }: TopScorersProps) {
       border: 'border-orange-500',
       label: '3ΟΣ',
       textColor: 'text-orange-900',
-      accent: 'orange-600',
     },
   ];
 
-  // Peek amount visible when card is collapsed (in px)
-  const PEEK = 48;
+  // How much of a collapsed card peeks out from behind (px)
+  const PEEK = 52;
+  // Full card width
+  const CARD_WIDTH = 340;
   // Card height
-  const CARD_HEIGHT = 320;
+  const CARD_HEIGHT = 380;
 
   return (
     <section
@@ -102,31 +101,36 @@ export default function TopScorers({ scorers }: TopScorersProps) {
           </p>
         </motion.div>
 
-        {/* Stacked Cards */}
-        <div className="max-w-lg mx-auto relative" style={{ height: `${CARD_HEIGHT + (scorers.length - 1) * PEEK}px` }}>
+        {/* Horizontally Stacked Cards */}
+        <div
+          className="relative mx-auto"
+          style={{
+            width: `${CARD_WIDTH + (scorers.length - 1) * PEEK}px`,
+            maxWidth: '100%',
+            height: `${CARD_HEIGHT}px`,
+          }}
+        >
           {scorers.map((scorer, index) => {
             const podium = podiumData[index] || podiumData[2];
             const isActive = activeIndex === index;
 
-            // Calculate vertical position
-            // Active card sits at its natural stacked position, others stack below
-            let yPosition: number;
+            // Horizontal position: cards before/at active stack normally,
+            // cards after active get pushed right past the full card width
+            let xPosition: number;
             if (index <= activeIndex) {
-              // Cards at or above active: stack normally
-              yPosition = index * PEEK;
+              xPosition = index * PEEK;
             } else {
-              // Cards below active: push down by full card height for the active card
-              yPosition = CARD_HEIGHT + index * PEEK;
+              xPosition = CARD_WIDTH + index * PEEK;
             }
 
             return (
               <motion.div
                 key={scorer.id}
-                initial={{ opacity: 0, y: 80 }}
+                initial={{ opacity: 0, x: 100 }}
                 animate={isVisible ? {
                   opacity: 1,
-                  y: yPosition,
-                } : { opacity: 0, y: 80 }}
+                  x: xPosition,
+                } : { opacity: 0, x: 100 }}
                 transition={{
                   duration: 0.5,
                   delay: isVisible ? index * 0.15 : 0,
@@ -135,33 +139,32 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                   damping: 25,
                 }}
                 onClick={() => setActiveIndex(index)}
-                className={`absolute left-0 right-0 cursor-pointer`}
+                className="absolute top-0 cursor-pointer"
                 style={{
                   zIndex: activeIndex === index ? 10 : scorers.length - index,
+                  width: `${CARD_WIDTH}px`,
                   height: `${CARD_HEIGHT}px`,
                 }}
               >
-                <div className={`relative h-full bg-gradient-to-b from-neutral-900 to-black border ${isActive ? 'border-orange-500/60' : 'border-white/10'} overflow-hidden rounded-xl transition-colors duration-300 ${isActive ? 'shadow-[0_0_30px_rgba(249,115,22,0.2)]' : 'shadow-lg shadow-black/50'}`}>
+                <div className={`relative w-full h-full bg-gradient-to-b from-neutral-900 to-black border ${isActive ? 'border-orange-500/60' : 'border-white/10'} overflow-hidden rounded-xl transition-colors duration-300 ${isActive ? 'shadow-[0_0_30px_rgba(249,115,22,0.2)]' : 'shadow-lg shadow-black/50'}`}>
 
-                  {/* Collapsed peek strip - visible when not active */}
+                  {/* Collapsed peek strip - vertical strip on the right edge visible when not active */}
                   {!isActive && (
-                    <div className="absolute inset-0 flex items-center px-5 bg-gradient-to-r from-neutral-900 via-neutral-900 to-black z-10">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-neutral-900 via-neutral-800 to-black z-10 px-2">
                       {/* Rank badge */}
                       <div
-                        className={`${podium.bg} flex-shrink-0 flex items-center justify-center mr-4`}
-                        style={{ width: '36px', height: '36px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                        className={`${podium.bg} flex items-center justify-center mb-3`}
+                        style={{ width: '40px', height: '40px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
                       >
                         <span className={`text-lg font-black ${podium.textColor}`}>{index + 1}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-bold text-sm uppercase truncate">
-                          {scorer.firstName} {scorer.lastName}
-                        </p>
+                      {/* Vertical name */}
+                      <div className="writing-vertical text-white font-bold text-xs uppercase tracking-widest"
+                        style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+                      >
+                        {scorer.lastName}
                       </div>
-                      <div className="text-orange-500 font-black text-xl ml-3">
-                        {scorer.goals}
-                        <span className="text-xs text-gray-500 ml-1 font-normal">γκολ</span>
-                      </div>
+                      <div className="mt-3 text-orange-500 font-black text-lg">{scorer.goals}</div>
                     </div>
                   )}
 
@@ -173,17 +176,17 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="h-full flex flex-row"
+                        className="h-full flex flex-col"
                       >
-                        {/* Left: Photo */}
-                        <div className="relative w-2/5 h-full flex-shrink-0 overflow-hidden">
+                        {/* Top: Photo */}
+                        <div className="relative w-full h-1/2 flex-shrink-0 overflow-hidden">
                           <Image
                             src={scorer.photo || '/images/default-player.png'}
                             alt={`${scorer.firstName} ${scorer.lastName}`}
                             fill
                             className="object-cover object-top"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/80" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
                           {/* Rank hexagon */}
                           <div
@@ -193,47 +196,47 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                             <span className={`text-xl font-black ${podium.textColor}`}>{index + 1}</span>
                           </div>
 
+                          {/* Goals overlay */}
+                          <div className="absolute top-3 right-3 backdrop-blur-md bg-black/60 border border-orange-500/30 px-3 py-1.5 rounded">
+                            <span className="text-3xl font-black text-orange-500 leading-none">{scorer.goals}</span>
+                            <span className="text-[10px] text-gray-300 ml-1 uppercase">γκολ</span>
+                          </div>
+
                           {/* Team badge */}
                           {scorer.teamLogo && (
-                            <div className="absolute bottom-3 left-3 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded p-1">
+                            <div className="absolute bottom-3 left-3 w-9 h-9 bg-white/10 backdrop-blur-sm border border-white/20 rounded p-1">
                               <Image
                                 src={scorer.teamLogo}
                                 alt={scorer.teamName || 'Team'}
-                                width={32}
-                                height={32}
+                                width={28}
+                                height={28}
                                 className="object-contain"
                               />
                             </div>
                           )}
                         </div>
 
-                        {/* Right: Info */}
-                        <div className="flex-1 p-5 flex flex-col justify-center">
-                          <h3 className="text-xl font-black text-white uppercase tracking-tight leading-tight">
+                        {/* Bottom: Info */}
+                        <div className="flex-1 p-4 flex flex-col justify-center">
+                          <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight">
                             {scorer.firstName}
                           </h3>
-                          <h3 className="text-xl font-black text-orange-500 uppercase tracking-tight leading-tight mb-4">
+                          <h3 className="text-lg font-black text-orange-500 uppercase tracking-tight leading-tight mb-3">
                             {scorer.lastName}
                           </h3>
-
-                          {/* Goals big number */}
-                          <div className="mb-4">
-                            <span className="text-5xl font-black text-orange-500 leading-none">{scorer.goals}</span>
-                            <span className="text-xs text-gray-400 uppercase tracking-wider ml-2">Γκολ</span>
-                          </div>
 
                           {/* Stats row */}
                           <div className="grid grid-cols-3 gap-2">
                             <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
-                              <div className="text-lg font-bold text-white">{scorer.assists}</div>
+                              <div className="text-base font-bold text-white">{scorer.assists}</div>
                               <div className="text-[10px] text-gray-400 uppercase tracking-wider">Ασίστ</div>
                             </div>
                             <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
-                              <div className="text-lg font-bold text-white">{scorer.matches}</div>
+                              <div className="text-base font-bold text-white">{scorer.matches}</div>
                               <div className="text-[10px] text-gray-400 uppercase tracking-wider">Αγώνες</div>
                             </div>
                             <div className="bg-white/5 border border-white/10 rounded p-2 text-center">
-                              <div className="text-lg font-bold text-orange-500">{(scorer.goals / scorer.matches).toFixed(2)}</div>
+                              <div className="text-base font-bold text-orange-500">{(scorer.goals / scorer.matches).toFixed(2)}</div>
                               <div className="text-[10px] text-gray-400 uppercase tracking-wider">Γ/Α</div>
                             </div>
                           </div>
