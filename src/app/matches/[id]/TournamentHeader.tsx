@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 
 /**
- * TournamentHeader - Big tournament logo with title below
- * Logo appears in PNG form with no background over the text label
+ * TournamentHeader - Elegant tournament logo with title
+ * Features emerald glow effect behind logo
  */
 export default function TournamentHeader({
   logo,
@@ -18,36 +18,29 @@ export default function TournamentHeader({
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, type: "spring", stiffness: 120 }}
+      transition={{ duration: 0.5 }}
       className="mb-8 flex flex-col items-center"
     >
-      {/* Big Tournament Logo */}
+      {/* Tournament Logo */}
       {logo && (
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.5 }}
-          className="relative mb-6"
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="relative mb-5"
         >
-          <div className="relative h-32 w-32 md:h-40 md:w-40 lg:h-48 lg:w-48">
+          <div className="relative h-28 w-28 md:h-36 md:w-36 lg:h-44 lg:w-44">
             <TournamentImage
               src={logo}
               alt={name}
-              width={192}
-              height={192}
+              width={176}
+              height={176}
               className="h-full w-full object-contain drop-shadow-2xl"
               priority
             />
-            {/* Glow effect behind logo */}
-            <div className="absolute inset-0 -z-10 blur-3xl opacity-30">
-              <TournamentImage
-                src={logo}
-                alt=""
-                width={192}
-                height={192}
-                className="h-full w-full object-contain"
-                priority
-              />
+            {/* Emerald glow effect */}
+            <div className="absolute inset-0 -z-10 blur-3xl opacity-20">
+              <div className="h-full w-full rounded-full bg-emerald-500" />
             </div>
           </div>
         </motion.div>
@@ -57,10 +50,10 @@ export default function TournamentHeader({
       <motion.h1
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="text-center text-3xl font-extrabold text-white md:text-4xl lg:text-5xl"
+        transition={{ delay: 0.2, duration: 0.4 }}
+        className="text-center text-2xl font-bold text-white md:text-3xl lg:text-4xl"
       >
-        <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 bg-clip-text text-transparent drop-shadow-lg">
+        <span className="bg-gradient-to-r from-emerald-300 via-emerald-200 to-teal-300 bg-clip-text text-transparent">
           {name}
         </span>
       </motion.h1>

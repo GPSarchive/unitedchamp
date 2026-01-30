@@ -25,9 +25,8 @@ type Scorer = {
 };
 
 /**
- * TeamVersusScore - Displays team logos with VS between them when scheduled
- * Shows scores instead of VS when match is finished
- * Includes goal scorers below each team
+ * TeamVersusScore - Elegant sporty match display
+ * Shows team logos with VS or scores, plus goal scorers
  */
 export default function TeamVersusScore({
   teamA,
@@ -65,7 +64,7 @@ export default function TeamVersusScore({
       })
     : "TBD";
 
-  // Separate scorers by team (including own goals that benefited each team)
+  // Separate scorers by team
   const teamAScorers = scorers.filter(
     (s) => s.teamId === teamA.id && s.goals > 0
   );
@@ -83,12 +82,37 @@ export default function TeamVersusScore({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="rounded-2xl border border-white/20 bg-black/50 p-6 backdrop-blur-sm md:p-8 shadow-lg"
+      className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 backdrop-blur-sm shadow-xl shadow-black/20 overflow-hidden"
     >
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 md:gap-8">
+      {/* Match info header */}
+      <div className="flex items-center justify-center gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-3">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+            isFinished
+              ? "bg-emerald-500/15 border border-emerald-500/20 text-emerald-400"
+              : "bg-white/5 border border-white/10 text-white/50"
+          }`}
+        >
+          {isFinished && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+          {status === "finished" ? "Ολοκληρώθηκε" : status === "postponed" ? "Αναβλήθηκε" : "Προγραμματισμένο"}
+        </span>
+        <span className="text-sm text-white/40">|</span>
+        <span className="text-sm font-medium text-white/60">{dateLabel}</span>
+        {referee && (
+          <>
+            <span className="text-sm text-white/40">|</span>
+            <span className="text-xs text-white/40">
+              Διαιτητής: <span className="text-white/60">{referee}</span>
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Main match display */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 py-8 md:gap-8 md:px-8 md:py-12">
         {/* Team A */}
         <TeamDisplay
           team={teamA}
@@ -98,75 +122,28 @@ export default function TeamVersusScore({
         />
 
         {/* Center - VS or Score */}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-2">
           {isFinished ? (
             <motion.div
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 200 }}
-              className="flex items-center gap-3 text-6xl font-black md:text-7xl lg:text-8xl"
+              className="flex items-center gap-2 md:gap-4"
             >
-              <span
-                className="text-white"
-                style={{
-                  textShadow: '3px 3px 6px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
-                }}
-              >
-                {scoreA ?? 0}
-              </span>
-              <span className="text-white/60">-</span>
-              <span
-                className="text-white"
-                style={{
-                  textShadow: '3px 3px 6px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
-                }}
-              >
-                {scoreB ?? 0}
-              </span>
+              <ScoreBadge score={scoreA ?? 0} isWinner={!!aIsWinner} />
+              <span className="text-2xl font-bold text-white/20 md:text-3xl">:</span>
+              <ScoreBadge score={scoreB ?? 0} isWinner={!!bIsWinner} />
             </motion.div>
           ) : (
             <motion.div
-              initial={{ opacity: 0, rotate: -10 }}
-              animate={{ opacity: 1, rotate: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-5xl font-black text-white md:text-6xl lg:text-7xl"
-              style={{
-                textShadow: '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000'
-              }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] md:h-20 md:w-20"
             >
-              VS
+              <span className="text-2xl font-black text-white/30 md:text-3xl">VS</span>
             </motion.div>
           )}
-
-          {/* Match info */}
-          <div className="text-center">
-            <div
-              className="text-sm uppercase tracking-wider text-white/80 md:text-base"
-              style={{
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-              }}
-            >
-              {status === "finished" ? "Ολοκληρώθηκε" : "Προγραμματισμένο"}
-            </div>
-            <div
-              className="mt-1 text-base text-white/80 md:text-lg"
-              style={{
-                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-              }}
-            >
-              {dateLabel}
-            </div>
-            {referee && (
-              <div
-                className="mt-1 text-xs text-white/70"
-                style={{
-                  textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                }}
-              >
-                Διαιτητής: <span className="font-medium">{referee}</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Team B */}
@@ -178,6 +155,20 @@ export default function TeamVersusScore({
         />
       </div>
     </motion.div>
+  );
+}
+
+function ScoreBadge({ score, isWinner }: { score: number; isWinner: boolean }) {
+  return (
+    <div
+      className={`flex h-16 w-16 items-center justify-center rounded-2xl text-4xl font-black tabular-nums transition-all md:h-20 md:w-20 md:text-5xl ${
+        isWinner
+          ? "bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/10"
+          : "bg-white/[0.04] text-white/60"
+      }`}
+    >
+      {score}
+    </div>
   );
 }
 
@@ -197,18 +188,18 @@ function TeamDisplay({
       initial={{ opacity: 0, x: align === "right" ? -20 : 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
-      className={`flex flex-col items-center gap-3 ${
+      className={`flex flex-col items-center gap-4 ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >
       {/* Team Logo */}
-      <div className="relative pointer-events-none">
+      <div className="relative">
         <div
-          className={`relative h-20 w-20 overflow-hidden rounded-2xl border-2 md:h-28 md:w-28 lg:h-32 lg:w-32 ${
+          className={`relative h-20 w-20 overflow-hidden rounded-2xl ring-2 transition-all md:h-28 md:w-28 lg:h-32 lg:w-32 ${
             isWinner
-              ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]"
-              : "border-white/20"
-          } bg-black p-2`}
+              ? "ring-emerald-400/50 shadow-xl shadow-emerald-500/20"
+              : "ring-white/10"
+          } bg-zinc-800/60 p-2`}
         >
           {team.logo ? (
             <TeamImage
@@ -220,7 +211,7 @@ function TeamDisplay({
               priority
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/40">
+            <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-white/20">
               {team.name.charAt(0)}
             </div>
           )}
@@ -232,10 +223,10 @@ function TeamDisplay({
             initial={{ scale: 0, rotate: -45 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="absolute -right-2 -top-2 pointer-events-none"
+            className="absolute -right-2 -top-2"
           >
-            <div className="rounded-full bg-amber-400 p-2 shadow-lg">
-              <Trophy className="h-5 w-5 text-amber-900" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/40">
+              <Trophy className="h-4 w-4 text-white" />
             </div>
           </motion.div>
         )}
@@ -244,54 +235,41 @@ function TeamDisplay({
       {/* Team Name */}
       <div
         className={`max-w-full px-2 text-center text-lg font-bold md:text-xl ${
-          isWinner
-            ? "text-amber-400"
-            : "text-white"
+          isWinner ? "text-emerald-300" : "text-white/80"
         }`}
-        style={{
-          textShadow: isWinner
-            ? '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 15px rgba(251,191,36,0.4)'
-            : '1px 1px 3px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
-        }}
       >
         {team.name}
       </div>
 
-      {/* Scorers - Google Champions League style */}
+      {/* Scorers */}
       {scorers.length > 0 && (
-        <div className="mt-3 w-full space-y-1.5 px-2">
+        <div className="mt-1 w-full space-y-1 px-2">
           {scorers.map((scorer) => {
             const isOwnGoal = (scorer.ownGoals ?? 0) > 0;
             const goalCount = isOwnGoal ? scorer.ownGoals! : scorer.goals;
-
-            // Skip if no goals to display
             if (goalCount <= 0) return null;
 
-            const playerName = `${scorer.player.first_name ?? ""} ${scorer.player.last_name ?? ""}`.trim() || "Άγνωστος";
+            const playerName =
+              `${scorer.player.first_name ?? ""} ${scorer.player.last_name ?? ""}`.trim() || "Άγνωστος";
 
             return (
               <motion.div
-                key={`${scorer.player.id}-${isOwnGoal ? 'own' : 'goals'}`}
+                key={`${scorer.player.id}-${isOwnGoal ? "own" : "goals"}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 className="flex items-center justify-start gap-1.5"
               >
-                <span
-                  className="text-xs text-white/90"
-                  style={{
-                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
-                  }}
-                >
+                <span className="text-xs text-white/60">
                   {playerName}
-                  {isOwnGoal ? <span className="text-white/60"> (αυτογκόλ)</span> : null}
+                  {isOwnGoal && <span className="text-white/40"> (αυτογκόλ)</span>}
                 </span>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: goalCount }).map((_, i) => (
                     <Goal
                       key={i}
                       className={`h-3 w-3 ${
-                        isOwnGoal ? "text-white/60" : "text-amber-400"
+                        isOwnGoal ? "text-white/30" : "text-emerald-400"
                       }`}
                     />
                   ))}

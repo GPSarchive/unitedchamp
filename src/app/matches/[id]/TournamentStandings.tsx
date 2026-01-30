@@ -1,15 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Award, Medal, Crown } from "lucide-react";
+import { Trophy, Award, Medal, Crown } from "lucide-react";
 import Link from "next/link";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import type { StandingRow } from "./queries";
 
 /**
- * TournamentStandings - Neon Triumph Edition
- * Displays tournament standings with deep navy + neon magenta/cyan aesthetic
- * Features: Animated entrance, floating orbs, trophy icons, gradient highlights
+ * TournamentStandings - Elegant sporty standings table
+ * Features emerald accents, clean dark design, position badges
  */
 export default function TournamentStandings({
   standings,
@@ -20,80 +19,50 @@ export default function TournamentStandings({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.2, type: "spring", stiffness: 100 }}
-      className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] p-6 md:p-8 shadow-[0_10px_50px_-10px_rgba(0,0,0,0.8)] backdrop-blur-sm"
+      transition={{ duration: 0.5, delay: 0.1 }}
+      className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 backdrop-blur-sm shadow-xl shadow-black/20 overflow-hidden"
     >
-      {/* Animated floating orbs - magenta & cyan */}
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -right-20 -top-32 h-64 w-64 rounded-full blur-3xl opacity-30"
-        style={{ background: "radial-gradient(closest-side, rgba(240,46,170,0.4), transparent)" }}
-        animate={{ x: [0, -20, 10, 0], y: [0, 15, -10, 0] }}
-        transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -left-24 -bottom-32 h-72 w-72 rounded-full blur-3xl opacity-25"
-        style={{ background: "radial-gradient(closest-side, rgba(0,212,255,0.35), transparent)" }}
-        animate={{ x: [0, 15, -12, 0], y: [0, -20, 12, 0] }}
-        transition={{ repeat: Infinity, duration: 14, ease: "easeInOut" }}
-      />
-
-      {/* Header with gradient text */}
-      <div className="relative z-10 mb-8 flex items-center gap-3">
-        <motion.div
-          initial={{ rotate: -15, scale: 0.8 }}
-          animate={{ rotate: 0, scale: 1 }}
-          transition={{ duration: 0.5, type: "spring" }}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-fuchsia-400/30 shadow-[0_0_24px_rgba(240,46,170,0.3)]"
-        >
-          <Trophy className="h-6 w-6 text-fuchsia-300" />
-        </motion.div>
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-white/[0.06] bg-white/[0.02] px-5 py-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <Trophy className="h-5 w-5 text-emerald-400" />
+        </div>
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(240,46,170,0.5)]">
-            Βαθμολογία
-          </h2>
-          {groupName && (
-            <p className="text-sm text-zinc-400 mt-0.5">{groupName}</p>
-          )}
+          <h2 className="text-xl font-bold text-white">Βαθμολογία</h2>
+          {groupName && <p className="text-sm text-white/50">{groupName}</p>}
         </div>
       </div>
 
       {standings.length === 0 ? (
         /* Empty State */
-        <div className="relative z-10 flex flex-col items-center justify-center py-12 text-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.3, type: "spring" }}
-            className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/5 border border-white/10"
-          >
-            <Trophy className="h-10 w-10 text-white/40" />
-          </motion.div>
-          <p className="text-lg text-white/70 mb-2">Δεν υπάρχουν διαθέσιμα στοιχεία βαθμολογίας</p>
-          <p className="text-sm text-white/50">
+        <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.03] border border-white/[0.06]">
+            <Trophy className="h-8 w-8 text-white/20" />
+          </div>
+          <p className="text-base text-white/50 mb-1">Δεν υπάρχουν διαθέσιμα στοιχεία βαθμολογίας</p>
+          <p className="text-sm text-white/30">
             Η βαθμολογία θα εμφανιστεί όταν υπάρξουν αποτελέσματα αγώνων
           </p>
         </div>
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="relative z-10 hidden overflow-x-auto md:block">
-            <table className="w-full border-separate border-spacing-y-2">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full">
               <thead>
-                <tr className="text-left text-sm text-zinc-400">
-                  <th className="pb-3 pl-4 font-medium">#</th>
-                  <th className="pb-3 pl-2 font-medium">Ομάδα</th>
-                  <th className="pb-3 px-3 text-center font-medium">Αγ</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ν</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ι</th>
-                  <th className="pb-3 px-3 text-center font-medium">Η</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΥ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΚ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΔΓ</th>
-                  <th className="pb-3 pr-4 text-right font-medium">Βαθ</th>
+                <tr className="border-b border-white/[0.04] text-left text-xs text-white/40 uppercase tracking-wider">
+                  <th className="py-3 pl-5 font-medium">#</th>
+                  <th className="py-3 pl-3 font-medium">Ομάδα</th>
+                  <th className="py-3 px-3 text-center font-medium">Αγ</th>
+                  <th className="py-3 px-3 text-center font-medium">Ν</th>
+                  <th className="py-3 px-3 text-center font-medium">Ι</th>
+                  <th className="py-3 px-3 text-center font-medium">Η</th>
+                  <th className="py-3 px-3 text-center font-medium">ΓΥ</th>
+                  <th className="py-3 px-3 text-center font-medium">ΓΚ</th>
+                  <th className="py-3 px-3 text-center font-medium">ΔΓ</th>
+                  <th className="py-3 pr-5 text-right font-medium">Βαθ</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,7 +79,7 @@ export default function TournamentStandings({
           </div>
 
           {/* Mobile Cards */}
-          <div className="relative z-10 space-y-3 md:hidden">
+          <div className="space-y-2 p-4 md:hidden">
             {standings.map((standing, index) => (
               <StandingCardMobile
                 key={standing.team_id}
@@ -126,9 +95,6 @@ export default function TournamentStandings({
   );
 }
 
-/**
- * Desktop table row with neon highlights for top positions
- */
 function StandingRowDesktop({
   standing,
   index,
@@ -141,17 +107,16 @@ function StandingRowDesktop({
   const isTopThree = position <= 3;
   const isFirst = position === 1;
 
-  // Position badge styling
   const getBadgeStyle = () => {
     switch (position) {
       case 1:
-        return "bg-gradient-to-br from-amber-400 to-yellow-500 text-amber-950 shadow-[0_0_20px_rgba(251,191,36,0.6)]";
+        return "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30";
       case 2:
-        return "bg-gradient-to-br from-slate-300 to-slate-400 text-slate-900 shadow-[0_0_16px_rgba(203,213,225,0.5)]";
+        return "bg-white/10 text-white/80 ring-1 ring-white/20";
       case 3:
-        return "bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100 shadow-[0_0_16px_rgba(217,119,6,0.5)]";
+        return "bg-amber-500/15 text-amber-300/80 ring-1 ring-amber-500/20";
       default:
-        return "bg-white/5 text-zinc-400 border border-white/10";
+        return "bg-white/[0.03] text-white/40";
     }
   };
 
@@ -159,94 +124,70 @@ function StandingRowDesktop({
 
   return (
     <motion.tr
-      initial={{ opacity: 0, x: -30 }}
+      initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4, type: "spring", stiffness: 120 }}
-      className={`group transition-all ${
-        isTopThree
-          ? "bg-gradient-to-r from-fuchsia-500/5 via-purple-500/5 to-cyan-500/5"
-          : "hover:bg-white/5"
+      transition={{ delay: index * 0.04, duration: 0.3 }}
+      className={`group border-b border-white/[0.03] transition-colors ${
+        isTopThree ? "bg-emerald-500/[0.02]" : "hover:bg-white/[0.02]"
       }`}
     >
-      <td className="py-4 pl-4 rounded-l-xl">
+      <td className="py-3.5 pl-5">
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold transition-transform group-hover:scale-110 ${getBadgeStyle()}`}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold ${getBadgeStyle()}`}
         >
-          {PositionIcon ? (
-            <PositionIcon className="h-5 w-5" />
-          ) : (
-            position
-          )}
+          {PositionIcon ? <PositionIcon className="h-4 w-4" /> : position}
         </div>
       </td>
-      <td className="py-4 pl-2">
-        <Link href={`/OMADA/${standing.team_id}`} className="block">
-          <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/20 bg-black/50 ring-1 ring-white/10">
+      <td className="py-3.5 pl-3">
+        <Link href={`/omada/${standing.team_id}`} className="block">
+          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="relative h-9 w-9 overflow-hidden rounded-lg ring-1 ring-white/10 bg-zinc-800/50">
               {standing.team.logo ? (
                 <TeamImage
                   src={standing.team.logo}
                   alt={standing.team.name}
                   fill
                   objectFit="contain"
-                  sizes="40px"
+                  sizes="36px"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-fuchsia-300">
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white/30">
                   {standing.team.name.charAt(0)}
                 </div>
               )}
-              {/* Shimmer effect for first place */}
-              {isFirst && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                  animate={{ x: ["-100%", "100%"] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                />
-              )}
             </div>
-            <span className={`font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
+            <span className={`font-semibold ${isFirst ? "text-emerald-300" : "text-white/80"}`}>
               {standing.team.name}
             </span>
           </div>
         </Link>
       </td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.played}</td>
-      <td className="px-3 py-4 text-center text-emerald-400 font-semibold">{standing.won}</td>
-      <td className="px-3 py-4 text-center text-cyan-400 font-semibold">{standing.drawn}</td>
-      <td className="px-3 py-4 text-center text-rose-400 font-semibold">{standing.lost}</td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.gf}</td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.ga}</td>
+      <td className="px-3 py-3.5 text-center text-sm text-white/50">{standing.played}</td>
+      <td className="px-3 py-3.5 text-center text-sm font-medium text-emerald-400">{standing.won}</td>
+      <td className="px-3 py-3.5 text-center text-sm font-medium text-white/50">{standing.drawn}</td>
+      <td className="px-3 py-3.5 text-center text-sm font-medium text-rose-400/70">{standing.lost}</td>
+      <td className="px-3 py-3.5 text-center text-sm text-white/50">{standing.gf}</td>
+      <td className="px-3 py-3.5 text-center text-sm text-white/50">{standing.ga}</td>
       <td
-        className={`px-3 py-4 text-center font-bold ${
-          standing.gd > 0
-            ? "text-emerald-400"
-            : standing.gd < 0
-            ? "text-rose-400"
-            : "text-zinc-500"
+        className={`px-3 py-3.5 text-center text-sm font-semibold ${
+          standing.gd > 0 ? "text-emerald-400" : standing.gd < 0 ? "text-rose-400/70" : "text-white/30"
         }`}
       >
-        {standing.gd > 0 ? "+" : ""}
-        {standing.gd}
+        {standing.gd > 0 ? "+" : ""}{standing.gd}
       </td>
-      <td className="pr-4 py-4 text-right rounded-r-xl">
-        <div
-          className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-lg font-bold ${
-            isFirst
-              ? "bg-gradient-to-r from-amber-400/20 to-yellow-500/20 text-amber-200 ring-1 ring-amber-400/40"
-              : "text-zinc-100"
+      <td className="pr-5 py-3.5 text-right">
+        <span
+          className={`inline-flex min-w-[2rem] items-center justify-center rounded-lg px-2 py-1 text-base font-bold ${
+            isFirst ? "bg-emerald-500/15 text-emerald-300" : "text-white/80"
           }`}
         >
           {standing.points}
-        </div>
+        </span>
       </td>
     </motion.tr>
   );
 }
 
-/**
- * Mobile card with compact stats and neon accents
- */
 function StandingCardMobile({
   standing,
   index,
@@ -262,13 +203,13 @@ function StandingCardMobile({
   const getBadgeStyle = () => {
     switch (position) {
       case 1:
-        return "bg-gradient-to-br from-amber-400 to-yellow-500 text-amber-950 shadow-[0_0_20px_rgba(251,191,36,0.6)]";
+        return "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30";
       case 2:
-        return "bg-gradient-to-br from-slate-300 to-slate-400 text-slate-900 shadow-[0_0_16px_rgba(203,213,225,0.5)]";
+        return "bg-white/10 text-white/80 ring-1 ring-white/20";
       case 3:
-        return "bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100 shadow-[0_0_16px_rgba(217,119,6,0.5)]";
+        return "bg-amber-500/15 text-amber-300/80 ring-1 ring-amber-500/20";
       default:
-        return "bg-white/5 text-zinc-400 border border-white/10";
+        return "bg-white/[0.03] text-white/40";
     }
   };
 
@@ -276,94 +217,77 @@ function StandingCardMobile({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4, type: "spring" }}
-      className={`rounded-2xl border p-4 backdrop-blur-sm transition-all ${
+      transition={{ delay: index * 0.04, duration: 0.3 }}
+      className={`rounded-xl border p-3.5 ${
         isTopThree
-          ? "border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/5 to-cyan-500/10 shadow-[0_0_24px_rgba(240,46,170,0.2)]"
-          : "border-white/10 bg-white/5 hover:bg-white/10"
+          ? "border-emerald-500/10 bg-emerald-500/[0.03]"
+          : "border-white/[0.05] bg-white/[0.02]"
       }`}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <Link href={`/omada/${standing.team_id}`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold ${getBadgeStyle()}`}
-          >
-            {PositionIcon ? (
-              <PositionIcon className="h-5 w-5" />
-            ) : (
-              position
-            )}
+          <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold ${getBadgeStyle()}`}>
+            {PositionIcon ? <PositionIcon className="h-4 w-4" /> : position}
           </div>
-          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/20 bg-black/50">
+          <div className="relative h-10 w-10 overflow-hidden rounded-lg ring-1 ring-white/10 bg-zinc-800/50">
             {standing.team.logo ? (
               <TeamImage
                 src={standing.team.logo}
                 alt={standing.team.name}
                 fill
                 objectFit="contain"
-                sizes="48px"
+                sizes="40px"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm font-bold text-fuchsia-300">
+              <div className="flex h-full w-full items-center justify-center text-xs font-bold text-white/30">
                 {standing.team.name.charAt(0)}
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className={`truncate font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
+            <div className={`truncate font-semibold ${isFirst ? "text-emerald-300" : "text-white/80"}`}>
               {standing.team.name}
             </div>
-            <div className="text-xs text-zinc-500">{standing.played} αγώνες</div>
+            <div className="text-xs text-white/40">{standing.played} αγώνες</div>
           </div>
         </Link>
-        <div
-          className={`text-2xl font-bold ${
-            isFirst
-              ? "bg-gradient-to-br from-amber-200 to-yellow-300 bg-clip-text text-transparent"
-              : "text-zinc-100"
-          }`}
-        >
+        <div className={`text-xl font-bold ${isFirst ? "text-emerald-300" : "text-white/80"}`}>
           {standing.points}
         </div>
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-3 text-center">
-        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 py-2">
-          <div className="text-xs text-zinc-400">Ν</div>
-          <div className="font-bold text-emerald-400">{standing.won}</div>
+      <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/10 py-1.5">
+          <div className="text-[10px] text-white/40">Ν</div>
+          <div className="text-sm font-bold text-emerald-400">{standing.won}</div>
         </div>
-        <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 py-2">
-          <div className="text-xs text-zinc-400">Ι</div>
-          <div className="font-bold text-cyan-400">{standing.drawn}</div>
+        <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] py-1.5">
+          <div className="text-[10px] text-white/40">Ι</div>
+          <div className="text-sm font-bold text-white/60">{standing.drawn}</div>
         </div>
-        <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 py-2">
-          <div className="text-xs text-zinc-400">Η</div>
-          <div className="font-bold text-rose-400">{standing.lost}</div>
+        <div className="rounded-lg bg-rose-500/10 border border-rose-500/10 py-1.5">
+          <div className="text-[10px] text-white/40">Η</div>
+          <div className="text-sm font-bold text-rose-400/80">{standing.lost}</div>
         </div>
         <div
-          className={`rounded-lg border py-2 ${
+          className={`rounded-lg border py-1.5 ${
             standing.gd > 0
-              ? "bg-emerald-500/10 border-emerald-500/20"
+              ? "bg-emerald-500/10 border-emerald-500/10"
               : standing.gd < 0
-              ? "bg-rose-500/10 border-rose-500/20"
-              : "bg-white/5 border-white/10"
+              ? "bg-rose-500/10 border-rose-500/10"
+              : "bg-white/[0.03] border-white/[0.05]"
           }`}
         >
-          <div className="text-xs text-zinc-400">ΔΓ</div>
+          <div className="text-[10px] text-white/40">ΔΓ</div>
           <div
-            className={`font-bold ${
-              standing.gd > 0
-                ? "text-emerald-400"
-                : standing.gd < 0
-                ? "text-rose-400"
-                : "text-zinc-500"
+            className={`text-sm font-bold ${
+              standing.gd > 0 ? "text-emerald-400" : standing.gd < 0 ? "text-rose-400/80" : "text-white/40"
             }`}
           >
-            {standing.gd > 0 ? "+" : ""}
-            {standing.gd}
+            {standing.gd > 0 ? "+" : ""}{standing.gd}
           </div>
         </div>
       </div>

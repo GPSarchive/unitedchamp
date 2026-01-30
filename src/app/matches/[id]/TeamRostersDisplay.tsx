@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, Star } from "lucide-react";
+import { Users } from "lucide-react";
 import { PlayerImage, TeamImage } from "@/app/lib/OptimizedImage";
 import type { Id } from "@/app/lib/types";
 
@@ -18,9 +18,8 @@ type RosterPlayer = {
 };
 
 /**
- * TeamRostersDisplay - Side by side display of full team rosters
- * Shows all players from both teams for scheduled matches
- * Uses same styling as MatchParticipantsShowcase
+ * TeamRostersDisplay - Elegant sporty roster display
+ * Shows full team rosters for scheduled matches with emerald accents
  */
 export default function TeamRostersDisplay({
   teamAId,
@@ -49,39 +48,25 @@ export default function TeamRostersDisplay({
   }
 
   return (
-    <div className="py-6">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="rounded-2xl border border-white/[0.08] bg-zinc-900/80 backdrop-blur-sm shadow-xl shadow-black/20 overflow-hidden"
+    >
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-8 text-center"
-      >
-        <div className="mb-3 flex items-center justify-center gap-3">
-          <Users className="h-8 w-8 text-red-500" />
-          <h2
-            className="text-3xl font-bold md:text-4xl text-white"
-            style={{
-              textShadow:
-                "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-            }}
-          >
-            Ομάδες Αγώνα
-          </h2>
+      <div className="flex items-center justify-center gap-3 border-b border-white/[0.06] bg-white/[0.02] px-4 py-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <Users className="h-5 w-5 text-emerald-400" />
         </div>
-        <p
-          className="text-lg text-white/80"
-          style={{
-            textShadow: "1px 1px 3px rgba(0,0,0,0.8)",
-          }}
-        >
-          Τα ρόστερ των ομάδων που θα αγωνιστούν
-        </p>
-      </motion.div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-white">Ομάδες Αγώνα</h2>
+          <p className="text-sm text-white/50">Τα ρόστερ των ομάδων που θα αγωνιστούν</p>
+        </div>
+      </div>
 
-      {/* Teams Display - Side by Side */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
-        {/* Team A */}
+      {/* Teams Display */}
+      <div className="grid grid-cols-1 gap-8 p-6 lg:grid-cols-2 lg:gap-12">
         {teamARoster.length > 0 && (
           <TeamSection
             teamName={teamAName}
@@ -89,8 +74,6 @@ export default function TeamRostersDisplay({
             roster={teamARoster}
           />
         )}
-
-        {/* Team B */}
         {teamBRoster.length > 0 && (
           <TeamSection
             teamName={teamBName}
@@ -99,7 +82,7 @@ export default function TeamRostersDisplay({
           />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -113,34 +96,17 @@ function TeamSection({
   roster: RosterPlayer[];
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      {/* Team Name */}
-      <div className="mb-6 text-center">
-        <h3
-          className="text-2xl font-bold text-white md:text-3xl"
-          style={{
-            textShadow:
-              "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-          }}
-        >
-          {teamName}
-        </h3>
-        <p
-          className="mt-1 text-sm text-red-300/90"
-          style={{
-            textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-          }}
-        >
+    <div>
+      {/* Team Header */}
+      <div className="mb-5 text-center">
+        <h3 className="text-xl font-bold text-white">{teamName}</h3>
+        <p className="mt-1 text-sm text-emerald-400/70">
           {roster.length} {roster.length === 1 ? "παίκτης" : "παίκτες"}
         </p>
       </div>
 
       {/* Roster Grid */}
-      <div className="flex flex-wrap justify-center gap-6">
+      <div className="flex flex-wrap justify-center gap-4">
         {roster.map((rosterPlayer, index) => (
           <RosterPlayerCard
             key={rosterPlayer.player.id}
@@ -150,7 +116,7 @@ function TeamSection({
           />
         ))}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -163,97 +129,58 @@ function RosterPlayerCard({
   teamLogo: string | null;
   index: number;
 }) {
-  const playerName =
-    `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
   const firstName = player.first_name || "Άγνωστος";
-
-  // Treat placeholder as "no real photo"
-  const isPlaceholderPhoto =
-    !player.photo || player.photo === "/player-placeholder.jpg";
+  const playerName = `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
+  const isPlaceholderPhoto = !player.photo || player.photo === "/player-placeholder.jpg";
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      initial={{ opacity: 0, scale: 0.9, y: 15 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{
-        delay: index * 0.08,
-        duration: 0.5,
-        type: "spring",
-        stiffness: 200,
-      }}
-      // Hover on the card, not on the image itself
-      whileHover={{ scale: 1.08, y: -8 }}
+      transition={{ delay: index * 0.05, duration: 0.4, type: "spring", stiffness: 200 }}
+      whileHover={{ scale: 1.05, y: -4 }}
       className="group cursor-pointer"
     >
       <div
-        className="relative flex flex-col items-center overflow-hidden rounded-2xl border-2 border-white/30 bg-black/40 p-4 backdrop-blur-sm transition-shadow hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] hover:border-red-500/60"
-        style={{ width: "140px" }}
+        className="relative flex flex-col items-center rounded-xl border border-white/[0.08] bg-zinc-800/50 p-4 transition-all hover:border-emerald-500/30 hover:shadow-lg hover:shadow-emerald-500/10"
+        style={{ width: "130px" }}
       >
-        {/* Player Photo or Team Logo */}
-        <div className="relative mb-3 h-24 w-24 overflow-hidden rounded-full border-3 border-white/40 bg-gradient-to-br from-slate-700 to-slate-800 shadow-xl">
+        {/* Avatar */}
+        <div className="relative mb-3 h-20 w-20 overflow-hidden rounded-full ring-2 ring-white/10 bg-zinc-700/50 transition-all group-hover:ring-emerald-500/30">
           {!isPlaceholderPhoto ? (
             <PlayerImage
               src={player.photo!}
               alt={playerName}
-              width={96}
-              height={96}
-              className="block h-full w-full object-cover object-center"
+              width={80}
+              height={80}
+              className="h-full w-full object-cover"
             />
           ) : teamLogo ? (
-            <div className="relative h-full w-full p-3">
+            <div className="relative h-full w-full p-2.5">
               <TeamImage
                 src={teamLogo}
-                alt={`${firstName} team logo`}
+                alt={`${firstName} team`}
                 fill
                 objectFit="contain"
-                sizes="96px"
-                className="block h-full w-full object-contain object-center"
+                sizes="80px"
+                className="h-full w-full object-contain"
               />
             </div>
-          ) : null}
-
-          {/* Hover glow effect (non-blocking) */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-red-500/25 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-        </div>
-
-        {/* Player Name - Centered */}
-        <div className="text-center">
-          <div
-            className="mb-1 text-sm font-bold text-white"
-            style={{
-              textShadow:
-                "1px 1px 2px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000",
-            }}
-          >
-            {firstName}
-          </div>
-          {player.last_name && (
-            <div
-              className="text-xs text-white/80"
-              style={{
-                textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-              }}
-            >
-              {player.last_name}
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-lg font-bold text-white/20">
+              {firstName.charAt(0)}
             </div>
           )}
         </div>
 
-        {/* Decorative star on hover (still optional) */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          whileHover={{ opacity: 1, scale: 1 }}
-          className="absolute right-2 top-2"
-        >
-          <Star className="h-4 w-4 text-red-500" />
-        </motion.div>
+        {/* Player Info */}
+        <div className="text-center">
+          <div className="text-sm font-semibold text-white">{firstName}</div>
+          {player.last_name && (
+            <div className="text-xs text-white/50">{player.last_name}</div>
+          )}
+        </div>
       </div>
     </motion.div>
   );
 }
-
-
-
-
-
-
