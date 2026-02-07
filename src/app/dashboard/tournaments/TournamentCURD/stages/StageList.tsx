@@ -11,10 +11,12 @@ export default function StageList({
   stages,
   onChange,
   teams,
+  onTeamGroupChange,
 }: {
   stages: NewTournamentPayload["stages"];
   onChange: (stages: NewTournamentPayload["stages"]) => void;
   teams: TeamDraft[];
+  onTeamGroupChange?: (teamId: number, stageIdx: number, groupIdx: number | null) => void;
 }) {
   // --- Store actions we need for persistence
   const storeUpsertStage = useTournamentStore((s) => s.upsertStage);
@@ -136,6 +138,7 @@ export default function StageList({
             // Context for visuals + inline planner
             allStages={stages}
             teams={teams}
+            onTeamGroupChange={onTeamGroupChange}
           />
         ))}
       </div>

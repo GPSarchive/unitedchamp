@@ -26,13 +26,9 @@ type CatalogRow = {
 export default function TeamPicker({
   teams,
   onChange,
-  groupsStageIndex,
-  groupNames = [],
 }: {
   teams: TeamDraft[];
   onChange: (next: TeamDraft[]) => void;
-  groupsStageIndex?: number;
-  groupNames?: string[];
 }) {
   // ---- catalog state (auto-loaded) ----
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
@@ -158,24 +154,9 @@ export default function TeamPicker({
     setBulk("");
   };
 
-  // assign group for a selected team
-  const assignGroup = (id: number, grpIdx: number) => {
-    if (groupsStageIndex == null) return;
-    onChange(
-      teams.map((t) =>
-        t.id === id
-          ? ({
-              ...t,
-              groupsByStage: { ...(t.groupsByStage ?? {}), [groupsStageIndex]: grpIdx },
-            } as TeamDraft)
-          : t
-      )
-    );
-  };
-
   // ------------------------------
-  // 🔒 Ensure selected teams carry name/logo:
-  // Rehydrate missing metadata from catalog once it’s available.
+  // Ensure selected teams carry name/logo:
+  // Rehydrate missing metadata from catalog once it's available.
   // ------------------------------
   useEffect(() => {
     if (teams.length === 0 || catalog.length === 0) return;
@@ -338,20 +319,6 @@ export default function TeamPicker({
                       <div className="truncate text-white/90">
                         {name} <span className="text-white/40 text-xs">#{t.id}</span>
                       </div>
-                      {groupsStageIndex != null && (
-                        <div className="mt-1">
-                          <select
-                            className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-                            value={(t.groupsByStage?.[groupsStageIndex] ?? -1) as number}
-                            onChange={(e) => assignGroup(t.id, Number(e.target.value))}
-                          >
-                            <option value={-1}>— Group —</option>
-                            {groupNames.map((g, i) => (
-                              <option key={g} value={i}>{g}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
                     </div>
                     <button
                       onClick={() => removeOne(t.id)}
