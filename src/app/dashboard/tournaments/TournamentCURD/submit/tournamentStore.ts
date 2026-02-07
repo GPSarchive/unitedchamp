@@ -1096,9 +1096,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const tid = st.ids.tournamentId!;
       const arr = st.entities.tournamentTeams.slice();
-      const idx = arr.findIndex((tt) => tt.tournament_id === tid && tt.team_id === teamId);
-      if (idx >= 0) arr[idx] = { ...arr[idx], seed };
-      else arr.push({ id: nextTempId(), tournament_id: tid, team_id: teamId, seed: seed ?? null });
+      // Update seed on ALL rows for this team (one per group stage)
+      let found = false;
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i].tournament_id === tid && arr[i].team_id === teamId) {
+          arr[i] = { ...arr[i], seed };
+          found = true;
+        }
+      }
+      if (!found) arr.push({ id: nextTempId(), tournament_id: tid, team_id: teamId, seed: seed ?? null });
       return { entities: { ...st.entities, tournamentTeams: arr }, dirty: { ...st.dirty, tournamentTeams: true } };
     });
   },
@@ -1107,8 +1113,10 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => {
       const tid = st.ids.tournamentId!;
       const arr = st.entities.tournamentTeams.slice();
-      const idx = arr.findIndex((tt) => tt.tournament_id === tid && tt.team_id === teamId);
-      if (idx >= 0) arr[idx] = { ...arr[idx], stage_id: stageId, group_id: groupId };
+      // Match by (tournament_id, team_id, stage_id) so each group stage
+      // gets its own row and assignments don't overwrite each other.
+      const idx = arr.findIndex((tt) => tt.tournament_id === tid && tt.team_id === teamId && tt.stage_id === stageId);
+      if (idx >= 0) arr[idx] = { ...arr[idx], group_id: groupId };
       else arr.push({ id: nextTempId(), tournament_id: tid, team_id: teamId, stage_id: stageId, group_id: groupId });
       return { entities: { ...st.entities, tournamentTeams: arr }, dirty: { ...st.dirty, tournamentTeams: true } };
     });
