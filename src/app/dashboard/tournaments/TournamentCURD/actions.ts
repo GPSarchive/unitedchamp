@@ -377,7 +377,7 @@ export async function createTournamentAction(formData: FormData) {
           seed: (t.seed ?? null) as number | null,
         });
         inserted = true;
-        break; // one row per team only
+        // no break: a team can belong to different groups in multiple group stages
       }
     }
 
@@ -395,7 +395,7 @@ export async function createTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id' });
+      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
 
     if (pErr) return { ok: false, error: pErr.message };
   }
@@ -988,7 +988,7 @@ export async function updateTournamentAction(formData: FormData) {
           seed: (t.seed ?? null) as number | null,
         });
         inserted = true;
-        break;
+        // no break: a team can belong to different groups in multiple group stages
       }
     }
 
@@ -1006,7 +1006,7 @@ export async function updateTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id' });
+      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
 
     if (pErr) return { ok: false, error: pErr.message };
   }

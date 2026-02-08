@@ -184,11 +184,12 @@ async function fetchTournaments() {
     // Fetch counts for each tournament
     const tournamentsWithCounts = await Promise.all(
       (data ?? []).map(async (tournament) => {
-        // Fetch teams count
-        const { count: teamsCount } = await supabaseAdmin
+        // Fetch teams count (distinct team_ids, since a team can appear in multiple group stages)
+        const { data: teamRows } = await supabaseAdmin
           .from('tournament_teams')
-          .select('*', { count: 'exact', head: true })
+          .select('team_id')
           .eq('tournament_id', tournament.id);
+        const teamsCount = new Set((teamRows ?? []).map((r: any) => r.team_id)).size;
 
         // Fetch matches count
         const { count: matchesCount } = await supabaseAdmin

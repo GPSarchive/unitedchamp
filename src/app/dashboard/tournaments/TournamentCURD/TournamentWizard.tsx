@@ -177,16 +177,22 @@ export default function TournamentWizard({
     return () => ctrl.abort();
   }, [mode, meta?.id]);
 
-  // --- derived: groups context ---------------------------------------------
-  const groupStageIndices = useMemo(
-    () => payload.stages.map((s, i) => (s.kind === "groups" ? i : -1)).filter((i) => i >= 0),
-    [payload.stages]
-  );
-
-  const [assignStageIdx, setAssignStageIdx] = useState<number | undefined>(undefined);
-  useEffect(() => {
-    setAssignStageIdx((prev) => (prev != null && groupStageIndices.includes(prev) ? prev : groupStageIndices[0]));
-  }, [groupStageIndices]);
+  // --- team-to-group assignment (per-stage, driven from each StageCard) -----
+  const handleTeamGroupChange = (teamId: number, stageIdx: number, groupIdx: number | null) => {
+    setTeams((prev) =>
+      prev.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              groupsByStage: {
+                ...(t.groupsByStage ?? {}),
+                [stageIdx]: groupIdx,
+              },
+            }
+          : t
+      )
+    );
+  };
 
   // --- validation summary (advisory; does not block saving) ----------------
   const errors = useMemo(() => {
@@ -247,36 +253,10 @@ export default function TournamentWizard({
 
       {/* 2) Setup: Teams + Stages */}
       <div className="space-y-6">
-        {/* Teams & group assignment */}
+        {/* Teams (tournament-wide pool; group assignment is per-stage in StageCard) */}
         <div className="space-y-4">
-          {groupStageIndices.length > 0 && (
-            <div className="rounded-md border border-white/10 p-2 text-sm text-white/80">
-              <label className="mr-2">Assign groups for stage:</label>
-              <select
-                className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white"
-                value={assignStageIdx ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value === "" ? undefined : Number(e.target.value);
-                  setAssignStageIdx(val);
-                }}
-              >
-                {groupStageIndices.map((i) => (
-                  <option key={i} value={i}>
-                    {(payload.stages[i]?.name || `Stage ${i + 1}`) + " (groups)"}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <TeamPicker
             teams={teams}
-            groupsStageIndex={assignStageIdx}
-            groupNames={
-              typeof assignStageIdx === "number"
-                ? (payload.stages as any)[assignStageIdx]?.groups?.map((g: any) => g.name) ?? []
-                : []
-            }
             onChange={(t) => {
               setTeams(t);
               setPayload((p) => ({ ...p, tournament_team_ids: t.map((x) => x.id) }));
@@ -295,6 +275,7 @@ export default function TournamentWizard({
               prevStagesRef.current = nextStages;
             }}
             teams={teams}
+            onTeamGroupChange={handleTeamGroupChange}
           />
         </div>
       </div>

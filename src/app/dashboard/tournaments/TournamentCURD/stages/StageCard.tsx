@@ -63,6 +63,7 @@ export default function StageCard({
   onMoveDown,
   allStages,
   teams,
+  onTeamGroupChange,
 }: {
   value: NewTournamentPayload["stages"][number];
   index: number;
@@ -72,6 +73,7 @@ export default function StageCard({
   onMoveDown: () => void;
   allStages: NewTournamentPayload["stages"];
   teams: TeamDraft[];
+  onTeamGroupChange?: (teamId: number, stageIdx: number, groupIdx: number | null) => void;
 }) {
   const draftMatches = useTournamentStore((s) => s.draftMatches);
   const replaceAllDraftMatches = useTournamentStore((s) => s.replaceAllDraftMatches);
@@ -194,6 +196,24 @@ export default function StageCard({
       });
     }
   }
+
+  // Teams available for assignment: in the tournament pool but not yet assigned
+  // to any group in THIS stage
+  const availableTeams = useMemo(() => {
+    if (!isGroups || intakeEnabled) return [];
+    const assignedIds = new Set<number>();
+    teams.forEach((t) => {
+      const gi = (t as any).groupsByStage?.[index];
+      if (gi != null && gi >= 0) assignedIds.add(t.id);
+    });
+    return teams
+      .filter((t) => !assignedIds.has(t.id))
+      .map((t) => ({
+        id: t.id,
+        name: (t as any).name ?? catalog[t.id]?.name ?? `Team #${t.id}`,
+        logo: (t as any).logo ?? catalog[t.id]?.logo ?? null,
+      }));
+  }, [isGroups, intakeEnabled, teams, index, catalog]);
 
   useEffect(() => {
     if (!isGroups) return;
@@ -346,6 +366,17 @@ export default function StageCard({
               onRenameGroup={setGroupName}
               onSetGroupCount={setGroupCount}
               intakeMode={intakeEnabled}
+              availableTeams={availableTeams}
+              onAssignTeam={
+                onTeamGroupChange
+                  ? (teamId, groupIdx) => onTeamGroupChange(teamId, index, groupIdx)
+                  : undefined
+              }
+              onUnassignTeam={
+                onTeamGroupChange
+                  ? (teamId) => onTeamGroupChange(teamId, index, null)
+                  : undefined
+              }
             />
           </div>
 
