@@ -22,7 +22,7 @@ SELECT DISTINCT
   m.team_a_id,
   m.stage_id,
   m.group_id,
-  NULL
+  NULL::integer
 FROM matches m
 JOIN tournament_stages ts ON ts.id = m.stage_id AND ts.kind = 'groups'
 WHERE m.team_a_id IS NOT NULL
@@ -37,7 +37,7 @@ SELECT DISTINCT
   m.team_b_id,
   m.stage_id,
   m.group_id,
-  NULL
+  NULL::integer
 FROM matches m
 JOIN tournament_stages ts ON ts.id = m.stage_id AND ts.kind = 'groups'
 WHERE m.team_b_id IS NOT NULL
