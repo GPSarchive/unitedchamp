@@ -395,7 +395,7 @@ export async function createTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
+      .insert(participation);
 
     if (pErr) return { ok: false, error: pErr.message };
   }
@@ -1006,7 +1006,7 @@ export async function updateTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
+      .insert(participation);
 
     if (pErr) return { ok: false, error: pErr.message };
   }
