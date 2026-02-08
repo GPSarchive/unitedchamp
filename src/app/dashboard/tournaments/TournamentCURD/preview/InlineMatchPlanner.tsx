@@ -7,6 +7,7 @@ import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/s
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
 import MatchControlPanel from "./MatchControlPanel";
+import MatchToolbar from "./MatchToolbar";
 
 /* ---------------- helpers ---------------- */
 function rrPairKey(a?: number | null, b?: number | null) {
@@ -722,64 +723,67 @@ export default function InlineMatchPlanner({
     <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
       <div className="text-[11px] text-white/40">{debugLine}</div>
 
-      <header className="flex flex-wrap items-center gap-2">
-        <div className="text-white/80 text-sm">
-          <span className="font-medium text-white/90">Fixtures (Stage #{effectiveStageIdx + 1})</span>{" "}
-          <span className="text-white/60">• {kindFromStore}</span>
-          {isGroups && (
-            <>
-              <span className="text-white/60"> • Group</span>
-              <select
-                className="ml-2 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
-                value={useAllGroups ? -1 : groupIdx}
-                onChange={(e) => setGroupIdx(Number(e.target.value))}
-              >
-                <option value={-1}>All groups</option>
-                {storeGroups.map((g) => (
-                  <option key={g.idx} value={g.idx}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
-              {storeGroups.length === 0 && (
-                <span className="ml-2 text-amber-300/80 text-xs align-middle">
-                  groups not mapped – showing all matches
-                </span>
-              )}
-            </>
-          )}
+      <header className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-white/80 text-sm">
+            <span className="font-medium text-white/90">Fixtures (Stage #{effectiveStageIdx + 1})</span>{" "}
+            <span className="text-white/60">• {kindFromStore}</span>
+            {isGroups && (
+              <>
+                <span className="text-white/60"> • Group</span>
+                <select
+                  className="ml-2 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
+                  value={useAllGroups ? -1 : groupIdx}
+                  onChange={(e) => setGroupIdx(Number(e.target.value))}
+                >
+                  <option value={-1}>All groups</option>
+                  {storeGroups.map((g) => (
+                    <option key={g.idx} value={g.idx}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+                {storeGroups.length === 0 && (
+                  <span className="ml-2 text-amber-300/80 text-xs align-middle">
+                    groups not mapped – showing all matches
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-white/70 text-xs">Search match:</span>
+            <input
+              type="text"
+              className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
+              placeholder="Team A"
+              value={teamQuery1}
+              onChange={(e) => setTeamQuery1(e.target.value)}
+            />
+            <span className="text-white/50 text-xs font-medium">vs</span>
+            <input
+              type="text"
+              className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
+              placeholder="Team B"
+              value={teamQuery2}
+              onChange={(e) => setTeamQuery2(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-white/70 text-xs">Search match:</span>
-          <input
-            type="text"
-            className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
-            placeholder="Team A"
-            value={teamQuery1}
-            onChange={(e) => setTeamQuery1(e.target.value)}
-          />
-          <span className="text-white/50 text-xs font-medium">vs</span>
-          <input
-            type="text"
-            className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
-            placeholder="Team B"
-            value={teamQuery2}
-            onChange={(e) => setTeamQuery2(e.target.value)}
-          />
-          <button
-            className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
-            onClick={regenerateStage}
-            title="Rebuild this stage's fixtures (keeps scores/status where possible)"
-          >
-            Regenerate stage
-          </button>
-          <button
-            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-            onClick={addRow}
-          >
-            + Add match
-          </button>
-        </div>
+
+        {/* Match Toolbar with improved controls */}
+        <MatchToolbar
+          allRowsForStage={allRowsForStage}
+          visible={visible}
+          isKO={isKO}
+          isGroups={isGroups}
+          onRegenerate={regenerateStage}
+          onBulkUpdate={(updater) =>
+            updateMatches(effectiveStageIdx, updater)
+          }
+          onRemoveMatch={removeRow}
+          onAddRow={addRow}
+        />
       </header>
 
       {filteredVisible.length === 0 ? (
@@ -819,9 +823,10 @@ export default function InlineMatchPlanner({
                   const key = reactKey(m, i);
                   const isEditing =
                     editingMatch && rowSignature(editingMatch) === rowSignature(m);
+                  const matchIsFinished = ((m as any).status ?? "scheduled") === "finished";
                   return (
                     <>
-                      <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
+                      <tr key={key} className={`odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24 ${matchIsFinished ? "ring-1 ring-inset ring-emerald-500/10" : ""}`}>
                         <td className="px-4 py-4">
                           <input
                             type="number"
@@ -923,12 +928,15 @@ export default function InlineMatchPlanner({
                         <td className="px-4 py-4">
                           <span
                             className={[
-                              "inline-flex items-center rounded px-2 py-0.5 text-xs",
-                              ((m as any).status ?? "scheduled") === "finished"
+                              "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs",
+                              matchIsFinished
                                 ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
                                 : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10",
                             ].join(" ")}
                           >
+                            {matchIsFinished && (
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            )}
                             {((m as any).status ?? "scheduled")}
                           </span>
                         </td>
@@ -1018,9 +1026,10 @@ export default function InlineMatchPlanner({
                         const key = reactKey(m, i);
                         const isEditing =
                           editingMatch && rowSignature(editingMatch) === rowSignature(m);
+                        const rrMatchIsFinished = ((m as any).status ?? "scheduled") === "finished";
                         return (
                           <>
-                            <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
+                            <tr key={key} className={`odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24 ${rrMatchIsFinished ? "ring-1 ring-inset ring-emerald-500/10" : ""}`}>
                               <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
                                   {nameOf(m.team_a_id ?? null).logo ? (
@@ -1097,12 +1106,15 @@ export default function InlineMatchPlanner({
                               <td className="px-4 py-4">
                                 <span
                                   className={[
-                                    "inline-flex items-center rounded px-2 py-0.5 text-xs",
-                                    ((m as any).status ?? "scheduled") === "finished"
+                                    "inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs",
+                                    rrMatchIsFinished
                                       ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
                                       : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10",
                                   ].join(" ")}
                                 >
+                                  {rrMatchIsFinished && (
+                                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                  )}
                                   {((m as any).status ?? "scheduled")}
                                 </span>
                               </td>
