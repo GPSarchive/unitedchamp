@@ -197,7 +197,10 @@ export const loadTournamentIntoStore = async (
     throw new Error(`Failed to fetch teams: ${teamsError.message}`);
   }
 
-  const teamIds = tournamentTeamsData?.map((tt: TournamentTeamData) => tt.team.id) || [];
+  // Deduplicate team IDs (a team can have multiple rows across group stages)
+  const teamIds = Array.from(new Set(
+    tournamentTeamsData?.map((tt: TournamentTeamData) => tt.team.id) || []
+  ));
 
   // Fetch match IDs for tournament-specific filtering
   const matchIds = matches.map((m: DraftMatch) => m.db_id).filter((id): id is number => id !== null && id !== undefined);

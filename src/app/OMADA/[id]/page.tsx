@@ -49,10 +49,16 @@ export default async function TeamPage({ params }: TeamPageProps) {
       .eq("team_id", teamId)
       .order("tournament_id", { ascending: false });
 
+  // Deduplicate: a team can have multiple rows per tournament (one per group stage)
+  const seen = new Set<number>();
   const tournaments =
     (tournamentMembership ?? [])
       .map((r: any) => r.tournament)
-      .filter(Boolean) ?? [];
+      .filter((t: any) => {
+        if (!t || seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
 
   // ── Tournament wins (championships) ────────────────────────────────────────────
   const { data: winsList, error: winsErr } = await supabaseAdmin
