@@ -64,6 +64,20 @@ const groupByRound = (matches: MatchDraft[]) => {
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
+/** Human-readable label for a KO round based on its position relative to the final. */
+function getRoundLabel(round: number, totalRounds: number): string {
+  const fromFinal = totalRounds - round;
+  switch (fromFinal) {
+    case 0: return "Final";
+    case 1: return "Semi-finals";
+    case 2: return "Quarter-finals";
+    default: {
+      const teamsInRound = Math.pow(2, fromFinal + 1);
+      return `Round of ${teamsInRound}`;
+    }
+  }
+}
+
 /** ---------- Component ---------- */
 export default function KnockoutBuilder({
   title = "Knockout Builder",
@@ -375,9 +389,9 @@ export default function KnockoutBuilder({
               key={`autonext-${r}`}
               className="rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs px-3 py-1.5"
               onClick={() => autoBuildNextRound(r)}
-              title={`Pair Round ${r} into Round ${r + 1}`}
+              title={`Pair matches from ${getRoundLabel(r, roundNumbers.length)} into ${getRoundLabel(r + 1, roundNumbers.length + 1)}`}
             >
-              Auto-build R{r} → R{r + 1}
+              Auto-build {getRoundLabel(r, roundNumbers.length)} → {getRoundLabel(r + 1, roundNumbers.length + 1)}
             </button>
           ))}
           <button
@@ -455,16 +469,21 @@ export default function KnockoutBuilder({
                 className="absolute"
                 style={{ left, top: 0, width: colWidth }}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-white/80 text-sm font-medium">Round {r}</div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => addMatchToRound(r)}
-                      className="text-xs text-white/80 hover:text-white/100 underline underline-offset-2"
-                      title={`Add match to Round ${r}`}
-                    >
-                      + match
-                    </button>
+                <div className="flex flex-col gap-0.5 mb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-white/80 text-sm font-medium">Round {r}</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => addMatchToRound(r)}
+                        className="text-xs text-cyan-200 hover:text-cyan-100 underline underline-offset-2"
+                        title={`Add match to Round ${r} (${getRoundLabel(r, roundNumbers.length)})`}
+                      >
+                        + match
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-cyan-300/70 font-medium">
+                    {getRoundLabel(r, roundNumbers.length)}
                   </div>
                 </div>
 
@@ -485,6 +504,8 @@ export default function KnockoutBuilder({
                       {/* header */}
                       <div className="flex items-center justify-between text-[11px] text-white/60 mb-2">
                         <div className="flex items-center gap-2">
+                          <span className="text-cyan-300/80 font-medium">{getRoundLabel(m.round, roundNumbers.length)}</span>
+                          <span className="inline-block h-1 w-1 rounded-full bg-white/20" />
                           <span>Match #{m.bracket_pos}</span>
                           <span className="inline-block h-1 w-1 rounded-full bg-white/20" />
                           <span>Bo{m.best_of ?? 1}</span>

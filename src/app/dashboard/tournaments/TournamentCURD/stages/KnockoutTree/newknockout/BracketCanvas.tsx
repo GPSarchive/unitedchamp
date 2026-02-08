@@ -59,6 +59,20 @@ const nextId = (() => {
 
 const keyOf = (r?: number | null, p?: number | null) => (r && p ? `R${r}-B${p}` : null);
 
+/** Human-readable label for a KO round based on its position relative to the final. */
+function getRoundLabel(round: number, totalRounds: number): string {
+  const fromFinal = totalRounds - round;
+  switch (fromFinal) {
+    case 0: return "Final";
+    case 1: return "Semi-finals";
+    case 2: return "Quarter-finals";
+    default: {
+      const teamsInRound = Math.pow(2, fromFinal + 1);
+      return `Round of ${teamsInRound}`;
+    }
+  }
+}
+
 function rowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
@@ -594,7 +608,9 @@ export default function BracketCanvas({
           }`
         : null;
 
-    const tag = meta ? `Round ${meta.round} • B${meta.bracket_pos}` : n.id;
+    const tag = meta
+      ? `${getRoundLabel(meta.round, totalRounds)} (R${meta.round}) • B${meta.bracket_pos}`
+      : n.id;
 
     const finished = (() => {
       const r = rowByNodeKey.get(n.id);
@@ -699,9 +715,8 @@ export default function BracketCanvas({
     return p;
   }
 
-  function addFirstRoundMatch() {
+  function addMatchToRound(round: number) {
     if (!allowWrites) return;
-    const round = 1;
     const bracket_pos = firstFreePos(round);
     ensureRowExists(round, bracket_pos);
 
@@ -712,6 +727,13 @@ export default function BracketCanvas({
 
     setNodes((prev) => [...prev, { id, x, y, w: 220, h: 120, label: `R${round} • Pos ${bracket_pos}` }]);
     setNodeMeta((prev) => ({ ...prev, [id]: { round, bracket_pos } }));
+  }
+
+  function addNewRound() {
+    if (!allowWrites) return;
+    const existingRounds = Object.values(nodeMeta).map((m) => m.round);
+    const maxRound = existingRounds.length ? Math.max(...existingRounds) : 0;
+    addMatchToRound(maxRound + 1);
   }
 
   function writeLinksForChild(round: number, bracket_pos: number, parentA: NodeMeta, parentB: NodeMeta) {
@@ -940,6 +962,12 @@ export default function BracketCanvas({
   /* ============================
      UI
      ============================ */
+  const existingRounds = useMemo(() => {
+    const rounds = new Set(Object.values(nodeMeta).map((m) => m.round));
+    return [...rounds].sort((a, b) => a - b);
+  }, [nodeMeta]);
+  const totalRounds = existingRounds.length ? Math.max(...existingRounds) : 0;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -964,18 +992,40 @@ export default function BracketCanvas({
         >
           {showTools ? "Hide design tools (writing enabled)" : "Design tools (enable writing)"}
         </button>
-
-        {showTools && (
-          <button
-            className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
-            onClick={addFirstRoundMatch}
-            title="Create a new Round 1 slot and persist it in the store"
-            disabled={!allowWrites}
-          >
-            + Add 1st-round match
-          </button>
-        )}
       </div>
+
+      {/* Per-round "Add Match" buttons */}
+      {showTools && (
+        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/60 to-indigo-950/40 p-3 space-y-2">
+          <div className="text-xs text-white/60 font-medium mb-1">Add match to a specific round:</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {existingRounds.map((r) => {
+              const label = getRoundLabel(r, totalRounds);
+              const matchCount = Object.values(nodeMeta).filter((m) => m.round === r).length;
+              return (
+                <button
+                  key={`add-r${r}`}
+                  className="px-3 py-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50 text-xs"
+                  onClick={() => addMatchToRound(r)}
+                  title={`Add a new match to Round ${r} (${label})`}
+                  disabled={!allowWrites}
+                >
+                  + Round {r} — {label}
+                  <span className="ml-1.5 text-white/50">({matchCount} match{matchCount !== 1 ? "es" : ""})</span>
+                </button>
+              );
+            })}
+            <button
+              className="px-3 py-1.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50 text-xs"
+              onClick={addNewRound}
+              title="Add a brand new round after the last existing round"
+              disabled={!allowWrites}
+            >
+              + New Round {totalRounds + 1}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Designer tools */}
       {showTools && (
