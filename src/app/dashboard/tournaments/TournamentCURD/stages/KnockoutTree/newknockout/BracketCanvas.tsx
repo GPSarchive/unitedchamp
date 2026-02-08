@@ -972,7 +972,7 @@ export default function BracketCanvas({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <button
-          className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+          className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] text-sm transition"
           onClick={loadFromStore}
           title="Reload from store (discard local layout changes)"
         >
@@ -980,24 +980,28 @@ export default function BracketCanvas({
         </button>
 
         <button
-          className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+          className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+            showTools
+              ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
+              : "border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08]"
+          }`}
           onClick={() => {
             setShowTools((s) => {
               const next = !s;
-              setAllowWrites(next); // writes only when tools are visible
+              setAllowWrites(next);
               return next;
             });
           }}
           title="Show/hide knockout designer tools"
         >
-          {showTools ? "Hide design tools (writing enabled)" : "Design tools (enable writing)"}
+          {showTools ? "Design tools (active)" : "Design tools"}
         </button>
       </div>
 
       {/* Per-round "Add Match" buttons */}
       {showTools && (
-        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/60 to-indigo-950/40 p-3 space-y-2">
-          <div className="text-xs text-white/60 font-medium mb-1">Add match to a specific round:</div>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Add match to round</div>
           <div className="flex flex-wrap items-center gap-2">
             {existingRounds.map((r) => {
               const label = getRoundLabel(r, totalRounds);
@@ -1005,18 +1009,18 @@ export default function BracketCanvas({
               return (
                 <button
                   key={`add-r${r}`}
-                  className="px-3 py-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50 text-xs"
+                  className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
                   onClick={() => addMatchToRound(r)}
                   title={`Add a new match to Round ${r} (${label})`}
                   disabled={!allowWrites}
                 >
-                  + Round {r} — {label}
-                  <span className="ml-1.5 text-white/50">({matchCount} match{matchCount !== 1 ? "es" : ""})</span>
+                  + Round {r} &mdash; {label}
+                  <span className="ml-1.5 text-white/30">({matchCount})</span>
                 </button>
               );
             })}
             <button
-              className="px-3 py-1.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 text-emerald-100 hover:bg-emerald-500/20 disabled:opacity-50 text-xs"
+              className="px-3 py-1.5 rounded-lg border border-emerald-400/25 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50 text-xs transition"
               onClick={addNewRound}
               title="Add a brand new round after the last existing round"
               disabled={!allowWrites}
@@ -1029,15 +1033,16 @@ export default function BracketCanvas({
 
       {/* Designer tools */}
       {showTools && (
-        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-black/50 via-red-950/30 to-amber-900/20 p-3 space-y-2 shadow-inner">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Link Builder</div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={selA}
                 onChange={(e) => setSelA(e.target.value)}
               >
-                <option value="">Parent A…</option>
+                <option value="">Parent A...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -1045,11 +1050,11 @@ export default function BracketCanvas({
                 ))}
               </select>
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={selB}
                 onChange={(e) => setSelB(e.target.value)}
               >
-                <option value="">Parent B…</option>
+                <option value="">Parent B...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -1057,22 +1062,22 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
                 onClick={addChildFromTwoParents}
-                title="Create child in next round and connect both parents (and persist links)"
+                title="Create child in next round and connect both parents"
                 disabled={!allowWrites}
               >
                 + Child of A & B
               </button>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
               >
-                <option value="">Target…</option>
+                <option value="">Target...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -1080,22 +1085,22 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
                 onClick={connectParentsToTarget}
-                title="Connect selected parent(s) to target (and persist links)"
+                title="Connect selected parent(s) to target"
                 disabled={!allowWrites}
               >
-                Connect → Target
+                Connect to Target
               </button>
             </div>
 
-            <span className="mx-2 h-5 w-px bg-white/10" />
+            <span className="mx-2 h-5 w-px bg-white/[0.08]" />
 
             <button
-              className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+              className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] text-xs transition"
               onClick={reflowFromMeta}
             >
-              Reflow from meta
+              Reflow layout
             </button>
           </div>
         </div>

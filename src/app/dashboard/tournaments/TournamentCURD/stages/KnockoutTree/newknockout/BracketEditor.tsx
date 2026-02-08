@@ -231,7 +231,7 @@ export default function BracketEditor({
   }, [nodes]);
 
   return (
-    <div className="relative w-full overflow-auto rounded-xl border border-white/10 bg-gradient-to-br from-red-950/60 via-[#2a0a0a]/60 to-amber-950/50">
+    <div className="relative w-full overflow-auto rounded-xl border border-white/[0.08] bg-gradient-to-br from-slate-900/80 to-indigo-950/60">
       {/* Scroll area sized to zoomed content */}
       <div
         ref={containerRef}
@@ -313,12 +313,12 @@ export default function BracketEditor({
                 key={n.id}
                 className={[
                   "absolute rounded-2xl border p-2 flex flex-col gap-1 select-none",
-                  "shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset] backdrop-blur-[1px]",
+                  "shadow-[0_0_0_1px_rgba(255,255,255,0.06)_inset] backdrop-blur-[1px]",
                   done
-                    ? "border-amber-400/50 bg-gradient-to-br from-red-700/30 to-amber-600/20 ring-1 ring-amber-300/20"
+                    ? "border-emerald-400/40 bg-gradient-to-br from-emerald-900/30 to-teal-900/20 ring-1 ring-emerald-400/20"
                     : isPending
-                      ? "border-emerald-400/60 bg-emerald-500/10"
-                      : "border-white/15 bg-black/40",
+                      ? "border-violet-400/60 bg-violet-500/10"
+                      : "border-white/[0.1] bg-black/40",
                 ].join(" ")}
                 style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
                 onPointerDown={(e) => handlePointerDown(e, n.id)}
@@ -333,10 +333,10 @@ export default function BracketEditor({
                   <span className="truncate">{n.label ?? n.id}</span>
                   <button
                     className={[
-                      "ml-2 rounded px-2 py-0.5 border text-[11px]",
+                      "ml-2 rounded-lg px-2 py-0.5 border text-[11px] transition",
                       isPending
-                        ? "border-emerald-400/60 bg-emerald-500/20"
-                        : "border-white/15 bg-white/5",
+                        ? "border-violet-400/60 bg-violet-500/20 text-violet-200"
+                        : "border-white/[0.1] bg-white/[0.05] text-white/60 hover:bg-white/[0.1]",
                     ].join(" ")}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -361,9 +361,9 @@ export default function BracketEditor({
       </div>
 
       {/* Footer tips */}
-      <div className="px-3 py-2 text-xs text-white/70 border-t border-white/10 bg-black/40">
-        Drag nodes to reposition. Double-click a node or press “Connect”, then click another node to create an edge.
-        Click the small circle on a line to remove that connection. Press <kbd>Esc</kbd> to cancel a pending connection.
+      <div className="px-4 py-2.5 text-xs text-white/40 border-t border-white/[0.06] bg-black/30">
+        Drag nodes to reposition. Double-click a node or press &quot;Connect&quot;, then click another node to create an edge.
+        Click the circle on a line to remove it. Press <kbd className="px-1 py-0.5 rounded bg-white/[0.08] text-white/50">Esc</kbd> to cancel.
       </div>
     </div>
   );

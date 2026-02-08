@@ -240,63 +240,108 @@ export default function TournamentWizard({
   };
 
   // --- UI -------------------------------------------------------------------
+  const steps = [
+    { num: 1, label: "Tournament Details", desc: "Name, format & branding" },
+    { num: 2, label: "Teams", desc: `${teams.length} team${teams.length !== 1 ? "s" : ""} selected` },
+    { num: 3, label: "Stages & Fixtures", desc: `${payload.stages.length} stage${payload.stages.length !== 1 ? "s" : ""} configured` },
+    { num: 4, label: "Review & Save", desc: "Finalize your tournament" },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Wizard step indicator */}
+      <nav className="flex items-center justify-between gap-2 px-1">
+        {steps.map((step, i) => (
+          <div key={step.num} className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
+                  ${i === 0
+                    ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-500/25"
+                    : "bg-white/[0.06] text-white/50 border border-white/[0.08]"
+                  }`}
+              >
+                {step.num}
+              </div>
+              <div className="min-w-0 hidden sm:block">
+                <div className="text-sm font-medium text-white/90 truncate">{step.label}</div>
+                <div className="text-[11px] text-white/40 truncate">{step.desc}</div>
+              </div>
+            </div>
+            {i < steps.length - 1 && (
+              <div className="flex-1 h-px bg-gradient-to-r from-white/[0.08] to-transparent mx-2 hidden md:block" />
+            )}
+          </div>
+        ))}
+      </nav>
+
       {/* Advisory validation panel */}
       {errors.length > 0 && <ValidationSummary errors={errors} />}
 
-      {/* 1) Basics */}
-      <TournamentBasicsForm
-        value={payload.tournament}
-        onChange={(t) => setPayload((p) => ({ ...p, tournament: t }))}
-      />
+      {/* Step 1: Tournament Details */}
+      <section>
+        <SectionHeader num={1} title="Tournament Details" subtitle="Set up your tournament identity and format" />
+        <TournamentBasicsForm
+          value={payload.tournament}
+          onChange={(t) => setPayload((p) => ({ ...p, tournament: t }))}
+        />
+      </section>
 
-      {/* 2) Setup: Teams + Stages */}
-      <div className="space-y-6">
-        {/* Teams (tournament-wide pool; group assignment is per-stage in StageCard) */}
-        <div className="space-y-4">
-          <TeamPicker
-            teams={teams}
-            onChange={(t) => {
-              setTeams(t);
-              setPayload((p) => ({ ...p, tournament_team_ids: t.map((x) => x.id) }));
-            }}
-          />
-        </div>
+      {/* Step 2: Teams */}
+      <section>
+        <SectionHeader num={2} title="Teams" subtitle="Choose the teams that will compete in this tournament" />
+        <TeamPicker
+          teams={teams}
+          onChange={(t) => {
+            setTeams(t);
+            setPayload((p) => ({ ...p, tournament_team_ids: t.map((x) => x.id) }));
+          }}
+        />
+      </section>
 
-        {/* Stages (keep local payload for UI; mirror edits to the store immediately) */}
-        <div className="space-y-4">
-          <StageList
-            stages={payload.stages}
-            onChange={(nextStages) => {
-              const prevStages = prevStagesRef.current;
-              setPayload((p) => ({ ...p, stages: nextStages }));
-              syncStagesIntoStore(prevStages, nextStages);
-              prevStagesRef.current = nextStages;
-            }}
-            teams={teams}
-            onTeamGroupChange={handleTeamGroupChange}
-          />
-        </div>
+      {/* Step 3: Stages & Fixtures */}
+      <section>
+        <SectionHeader num={3} title="Stages & Fixtures" subtitle="Define the stages, groups, and knockout brackets" />
+        <StageList
+          stages={payload.stages}
+          onChange={(nextStages) => {
+            const prevStages = prevStagesRef.current;
+            setPayload((p) => ({ ...p, stages: nextStages }));
+            syncStagesIntoStore(prevStages, nextStages);
+            prevStagesRef.current = nextStages;
+          }}
+          teams={teams}
+          onTeamGroupChange={handleTeamGroupChange}
+        />
+      </section>
+
+      {/* Step 4: Review & Save */}
+      <section>
+        <SectionHeader num={4} title="Review & Save" subtitle="Check everything and publish your tournament" />
+        <ReviewAndSubmit
+          mode={mode}
+          meta={meta ?? undefined}
+          payload={payload}
+          teams={teams}
+          draftMatches={storeDraftMatches}
+          onBack={() => {}}
+        />
+      </section>
+    </div>
+  );
+}
+
+/* ---- Shared section header ---- */
+function SectionHeader({ num, title, subtitle }: { num: number; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-4 mb-4">
+      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 border border-violet-400/20 flex items-center justify-center text-sm font-bold text-violet-300">
+        {num}
       </div>
-
-      {/* 4) Save */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-cyan-200 font-semibold">Fixtures</h3>
-          {/* Removed the Regenerate Fixtures Button */}
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <p className="text-sm text-white/40">{subtitle}</p>
       </div>
-
-      {/* 5) Single Save button at the bottom (submit still receives matches; now from the store) */}
-      <ReviewAndSubmit
-        mode={mode}
-        meta={meta ?? undefined}
-        payload={payload}
-        teams={teams}
-        draftMatches={storeDraftMatches}
-        onBack={() => {}}
-      />
     </div>
   );
 }

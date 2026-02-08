@@ -188,23 +188,31 @@ export default function TournamentBasicsForm({
     }
   }
 
-  return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-3">
-      <h2 className="text-xl font-semibold text-cyan-200">Tournament</h2>
+  const fieldCls =
+    "w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2.5 text-white placeholder-white/30 " +
+    "focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-400/30 transition";
 
-      {/* Logo preview + uploader */}
-      <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-md overflow-hidden bg-slate-900/60 border border-white/10 flex items-center justify-center">
-          {logoPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-xs text-white/50">No logo</span>
-          )}
-        </div>
-        <div className="flex flex-col gap-2 flex-1">
-          <div className="flex items-center gap-2">
-            <label className="relative inline-flex items-center px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-100 hover:bg-cyan-500/10 cursor-pointer">
+  const statusLabels: Record<string, string> = { scheduled: "Scheduled", running: "Running", completed: "Completed", archived: "Archived" };
+  const formatLabels: Record<string, string> = { league: "League", groups: "Groups", knockout: "Knockout", mixed: "Mixed" };
+
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-slate-900/80 to-indigo-950/60 p-5 sm:p-6 shadow-2xl">
+      {/* Logo + Name row */}
+      <div className="flex items-start gap-5 mb-6">
+        <div className="flex-shrink-0">
+          <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/[0.04] border-2 border-dashed border-white/[0.12] flex items-center justify-center group relative">
+            {logoPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center gap-1 text-white/30">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" /></svg>
+                <span className="text-[10px]">Logo</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 mt-2">
+            <label className="relative inline-flex items-center px-2.5 py-1 rounded-lg border border-violet-400/30 bg-violet-500/10 text-violet-200 text-xs font-medium hover:bg-violet-500/20 cursor-pointer transition">
               <input
                 type="file"
                 accept="image/*"
@@ -212,16 +220,16 @@ export default function TournamentBasicsForm({
                 onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
                 disabled={uploading}
               />
-              {uploading ? "Uploading…" : "Upload Logo"}
+              {uploading ? "Uploading..." : "Upload"}
             </label>
             {value.logo ? (
               <button
-                className="text-xs px-2 py-1 rounded-md border border-white/10 text-white/80 hover:bg-white/5"
+                className="text-[11px] px-2 py-1 rounded-lg border border-white/[0.1] text-white/50 hover:text-white/80 hover:bg-white/[0.05] transition"
                 onClick={() => {
                   onChange({ ...value, logo: null });
                   setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
                   setDebugInfo("Logo removed");
-                  updateTournament({ logo: null } as any); // Mark dirty
+                  updateTournament({ logo: null } as any);
                 }}
                 type="button"
               >
@@ -229,68 +237,87 @@ export default function TournamentBasicsForm({
               </button>
             ) : null}
           </div>
-          {/* Debug info display */}
           {debugInfo && (
-            <div className="text-xs text-white/60 font-mono">
+            <div className="text-[10px] text-white/30 font-mono mt-1 max-w-[120px] truncate" title={debugInfo}>
               {debugInfo}
             </div>
           )}
         </div>
+
+        <div className="flex-1 space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Tournament Name</label>
+            <input
+              className={fieldCls + " text-lg font-semibold"}
+              placeholder="e.g. Champions League 2025"
+              value={value.name ?? ""}
+              onChange={(e) => onChange({ ...value, name: e.target.value })}
+            />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Slug</label>
+              <input
+                className={fieldCls}
+                placeholder="auto-generated-slug"
+                value={value.slug ?? ""}
+                onChange={(e) => {
+                  editedSlug.current = true;
+                  onChange({ ...value, slug: e.target.value || null });
+                }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Season</label>
+              <input
+                className={fieldCls}
+                placeholder="e.g. 2025"
+                value={value.season ?? ""}
+                onChange={(e) => onChange({ ...value, season: e.target.value || null })}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          placeholder="Name"
-          value={value.name ?? ""}
-          onChange={(e) => onChange({ ...value, name: e.target.value })}
-        />
-        <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          placeholder="Slug"
-          value={value.slug ?? ""}
-          onChange={(e) => {
-            editedSlug.current = true;
-            onChange({ ...value, slug: e.target.value || null });
-          }}
-        />
-        <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          placeholder="Season (e.g. 2025)"
-          value={value.season ?? ""}
-          onChange={(e) => onChange({ ...value, season: e.target.value || null })}
-        />
-        <select
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          value={value.status ?? "scheduled"}
-          onChange={(e) => onChange({ ...value, status: e.target.value as any })}
-        >
-          {["scheduled", "running", "completed", "archived"].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <select
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          value={value.format ?? "league"}
-          onChange={(e) => onChange({ ...value, format: e.target.value as any })}
-        >
-          {["league", "groups", "knockout", "mixed"].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          placeholder='Logo URL (http… or "/leagues/…/file.jpg")'
-          value={value.logo ?? ""}
-          onChange={(e) => {
-            onChange({ ...value, logo: e.target.value || null });
-            updateTournament({ logo: e.target.value || null } as any);
-          }}
-        />
+      {/* Bottom row: Status, Format, Logo URL */}
+      <div className="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-white/50 mb-1.5">Status</label>
+          <select
+            className={fieldCls}
+            value={value.status ?? "scheduled"}
+            onChange={(e) => onChange({ ...value, status: e.target.value as any })}
+          >
+            {Object.entries(statusLabels).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-white/50 mb-1.5">Format</label>
+          <select
+            className={fieldCls}
+            value={value.format ?? "league"}
+            onChange={(e) => onChange({ ...value, format: e.target.value as any })}
+          >
+            {Object.entries(formatLabels).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-white/50 mb-1.5">Logo URL</label>
+          <input
+            className={fieldCls}
+            placeholder="/leagues/.../logo.jpg"
+            value={value.logo ?? ""}
+            onChange={(e) => {
+              onChange({ ...value, logo: e.target.value || null });
+              updateTournament({ logo: e.target.value || null } as any);
+            }}
+          />
+        </div>
       </div>
     </div>
   );

@@ -183,23 +183,35 @@ export default function TeamPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, byId, teams]); // guarded by "changed" flag to avoid loops
 
-  // ---- UI (aurora theme, consistent with your palette) ----
+  const fieldCls =
+    "w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2.5 text-white placeholder-white/30 " +
+    "focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-400/30 transition";
+
   return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-4">
+    <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-slate-900/80 to-indigo-950/60 p-5 sm:p-6 shadow-2xl space-y-4">
+      {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-cyan-200">Teams</h3>
+        <div className="flex items-center gap-3">
+          <div className="px-3 py-1.5 rounded-full bg-violet-500/15 border border-violet-400/20 text-violet-200 text-sm font-medium">
+            {teams.length} selected
+          </div>
+          <span className="text-sm text-white/40">
+            {filtered.length} available{loading ? "..." : ""}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
-          <label className="inline-flex items-center gap-2 px-2 py-1 rounded-md border border-white/10 bg-slate-900/40 text-white/90">
+          <label className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 text-sm cursor-pointer hover:bg-white/[0.06] transition">
             <input
               type="checkbox"
+              className="accent-violet-500"
               checked={showArchived}
               onChange={(e) => setShowArchived(e.target.checked)}
             />
-            <span className="text-sm">Show archived</span>
+            Show archived
           </label>
           <button
             onClick={load}
-            className="px-2.5 py-1.5 rounded-md border border-white/10 bg-slate-900/40 text-white/90 hover:bg-cyan-500/5 hover:border-cyan-400/30 transition-colors"
+            className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] transition text-sm"
           >
             Refresh
           </button>
@@ -209,88 +221,87 @@ export default function TeamPicker({
       {/* Search + bulk add */}
       <div className="grid gap-3 md:grid-cols-3">
         <input
-          className="md:col-span-2 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-          placeholder="Search by name or #id…"
+          className={fieldCls + " md:col-span-2"}
+          placeholder="Search by name or #id..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-            placeholder="Bulk IDs (comma/space)"
+            className={fieldCls + " flex-1"}
+            placeholder="Bulk IDs (1, 2, 3)"
             value={bulk}
             onChange={(e) => setBulk(e.target.value)}
           />
           <button
             onClick={bulkAdd}
-            className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 transition-colors"
+            className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/20 transition"
           >
             Add
           </button>
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Quick actions */}
       <div className="flex items-center gap-2">
         <button
           onClick={addAllFiltered}
-          className="px-3 py-1.5 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-emerald-400/30 text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 text-sm transition"
         >
-          Select all (filtered)
+          Select all filtered
         </button>
         <button
           onClick={clearAll}
-          className="px-3 py-1.5 rounded-md border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 transition-colors"
+          className="px-3 py-1.5 rounded-lg border border-rose-400/20 text-rose-300 hover:bg-rose-500/10 text-sm transition"
         >
-          Clear selected
+          Clear all
         </button>
-        <div className="ml-auto text-sm text-white/70">
-          Selected: <span className="text-white">{teams.length}</span> / Available:{" "}
-          <span className="text-white">
-            {filtered.length}
-            {loading ? "…" : ""}
-          </span>
-        </div>
       </div>
 
-      {/* Two columns: available list (left) and selected list (right) */}
+      {/* Two-column layout */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-cyan-400/15 bg-black/30">
-          <div className="px-3 py-2 text-cyan-200/90 border-b border-cyan-400/10">Available</div>
+        {/* Available */}
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 overflow-hidden">
+          <div className="px-4 py-2.5 text-sm font-medium text-white/70 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
+            <span>Available Teams</span>
+            <span className="text-xs text-white/30">{filtered.length}</span>
+          </div>
           {loading ? (
-            <div className="p-3 text-white/70">Loading…</div>
+            <div className="p-4 text-white/40 text-sm">Loading teams...</div>
           ) : error ? (
-            <div className="p-3 text-rose-300">Error: {error}</div>
+            <div className="p-4 text-rose-300 text-sm">Error: {error}</div>
           ) : filtered.length === 0 ? (
-            <div className="p-3 text-white/70">No teams found.</div>
+            <div className="p-4 text-white/40 text-sm">No teams match your search.</div>
           ) : (
-            <ul className="max-h-72 overflow-auto divide-y divide-white/5">
+            <ul className="max-h-80 overflow-auto divide-y divide-white/[0.04]">
               {filtered.map((t) => {
                 const selected = isSelected(teams, t.id);
                 const archived = !!t.deleted_at;
                 return (
-                  <li key={t.id} className="px-3 py-2 flex items-center gap-3">
+                  <li key={t.id} className={`px-4 py-2.5 flex items-center gap-3 hover:bg-white/[0.03] transition ${selected ? "bg-violet-500/5" : ""}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={t.logo ?? ""} alt={t.name}
-                      className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 bg-white/5"
+                      className="h-8 w-8 rounded-lg object-contain ring-1 ring-white/[0.08] bg-white/[0.04]"
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-white/90">
-                        {t.name} <span className="text-white/40 text-xs">#{t.id}</span>
+                      <div className="truncate text-white/90 text-sm">
+                        {t.name} <span className="text-white/30 text-xs">#{t.id}</span>
                       </div>
                       {archived && (
-                        <div className="text-xs text-amber-300/80">Archived</div>
+                        <div className="text-[11px] text-amber-400/70">Archived</div>
                       )}
                     </div>
-                    <label className="inline-flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleOne(t.id)}
-                      />
-                      <span>{selected ? "Selected" : "Select"}</span>
-                    </label>
+                    <button
+                      onClick={() => toggleOne(t.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
+                        selected
+                          ? "bg-violet-500/20 text-violet-200 border border-violet-400/30"
+                          : "bg-white/[0.05] text-white/50 border border-white/[0.08] hover:bg-white/[0.1] hover:text-white/80"
+                      }`}
+                    >
+                      {selected ? "Added" : "Add"}
+                    </button>
                   </li>
                 );
               })}
@@ -298,31 +309,37 @@ export default function TeamPicker({
           )}
         </div>
 
-        <div className="rounded-lg border border-cyan-400/15 bg-black/30">
-          <div className="px-3 py-2 text-cyan-200/90 border-b border-cyan-400/10">Selected</div>
+        {/* Selected */}
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 overflow-hidden">
+          <div className="px-4 py-2.5 text-sm font-medium text-white/70 border-b border-white/[0.06] bg-white/[0.02] flex items-center justify-between">
+            <span>Selected Teams</span>
+            <span className="text-xs text-white/30">{teams.length}</span>
+          </div>
           {teams.length === 0 ? (
-            <div className="p-3 text-white/70">Nothing selected yet.</div>
+            <div className="p-8 text-center">
+              <div className="text-white/20 text-sm">No teams selected</div>
+              <div className="text-white/10 text-xs mt-1">Select teams from the list on the left</div>
+            </div>
           ) : (
-            <ul className="max-h-72 overflow-auto divide-y divide-white/5">
+            <ul className="max-h-80 overflow-auto divide-y divide-white/[0.04]">
               {teams.map((t) => {
-                // prefer stored metadata; fallback to catalog
                 const name = (t as any).name ?? byId.get(t.id)?.name ?? `#${t.id}`;
                 const logo = (t as any).logo ?? byId.get(t.id)?.logo ?? "";
                 return (
-                  <li key={t.id} className="px-3 py-2 flex items-center gap-3">
+                  <li key={t.id} className="px-4 py-2.5 flex items-center gap-3 hover:bg-white/[0.03] transition">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={logo} alt={name}
-                      className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 bg-white/5"
+                      className="h-8 w-8 rounded-lg object-contain ring-1 ring-white/[0.08] bg-white/[0.04]"
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-white/90">
-                        {name} <span className="text-white/40 text-xs">#{t.id}</span>
+                      <div className="truncate text-white/90 text-sm">
+                        {name} <span className="text-white/30 text-xs">#{t.id}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => removeOne(t.id)}
-                      className="px-2 py-1 rounded-md border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
+                      className="px-2 py-1 rounded-lg border border-rose-400/20 text-rose-300/80 hover:bg-rose-500/10 text-xs transition"
                     >
                       Remove
                     </button>

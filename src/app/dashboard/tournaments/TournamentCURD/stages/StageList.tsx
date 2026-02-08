@@ -113,35 +113,67 @@ export default function StageList({
     onChange(next);
   };
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-cyan-200">Stages</h2>
-        <button
-          onClick={add}
-          className="text-sm px-3 py-1 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
-        >
-          + Add Stage
-        </button>
-      </div>
+  const kindIcons: Record<string, string> = { league: "L", groups: "G", knockout: "K" };
 
-      <div className="space-y-3">
-        {stages.map((s, i) => (
-          <StageCard
-            key={s?.id ?? `tmp-${i}`}
-            value={s as any}
-            index={i}
-            onChange={(patch) => update(i, patch as any)}
-            onRemove={() => remove(i)}
-            onMoveUp={() => move(i, -1)}
-            onMoveDown={() => move(i, +1)}
-            // Context for visuals + inline planner
-            allStages={stages}
-            teams={teams}
-            onTeamGroupChange={onTeamGroupChange}
-          />
-        ))}
-      </div>
+  return (
+    <div className="space-y-4">
+      {stages.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-white/[0.1] bg-white/[0.02] p-10 text-center">
+          <div className="text-white/20 text-lg mb-2">No stages yet</div>
+          <div className="text-white/10 text-sm mb-4">Add your first stage to start building the tournament structure</div>
+          <button
+            onClick={add}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/20 transition"
+          >
+            + Add First Stage
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {stages.map((s, i) => {
+                const kind = ((s as any)?.kind ?? "league") as string;
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] text-xs"
+                    title={(s as any)?.name ?? `Stage ${i + 1}`}
+                  >
+                    <span className="w-5 h-5 rounded-md bg-violet-500/20 text-violet-300 flex items-center justify-center text-[10px] font-bold">
+                      {kindIcons[kind] ?? "?"}
+                    </span>
+                    <span className="text-white/60 truncate max-w-[100px]">{(s as any)?.name ?? `Stage ${i + 1}`}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={add}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-medium hover:from-violet-500 hover:to-indigo-500 shadow-lg shadow-violet-500/20 transition"
+            >
+              + Add Stage
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {stages.map((s, i) => (
+              <StageCard
+                key={s?.id ?? `tmp-${i}`}
+                value={s as any}
+                index={i}
+                onChange={(patch) => update(i, patch as any)}
+                onRemove={() => remove(i)}
+                onMoveUp={() => move(i, -1)}
+                onMoveDown={() => move(i, +1)}
+                allStages={stages}
+                teams={teams}
+                onTeamGroupChange={onTeamGroupChange}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

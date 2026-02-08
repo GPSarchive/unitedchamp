@@ -41,18 +41,18 @@ async function safeJson(res: Response) {
 
 type CatalogRow = { id: number; name: string; logo?: string | null };
 
-// ----------------- Local style helpers (black & white only) -----------------
+// ----------------- Local style helpers (unified violet/indigo theme) -----------------
 const fieldBase =
-  "w-full rounded-lg bg-black border border-gray-700 px-3 py-2 text-white placeholder-gray-400 " +
-  "focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40";
+  "w-full rounded-lg bg-white/[0.05] border border-white/[0.1] px-3 py-2.5 text-white placeholder-white/30 " +
+  "focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-400/30 transition";
 
 const selectBase = fieldBase;
 
 const btnGhost =
-  "px-2.5 py-1.5 rounded-lg text-sm text-white/90 hover:text-white hover:bg-white/10 " +
-  "border border-gray-700 focus:outline-none focus:ring-2 focus:ring-white/30";
+  "px-2.5 py-1.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/[0.08] " +
+  "border border-white/[0.08] transition";
 
-const helperText = "mt-1 text-xs text-gray-400";
+const helperText = "mt-1 text-xs text-white/30";
 
 export default function StageCard({
   value,
@@ -276,23 +276,44 @@ export default function StageCard({
     : null;
   const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
 
+  const kindLabels: Record<string, { label: string; color: string }> = {
+    league: { label: "League", color: "bg-blue-500/15 text-blue-300 border-blue-400/20" },
+    groups: { label: "Groups", color: "bg-amber-500/15 text-amber-300 border-amber-400/20" },
+    knockout: { label: "Knockout", color: "bg-rose-500/15 text-rose-300 border-rose-400/20" },
+  };
+  const kindBadge = kindLabels[stage.kind] ?? kindLabels.league;
+
   return (
-    <div className="rounded-xl border border-gray-800 bg-gradient-to-br from-black to-neutral-900 p-4 sm:p-5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] backdrop-blur">
-      {/* Actions */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-wide text-gray-400">
-          Στάδιο <span className="text-white">#{effectiveStageIdx + 1}</span>
+    <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-slate-900/80 to-indigo-950/60 shadow-2xl overflow-hidden">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06] bg-white/[0.02]">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/25 to-indigo-600/25 border border-violet-400/20 flex items-center justify-center text-sm font-bold text-violet-300">
+            {effectiveStageIdx + 1}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-white font-medium truncate">{stage.name || `Stage ${effectiveStageIdx + 1}`}</span>
+              <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${kindBadge.color}`}>
+                {kindBadge.label}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button onClick={onMoveUp} className={btnGhost} title="Move up" aria-label="Move up">↑</button>
-          <button onClick={onMoveDown} className={btnGhost} title="Move down" aria-label="Move down">↓</button>
+        <div className="flex items-center gap-1.5">
+          <button onClick={onMoveUp} className={btnGhost} title="Move up" aria-label="Move up">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+          </button>
+          <button onClick={onMoveDown} className={btnGhost} title="Move down" aria-label="Move down">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+          </button>
           <button
             onClick={() => {
-              if (confirm("Διαγραφή αυτού του σταδίου; Αυτό δεν μπορεί να αναιρεθεί.")) {
+              if (confirm("Delete this stage? This cannot be undone.")) {
                 onRemove();
               }
             }}
-            className="px-2.5 py-1.5 rounded-lg text-sm border border-gray-700 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="px-2.5 py-1.5 rounded-lg text-sm border border-rose-400/20 text-rose-300/80 hover:bg-rose-500/10 transition"
             title="Delete stage"
             aria-label="Delete stage"
           >
@@ -301,63 +322,65 @@ export default function StageCard({
         </div>
       </div>
 
-      {/* Basics */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <div>
-          <input
-            className={fieldBase}
-            placeholder="Όνομα Σταδίου"
-            value={stage.name}
-            onChange={(e) => onChange({ name: e.target.value } as any)}
-          />
-          <p className={helperText}>Δώστε το όνομα του σταδίου (π.χ. «Κανονική Περίοδος»).</p>
+      {/* Body */}
+      <div className="p-5 space-y-4">
+        {/* Basics */}
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Stage Name</label>
+            <input
+              className={fieldBase}
+              placeholder="e.g. Group Stage"
+              value={stage.name}
+              onChange={(e) => onChange({ name: e.target.value } as any)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Type</label>
+            <select
+              className={selectBase}
+              value={stage.kind}
+              onChange={(e) => {
+                const nextKind = e.target.value as "league" | "groups" | "knockout";
+                const cfgPatch =
+                  nextKind === "knockout"
+                    ? setCfgMirror(cfg, { allow_draws: false })
+                    : setCfgMirror(cfg, { allow_draws: (cfg as any).allow_draws ?? true });
+                onChange({
+                  kind: nextKind as any,
+                  ...(nextKind !== "groups" ? { groups: [] } : {}),
+                  config: cfgPatch,
+                  is_ko: nextKind === "knockout",
+                } as any);
+              }}
+            >
+              <option value="league">League</option>
+              <option value="groups">Groups</option>
+              <option value="knockout">Knockout</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Display Order</label>
+            <input
+              type="number"
+              className={fieldBase}
+              placeholder="Order"
+              value={stage.ordering ?? index + 1}
+              onChange={(e) => onChange({ ordering: Number(e.target.value) } as any)}
+            />
+          </div>
         </div>
-        <div>
-          <select
-            className={selectBase}
-            value={stage.kind}
-            onChange={(e) => {
-              const nextKind = e.target.value as "league" | "groups" | "knockout";
-              const cfgPatch =
-                nextKind === "knockout"
-                  ? setCfgMirror(cfg, { allow_draws: false })
-                  : setCfgMirror(cfg, { allow_draws: (cfg as any).allow_draws ?? true });
-              onChange({
-                kind: nextKind as any,
-                ...(nextKind !== "groups" ? { groups: [] } : {}),
-                config: cfgPatch,
-                is_ko: nextKind === "knockout",  // Ensure is_ko is set when changing to knockout
-              } as any);
-            }}
-          >
-            <option value="league">Πρωτάθλημα (League)</option>
-            <option value="groups">Όμιλοι (Groups)</option>
-            <option value="knockout">Knockout</option>
-          </select>
-          <p className={helperText}>Επιλέξτε τον τύπο του σταδίου.</p>
-        </div>
-        <div>
-          <input
-            type="number"
-            className={fieldBase}
-            placeholder="Σειρά"
-            value={stage.ordering ?? index + 1}
-            onChange={(e) => onChange({ ordering: Number(e.target.value) } as any)}
-          />
-          <p className={helperText}>Σειρά εμφάνισης του σταδίου στη διοργάνωση.</p>
-        </div>
-      </div>
 
       {/* Visuals */}
       {isGroups && (
         <>
           {intakeEnabled ? (
-            <div className="mt-2 text-xs text-white/80 bg-white/5 border border-gray-700 rounded-md px-2 py-1">
-              Οι όμιλοι θα γεμίσουν δυναμικά από το Knockout (δεν επιτρέπονται χειροκίνητες αναθέσεις).
+            <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-400/20 rounded-lg px-3 py-2">
+              Groups will be dynamically filled from the Knockout stage (manual assignment disabled).
             </div>
           ) : null}
 
-          <div className="mt-3">
+          <div>
             <GroupsBoard
               groupsArr={groupsArr}
               groupsOccupancy={groupsOccupancy}
@@ -381,49 +404,46 @@ export default function StageCard({
           </div>
 
           {/* Groups setting: Allow draws */}
-          <div className="mt-3 rounded-md border border-gray-800 bg-black p-3">
-            <label className="inline-flex items-center gap-2 text-white text-sm">
+          <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
+            <label className="inline-flex items-center gap-2.5 text-white/80 text-sm cursor-pointer">
               <input
                 type="checkbox"
-                className="accent-white"
+                className="accent-violet-500"
                 checked={(cfg as any).allow_draws ?? true}
                 onChange={(e) => setCfg({ allow_draws: e.target.checked })}
               />
-              Επιτρέπονται ισοπαλίες (Όμιλοι)
+              Allow draws in groups
             </label>
           </div>
         </>
       )}
 
       {(isLeague || isGroups) && (
-        
-        <div className="mt-4">
-          
-    
-
-    <div>
-      <label className="block w-32 text-white text-sm mb-1">Αγώνες ανά αντίπαλο</label>
-      <input
-        type="number"
-        min={1}
-        className={fieldBase}
-        value={Number(cfg.rounds_per_opponent ?? (cfg as any).αγώνες_ανά_αντίπαλο ?? (cfg.double_round ? 2 : 1))}
-        onChange={(e) => setCfg({ rounds_per_opponent: Math.max(1, Number(e.target.value) || 1) })}
-      />
-      
-    </div>
-
-    <div>
-      <label className="w-32 text-white text-sm mb-1">Μέγιστες αγωνιστικές</label>
-      <input
-        type="number"
-        min={0}
-        className={`${fieldBase} w-24`} // Adjust the width here
-        value={Number(cfg.limit_matchdays ?? (cfg as any).μέγιστες_αγωνιστικές ?? 0)}
-        onChange={(e) => setCfg({ limit_matchdays: Math.max(0, Number(e.target.value) || 0) })}
-      />
-      <p className={helperText}>0 = χωρίς όριο.</p>
-    </div>
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4 space-y-4">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Match Settings</div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Rounds per opponent</label>
+              <input
+                type="number"
+                min={1}
+                className={fieldBase}
+                value={Number(cfg.rounds_per_opponent ?? (cfg as any).αγώνες_ανά_αντίπαλο ?? (cfg.double_round ? 2 : 1))}
+                onChange={(e) => setCfg({ rounds_per_opponent: Math.max(1, Number(e.target.value) || 1) })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Max matchdays</label>
+              <input
+                type="number"
+                min={0}
+                className={fieldBase}
+                value={Number(cfg.limit_matchdays ?? (cfg as any).μέγιστες_αγωνιστικές ?? 0)}
+                onChange={(e) => setCfg({ limit_matchdays: Math.max(0, Number(e.target.value) || 0) })}
+              />
+              <p className={helperText}>0 = unlimited</p>
+            </div>
+          </div>
           <StageStandingsMini
             stageIdx={effectiveStageIdx}
             kind={isLeague ? "league" : "groups"}
@@ -433,13 +453,15 @@ export default function StageCard({
       )}
 
       {isKnockout && (
-        <div className="mt-3 rounded-lg border border-gray-800 bg-black p-3">
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Knockout Bracket</div>
           <KnockoutBoard stageIdx={effectiveStageIdx} teamsMap={teamsMap} />
         </div>
       )}
 
       {/* Inline match planner */}
-      <div className="mt-4 rounded-xl border border-gray-800 bg-black p-3">
+      <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+        <div className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Match Planner</div>
         <InlineMatchPlanner
           miniPayload={newMiniPayload(allStages, teams)}
           teams={teams}
@@ -447,9 +469,10 @@ export default function StageCard({
         />
       </div>
 
-      {/* Config: Groups */}
+      {/* Config: Groups Intake */}
       {isGroups && (
-        <div className="mt-4">
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Advanced: Group Intake Configuration</div>
           <GroupsConfigKOIntake
             cfg={cfg}
             setCfg={(p: Partial<StageConfig>) => setCfg(p)}
@@ -461,16 +484,10 @@ export default function StageCard({
         </div>
       )}
 
-      {/* Config: League */}
-      {isLeague && (
-        <div className="mt-4">
-          {/*<LeagueConfig cfg={cfg} setCfg={(p) => setCfg(p)} />*/}
-        </div>
-      )}
-
-      {/* Config: Knockout */}
+      {/* Config: Knockout Source */}
       {isKnockout && (
-        <div className="mt-4">
+        <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider mb-3">Knockout Source Configuration</div>
           <KnockoutConfigFromLeague
             cfg={cfg}
             setCfg={(p: Partial<StageConfig>) => setCfg(p)}
@@ -479,6 +496,7 @@ export default function StageCard({
           />
         </div>
       )}
+      </div>
     </div>
   );
 }
