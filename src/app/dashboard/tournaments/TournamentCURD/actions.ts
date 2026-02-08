@@ -357,14 +357,14 @@ export async function createTournamentAction(formData: FormData) {
   };
 
   const participation: ParticipationRow[] = [];
-  const seenTeam = new Set<string>();
+  const seenTeam = new Set<number>();
 
   for (const t of teams) {
-    const key = `${tRow.id}:${t.id}`;
-    if (seenTeam.has(key)) continue;
-    seenTeam.add(key);
+    if (seenTeam.has(t.id)) continue;
+    seenTeam.add(t.id);
 
-    let inserted = false;
+    // Emit one participation row per group stage the team is assigned to
+    let groupRows = 0;
     for (let sIdx = 0; sIdx < payload.stages.length; sIdx++) {
       const s = payload.stages[sIdx];
       const gIdx = t.groupsByStage?.[String(sIdx)];
@@ -376,12 +376,12 @@ export async function createTournamentAction(formData: FormData) {
           group_id: groupIdByStageIdxAndOrder(sIdx, gIdx),
           seed: (t.seed ?? null) as number | null,
         });
-        inserted = true;
-        break; // one row per team only
+        groupRows++;
       }
     }
 
-    if (!inserted) {
+    // Fallback: if the team has no group assignments, store one row with null stage/group
+    if (groupRows === 0) {
       participation.push({
         tournament_id: tRow.id,
         team_id: t.id,
@@ -395,7 +395,7 @@ export async function createTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id' });
+      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
 
     if (pErr) return { ok: false, error: pErr.message };
   }
@@ -968,14 +968,14 @@ export async function updateTournamentAction(formData: FormData) {
   };
 
   const participation: ParticipationRow[] = [];
-  const seenTeam = new Set<string>();
+  const seenTeam = new Set<number>();
 
   for (const t of teams) {
-    const key = `${tournamentId}:${t.id}`;
-    if (seenTeam.has(key)) continue;
-    seenTeam.add(key);
+    if (seenTeam.has(t.id)) continue;
+    seenTeam.add(t.id);
 
-    let inserted = false;
+    // Emit one participation row per group stage the team is assigned to
+    let groupRows = 0;
     for (let sIdx = 0; sIdx < payload.stages.length; sIdx++) {
       const s = payload.stages[sIdx];
       const gIdx = t.groupsByStage?.[String(sIdx)];
@@ -987,12 +987,12 @@ export async function updateTournamentAction(formData: FormData) {
           group_id: groupIdByStageIdxAndOrder(sIdx, gIdx),
           seed: (t.seed ?? null) as number | null,
         });
-        inserted = true;
-        break;
+        groupRows++;
       }
     }
 
-    if (!inserted) {
+    // Fallback: if the team has no group assignments, store one row with null stage/group
+    if (groupRows === 0) {
       participation.push({
         tournament_id: tournamentId,
         team_id: t.id,
@@ -1006,7 +1006,7 @@ export async function updateTournamentAction(formData: FormData) {
   if (participation.length) {
     const { error: pErr } = await supabaseAdmin
       .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id' });
+      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
 
     if (pErr) return { ok: false, error: pErr.message };
   }
