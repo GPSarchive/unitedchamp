@@ -1,4 +1,4 @@
-// src/app/paiktes/page.tsx (FIXED - NO SIGNING, MAIN + SECONDARY TEAMS BY PARTICIPATION)
+// src/app/paiktes/page.tsx (FIXED - Uses match_participants for accurate match counting)
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite } from "./types";
@@ -334,7 +334,47 @@ export default async function PaiktesPage({
   for (const r of (statsRows ?? []) as PlayerStatsRow[])
     totalsByPlayer.set(r.player_id, r);
 
-  // Fetch match_player_stats (source for participation + MVP/GK)
+  // ✅ FIX: Fetch match_participants (SOURCE OF TRUTH for participation)
+  // This is the correct table to count actual match participation
+  type ParticipantRow = {
+    player_id: number;
+    match_id: number;
+    team_id: number;
+    played: boolean;
+  };
+
+  const { data: participants } = playerIds.length
+    ? await supabaseAdmin
+        .from("match_participants")
+        .select("player_id, match_id, team_id, played")
+        .in("player_id", playerIds)
+        .eq("played", true) // Only count actual participation
+    : { data: [] as ParticipantRow[] };
+
+  const participantRows = (participants ?? []) as ParticipantRow[];
+
+  // Global matches per player (for "matches" column)
+  const matchesByPlayer = new Map<number, Set<number>>();
+
+  // Matches per (player, team) for ranking memberships
+  const matchesByPlayerTeam = new Map<string, Set<number>>();
+
+  for (const r of participantRows) {
+    // total matches per player
+    if (!matchesByPlayer.has(r.player_id))
+      matchesByPlayer.set(r.player_id, new Set());
+    matchesByPlayer.get(r.player_id)!.add(r.match_id);
+
+    // matches per player+team (used for ranking membership teams by participation)
+    const key = `${r.player_id}:${r.team_id}`;
+    if (!matchesByPlayerTeam.has(key)) {
+      matchesByPlayerTeam.set(key, new Set());
+    }
+    matchesByPlayerTeam.get(key)!.add(r.match_id);
+  }
+
+  // ✅ Separately fetch match_player_stats for MVP/best_goalkeeper awards
+  // These are performance-based awards, not participation counts
   const { data: mps } = playerIds.length
     ? await supabaseAdmin
         .from("match_player_stats")
@@ -344,28 +384,10 @@ export default async function PaiktesPage({
 
   const mpsRows = (mps ?? []) as MPSRow[];
 
-  // Global matches per player (for "matches" column)
-  const matchesByPlayer = new Map<number, Set<number>>();
-
-  // Matches per (player, team) for ranking memberships
-  const matchesByPlayerTeam = new Map<string, Set<number>>();
-
   const mvpByPlayer = new Map<number, number>();
   const gkByPlayer = new Map<number, number>();
 
   for (const r of mpsRows) {
-    // total matches per player
-    if (!matchesByPlayer.has(r.player_id))
-      matchesByPlayer.set(r.player_id, new Set());
-    matchesByPlayer.get(r.player_id)!.add(r.match_id);
-
-    // matches per player+team (only used later for membership teams)
-    const key = `${r.player_id}:${r.team_id}`;
-    if (!matchesByPlayerTeam.has(key)) {
-      matchesByPlayerTeam.set(key, new Set());
-    }
-    matchesByPlayerTeam.get(key)!.add(r.match_id);
-
     if (r.mvp)
       mvpByPlayer.set(r.player_id, (mvpByPlayer.get(r.player_id) ?? 0) + 1);
     if (r.best_goalkeeper)
@@ -375,8 +397,8 @@ export default async function PaiktesPage({
       );
   }
 
-  // Calculate wins
-  const matchIdsSet = new Set(mpsRows.map((r) => r.match_id));
+  // ✅ Calculate wins from participation records (not stats)
+  const matchIdsSet = new Set(participantRows.map((r) => r.match_id));
   const matchIds = Array.from(matchIdsSet);
   const { data: matchWinners } = matchIds.length
     ? await supabaseAdmin
@@ -390,7 +412,7 @@ export default async function PaiktesPage({
   );
 
   const winsByPlayer = new Map<number, number>();
-  for (const r of mpsRows) {
+  for (const r of participantRows) {
     const winner = winnerByMatch.get(r.match_id);
     if (winner != null && winner === r.team_id) {
       winsByPlayer.set(r.player_id, (winsByPlayer.get(r.player_id) ?? 0) + 1);
@@ -484,7 +506,7 @@ export default async function PaiktesPage({
     enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
   }
 
-  // TOURNAMENT-SCOPED STATS
+  // ✅ TOURNAMENT-SCOPED STATS (FIXED to use match_participants)
   if (tournamentId) {
     const { data: matchRows } = await supabaseAdmin
       .from("matches")
@@ -500,6 +522,23 @@ export default async function PaiktesPage({
         winnerByMatch.set(m.id as number, m.winner_team_id as number | null);
       }
 
+      // ✅ FIX: Query match_participants for tournament match counts
+      type TournamentParticipantRow = {
+        player_id: number;
+        match_id: number;
+        team_id: number;
+        played: boolean;
+      };
+
+      const { data: tParticipants } = await supabaseAdmin
+        .from("match_participants")
+        .select("player_id, match_id, team_id, played")
+        .in("match_id", tMatchIds)
+        .eq("played", true); // Only count actual participation
+
+      const tParticipantRows = (tParticipants ?? []) as TournamentParticipantRow[];
+
+      // ✅ Separately query match_player_stats for performance data
       const { data: mpsRows } = await supabaseAdmin
         .from("match_player_stats")
         .select(
@@ -553,16 +592,30 @@ export default async function PaiktesPage({
         return s;
       };
 
+      // ✅ Count matches from participation records
       const matchesByTPlayer = new Map<number, Set<number>>();
 
-      for (const r of typedMpsRows) {
+      for (const r of tParticipantRows) {
         const pid = r.player_id;
-        const s = ensure(pid);
+        ensure(pid); // Ensure player has stats entry
 
         if (!matchesByTPlayer.has(pid)) {
           matchesByTPlayer.set(pid, new Set());
         }
         matchesByTPlayer.get(pid)!.add(r.match_id);
+
+        // Calculate wins from participation + match results
+        const s = tStatsByPlayer.get(pid)!;
+        const winnerTeamId = winnerByMatch.get(r.match_id);
+        if (winnerTeamId && winnerTeamId === r.team_id) {
+          s.wins += 1;
+        }
+      }
+
+      // ✅ Add performance stats from match_player_stats
+      for (const r of typedMpsRows) {
+        const pid = r.player_id;
+        const s = ensure(pid);
 
         s.goals += r.goals ?? 0;
         s.assists += r.assists ?? 0;
@@ -571,13 +624,9 @@ export default async function PaiktesPage({
         s.blue_cards += r.blue_cards ?? 0;
         s.mvp += r.mvp ? 1 : 0;
         s.best_gk += r.best_goalkeeper ? 1 : 0;
-
-        const winnerTeamId = winnerByMatch.get(r.match_id);
-        if (winnerTeamId && winnerTeamId === r.team_id) {
-          s.wins += 1;
-        }
       }
 
+      // ✅ Set match counts from participation records
       for (const [playerId, matchSet] of matchesByTPlayer) {
         const s = tStatsByPlayer.get(playerId);
         if (s) {
