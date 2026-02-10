@@ -33,19 +33,15 @@ type PlayerTeamRow = {
 
 type TeamRow = { id: number; name: string | null; logo: string | null };
 
-type PlayerStatsRow = {
-  player_id: number;
-  total_goals: number | null;
-  total_assists: number | null;
-  yellow_cards: number | null;
-  red_cards: number | null;
-  blue_cards: number | null;
-};
-
 type MPSRow = {
   player_id: number;
   match_id: number;
   team_id: number;
+  goals: number | null;
+  assists: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  blue_cards: number | null;
   mvp: boolean | null;
   best_goalkeeper: boolean | null;
 };
@@ -320,25 +316,11 @@ export default async function PaiktesPage({
     }
   }
 
-  // Fetch player_statistics (global totals)
-  const { data: statsRows } = playerIds.length
-    ? await supabaseAdmin
-        .from("player_statistics")
-        .select(
-          "player_id, total_goals, total_assists, yellow_cards, red_cards, blue_cards"
-        )
-        .in("player_id", playerIds)
-    : { data: [] as PlayerStatsRow[] };
-
-  const totalsByPlayer = new Map<number, PlayerStatsRow>();
-  for (const r of (statsRows ?? []) as PlayerStatsRow[])
-    totalsByPlayer.set(r.player_id, r);
-
-  // Fetch match_player_stats (source for participation + MVP/GK)
+  // Fetch match_player_stats (source for participation + stats + MVP/GK)
   const { data: mps } = playerIds.length
     ? await supabaseAdmin
         .from("match_player_stats")
-        .select("player_id, match_id, team_id, mvp, best_goalkeeper")
+        .select("player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper")
         .in("player_id", playerIds)
     : { data: [] as MPSRow[] };
 
@@ -353,6 +335,13 @@ export default async function PaiktesPage({
   const mvpByPlayer = new Map<number, number>();
   const gkByPlayer = new Map<number, number>();
 
+  // Aggregate goals/assists/cards from match_player_stats (single source of truth)
+  const goalsByPlayer = new Map<number, number>();
+  const assistsByPlayer = new Map<number, number>();
+  const yellowByPlayer = new Map<number, number>();
+  const redByPlayer = new Map<number, number>();
+  const blueByPlayer = new Map<number, number>();
+
   for (const r of mpsRows) {
     // total matches per player
     if (!matchesByPlayer.has(r.player_id))
@@ -365,6 +354,13 @@ export default async function PaiktesPage({
       matchesByPlayerTeam.set(key, new Set());
     }
     matchesByPlayerTeam.get(key)!.add(r.match_id);
+
+    // Aggregate stats per player
+    goalsByPlayer.set(r.player_id, (goalsByPlayer.get(r.player_id) ?? 0) + (r.goals ?? 0));
+    assistsByPlayer.set(r.player_id, (assistsByPlayer.get(r.player_id) ?? 0) + (r.assists ?? 0));
+    yellowByPlayer.set(r.player_id, (yellowByPlayer.get(r.player_id) ?? 0) + (r.yellow_cards ?? 0));
+    redByPlayer.set(r.player_id, (redByPlayer.get(r.player_id) ?? 0) + (r.red_cards ?? 0));
+    blueByPlayer.set(r.player_id, (blueByPlayer.get(r.player_id) ?? 0) + (r.blue_cards ?? 0));
 
     if (r.mvp)
       mvpByPlayer.set(r.player_id, (mvpByPlayer.get(r.player_id) ?? 0) + 1);
@@ -443,7 +439,6 @@ export default async function PaiktesPage({
       .slice(0, 3)
       .map(({ matchesForTeam, ...rest }) => rest);
 
-    const totals = totalsByPlayer.get(pl.id);
     const matches = matchesByPlayer.get(pl.id)?.size ?? 0;
     const mvp = mvpByPlayer.get(pl.id) ?? 0;
     const best_gk = gkByPlayer.get(pl.id) ?? 0;
@@ -462,11 +457,11 @@ export default async function PaiktesPage({
       teams: topTeams, // up to 3 current teams, sorted by matches played
       team: topTeams[0] ?? null, // main team = most matches among membership teams
       matches,
-      goals: totals?.total_goals ?? 0,
-      assists: totals?.total_assists ?? 0,
-      yellow_cards: totals?.yellow_cards ?? 0,
-      red_cards: totals?.red_cards ?? 0,
-      blue_cards: totals?.blue_cards ?? 0,
+      goals: goalsByPlayer.get(pl.id) ?? 0,
+      assists: assistsByPlayer.get(pl.id) ?? 0,
+      yellow_cards: yellowByPlayer.get(pl.id) ?? 0,
+      red_cards: redByPlayer.get(pl.id) ?? 0,
+      blue_cards: blueByPlayer.get(pl.id) ?? 0,
       mvp,
       best_gk,
       wins,
