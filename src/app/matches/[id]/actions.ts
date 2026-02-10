@@ -298,6 +298,67 @@ export async function saveAllStatsAction(formData: FormData) {
     throw rpcError;
   }
 
+  // --- Sync player_statistics from match_player_stats for affected players ---
+  const affectedPlayerIds = Array.from(
+    new Set([
+      ...statUpserts.map((r) => r.player_id),
+      ...statDeletes,
+    ])
+  );
+
+  if (affectedPlayerIds.length > 0) {
+    // Aggregate all-time totals from match_player_stats for each affected player
+    const { data: allMps, error: mpsAggErr } = await supabase
+      .from('match_player_stats')
+      .select('player_id, goals, assists, yellow_cards, red_cards, blue_cards')
+      .in('player_id', affectedPlayerIds);
+
+    if (mpsAggErr) {
+      console.error('Error fetching match_player_stats for sync:', mpsAggErr);
+    } else {
+      const totals = new Map<number, {
+        total_goals: number;
+        total_assists: number;
+        yellow_cards: number;
+        red_cards: number;
+        blue_cards: number;
+      }>();
+
+      // Initialize all affected players (some may now have 0 stats after deletion)
+      for (const pid of affectedPlayerIds) {
+        totals.set(pid, {
+          total_goals: 0,
+          total_assists: 0,
+          yellow_cards: 0,
+          red_cards: 0,
+          blue_cards: 0,
+        });
+      }
+
+      for (const row of allMps ?? []) {
+        const t = totals.get(row.player_id)!;
+        t.total_goals += Number(row.goals) || 0;
+        t.total_assists += Number(row.assists) || 0;
+        t.yellow_cards += Number(row.yellow_cards) || 0;
+        t.red_cards += Number(row.red_cards) || 0;
+        t.blue_cards += Number(row.blue_cards) || 0;
+      }
+
+      const statsUpserts = Array.from(totals.entries()).map(([pid, t]) => ({
+        player_id: pid,
+        ...t,
+      }));
+
+      const { error: syncErr } = await supabase
+        .from('player_statistics')
+        .upsert(statsUpserts, { onConflict: 'player_id' });
+
+      if (syncErr) {
+        console.error('Error syncing player_statistics:', syncErr);
+      }
+    }
+  }
+
   // --- Auto-finalize from the just-saved stats ---
   const { data: mt, error: mErr } = await supabase
     .from('matches')
