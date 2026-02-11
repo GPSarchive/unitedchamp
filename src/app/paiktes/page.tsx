@@ -136,7 +136,8 @@ export default async function PaiktesPage({
       const { data: playerTeams } = await supabaseAdmin
         .from("player_teams")
         .select("player_id")
-        .in("team_id", teamIds);
+        .in("team_id", teamIds)
+        .limit(10000);
 
       const playerIdSet = new Set(
         (playerTeams ?? []).map((pt: { player_id: number }) => pt.player_id)
@@ -164,7 +165,8 @@ export default async function PaiktesPage({
       const { data: tournamentMps } = await supabaseAdmin
         .from("match_player_stats")
         .select("player_id")
-        .in("match_id", tMatchIds);
+        .in("match_id", tMatchIds)
+        .limit(10000);
 
       const playerIdSet = new Set(
         (tournamentMps ?? []).map((r: { player_id: number }) => r.player_id)
@@ -273,13 +275,15 @@ export default async function PaiktesPage({
   const playerIds = p.map((x) => x.id);
 
   // Fetch player_teams (membership source)
+  // NOTE: Supabase default row limit is 1000. With 50 players this can exceed it.
   const { data: ptRows, error: ptErr } = await supabaseAdmin
     .from("player_teams")
     .select("player_id, team_id, created_at, updated_at")
     .in("player_id", playerIds)
     .order("player_id", { ascending: true })
     .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(10000);
 
   if (ptErr) console.error("[paiktes] player_teams query error:", ptErr.message);
 
@@ -317,11 +321,14 @@ export default async function PaiktesPage({
   }
 
   // Fetch match_player_stats (source for participation + stats + MVP/GK)
+  // NOTE: Supabase default row limit is 1000. 50 players × 20+ matches = easily >1000 rows.
+  // Without an explicit limit, stats get silently truncated causing wrong numbers on initial load.
   const { data: mps } = playerIds.length
     ? await supabaseAdmin
         .from("match_player_stats")
         .select("player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper")
         .in("player_id", playerIds)
+        .limit(10000)
     : { data: [] as MPSRow[] };
 
   const mpsRows = (mps ?? []) as MPSRow[];
@@ -379,6 +386,7 @@ export default async function PaiktesPage({
         .from("matches")
         .select("id, winner_team_id")
         .in("id", matchIds)
+        .limit(10000)
     : { data: [] as MatchWinnerRow[] };
 
   const winnerByMatch = new Map(
@@ -511,7 +519,8 @@ export default async function PaiktesPage({
             "best_goalkeeper",
           ].join(",")
         )
-        .in("match_id", tMatchIds);
+        .in("match_id", tMatchIds)
+        .limit(10000);
 
       const typedMpsRows = (mpsRows ?? []) as unknown as TournamentMPSRow[];
 
