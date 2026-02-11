@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination + Rerender fixes)
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
@@ -83,6 +83,9 @@ export default function PlayersClient({
   // ✅ Loading state for when data is being fetched
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Transition for non-blocking navigation
+  const [isPending, startTransition] = useTransition();
+
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -108,16 +111,24 @@ export default function PlayersClient({
   );
 
   const updateQuery = useCallback(
-    (patch: Record<string, string | number | null | undefined>) => {
+    (patch: Record<string, string | number | null | undefined>, shallow = false) => {
       const next = new URLSearchParams(sp?.toString() ?? "");
       Object.entries(patch).forEach(([k, v]) => {
         if (v === undefined || v === null || v === "") next.delete(k);
         else next.set(k, String(v));
       });
       const newUrl = `/paiktes?${next.toString()}`;
-      console.log("🟢 updateQuery: Navigating to", newUrl);
-      router.replace(newUrl, { scroll: false });
-      console.log("🟢 updateQuery: router.replace called");
+      console.log("🟢 updateQuery: Navigating to", newUrl, shallow ? "(shallow)" : "");
+
+      if (shallow) {
+        // Use history API for shallow updates (no navigation, just URL change)
+        window.history.replaceState(null, '', newUrl);
+        console.log("🟢 updateQuery: history.replaceState called");
+      } else {
+        // Use router for full navigation
+        router.push(newUrl, { scroll: false });
+        console.log("🟢 updateQuery: router.push called");
+      }
     },
     [router, sp]
   );
@@ -125,14 +136,14 @@ export default function PlayersClient({
   const onSortChange = useCallback(
     (v: string) => {
       console.log("🔵 onSortChange called with:", v);
-      // ✅ CLIENT-SIDE SORTING - Update state AND URL (to prevent useEffect reset)
-      // Sorting happens instantly in the players useMemo (no server fetch)
+      // ✅ CLIENT-SIDE SORTING - Instant state update for immediate UI response
       setClientSort(v);
-      console.log("🔵 Client state updated, now calling updateQuery...");
-      // Update URL to persist sort state (prevents useEffect from resetting it)
-      // Don't trigger loading state - sorting is instant client-side
-      updateQuery({ sort: v });
-      console.log("🔵 updateQuery called successfully");
+      console.log("🔵 Client state updated to:", v);
+
+      // ✅ Update URL shallowly (no navigation, just persist state in URL)
+      // This prevents page reload while keeping browser back/forward working
+      updateQuery({ sort: v }, true /* shallow */);
+      console.log("🔵 URL updated successfully");
     },
     [updateQuery]
   );
