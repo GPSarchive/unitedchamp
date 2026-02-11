@@ -8,7 +8,10 @@ import {
   removeGreekDiacritics,
 } from "@/app/lib/searchUtils";
 
-export const revalidate = 300;
+// Disable cache - player stats are dynamic and change frequently
+// Caching was causing stale data when filters were removed
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -247,11 +250,10 @@ export default async function PaiktesPage({
     }
   }
 
-  // IMPORTANT: When tournament filter is active OR when using non-alpha sort,
-  // we need to fetch ALL players first, then calculate stats, then sort, then paginate.
-  // Otherwise top scorers with last names late in alphabet won't appear.
-  // Only use early pagination for alphabetical sorting (where DB ordering matches display order).
-  const shouldDeferPagination = !!tournamentId || sortMode !== "alpha";
+  // IMPORTANT: Always defer pagination since sorting is now client-side
+  // Client needs all data to sort properly
+  // Server sends all filtered players, client handles sorting + pagination
+  const shouldDeferPagination = true;
 
   let playersQueryWithOrder = playersQuery
     .order("last_name", { ascending: true })
@@ -326,6 +328,10 @@ export default async function PaiktesPage({
 
   const mpsRows = (mps ?? []) as MPSRow[];
 
+  // DEBUG: Log raw match_player_stats data
+  console.log("[DEBUG] Total match_player_stats rows:", mpsRows.length);
+  console.log("[DEBUG] Sample rows:", mpsRows.slice(0, 3));
+
   // Global matches per player (for "matches" column)
   const matchesByPlayer = new Map<number, Set<number>>();
 
@@ -342,7 +348,11 @@ export default async function PaiktesPage({
   const redByPlayer = new Map<number, number>();
   const blueByPlayer = new Map<number, number>();
 
+  // DEBUG: Track which matches these stats are from
+  const uniqueMatchIds = new Set<number>();
+
   for (const r of mpsRows) {
+    uniqueMatchIds.add(r.match_id);
     // total matches per player
     if (!matchesByPlayer.has(r.player_id))
       matchesByPlayer.set(r.player_id, new Set());
@@ -374,12 +384,23 @@ export default async function PaiktesPage({
   // Calculate wins
   const matchIdsSet = new Set(mpsRows.map((r) => r.match_id));
   const matchIds = Array.from(matchIdsSet);
+
+  // DEBUG: Fetch matches with tournament_id to understand data source
   const { data: matchWinners } = matchIds.length
     ? await supabaseAdmin
         .from("matches")
-        .select("id, winner_team_id")
+        .select("id, winner_team_id, tournament_id")
         .in("id", matchIds)
     : { data: [] as MatchWinnerRow[] };
+
+  // DEBUG: Log tournament distribution
+  console.log("[DEBUG] Total unique matches:", matchIds.length);
+  const tournamentDist = new Map<number | null, number>();
+  for (const m of (matchWinners ?? [])) {
+    const tid = (m as any).tournament_id;
+    tournamentDist.set(tid, (tournamentDist.get(tid) ?? 0) + 1);
+  }
+  console.log("[DEBUG] Matches by tournament:", Object.fromEntries(tournamentDist));
 
   const winnerByMatch = new Map(
     (matchWinners ?? []).map((m) => [m.id, m.winner_team_id])
@@ -468,23 +489,21 @@ export default async function PaiktesPage({
     };
   });
 
-  // Apply stats filters from parsed search
-  if (parsedSearch.minGoals !== undefined) {
-    enriched = enriched.filter((p) => p.goals >= parsedSearch.minGoals!);
-  }
-  if (parsedSearch.minMatches !== undefined) {
-    enriched = enriched.filter((p) => p.matches >= parsedSearch.minMatches!);
-  }
-  if (parsedSearch.minAssists !== undefined) {
-    enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
-  }
-
   // TOURNAMENT-SCOPED STATS
-  if (tournamentId) {
-    const { data: matchRows } = await supabaseAdmin
+  // ALWAYS calculate tournament stats:
+  // - If tournamentId is set → filter by that tournament
+  // - If tournamentId is null → sum ALL tournament goals (for correct default view)
+  {
+    let matchesQuery = supabaseAdmin
       .from("matches")
-      .select("id, winner_team_id")
-      .eq("tournament_id", tournamentId);
+      .select("id, winner_team_id");
+
+    // Only filter by tournament if specified
+    if (tournamentId) {
+      matchesQuery = matchesQuery.eq("tournament_id", tournamentId);
+    }
+
+    const { data: matchRows } = await matchesQuery;
 
     const tMatches = matchRows ?? [];
     const tMatchIds = tMatches.map((m) => m.id as number);
@@ -582,25 +601,38 @@ export default async function PaiktesPage({
 
       for (const pl of enriched) {
         const s = tStatsByPlayer.get(pl.id);
-        if (!s) continue;
 
-        pl.tournament_matches = s.matches;
-        pl.tournament_goals = s.goals;
-        pl.tournament_assists = s.assists;
-        pl.tournament_yellow_cards = s.yellow_cards;
-        pl.tournament_red_cards = s.red_cards;
-        pl.tournament_blue_cards = s.blue_cards;
-        pl.tournament_mvp = s.mvp;
-        pl.tournament_best_gk = s.best_gk;
-        pl.tournament_wins = s.wins;
+        // Set tournament stats (either filtered by tournamentId or sum of all tournaments)
+        // Initialize to 0 if player has no stats in scope
+        pl.tournament_matches = s?.matches ?? 0;
+        pl.tournament_goals = s?.goals ?? 0;
+        pl.tournament_assists = s?.assists ?? 0;
+        pl.tournament_yellow_cards = s?.yellow_cards ?? 0;
+        pl.tournament_red_cards = s?.red_cards ?? 0;
+        pl.tournament_blue_cards = s?.blue_cards ?? 0;
+        pl.tournament_mvp = s?.mvp ?? 0;
+        pl.tournament_best_gk = s?.best_gk ?? 0;
+        pl.tournament_wins = s?.wins ?? 0;
       }
     }
   }
 
-  // TOURNAMENT-AWARE SORTING
+  // DEBUG: Compare global goals vs tournament goals for top players
+  const debugTop = enriched
+    .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
+    .slice(0, 5)
+    .map(p => ({
+      name: `${p.first_name} ${p.last_name}`,
+      goals: p.goals,
+      tournament_goals: p.tournament_goals,
+    }));
+  console.log("[DEBUG] Top 5 by GLOBAL goals:", debugTop);
+
+  // Apply tournament-aware stats filters AFTER tournament stats are calculated
   const hasTournament = !!tournamentId;
 
-  function metric(
+  // Helper function to get the correct stat value (tournament or global)
+  function getStatValue(
     p: PLWithTGoals,
     globalKey: keyof PLWithTGoals,
     tournamentKey: keyof PLWithTGoals
@@ -613,60 +645,34 @@ export default async function PaiktesPage({
     return typeof g === "number" ? g : 0;
   }
 
-  switch (sortMode) {
-    case "goals":
-    case "tournament_goals":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals")
-      );
-      break;
-    case "matches":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "matches", "tournament_matches") -
-          metric(a, "matches", "tournament_matches")
-      );
-      break;
-    case "wins":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "wins", "tournament_wins") -
-          metric(a, "wins", "tournament_wins")
-      );
-      break;
-    case "assists":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "assists", "tournament_assists") -
-          metric(a, "assists", "tournament_assists")
-      );
-      break;
-    case "mvp":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "mvp", "tournament_mvp") -
-          metric(a, "mvp", "tournament_mvp")
-      );
-      break;
-    case "bestgk":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "best_gk", "tournament_best_gk") -
-          metric(a, "best_gk", "tournament_best_gk")
-      );
-      break;
+  if (parsedSearch.minGoals !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "goals", "tournament_goals") >= parsedSearch.minGoals!
+    );
+  }
+  if (parsedSearch.minMatches !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "matches", "tournament_matches") >= parsedSearch.minMatches!
+    );
+  }
+  if (parsedSearch.minAssists !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "assists", "tournament_assists") >= parsedSearch.minAssists!
+    );
   }
 
-  // Apply pagination AFTER sorting when tournament filter is active
-  // (for non-tournament filters, pagination was already applied in the query)
+  // NOTE: Sorting is now handled CLIENT-SIDE in PlayersClient.tsx
+  // This eliminates server round-trip delays and makes sorting instant
+  // Server just sends all data, client handles sorting/filtering/pagination locally
+
+  // NOTE: Pagination is now handled CLIENT-SIDE along with sorting
+  // Server sends ALL filtered data, client handles sorting + pagination for instant response
   let finalTotalCount = totalCount ?? 0;
   if (shouldDeferPagination) {
-    // When we defer pagination, the totalCount should be the count AFTER all filters
-    // (including stats filters) but BEFORE slicing for pagination
+    // Send all filtered data to client (no server-side slicing)
+    // Client will handle pagination after sorting
     finalTotalCount = enriched.length;
-    enriched = enriched.slice(offset, offset + pageSize);
+    // Remove server-side pagination slice - client handles it
   }
 
   return (
@@ -679,6 +685,7 @@ export default async function PaiktesPage({
         pageSize={pageSize}
         usePagination={true}
         initialSearchQuery={rawSearchTerm}
+        serverHasTournamentScope={!!tournamentId}
       />
     </div>
   );

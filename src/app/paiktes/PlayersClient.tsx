@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination + Rerender fixes)
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
@@ -58,6 +58,7 @@ export default function PlayersClient({
   pageSize = 50,
   usePagination = true,
   initialSearchQuery = "",
+  serverHasTournamentScope = false,
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
@@ -66,6 +67,7 @@ export default function PlayersClient({
   pageSize?: number;
   usePagination?: boolean;
   initialSearchQuery?: string;
+  serverHasTournamentScope?: boolean;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
@@ -80,6 +82,9 @@ export default function PlayersClient({
 
   // ✅ Loading state for when data is being fetched
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ Transition for non-blocking navigation
+  const [isPending, startTransition] = useTransition();
 
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
@@ -106,42 +111,41 @@ export default function PlayersClient({
   );
 
   const updateQuery = useCallback(
-    (patch: Record<string, string | number | null | undefined>) => {
+    (patch: Record<string, string | number | null | undefined>, shallow = false) => {
       const next = new URLSearchParams(sp?.toString() ?? "");
       Object.entries(patch).forEach(([k, v]) => {
         if (v === undefined || v === null || v === "") next.delete(k);
         else next.set(k, String(v));
       });
-      router.replace(`/paiktes?${next.toString()}`, { scroll: false });
+      const newUrl = `/paiktes?${next.toString()}`;
+      console.log("🟢 updateQuery: Navigating to", newUrl, shallow ? "(shallow)" : "");
+
+      if (shallow) {
+        // Use history API for shallow updates (no navigation, just URL change)
+        window.history.replaceState(null, '', newUrl);
+        console.log("🟢 updateQuery: history.replaceState called");
+      } else {
+        // Use router for full navigation
+        router.push(newUrl, { scroll: false });
+        console.log("🟢 updateQuery: router.push called");
+      }
     },
     [router, sp]
   );
 
   const onSortChange = useCallback(
     (v: string) => {
-      // ✅ Update client state immediately for instant UI response
+      console.log("🔵 onSortChange called with:", v);
+      // ✅ CLIENT-SIDE SORTING - Instant state update for immediate UI response
       setClientSort(v);
-      // ✅ Show loading state since this triggers server fetch
-      setIsLoading(true);
+      console.log("🔵 Client state updated to:", v);
 
-      // ✅ Preserve tournament filter across all sort modes
-      // Only fetch from server if switching to tournament_goals (needs additional data)
-      if (v === "tournament_goals") {
-        updateQuery({
-          sort: v,
-          tournament_id: clientTournamentId ?? "",
-          page: 1,
-        });
-      } else {
-        // For other sorts, keep tournament filter if one is selected
-        updateQuery({
-          sort: v,
-          tournament_id: clientTournamentId ?? undefined,
-          page: 1,
-        });
-      }
+      // ✅ Update URL shallowly (no navigation, just persist state in URL)
+      // This prevents page reload while keeping browser back/forward working
+      updateQuery({ sort: v }, true /* shallow */);
+      console.log("🔵 URL updated successfully");
     },
-    [updateQuery, clientTournamentId]
+    [updateQuery]
   );
 
   const onTournamentChange = useCallback(
@@ -183,14 +187,17 @@ export default function PlayersClient({
     [updateQuery]
   );
 
+  // ✅ Client-side page state for instant pagination (no server fetch)
+  const [clientPage, setClientPage] = useState(currentPage);
+
   const onPageChange = useCallback(
     (newPage: number) => {
-      setIsLoading(true);
-      updateQuery({ page: newPage });
+      // Update client page state only - no server fetch needed
+      setClientPage(newPage);
       // Scroll to top when changing pages
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
-    [updateQuery]
+    []
   );
 
   // When we grow to desktop, ensure list+card layout is visible
@@ -223,11 +230,175 @@ export default function PlayersClient({
     setIsLoading(false);
   }, [initialPlayers]);
 
-  // Players are already filtered and sorted server-side
-  // Just apply topN limit if needed (client-side for instant feedback)
+  // ✅ CLIENT-SIDE SORTING - Eliminates server round-trip delays
   const players = useMemo(() => {
-    return topLimit != null ? base.slice(0, topLimit) : base;
-  }, [base, topLimit]);
+    let sorted = [...base];
+
+    // Helper to get the correct stat value (tournament or global)
+    // Uses CLIENT state for sorting since we need live updates without server fetch
+    function getStatValue(
+      p: PLWithTGoals,
+      globalKey: keyof PLWithTGoals,
+      tournamentKey: keyof PLWithTGoals
+    ): number {
+      // Use CLIENT tournament state, not server prop (for instant updates)
+      const usesTournamentStats = !!clientTournamentId;
+      if (usesTournamentStats) {
+        const t = p[tournamentKey];
+        if (typeof t === "number") return t;
+      }
+      const g = p[globalKey];
+      return typeof g === "number" ? g : 0;
+    }
+
+    // Sort based on current sort mode
+    switch (clientSort) {
+      case "goals":
+      case "tournament_goals":
+        sorted.sort((a, b) => {
+          const goalDiff =
+            getStatValue(b, "goals", "tournament_goals") -
+            getStatValue(a, "goals", "tournament_goals");
+          if (goalDiff !== 0) return goalDiff;
+
+          // Tiebreaker 1: assists
+          const assistDiff =
+            getStatValue(b, "assists", "tournament_assists") -
+            getStatValue(a, "assists", "tournament_assists");
+          if (assistDiff !== 0) return assistDiff;
+
+          // Tiebreaker 2: alphabetical
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "matches":
+        sorted.sort((a, b) => {
+          const matchDiff =
+            getStatValue(b, "matches", "tournament_matches") -
+            getStatValue(a, "matches", "tournament_matches");
+          if (matchDiff !== 0) return matchDiff;
+
+          const goalDiff =
+            getStatValue(b, "goals", "tournament_goals") -
+            getStatValue(a, "goals", "tournament_goals");
+          if (goalDiff !== 0) return goalDiff;
+
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "wins":
+        sorted.sort((a, b) => {
+          const winDiff =
+            getStatValue(b, "wins", "tournament_wins") -
+            getStatValue(a, "wins", "tournament_wins");
+          if (winDiff !== 0) return winDiff;
+
+          const matchDiff =
+            getStatValue(b, "matches", "tournament_matches") -
+            getStatValue(a, "matches", "tournament_matches");
+          if (matchDiff !== 0) return matchDiff;
+
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "assists":
+        sorted.sort((a, b) => {
+          const assistDiff =
+            getStatValue(b, "assists", "tournament_assists") -
+            getStatValue(a, "assists", "tournament_assists");
+          if (assistDiff !== 0) return assistDiff;
+
+          const goalDiff =
+            getStatValue(b, "goals", "tournament_goals") -
+            getStatValue(a, "goals", "tournament_goals");
+          if (goalDiff !== 0) return goalDiff;
+
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "mvp":
+        sorted.sort((a, b) => {
+          const mvpDiff =
+            getStatValue(b, "mvp", "tournament_mvp") -
+            getStatValue(a, "mvp", "tournament_mvp");
+          if (mvpDiff !== 0) return mvpDiff;
+
+          const goalDiff =
+            getStatValue(b, "goals", "tournament_goals") -
+            getStatValue(a, "goals", "tournament_goals");
+          if (goalDiff !== 0) return goalDiff;
+
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "bestgk":
+        sorted.sort((a, b) => {
+          const gkDiff =
+            getStatValue(b, "best_gk", "tournament_best_gk") -
+            getStatValue(a, "best_gk", "tournament_best_gk");
+          if (gkDiff !== 0) return gkDiff;
+
+          const matchDiff =
+            getStatValue(b, "matches", "tournament_matches") -
+            getStatValue(a, "matches", "tournament_matches");
+          if (matchDiff !== 0) return matchDiff;
+
+          return (a.last_name ?? "").localeCompare(b.last_name ?? "");
+        });
+        break;
+
+      case "alpha":
+      default:
+        // Alphabetical by last name (already sorted from server)
+        sorted.sort((a, b) =>
+          (a.last_name ?? "").localeCompare(b.last_name ?? "")
+        );
+        break;
+    }
+
+    // Apply topN limit first (if specified)
+    if (topLimit != null) {
+      sorted = sorted.slice(0, topLimit);
+    }
+
+    // Apply client-side pagination (if enabled)
+    if (usePagination && sorted.length > pageSize) {
+      const offset = (clientPage - 1) * pageSize;
+      sorted = sorted.slice(offset, offset + pageSize);
+    }
+
+    // 🔍 DEBUG: Log sorting results
+    console.log("🔍 Sorting Debug:", {
+      baseCount: base.length,
+      sortedCountBeforePagination: sorted.length,
+      topLimit,
+      clientPage,
+      pageSize,
+      clientSort,
+      top5Players: sorted.slice(0, 5).map(p => ({
+        name: `${p.first_name} ${p.last_name}`,
+        goals: p.goals,
+        tournament_goals: p.tournament_goals,
+      })),
+    });
+
+    return sorted;
+  }, [base, topLimit, clientSort, clientTournamentId, usePagination, pageSize, clientPage]);
+
+  // Calculate total count BEFORE pagination for correct page count
+  const clientTotalCount = useMemo(() => {
+    let count = base.length;
+    // Apply topN limit to count if specified
+    if (topLimit != null && topLimit < count) {
+      count = topLimit;
+    }
+    return count;
+  }, [base.length, topLimit]);
 
   // Quick lookup for card
   const byId = useMemo(
@@ -274,10 +445,26 @@ export default function PlayersClient({
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
+  // ✅ Use CLIENT tournament state for live updates (not stale server prop)
+  // This ensures stats update instantly when user changes tournament filter
   const isTournamentScoped = !!clientTournamentId;
 
-  // Calculate pagination info
-  const totalPages = Math.ceil(totalCount / pageSize);
+  // 🔍 DEBUG: Log tournament state
+  console.log("🔍 Tournament Debug:", {
+    clientTournamentId,
+    serverHasTournamentScope,
+    isTournamentScoped,
+    clientSort,
+    urlTournamentParam: sp?.get("tournament_id"),
+    firstPlayerStats: base[0] ? {
+      name: `${base[0].first_name} ${base[0].last_name}`,
+      goals: base[0].goals,
+      tournament_goals: base[0].tournament_goals,
+    } : null,
+  });
+
+  // Calculate pagination info using client-side count
+  const totalPages = Math.ceil(clientTotalCount / pageSize);
   const showPagination = usePagination && totalPages > 1;
 
   return (
@@ -424,8 +611,8 @@ export default function PlayersClient({
                 {/* Mobile Pagination - Compact */}
                 <div className="flex sm:hidden items-center justify-between gap-2">
                   <button
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
+                    onClick={() => onPageChange(clientPage - 1)}
+                    disabled={clientPage === 1}
                     className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
                     aria-label="Previous page"
                   >
@@ -435,14 +622,14 @@ export default function PlayersClient({
                   </button>
                   
                   <div className="flex items-center gap-1.5">
-                    <span className="text-white text-sm font-medium">{currentPage}</span>
+                    <span className="text-white text-sm font-medium">{clientPage}</span>
                     <span className="text-white/30 text-xs">/</span>
                     <span className="text-white/50 text-sm">{totalPages}</span>
                   </div>
                   
                   <button
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
+                    onClick={() => onPageChange(clientPage + 1)}
+                    disabled={clientPage === totalPages}
                     className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
                     aria-label="Next page"
                   >
@@ -455,13 +642,13 @@ export default function PlayersClient({
                 {/* Desktop Pagination - Full */}
                 <div className="hidden sm:flex items-center justify-between">
                   <div className="text-xs md:text-sm text-white/50">
-                    Page {currentPage} of {totalPages} • {totalCount} total players
+                    Page {clientPage} of {totalPages} • {clientTotalCount} total players
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => onPageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
+                      onClick={() => onPageChange(clientPage - 1)}
+                      disabled={clientPage === 1}
                       className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       Previous
@@ -473,12 +660,12 @@ export default function PlayersClient({
                         let pageNum;
                         if (totalPages <= 5) {
                           pageNum = i + 1;
-                        } else if (currentPage <= 3) {
+                        } else if (clientPage <= 3) {
                           pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
+                        } else if (clientPage >= totalPages - 2) {
                           pageNum = totalPages - 4 + i;
                         } else {
-                          pageNum = currentPage - 2 + i;
+                          pageNum = clientPage - 2 + i;
                         }
                         
                         return (
@@ -486,7 +673,7 @@ export default function PlayersClient({
                             key={pageNum}
                             onClick={() => onPageChange(pageNum)}
                             className={`w-8 h-8 md:w-10 md:h-10 text-xs md:text-sm font-medium rounded transition-all ${
-                              currentPage === pageNum
+                              clientPage === pageNum
                                 ? "bg-cyan-500 text-white"
                                 : "text-white/70 hover:bg-white/10"
                             }`}
@@ -498,8 +685,8 @@ export default function PlayersClient({
                     </div>
                     
                     <button
-                      onClick={() => onPageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
+                      onClick={() => onPageChange(clientPage + 1)}
+                      disabled={clientPage === totalPages}
                       className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                     >
                       Next
