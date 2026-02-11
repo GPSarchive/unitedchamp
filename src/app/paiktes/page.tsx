@@ -571,17 +571,18 @@ export default async function PaiktesPage({
 
       for (const pl of enriched) {
         const s = tStatsByPlayer.get(pl.id);
-        if (!s) continue;
 
-        pl.tournament_matches = s.matches;
-        pl.tournament_goals = s.goals;
-        pl.tournament_assists = s.assists;
-        pl.tournament_yellow_cards = s.yellow_cards;
-        pl.tournament_red_cards = s.red_cards;
-        pl.tournament_blue_cards = s.blue_cards;
-        pl.tournament_mvp = s.mvp;
-        pl.tournament_best_gk = s.best_gk;
-        pl.tournament_wins = s.wins;
+        // Initialize tournament stats to 0 if player didn't play in tournament
+        // This ensures sorting and filtering work correctly (no undefined values)
+        pl.tournament_matches = s?.matches ?? 0;
+        pl.tournament_goals = s?.goals ?? 0;
+        pl.tournament_assists = s?.assists ?? 0;
+        pl.tournament_yellow_cards = s?.yellow_cards ?? 0;
+        pl.tournament_red_cards = s?.red_cards ?? 0;
+        pl.tournament_blue_cards = s?.blue_cards ?? 0;
+        pl.tournament_mvp = s?.mvp ?? 0;
+        pl.tournament_best_gk = s?.best_gk ?? 0;
+        pl.tournament_wins = s?.wins ?? 0;
       }
     }
   }
