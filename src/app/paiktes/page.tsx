@@ -8,7 +8,10 @@ import {
   removeGreekDiacritics,
 } from "@/app/lib/searchUtils";
 
-export const revalidate = 300;
+// Disable cache - player stats are dynamic and change frequently
+// Caching was causing stale data when filters were removed
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const DEFAULT_PAGE_SIZE = 50;
 
