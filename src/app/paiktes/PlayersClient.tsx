@@ -114,19 +114,25 @@ export default function PlayersClient({
         if (v === undefined || v === null || v === "") next.delete(k);
         else next.set(k, String(v));
       });
-      router.replace(`/paiktes?${next.toString()}`, { scroll: false });
+      const newUrl = `/paiktes?${next.toString()}`;
+      console.log("🟢 updateQuery: Navigating to", newUrl);
+      router.replace(newUrl, { scroll: false });
+      console.log("🟢 updateQuery: router.replace called");
     },
     [router, sp]
   );
 
   const onSortChange = useCallback(
     (v: string) => {
+      console.log("🔵 onSortChange called with:", v);
       // ✅ CLIENT-SIDE SORTING - Update state AND URL (to prevent useEffect reset)
       // Sorting happens instantly in the players useMemo (no server fetch)
       setClientSort(v);
+      console.log("🔵 Client state updated, now calling updateQuery...");
       // Update URL to persist sort state (prevents useEffect from resetting it)
       // Don't trigger loading state - sorting is instant client-side
       updateQuery({ sort: v });
+      console.log("🔵 updateQuery called successfully");
     },
     [updateQuery]
   );
