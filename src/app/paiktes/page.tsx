@@ -247,11 +247,10 @@ export default async function PaiktesPage({
     }
   }
 
-  // IMPORTANT: When tournament filter is active OR when using non-alpha sort,
-  // we need to fetch ALL players first, then calculate stats, then sort, then paginate.
-  // Otherwise top scorers with last names late in alphabet won't appear.
-  // Only use early pagination for alphabetical sorting (where DB ordering matches display order).
-  const shouldDeferPagination = !!tournamentId || sortMode !== "alpha";
+  // IMPORTANT: Always defer pagination since sorting is now client-side
+  // Client needs all data to sort properly
+  // Server sends all filtered players, client handles sorting + pagination
+  const shouldDeferPagination = true;
 
   let playersQueryWithOrder = playersQuery
     .order("last_name", { ascending: true })
@@ -620,134 +619,18 @@ export default async function PaiktesPage({
     );
   }
 
-  // TOURNAMENT-AWARE SORTING
-  function metric(
-    p: PLWithTGoals,
-    globalKey: keyof PLWithTGoals,
-    tournamentKey: keyof PLWithTGoals
-  ): number {
-    if (hasTournament) {
-      const t = p[tournamentKey];
-      if (typeof t === "number") return t;
-    }
-    const g = p[globalKey];
-    return typeof g === "number" ? g : 0;
-  }
+  // NOTE: Sorting is now handled CLIENT-SIDE in PlayersClient.tsx
+  // This eliminates server round-trip delays and makes sorting instant
+  // Server just sends all data, client handles sorting/filtering/pagination locally
 
-  switch (sortMode) {
-    case "goals":
-    case "tournament_goals":
-      enriched.sort((a, b) => {
-        const goalDiff =
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals");
-        if (goalDiff !== 0) return goalDiff;
-
-        // Tiebreaker 1: assists (higher is better)
-        const assistDiff =
-          metric(b, "assists", "tournament_assists") -
-          metric(a, "assists", "tournament_assists");
-        if (assistDiff !== 0) return assistDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-    case "matches":
-      enriched.sort((a, b) => {
-        const matchDiff =
-          metric(b, "matches", "tournament_matches") -
-          metric(a, "matches", "tournament_matches");
-        if (matchDiff !== 0) return matchDiff;
-
-        // Tiebreaker 1: goals (higher is better)
-        const goalDiff =
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals");
-        if (goalDiff !== 0) return goalDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-    case "wins":
-      enriched.sort((a, b) => {
-        const winDiff =
-          metric(b, "wins", "tournament_wins") -
-          metric(a, "wins", "tournament_wins");
-        if (winDiff !== 0) return winDiff;
-
-        // Tiebreaker 1: matches (more matches played as tiebreaker)
-        const matchDiff =
-          metric(b, "matches", "tournament_matches") -
-          metric(a, "matches", "tournament_matches");
-        if (matchDiff !== 0) return matchDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-    case "assists":
-      enriched.sort((a, b) => {
-        const assistDiff =
-          metric(b, "assists", "tournament_assists") -
-          metric(a, "assists", "tournament_assists");
-        if (assistDiff !== 0) return assistDiff;
-
-        // Tiebreaker 1: goals (higher is better)
-        const goalDiff =
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals");
-        if (goalDiff !== 0) return goalDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-    case "mvp":
-      enriched.sort((a, b) => {
-        const mvpDiff =
-          metric(b, "mvp", "tournament_mvp") -
-          metric(a, "mvp", "tournament_mvp");
-        if (mvpDiff !== 0) return mvpDiff;
-
-        // Tiebreaker 1: goals (higher is better)
-        const goalDiff =
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals");
-        if (goalDiff !== 0) return goalDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-    case "bestgk":
-      enriched.sort((a, b) => {
-        const gkDiff =
-          metric(b, "best_gk", "tournament_best_gk") -
-          metric(a, "best_gk", "tournament_best_gk");
-        if (gkDiff !== 0) return gkDiff;
-
-        // Tiebreaker 1: matches (more matches as GK)
-        const matchDiff =
-          metric(b, "matches", "tournament_matches") -
-          metric(a, "matches", "tournament_matches");
-        if (matchDiff !== 0) return matchDiff;
-
-        // Tiebreaker 2: alphabetical by last name
-        return (a.last_name ?? "").localeCompare(b.last_name ?? "");
-      });
-      break;
-  }
-
-  // Apply pagination AFTER sorting when tournament filter is active
-  // (for non-tournament filters, pagination was already applied in the query)
+  // NOTE: Pagination is now handled CLIENT-SIDE along with sorting
+  // Server sends ALL filtered data, client handles sorting + pagination for instant response
   let finalTotalCount = totalCount ?? 0;
   if (shouldDeferPagination) {
-    // When we defer pagination, the totalCount should be the count AFTER all filters
-    // (including stats filters) but BEFORE slicing for pagination
+    // Send all filtered data to client (no server-side slicing)
+    // Client will handle pagination after sorting
     finalTotalCount = enriched.length;
-    enriched = enriched.slice(offset, offset + pageSize);
+    // Remove server-side pagination slice - client handles it
   }
 
   return (
