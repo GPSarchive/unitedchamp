@@ -760,6 +760,7 @@ export default async function PaiktesPage({
         pageSize={pageSize}
         usePagination={true}
         initialSearchQuery={rawSearchTerm}
+        serverHasTournamentScope={!!tournamentId}
       />
     </div>
   );

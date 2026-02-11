@@ -58,6 +58,7 @@ export default function PlayersClient({
   pageSize = 50,
   usePagination = true,
   initialSearchQuery = "",
+  serverHasTournamentScope = false,
 }: {
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
@@ -66,6 +67,7 @@ export default function PlayersClient({
   pageSize?: number;
   usePagination?: boolean;
   initialSearchQuery?: string;
+  serverHasTournamentScope?: boolean;
 }) {
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
@@ -274,7 +276,9 @@ export default function PlayersClient({
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
-  const isTournamentScoped = !!clientTournamentId;
+  // ✅ Use SERVER's determination of tournament scope, not client state
+  // This prevents stale tournament stats from showing when filter is removed
+  const isTournamentScoped = serverHasTournamentScope;
 
   // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
