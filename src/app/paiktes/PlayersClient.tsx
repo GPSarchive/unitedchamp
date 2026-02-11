@@ -354,6 +354,21 @@ export default function PlayersClient({
       sorted = sorted.slice(offset, offset + pageSize);
     }
 
+    // 🔍 DEBUG: Log sorting results
+    console.log("🔍 Sorting Debug:", {
+      baseCount: base.length,
+      sortedCountBeforePagination: sorted.length,
+      topLimit,
+      clientPage,
+      pageSize,
+      clientSort,
+      top5Players: sorted.slice(0, 5).map(p => ({
+        name: `${p.first_name} ${p.last_name}`,
+        goals: p.goals,
+        tournament_goals: p.tournament_goals,
+      })),
+    });
+
     return sorted;
   }, [base, topLimit, clientSort, clientTournamentId, usePagination, pageSize, clientPage]);
 
