@@ -416,6 +416,20 @@ export default function PlayersClient({
   // This ensures stats update instantly when user changes tournament filter
   const isTournamentScoped = !!clientTournamentId;
 
+  // 🔍 DEBUG: Log tournament state
+  console.log("🔍 Tournament Debug:", {
+    clientTournamentId,
+    serverHasTournamentScope,
+    isTournamentScoped,
+    clientSort,
+    urlTournamentParam: sp?.get("tournament_id"),
+    firstPlayerStats: base[0] ? {
+      name: `${base[0].first_name} ${base[0].last_name}`,
+      goals: base[0].goals,
+      tournament_goals: base[0].tournament_goals,
+    } : null,
+  });
+
   // Calculate pagination info using client-side count
   const totalPages = Math.ceil(clientTotalCount / pageSize);
   const showPagination = usePagination && totalPages > 1;
