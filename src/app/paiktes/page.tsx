@@ -468,17 +468,6 @@ export default async function PaiktesPage({
     };
   });
 
-  // Apply stats filters from parsed search
-  if (parsedSearch.minGoals !== undefined) {
-    enriched = enriched.filter((p) => p.goals >= parsedSearch.minGoals!);
-  }
-  if (parsedSearch.minMatches !== undefined) {
-    enriched = enriched.filter((p) => p.matches >= parsedSearch.minMatches!);
-  }
-  if (parsedSearch.minAssists !== undefined) {
-    enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
-  }
-
   // TOURNAMENT-SCOPED STATS
   if (tournamentId) {
     const { data: matchRows } = await supabaseAdmin
@@ -597,9 +586,40 @@ export default async function PaiktesPage({
     }
   }
 
-  // TOURNAMENT-AWARE SORTING
+  // Apply tournament-aware stats filters AFTER tournament stats are calculated
   const hasTournament = !!tournamentId;
 
+  // Helper function to get the correct stat value (tournament or global)
+  function getStatValue(
+    p: PLWithTGoals,
+    globalKey: keyof PLWithTGoals,
+    tournamentKey: keyof PLWithTGoals
+  ): number {
+    if (hasTournament) {
+      const t = p[tournamentKey];
+      if (typeof t === "number") return t;
+    }
+    const g = p[globalKey];
+    return typeof g === "number" ? g : 0;
+  }
+
+  if (parsedSearch.minGoals !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "goals", "tournament_goals") >= parsedSearch.minGoals!
+    );
+  }
+  if (parsedSearch.minMatches !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "matches", "tournament_matches") >= parsedSearch.minMatches!
+    );
+  }
+  if (parsedSearch.minAssists !== undefined) {
+    enriched = enriched.filter(
+      (p) => getStatValue(p, "assists", "tournament_assists") >= parsedSearch.minAssists!
+    );
+  }
+
+  // TOURNAMENT-AWARE SORTING
   function metric(
     p: PLWithTGoals,
     globalKey: keyof PLWithTGoals,
