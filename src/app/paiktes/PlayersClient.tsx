@@ -54,7 +54,7 @@ export default function PlayersClient({
   initialPlayers = [],
   tournaments = [],
   totalCount = 0,
-  clientPage = 1,
+  currentPage = 1,
   pageSize = 50,
   usePagination = true,
   initialSearchQuery = "",
@@ -63,7 +63,7 @@ export default function PlayersClient({
   initialPlayers?: PLWithTGoals[];
   tournaments?: TournamentOpt[];
   totalCount?: number;
-  clientPage?: number;
+  currentPage?: number;
   pageSize?: number;
   usePagination?: boolean;
   initialSearchQuery?: string;
@@ -170,7 +170,7 @@ export default function PlayersClient({
   );
 
   // ✅ Client-side page state for instant pagination (no server fetch)
-  const [clientPage, setClientPage] = useState(clientPage);
+  const [clientPage, setClientPage] = useState(currentPage);
 
   const onPageChange = useCallback(
     (newPage: number) => {
