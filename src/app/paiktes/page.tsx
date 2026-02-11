@@ -11,6 +11,36 @@ import {
 export const revalidate = 300;
 
 const DEFAULT_PAGE_SIZE = 50;
+const SUPABASE_BATCH_SIZE = 300; // Supabase caps at 1000 rows; keep batches small to stay safe
+
+/**
+ * Fetch rows from a Supabase table in batches to avoid the default 1000-row limit.
+ * Splits `ids` into chunks, runs them in parallel, and combines results.
+ */
+async function fetchInBatches<T>(
+  table: string,
+  idColumn: string,
+  ids: number[],
+  selectColumns: string,
+  batchSize = SUPABASE_BATCH_SIZE,
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const chunks: number[][] = [];
+  for (let i = 0; i < ids.length; i += batchSize) {
+    chunks.push(ids.slice(i, i + batchSize));
+  }
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      supabaseAdmin
+        .from(table)
+        .select(selectColumns)
+        .in(idColumn, chunk)
+        .limit(10000)
+        .then(({ data }) => (data ?? []) as T[]),
+    ),
+  );
+  return results.flat();
+}
 
 type PLWithTGoals = PlayerLite & { tournament_goals?: number };
 
@@ -132,15 +162,16 @@ export default async function PaiktesPage({
     if (matchingTeams && matchingTeams.length > 0) {
       const teamIds = matchingTeams.map((t) => t.id);
 
-      // Get players belonging to these teams
-      const { data: playerTeams } = await supabaseAdmin
-        .from("player_teams")
-        .select("player_id")
-        .in("team_id", teamIds)
-        .limit(10000);
+      // Get players belonging to these teams — batched
+      const playerTeams = await fetchInBatches<{ player_id: number }>(
+        "player_teams",
+        "team_id",
+        teamIds,
+        "player_id",
+      );
 
       const playerIdSet = new Set(
-        (playerTeams ?? []).map((pt: { player_id: number }) => pt.player_id)
+        playerTeams.map((pt) => pt.player_id)
       );
       teamFilteredPlayerIds = Array.from(playerIdSet);
     } else {
@@ -162,14 +193,15 @@ export default async function PaiktesPage({
     );
 
     if (tMatchIds.length > 0) {
-      const { data: tournamentMps } = await supabaseAdmin
-        .from("match_player_stats")
-        .select("player_id")
-        .in("match_id", tMatchIds)
-        .limit(10000);
+      const tournamentMps = await fetchInBatches<{ player_id: number }>(
+        "match_player_stats",
+        "match_id",
+        tMatchIds,
+        "player_id",
+      );
 
       const playerIdSet = new Set(
-        (tournamentMps ?? []).map((r: { player_id: number }) => r.player_id)
+        tournamentMps.map((r) => r.player_id)
       );
       tournamentPlayerIds = Array.from(playerIdSet);
     } else {
@@ -262,6 +294,10 @@ export default async function PaiktesPage({
   // Only apply pagination now if NOT tournament-filtered
   if (!shouldDeferPagination) {
     playersQueryWithOrder = playersQueryWithOrder.range(offset, offset + pageSize - 1);
+  } else {
+    // Deferred pagination: we need ALL players so we can sort by stats then paginate.
+    // Supabase default limit is 1000 rows — lift it so no players are silently dropped.
+    playersQueryWithOrder = playersQueryWithOrder.limit(10000);
   }
 
   const {
@@ -274,21 +310,16 @@ export default async function PaiktesPage({
   const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
-  // Fetch player_teams (membership source)
-  // NOTE: Supabase default row limit is 1000. With 50 players this can exceed it.
-  const { data: ptRows, error: ptErr } = await supabaseAdmin
-    .from("player_teams")
-    .select("player_id, team_id, created_at, updated_at")
-    .in("player_id", playerIds)
-    .order("player_id", { ascending: true })
-    .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(10000);
-
-  if (ptErr) console.error("[paiktes] player_teams query error:", ptErr.message);
+  // Fetch player_teams (membership source) — batched to avoid 1000-row cap
+  const ptRows = await fetchInBatches<PlayerTeamRow>(
+    "player_teams",
+    "player_id",
+    playerIds,
+    "player_id, team_id, created_at, updated_at",
+  );
 
   const allTeamIdsSet = new Set(
-    (ptRows ?? []).map((r: PlayerTeamRow) => r.team_id).filter(Boolean)
+    ptRows.map((r) => r.team_id).filter(Boolean)
   );
   const allTeamIds = Array.from(allTeamIdsSet);
 
@@ -312,7 +343,7 @@ export default async function PaiktesPage({
     number,
     { id: number; name: string; logo: string | null }[]
   >();
-  for (const r of (ptRows ?? []) as PlayerTeamRow[]) {
+  for (const r of ptRows) {
     if (r.team_id != null) {
       if (!teamsByPlayer.has(r.player_id)) teamsByPlayer.set(r.player_id, []);
       const teamData = teamMap[r.team_id];
@@ -320,18 +351,13 @@ export default async function PaiktesPage({
     }
   }
 
-  // Fetch match_player_stats (source for participation + stats + MVP/GK)
-  // NOTE: Supabase default row limit is 1000. 50 players × 20+ matches = easily >1000 rows.
-  // Without an explicit limit, stats get silently truncated causing wrong numbers on initial load.
-  const { data: mps } = playerIds.length
-    ? await supabaseAdmin
-        .from("match_player_stats")
-        .select("player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper")
-        .in("player_id", playerIds)
-        .limit(10000)
-    : { data: [] as MPSRow[] };
-
-  const mpsRows = (mps ?? []) as MPSRow[];
+  // Fetch match_player_stats (source for participation + stats + MVP/GK) — batched
+  const mpsRows = await fetchInBatches<MPSRow>(
+    "match_player_stats",
+    "player_id",
+    playerIds,
+    "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
+  );
 
   // Global matches per player (for "matches" column)
   const matchesByPlayer = new Map<number, Set<number>>();
@@ -381,16 +407,16 @@ export default async function PaiktesPage({
   // Calculate wins
   const matchIdsSet = new Set(mpsRows.map((r) => r.match_id));
   const matchIds = Array.from(matchIdsSet);
-  const { data: matchWinners } = matchIds.length
-    ? await supabaseAdmin
-        .from("matches")
-        .select("id, winner_team_id")
-        .in("id", matchIds)
-        .limit(10000)
-    : { data: [] as MatchWinnerRow[] };
+  // Fetch match winners — batched to avoid 1000-row cap
+  const matchWinnerRows = await fetchInBatches<MatchWinnerRow>(
+    "matches",
+    "id",
+    matchIds,
+    "id, winner_team_id",
+  );
 
   const winnerByMatch = new Map(
-    (matchWinners ?? []).map((m) => [m.id, m.winner_team_id])
+    matchWinnerRows.map((m) => [m.id, m.winner_team_id])
   );
 
   const winsByPlayer = new Map<number, number>();
@@ -503,26 +529,12 @@ export default async function PaiktesPage({
         winnerByMatch.set(m.id as number, m.winner_team_id as number | null);
       }
 
-      const { data: mpsRows } = await supabaseAdmin
-        .from("match_player_stats")
-        .select(
-          [
-            "match_id",
-            "player_id",
-            "team_id",
-            "goals",
-            "assists",
-            "yellow_cards",
-            "red_cards",
-            "blue_cards",
-            "mvp",
-            "best_goalkeeper",
-          ].join(",")
-        )
-        .in("match_id", tMatchIds)
-        .limit(10000);
-
-      const typedMpsRows = (mpsRows ?? []) as unknown as TournamentMPSRow[];
+      const typedMpsRows = await fetchInBatches<TournamentMPSRow>(
+        "match_player_stats",
+        "match_id",
+        tMatchIds,
+        "match_id,player_id,team_id,goals,assists,yellow_cards,red_cards,blue_cards,mvp,best_goalkeeper",
+      );
 
       type TStats = {
         matches: number;
