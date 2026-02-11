@@ -121,13 +121,14 @@ export default function PlayersClient({
 
   const onSortChange = useCallback(
     (v: string) => {
-      // ✅ CLIENT-SIDE SORTING - Update state only, no server fetch
-      // Sorting happens instantly in the players useMemo
+      // ✅ CLIENT-SIDE SORTING - Update state AND URL (to prevent useEffect reset)
+      // Sorting happens instantly in the players useMemo (no server fetch)
       setClientSort(v);
-      // Don't trigger server fetch or loading state for sorting
-      // Client handles sorting locally for instant response
+      // Update URL to persist sort state (prevents useEffect from resetting it)
+      // Don't trigger loading state - sorting is instant client-side
+      updateQuery({ sort: v });
     },
-    []
+    [updateQuery]
   );
 
   const onTournamentChange = useCallback(
