@@ -412,9 +412,9 @@ export default function PlayersClient({
   // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
-  // ✅ Use SERVER's determination of tournament scope, not client state
-  // This prevents stale tournament stats from showing when filter is removed
-  const isTournamentScoped = serverHasTournamentScope;
+  // ✅ Use CLIENT tournament state for live updates (not stale server prop)
+  // This ensures stats update instantly when user changes tournament filter
+  const isTournamentScoped = !!clientTournamentId;
 
   // Calculate pagination info using client-side count
   const totalPages = Math.ceil(clientTotalCount / pageSize);
