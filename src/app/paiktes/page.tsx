@@ -328,6 +328,10 @@ export default async function PaiktesPage({
 
   const mpsRows = (mps ?? []) as MPSRow[];
 
+  // DEBUG: Log raw match_player_stats data
+  console.log("[DEBUG] Total match_player_stats rows:", mpsRows.length);
+  console.log("[DEBUG] Sample rows:", mpsRows.slice(0, 3));
+
   // Global matches per player (for "matches" column)
   const matchesByPlayer = new Map<number, Set<number>>();
 
@@ -344,7 +348,11 @@ export default async function PaiktesPage({
   const redByPlayer = new Map<number, number>();
   const blueByPlayer = new Map<number, number>();
 
+  // DEBUG: Track which matches these stats are from
+  const uniqueMatchIds = new Set<number>();
+
   for (const r of mpsRows) {
+    uniqueMatchIds.add(r.match_id);
     // total matches per player
     if (!matchesByPlayer.has(r.player_id))
       matchesByPlayer.set(r.player_id, new Set());
@@ -376,12 +384,23 @@ export default async function PaiktesPage({
   // Calculate wins
   const matchIdsSet = new Set(mpsRows.map((r) => r.match_id));
   const matchIds = Array.from(matchIdsSet);
+
+  // DEBUG: Fetch matches with tournament_id to understand data source
   const { data: matchWinners } = matchIds.length
     ? await supabaseAdmin
         .from("matches")
-        .select("id, winner_team_id")
+        .select("id, winner_team_id, tournament_id")
         .in("id", matchIds)
     : { data: [] as MatchWinnerRow[] };
+
+  // DEBUG: Log tournament distribution
+  console.log("[DEBUG] Total unique matches:", matchIds.length);
+  const tournamentDist = new Map<number | null, number>();
+  for (const m of (matchWinners ?? [])) {
+    const tid = (m as any).tournament_id;
+    tournamentDist.set(tid, (tournamentDist.get(tid) ?? 0) + 1);
+  }
+  console.log("[DEBUG] Matches by tournament:", Object.fromEntries(tournamentDist));
 
   const winnerByMatch = new Map(
     (matchWinners ?? []).map((m) => [m.id, m.winner_team_id])
@@ -597,6 +616,17 @@ export default async function PaiktesPage({
       }
     }
   }
+
+  // DEBUG: Compare global goals vs tournament goals for top players
+  const debugTop = enriched
+    .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
+    .slice(0, 5)
+    .map(p => ({
+      name: `${p.first_name} ${p.last_name}`,
+      goals: p.goals,
+      tournament_goals: p.tournament_goals,
+    }));
+  console.log("[DEBUG] Top 5 by GLOBAL goals:", debugTop);
 
   // Apply tournament-aware stats filters AFTER tournament stats are calculated
   const hasTournament = !!tournamentId;
