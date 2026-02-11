@@ -471,11 +471,20 @@ export default async function PaiktesPage({
   });
 
   // TOURNAMENT-SCOPED STATS
-  if (tournamentId) {
-    const { data: matchRows } = await supabaseAdmin
+  // ALWAYS calculate tournament stats:
+  // - If tournamentId is set → filter by that tournament
+  // - If tournamentId is null → sum ALL tournament goals (for correct default view)
+  {
+    let matchesQuery = supabaseAdmin
       .from("matches")
-      .select("id, winner_team_id")
-      .eq("tournament_id", tournamentId);
+      .select("id, winner_team_id");
+
+    // Only filter by tournament if specified
+    if (tournamentId) {
+      matchesQuery = matchesQuery.eq("tournament_id", tournamentId);
+    }
+
+    const { data: matchRows } = await matchesQuery;
 
     const tMatches = matchRows ?? [];
     const tMatchIds = tMatches.map((m) => m.id as number);
@@ -574,8 +583,8 @@ export default async function PaiktesPage({
       for (const pl of enriched) {
         const s = tStatsByPlayer.get(pl.id);
 
-        // Initialize tournament stats to 0 if player didn't play in tournament
-        // This ensures sorting and filtering work correctly (no undefined values)
+        // Set tournament stats (either filtered by tournamentId or sum of all tournaments)
+        // Initialize to 0 if player has no stats in scope
         pl.tournament_matches = s?.matches ?? 0;
         pl.tournament_goals = s?.goals ?? 0;
         pl.tournament_assists = s?.assists ?? 0;
