@@ -217,12 +217,15 @@ export default function PlayersClient({
     let sorted = [...base];
 
     // Helper to get the correct stat value (tournament or global)
+    // Uses CLIENT state for sorting since we need live updates without server fetch
     function getStatValue(
       p: PLWithTGoals,
       globalKey: keyof PLWithTGoals,
       tournamentKey: keyof PLWithTGoals
     ): number {
-      if (serverHasTournamentScope) {
+      // Use CLIENT tournament state, not server prop (for instant updates)
+      const usesTournamentStats = !!clientTournamentId;
+      if (usesTournamentStats) {
         const t = p[tournamentKey];
         if (typeof t === "number") return t;
       }
@@ -352,7 +355,7 @@ export default function PlayersClient({
     }
 
     return sorted;
-  }, [base, topLimit, clientSort, serverHasTournamentScope, usePagination, pageSize, clientPage]);
+  }, [base, topLimit, clientSort, clientTournamentId, usePagination, pageSize, clientPage]);
 
   // Calculate total count BEFORE pagination for correct page count
   const clientTotalCount = useMemo(() => {
