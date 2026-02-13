@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
+// Cache for 45 seconds (ISR) - team data rarely changes
+export const revalidate = 45;
+
 // If possible, rename your bucket to an id without spaces/apostrophes (e.g. "gpsarchives-project").
 const BUCKET = "GPSarchive's Project";
 
