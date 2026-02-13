@@ -348,22 +348,6 @@ function PlayerCard({
                 className="overflow-hidden"
               >
                 <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2">
-                  {/* Info badges row */}
-                  <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
-                    {age != null && (
-                      <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 group-hover:border-amber-400/40 transition-all">
-                        <FaBirthdayCake className="text-xs text-amber-400" />
-                        <span className="text-xs font-semibold text-white">{age} ετών</span>
-                      </div>
-                    )}
-                    {heightCm != null && (
-                      <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 group-hover:border-amber-400/40 transition-all">
-                        <Activity className="w-3 h-3 text-amber-400" />
-                        <span className="text-xs font-semibold text-white">{heightCm}εκ</span>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Stats divider */}
                   <div className="flex items-center justify-center gap-2 mb-3">
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-red-400/30" />
