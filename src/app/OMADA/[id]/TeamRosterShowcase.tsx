@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Users, 
-  Trophy, 
+import {
+  Users,
+  Trophy,
   Target,
   Award,
   Zap,
   Shield,
-  Activity,
   TrendingUp,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   FaUser,
-  FaRulerVertical,
-  FaBirthdayCake,
   FaFutbol,
   FaHandsHelping,
   FaMedal,
@@ -64,6 +63,9 @@ export default function TeamRosterShowcase({
   seasonStatsByPlayer,
   errorMessage,
 }: TeamRosterShowcaseProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const PLAYERS_PER_PAGE = 12;
+
   if (errorMessage) {
     return (
       <section className="rounded-2xl bg-red-950/40 border border-red-500/40 p-4">
@@ -92,6 +94,25 @@ export default function TeamRosterShowcase({
       </section>
     );
   }
+
+  // Pagination calculations
+  const totalPlayers = playerAssociations.length;
+  const totalPages = Math.ceil(totalPlayers / PLAYERS_PER_PAGE);
+  const startIndex = (currentPage - 1) * PLAYERS_PER_PAGE;
+  const endIndex = startIndex + PLAYERS_PER_PAGE;
+  const currentPlayers = playerAssociations.slice(startIndex, endIndex);
+
+  const goToNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
 
   return (
     <section className="py-6 px-2 sm:px-4 lg:px-6">
@@ -134,7 +155,7 @@ export default function TeamRosterShowcase({
 
       {/* Grid of players - Enhanced responsive layout */}
       <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 max-w-[1800px] mx-auto">
-        {playerAssociations.map((assoc, index) => {
+        {currentPlayers.map((assoc, index) => {
           const p = assoc.player;
           const photoUrl = resolvePlayerPhotoUrl(p.photo);
 
@@ -180,6 +201,85 @@ export default function TeamRosterShowcase({
           );
         })}
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mt-10 flex flex-col items-center gap-4"
+        >
+          {/* Page info */}
+          <div className="text-sm text-white/70 font-medium">
+            Σελίδα {currentPage} από {totalPages} ({totalPlayers} συνολικοί παίκτες)
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex items-center gap-2">
+            {/* Previous button */}
+            <button
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-black/40 border border-white/20 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-black/60 hover:border-red-400/50 transition-all duration-300 disabled:hover:bg-black/40 disabled:hover:border-white/20"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="text-sm font-semibold">Προηγούμενη</span>
+            </button>
+
+            {/* Page numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, current page, and pages around current
+                const showPage =
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1);
+
+                // Show ellipsis
+                const showEllipsisBefore = page === currentPage - 2 && currentPage > 3;
+                const showEllipsisAfter = page === currentPage + 2 && currentPage < totalPages - 2;
+
+                if (!showPage && !showEllipsisBefore && !showEllipsisAfter) {
+                  return null;
+                }
+
+                if (showEllipsisBefore || showEllipsisAfter) {
+                  return (
+                    <span key={`ellipsis-${page}`} className="px-2 text-white/40">
+                      ...
+                    </span>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page}
+                    onClick={() => goToPage(page)}
+                    className={`w-10 h-10 rounded-lg font-bold text-sm transition-all duration-300 ${
+                      page === currentPage
+                        ? "bg-gradient-to-br from-red-500 to-amber-500 text-white shadow-lg shadow-red-500/30 border border-red-400/50"
+                        : "bg-black/40 border border-white/20 text-white/80 hover:bg-black/60 hover:border-red-400/50 hover:text-white"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next button */}
+            <button
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 px-4 py-2 rounded-lg bg-black/40 border border-white/20 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-black/60 hover:border-red-400/50 transition-all duration-300 disabled:hover:bg-black/40 disabled:hover:border-white/20"
+            >
+              <span className="text-sm font-semibold">Επόμενη</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      )}
     </section>
   );
 }
@@ -348,22 +448,6 @@ function PlayerCard({
                 className="overflow-hidden"
               >
                 <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-2">
-                  {/* Info badges row */}
-                  <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
-                    {age != null && (
-                      <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 group-hover:border-amber-400/40 transition-all">
-                        <FaBirthdayCake className="text-xs text-amber-400" />
-                        <span className="text-xs font-semibold text-white">{age} ετών</span>
-                      </div>
-                    )}
-                    {heightCm != null && (
-                      <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 group-hover:border-amber-400/40 transition-all">
-                        <Activity className="w-3 h-3 text-amber-400" />
-                        <span className="text-xs font-semibold text-white">{heightCm}εκ</span>
-                      </div>
-                    )}
-                  </div>
-
                   {/* Stats divider */}
                   <div className="flex items-center justify-center gap-2 mb-3">
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent to-red-400/30" />
