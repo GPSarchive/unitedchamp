@@ -11,13 +11,8 @@ import {
   Facebook,
   Send,
   ChevronRight,
-  Map,
   CheckCircle2,
 } from "lucide-react";
-
-/* ─── env ─────────────────────────────────────────────────── */
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-const MAP_QUERY = "Αθήνα, Ελλάδα"; // Replace with exact address once key is provided
 
 /* ─── animation presets ───────────────────────────────────── */
 const fadeUp = {
@@ -381,97 +376,8 @@ export default function ContactContent() {
           </motion.div>
         </div>
 
-        {/* ── MAP ───────────────────────────────────────────────── */}
-        <motion.div
-          className="mt-6 lg:mt-8"
-          initial={{ opacity: 0, y: 32 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.48, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-2xl backdrop-blur-md">
-            {/* map card header */}
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-              <div>
-                <h2 className="text-[0.8rem] font-bold uppercase tracking-[0.2em] text-white">
-                  Βρείτε μας
-                </h2>
-                <div className="mt-2 h-[2px] w-10 rounded-full bg-orange-500" />
-              </div>
-              <div className="flex items-center gap-2 text-[0.7rem] text-white/35">
-                <Map size={13} />
-                <span>UltraChamp · Αθήνα, Ελλάδα</span>
-              </div>
-            </div>
-
-            {/* map body */}
-            <div className="relative h-[420px] sm:h-[480px]">
-              {GOOGLE_MAPS_KEY ? (
-                <iframe
-                  src={`https://www.google.com/maps/embed/v1/place?key=${GOOGLE_MAPS_KEY}&q=${encodeURIComponent(
-                    MAP_QUERY
-                  )}&zoom=15&language=el`}
-                  width="100%"
-                  height="100%"
-                  style={{
-                    border: 0,
-                    /* dark-mode filter so the map blends with the site */
-                    filter:
-                      "invert(90%) hue-rotate(180deg) saturate(0.85) brightness(0.88)",
-                  }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Χάρτης UltraChamp"
-                />
-              ) : (
-                /* ── Map placeholder ── */
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900/60">
-                  {/* subtle grid overlay */}
-                  <div
-                    className="pointer-events-none absolute inset-0 opacity-[0.04]"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-                      backgroundSize: "48px 48px",
-                    }}
-                  />
-
-                  {/* decorative ping dots */}
-                  <span className="absolute left-[22%] top-[18%] h-2 w-2 animate-pulse rounded-full bg-orange-400/20" />
-                  <span
-                    className="absolute bottom-[20%] right-[20%] h-1.5 w-1.5 animate-pulse rounded-full bg-orange-400/20"
-                    style={{ animationDelay: "0.6s" }}
-                  />
-                  <span
-                    className="absolute right-[12%] top-[38%] h-1.5 w-1.5 animate-pulse rounded-full bg-white/10"
-                    style={{ animationDelay: "1.2s" }}
-                  />
-
-                  {/* centre content */}
-                  <div className="relative z-10 flex max-w-sm flex-col items-center px-6 text-center">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-orange-400/35 bg-orange-500/15 text-orange-400 shadow-lg shadow-orange-500/15">
-                      <MapPin size={28} />
-                    </div>
-                    <h3 className="mb-2 text-lg font-bold text-white">
-                      Ο χάρτης θα εμφανιστεί εδώ
-                    </h3>
-                    <p className="text-sm leading-relaxed text-white/40">
-                      Απαιτείται Google Maps API Key. Ορίστε{" "}
-                      <code className="rounded bg-orange-500/10 px-1 py-0.5 text-xs text-orange-400/80">
-                        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-                      </code>{" "}
-                      στο{" "}
-                      <code className="rounded bg-orange-500/10 px-1 py-0.5 text-xs text-orange-400/80">
-                        .env
-                      </code>
-                      .
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
+        {/* ── MAP placeholder ───────────────────────────────────── */}
+        <div className="mt-6 h-[420px] rounded-2xl bg-black sm:h-[480px] lg:mt-8" />
 
         {/* bottom breathing room */}
         <div className="pb-14" />
