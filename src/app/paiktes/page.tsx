@@ -1,22 +1,17 @@
-// src/app/paiktes/page.tsx (FIXED - NO SIGNING, MAIN + SECONDARY TEAMS BY PARTICIPATION)
+// src/app/paiktes/page.tsx — reads from pre-computed player_career_stats / player_tournament_stats
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite } from "./types";
 import {
   parseSearchQuery,
   normalizeForSearch,
-  removeGreekDiacritics,
 } from "@/app/lib/searchUtils";
 
 export const revalidate = 300;
 
 const DEFAULT_PAGE_SIZE = 50;
-const SUPABASE_BATCH_SIZE = 300; // Supabase caps at 1000 rows; keep batches small to stay safe
+const SUPABASE_BATCH_SIZE = 300;
 
-/**
- * Fetch rows from a Supabase table in batches to avoid the default 1000-row limit.
- * Splits `ids` into chunks, runs them in parallel, and combines results.
- */
 async function fetchInBatches<T>(
   table: string,
   idColumn: string,
@@ -57,45 +52,36 @@ type PlayerRow = {
 type PlayerTeamRow = {
   player_id: number;
   team_id: number | null;
-  created_at: string | null;
-  updated_at: string | null;
 };
 
 type TeamRow = { id: number; name: string | null; logo: string | null };
 
-type MPSRow = {
+type CareerStatsRow = {
   player_id: number;
-  match_id: number;
-  team_id: number;
-  goals: number | null;
-  assists: number | null;
-  yellow_cards: number | null;
-  red_cards: number | null;
-  blue_cards: number | null;
-  mvp: boolean | null;
-  best_goalkeeper: boolean | null;
+  total_matches: number;
+  total_goals: number;
+  total_assists: number;
+  total_yellow_cards: number;
+  total_red_cards: number;
+  total_blue_cards: number;
+  total_mvp: number;
+  total_best_gk: number;
+  total_wins: number;
+  primary_team_id: number | null;
 };
 
-type MatchWinnerRow = {
-  id: number;
-  winner_team_id: number | null;
-};
-
-type MatchIdRow = { id: number };
-type MpsGoalsRow = { player_id: number; goals: number | null; match_id: number };
-
-// Type for tournament stats match_player_stats rows
-type TournamentMPSRow = {
-  match_id: number;
+type TournamentStatsRow = {
   player_id: number;
-  team_id: number;
-  goals: number | null;
-  assists: number | null;
-  yellow_cards: number | null;
-  red_cards: number | null;
-  blue_cards: number | null;
-  mvp: boolean | null;
-  best_goalkeeper: boolean | null;
+  tournament_id: number;
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp_count: number;
+  best_gk_count: number;
+  wins: number;
 };
 
 type SP = {
@@ -120,13 +106,10 @@ export default async function PaiktesPage({
   const page = sp?.page ? Math.max(1, Number(sp.page)) : 1;
   const rawSearchTerm = sp?.q ? sp.q.trim() : "";
 
-  // Parse search query for field-specific searches
   const parsedSearch = parseSearchQuery(rawSearchTerm);
-
-  // UNIFIED PAGINATION - Always use pagination for consistency
   const pageSize = DEFAULT_PAGE_SIZE;
 
-  // Fetch tournaments
+  // Fetch tournaments (for the filter dropdown)
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, season")
@@ -141,15 +124,13 @@ export default async function PaiktesPage({
 
   const offset = (page - 1) * pageSize;
 
-  // TEAM FILTER → player ids (from parsed search)
+  // ── TEAM FILTER → player ids ──────────────────────────────────────
   let teamFilteredPlayerIds: number[] | null = null;
   if (parsedSearch.team && parsedSearch.team.length > 0) {
-    // Get all search variants for each team term
     const teamSearchVariants = parsedSearch.team.flatMap((teamTerm) =>
       normalizeForSearch(teamTerm)
     );
 
-    // Build OR conditions for team name search
     const teamConditions = teamSearchVariants
       .map((variant) => `name.ilike.%${variant}%`)
       .join(",");
@@ -161,77 +142,49 @@ export default async function PaiktesPage({
 
     if (matchingTeams && matchingTeams.length > 0) {
       const teamIds = matchingTeams.map((t) => t.id);
-
-      // Get players belonging to these teams — batched
       const playerTeams = await fetchInBatches<{ player_id: number }>(
         "player_teams",
         "team_id",
         teamIds,
         "player_id",
       );
-
-      const playerIdSet = new Set(
-        playerTeams.map((pt) => pt.player_id)
-      );
-      teamFilteredPlayerIds = Array.from(playerIdSet);
+      teamFilteredPlayerIds = [...new Set(playerTeams.map((pt) => pt.player_id))];
     } else {
-      // No matching teams found, return empty result
       teamFilteredPlayerIds = [];
     }
   }
 
-  // TOURNAMENT FILTER → player ids
+  // ── TOURNAMENT FILTER → player ids (from pre-computed table) ──────
   let tournamentPlayerIds: number[] | null = null;
   if (Number.isFinite(tournamentId)) {
-    const { data: tournamentMatches } = await supabaseAdmin
-      .from("matches")
-      .select("id")
+    const { data: tStatsRows } = await supabaseAdmin
+      .from("player_tournament_stats")
+      .select("player_id")
       .eq("tournament_id", tournamentId as number);
 
-    const tMatchIds = (tournamentMatches ?? []).map(
-      (m) => (m as MatchIdRow).id
-    );
-
-    if (tMatchIds.length > 0) {
-      const tournamentMps = await fetchInBatches<{ player_id: number }>(
-        "match_player_stats",
-        "match_id",
-        tMatchIds,
-        "player_id",
-      );
-
-      const playerIdSet = new Set(
-        tournamentMps.map((r) => r.player_id)
-      );
-      tournamentPlayerIds = Array.from(playerIdSet);
-    } else {
-      tournamentPlayerIds = [];
-    }
+    tournamentPlayerIds = (tStatsRows ?? []).map((r) => r.player_id);
+    if (tournamentPlayerIds.length === 0) tournamentPlayerIds = [];
   }
 
-  // Combine filters (team + tournament)
+  // ── Combine filters ───────────────────────────────────────────────
   let combinedPlayerIds: number[] | null = null;
 
   if (teamFilteredPlayerIds !== null && tournamentPlayerIds !== null) {
-    // Both filters active - find intersection
     const teamSet = new Set(teamFilteredPlayerIds);
     combinedPlayerIds = tournamentPlayerIds.filter((id) => teamSet.has(id));
   } else if (teamFilteredPlayerIds !== null) {
-    // Only team filter
     combinedPlayerIds = teamFilteredPlayerIds;
   } else if (tournamentPlayerIds !== null) {
-    // Only tournament filter
     combinedPlayerIds = tournamentPlayerIds;
   }
 
-  // Fetch players with search filters
+  // ── Fetch players ─────────────────────────────────────────────────
   let playersQuery = supabaseAdmin
     .from("player")
     .select("id, first_name, last_name, photo, position, height_cm, birth_date", {
       count: "exact",
     });
 
-  // Apply combined ID filter (team + tournament)
   if (combinedPlayerIds !== null) {
     if (combinedPlayerIds.length === 0) {
       playersQuery = playersQuery.in("id", [-1]);
@@ -240,34 +193,26 @@ export default async function PaiktesPage({
     }
   }
 
-  // Apply position filter from parsed search
+  // Position filter
   if (parsedSearch.position && parsedSearch.position.length > 0) {
-    // Create case-insensitive search for positions
     const posFilters = parsedSearch.position
       .flatMap((pos) => normalizeForSearch(pos))
       .map((variant) => variant.toLowerCase());
 
-    // Use OR condition for multiple position variants
-    const positionConditions = posFilters
-      .map((_, idx) => `position.ilike.%${posFilters[idx]}%`)
-      .join(",");
-
     if (posFilters.length === 1) {
       playersQuery = playersQuery.ilike("position", `%${posFilters[0]}%`);
     } else {
-      // For multiple position searches, we need to use or syntax
-      // Supabase format: .or('position.ilike.%Forward%,position.ilike.%Goalkeeper%')
+      const positionConditions = posFilters
+        .map((f) => `position.ilike.%${f}%`)
+        .join(",");
       playersQuery = playersQuery.or(positionConditions);
     }
   }
 
-  // Apply text search from parsed search (name search)
+  // Name search
   if (parsedSearch.text.length > 0) {
-    // Combine all text search terms
     const textSearchTerms = parsedSearch.text.join(" ");
     const searchVariants = normalizeForSearch(textSearchTerms);
-
-    // Build OR conditions for first_name and last_name across all variants
     const nameConditions: string[] = [];
 
     for (const variant of searchVariants) {
@@ -281,22 +226,16 @@ export default async function PaiktesPage({
     }
   }
 
-  // IMPORTANT: When tournament filter is active OR when using non-alpha sort,
-  // we need to fetch ALL players first, then calculate stats, then sort, then paginate.
-  // Otherwise top scorers with last names late in alphabet won't appear.
-  // Only use early pagination for alphabetical sorting (where DB ordering matches display order).
+  // Deferred pagination when sorting by stats (can't paginate before sorting)
   const shouldDeferPagination = !!tournamentId || sortMode !== "alpha";
 
   let playersQueryWithOrder = playersQuery
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
 
-  // Only apply pagination now if NOT tournament-filtered
   if (!shouldDeferPagination) {
     playersQueryWithOrder = playersQueryWithOrder.range(offset, offset + pageSize - 1);
   } else {
-    // Deferred pagination: we need ALL players so we can sort by stats then paginate.
-    // Supabase default limit is 1000 rows — lift it so no players are silently dropped.
     playersQueryWithOrder = playersQueryWithOrder.limit(10000);
   }
 
@@ -310,35 +249,53 @@ export default async function PaiktesPage({
   const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
-  // Fetch player_teams (membership source) — batched to avoid 1000-row cap
+  // ── Fetch pre-computed career stats (1 row per player) ────────────
+  const careerRows = await fetchInBatches<CareerStatsRow>(
+    "player_career_stats",
+    "player_id",
+    playerIds,
+    "player_id, total_matches, total_goals, total_assists, total_yellow_cards, total_red_cards, total_blue_cards, total_mvp, total_best_gk, total_wins, primary_team_id",
+  );
+  const careerByPlayer = new Map(careerRows.map((r) => [r.player_id, r]));
+
+  // ── Fetch pre-computed tournament stats (if tournament filter active) ──
+  let tourneyByPlayer = new Map<number, TournamentStatsRow>();
+  if (tournamentId && playerIds.length > 0) {
+    const tRows = await fetchInBatches<TournamentStatsRow>(
+      "player_tournament_stats",
+      "player_id",
+      playerIds,
+      "player_id, tournament_id, matches, goals, assists, yellow_cards, red_cards, blue_cards, mvp_count, best_gk_count, wins",
+    );
+    // Filter to the active tournament (in case a player has stats in multiple)
+    for (const r of tRows) {
+      if (r.tournament_id === tournamentId) {
+        tourneyByPlayer.set(r.player_id, r);
+      }
+    }
+  }
+
+  // ── Fetch player_teams for team display ───────────────────────────
   const ptRows = await fetchInBatches<PlayerTeamRow>(
     "player_teams",
     "player_id",
     playerIds,
-    "player_id, team_id, created_at, updated_at",
+    "player_id, team_id",
   );
 
-  const allTeamIdsSet = new Set(
-    ptRows.map((r) => r.team_id).filter(Boolean)
-  );
-  const allTeamIds = Array.from(allTeamIdsSet);
+  const allTeamIdsSet = new Set(ptRows.map((r) => r.team_id).filter(Boolean));
+  const allTeamIds = Array.from(allTeamIdsSet) as number[];
 
-  // Fetch teams
   const { data: teams } = allTeamIds.length
     ? await supabaseAdmin.from("teams").select("id, name, logo").in("id", allTeamIds)
     : { data: [] as TeamRow[] };
 
-  const teamMap: Record<number, { id: number; name: string; logo: string | null }> =
-    {};
-  for (const t of (teams ?? [])) {
-    teamMap[t.id] = {
-      id: t.id,
-      name: t.name ?? "",
-      logo: t.logo,
-    };
+  const teamMap: Record<number, { id: number; name: string; logo: string | null }> = {};
+  for (const t of teams ?? []) {
+    teamMap[t.id] = { id: t.id, name: t.name ?? "", logo: t.logo };
   }
 
-  // Membership: which teams each player currently belongs to
+  // Group membership teams per player
   const teamsByPlayer = new Map<
     number,
     { id: number; name: string; logo: string | null }[]
@@ -351,82 +308,7 @@ export default async function PaiktesPage({
     }
   }
 
-  // Fetch match_player_stats (source for participation + stats + MVP/GK) — batched
-  const mpsRows = await fetchInBatches<MPSRow>(
-    "match_player_stats",
-    "player_id",
-    playerIds,
-    "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
-  );
-
-  // Global matches per player (for "matches" column)
-  const matchesByPlayer = new Map<number, Set<number>>();
-
-  // Matches per (player, team) for ranking memberships
-  const matchesByPlayerTeam = new Map<string, Set<number>>();
-
-  const mvpByPlayer = new Map<number, number>();
-  const gkByPlayer = new Map<number, number>();
-
-  // Aggregate goals/assists/cards from match_player_stats (single source of truth)
-  const goalsByPlayer = new Map<number, number>();
-  const assistsByPlayer = new Map<number, number>();
-  const yellowByPlayer = new Map<number, number>();
-  const redByPlayer = new Map<number, number>();
-  const blueByPlayer = new Map<number, number>();
-
-  for (const r of mpsRows) {
-    // total matches per player
-    if (!matchesByPlayer.has(r.player_id))
-      matchesByPlayer.set(r.player_id, new Set());
-    matchesByPlayer.get(r.player_id)!.add(r.match_id);
-
-    // matches per player+team (only used later for membership teams)
-    const key = `${r.player_id}:${r.team_id}`;
-    if (!matchesByPlayerTeam.has(key)) {
-      matchesByPlayerTeam.set(key, new Set());
-    }
-    matchesByPlayerTeam.get(key)!.add(r.match_id);
-
-    // Aggregate stats per player
-    goalsByPlayer.set(r.player_id, (goalsByPlayer.get(r.player_id) ?? 0) + (r.goals ?? 0));
-    assistsByPlayer.set(r.player_id, (assistsByPlayer.get(r.player_id) ?? 0) + (r.assists ?? 0));
-    yellowByPlayer.set(r.player_id, (yellowByPlayer.get(r.player_id) ?? 0) + (r.yellow_cards ?? 0));
-    redByPlayer.set(r.player_id, (redByPlayer.get(r.player_id) ?? 0) + (r.red_cards ?? 0));
-    blueByPlayer.set(r.player_id, (blueByPlayer.get(r.player_id) ?? 0) + (r.blue_cards ?? 0));
-
-    if (r.mvp)
-      mvpByPlayer.set(r.player_id, (mvpByPlayer.get(r.player_id) ?? 0) + 1);
-    if (r.best_goalkeeper)
-      gkByPlayer.set(
-        r.player_id,
-        (gkByPlayer.get(r.player_id) ?? 0) + 1
-      );
-  }
-
-  // Calculate wins
-  const matchIdsSet = new Set(mpsRows.map((r) => r.match_id));
-  const matchIds = Array.from(matchIdsSet);
-  // Fetch match winners — batched to avoid 1000-row cap
-  const matchWinnerRows = await fetchInBatches<MatchWinnerRow>(
-    "matches",
-    "id",
-    matchIds,
-    "id, winner_team_id",
-  );
-
-  const winnerByMatch = new Map(
-    matchWinnerRows.map((m) => [m.id, m.winner_team_id])
-  );
-
-  const winsByPlayer = new Map<number, number>();
-  for (const r of mpsRows) {
-    const winner = winnerByMatch.get(r.match_id);
-    if (winner != null && winner === r.team_id) {
-      winsByPlayer.set(r.player_id, (winsByPlayer.get(r.player_id) ?? 0) + 1);
-    }
-  }
-
+  // ── Build enriched player list ────────────────────────────────────
   const now = new Date();
 
   let enriched: PLWithTGoals[] = p.map((pl) => {
@@ -437,48 +319,19 @@ export default async function PaiktesPage({
         )
       : null;
 
-    // Membership teams for this player
-    const membershipTeams =
-      teamsByPlayer.get(pl.id) ?? [];
+    const career = careerByPlayer.get(pl.id);
 
-    // Rank membership teams by matches played for that team
-    type TeamWithMatches = {
-      id: number;
-      name: string;
-      logo: string | null;
-      matchesForTeam: number;
-    };
+    // Sort membership teams: primary_team_id first, then by name
+    const membershipTeams = teamsByPlayer.get(pl.id) ?? [];
+    const primaryId = career?.primary_team_id ?? null;
+    const sortedTeams = [...membershipTeams].sort((a, b) => {
+      if (a.id === primaryId && b.id !== primaryId) return -1;
+      if (b.id === primaryId && a.id !== primaryId) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    const topTeams = sortedTeams.slice(0, 3);
 
-    const rankedTeams: TeamWithMatches[] = membershipTeams
-      .map((t) => {
-        const key = `${pl.id}:${t.id}`;
-        const matchSet = matchesByPlayerTeam.get(key);
-        const matchesForTeam = matchSet ? matchSet.size : 0;
-        return { ...t, matchesForTeam };
-      })
-      .sort((a, b) => {
-        // Primary: more matches first
-        if (b.matchesForTeam !== a.matchesForTeam) {
-          return b.matchesForTeam - a.matchesForTeam;
-        }
-        // Tie-breaker: name, then id for determinism
-        if (a.name !== b.name) {
-          return a.name.localeCompare(b.name);
-        }
-        return a.id - b.id;
-      });
-
-    // Main + up to 2 secondary teams
-    const topTeams = rankedTeams
-      .slice(0, 3)
-      .map(({ matchesForTeam, ...rest }) => rest);
-
-    const matches = matchesByPlayer.get(pl.id)?.size ?? 0;
-    const mvp = mvpByPlayer.get(pl.id) ?? 0;
-    const best_gk = gkByPlayer.get(pl.id) ?? 0;
-    const wins = winsByPlayer.get(pl.id) ?? 0;
-
-    return {
+    const result: PLWithTGoals = {
       id: pl.id,
       first_name: pl.first_name ?? "",
       last_name: pl.last_name ?? "",
@@ -487,22 +340,39 @@ export default async function PaiktesPage({
       height_cm: pl.height_cm ?? null,
       birth_date: pl.birth_date ?? null,
       age,
-      // membership-based team fields:
-      teams: topTeams, // up to 3 current teams, sorted by matches played
-      team: topTeams[0] ?? null, // main team = most matches among membership teams
-      matches,
-      goals: goalsByPlayer.get(pl.id) ?? 0,
-      assists: assistsByPlayer.get(pl.id) ?? 0,
-      yellow_cards: yellowByPlayer.get(pl.id) ?? 0,
-      red_cards: redByPlayer.get(pl.id) ?? 0,
-      blue_cards: blueByPlayer.get(pl.id) ?? 0,
-      mvp,
-      best_gk,
-      wins,
+      teams: topTeams,
+      team: topTeams[0] ?? null,
+      matches: career?.total_matches ?? 0,
+      goals: career?.total_goals ?? 0,
+      assists: career?.total_assists ?? 0,
+      yellow_cards: career?.total_yellow_cards ?? 0,
+      red_cards: career?.total_red_cards ?? 0,
+      blue_cards: career?.total_blue_cards ?? 0,
+      mvp: career?.total_mvp ?? 0,
+      best_gk: career?.total_best_gk ?? 0,
+      wins: career?.total_wins ?? 0,
     };
+
+    // Overlay tournament-scoped stats when tournament filter is active
+    if (tournamentId) {
+      const ts = tourneyByPlayer.get(pl.id);
+      if (ts) {
+        result.tournament_matches = ts.matches;
+        result.tournament_goals = ts.goals;
+        result.tournament_assists = ts.assists;
+        result.tournament_yellow_cards = ts.yellow_cards;
+        result.tournament_red_cards = ts.red_cards;
+        result.tournament_blue_cards = ts.blue_cards;
+        result.tournament_mvp = ts.mvp_count;
+        result.tournament_best_gk = ts.best_gk_count;
+        result.tournament_wins = ts.wins;
+      }
+    }
+
+    return result;
   });
 
-  // Apply stats filters from parsed search
+  // ── Stats filters ─────────────────────────────────────────────────
   if (parsedSearch.minGoals !== undefined) {
     enriched = enriched.filter((p) => p.goals >= parsedSearch.minGoals!);
   }
@@ -513,112 +383,7 @@ export default async function PaiktesPage({
     enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
   }
 
-  // TOURNAMENT-SCOPED STATS
-  if (tournamentId) {
-    const { data: matchRows } = await supabaseAdmin
-      .from("matches")
-      .select("id, winner_team_id")
-      .eq("tournament_id", tournamentId);
-
-    const tMatches = matchRows ?? [];
-    const tMatchIds = tMatches.map((m) => m.id as number);
-
-    if (tMatchIds.length) {
-      const winnerByMatch = new Map<number, number | null>();
-      for (const m of tMatches) {
-        winnerByMatch.set(m.id as number, m.winner_team_id as number | null);
-      }
-
-      const typedMpsRows = await fetchInBatches<TournamentMPSRow>(
-        "match_player_stats",
-        "match_id",
-        tMatchIds,
-        "match_id,player_id,team_id,goals,assists,yellow_cards,red_cards,blue_cards,mvp,best_goalkeeper",
-      );
-
-      type TStats = {
-        matches: number;
-        goals: number;
-        assists: number;
-        yellow_cards: number;
-        red_cards: number;
-        blue_cards: number;
-        mvp: number;
-        best_gk: number;
-        wins: number;
-      };
-
-      const tStatsByPlayer = new Map<number, TStats>();
-
-      const ensure = (playerId: number): TStats => {
-        let s = tStatsByPlayer.get(playerId);
-        if (!s) {
-          s = {
-            matches: 0,
-            goals: 0,
-            assists: 0,
-            yellow_cards: 0,
-            red_cards: 0,
-            blue_cards: 0,
-            mvp: 0,
-            best_gk: 0,
-            wins: 0,
-          };
-          tStatsByPlayer.set(playerId, s);
-        }
-        return s;
-      };
-
-      const matchesByTPlayer = new Map<number, Set<number>>();
-
-      for (const r of typedMpsRows) {
-        const pid = r.player_id;
-        const s = ensure(pid);
-
-        if (!matchesByTPlayer.has(pid)) {
-          matchesByTPlayer.set(pid, new Set());
-        }
-        matchesByTPlayer.get(pid)!.add(r.match_id);
-
-        s.goals += r.goals ?? 0;
-        s.assists += r.assists ?? 0;
-        s.yellow_cards += r.yellow_cards ?? 0;
-        s.red_cards += r.red_cards ?? 0;
-        s.blue_cards += r.blue_cards ?? 0;
-        s.mvp += r.mvp ? 1 : 0;
-        s.best_gk += r.best_goalkeeper ? 1 : 0;
-
-        const winnerTeamId = winnerByMatch.get(r.match_id);
-        if (winnerTeamId && winnerTeamId === r.team_id) {
-          s.wins += 1;
-        }
-      }
-
-      for (const [playerId, matchSet] of matchesByTPlayer) {
-        const s = tStatsByPlayer.get(playerId);
-        if (s) {
-          s.matches = matchSet.size;
-        }
-      }
-
-      for (const pl of enriched) {
-        const s = tStatsByPlayer.get(pl.id);
-        if (!s) continue;
-
-        pl.tournament_matches = s.matches;
-        pl.tournament_goals = s.goals;
-        pl.tournament_assists = s.assists;
-        pl.tournament_yellow_cards = s.yellow_cards;
-        pl.tournament_red_cards = s.red_cards;
-        pl.tournament_blue_cards = s.blue_cards;
-        pl.tournament_mvp = s.mvp;
-        pl.tournament_best_gk = s.best_gk;
-        pl.tournament_wins = s.wins;
-      }
-    }
-  }
-
-  // TOURNAMENT-AWARE SORTING
+  // ── Sorting ───────────────────────────────────────────────────────
   const hasTournament = !!tournamentId;
 
   function metric(
@@ -680,12 +445,9 @@ export default async function PaiktesPage({
       break;
   }
 
-  // Apply pagination AFTER sorting when tournament filter is active
-  // (for non-tournament filters, pagination was already applied in the query)
+  // ── Pagination ────────────────────────────────────────────────────
   let finalTotalCount = totalCount ?? 0;
   if (shouldDeferPagination) {
-    // When we defer pagination, the totalCount should be the count AFTER all filters
-    // (including stats filters) but BEFORE slicing for pagination
     finalTotalCount = enriched.length;
     enriched = enriched.slice(offset, offset + pageSize);
   }
