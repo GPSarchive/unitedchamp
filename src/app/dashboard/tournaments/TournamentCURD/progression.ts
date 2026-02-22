@@ -2,6 +2,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { refreshStatsForMatch } from "@/app/lib/refreshPlayerStats";
 
 /** Service role key (server only) */
 const supabase = createClient(
@@ -304,6 +305,11 @@ export async function progressAfterMatch(matchId: Id) {
 
   // 6) Tournament completion (all matches finished)
   if (m.tournament_id) await maybeCompleteTournament(m.tournament_id);
+
+  // 7) Refresh pre-computed player stats cache
+  await refreshStatsForMatch(matchId).catch((err) =>
+    console.error("[progressAfterMatch] refreshStatsForMatch error:", err)
+  );
 
   return { ok: true };
 }

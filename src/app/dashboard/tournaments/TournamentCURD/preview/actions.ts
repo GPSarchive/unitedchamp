@@ -2,6 +2,7 @@
 
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { progressAfterMatch, recomputeStandingsNow } from '../progression';
+import { refreshCareerStatsForPlayers, refreshTournamentStatsForPlayers } from '@/app/lib/refreshPlayerStats';
 
 type PlayerStatInput = {
   player_id: number;
@@ -62,13 +63,20 @@ export async function revertMatchToScheduledAction(matchId: number) {
     // 1. Get match info to know which stage to recalculate
     const { data: match, error: matchErr } = await supabase
       .from('matches')
-      .select('id, stage_id, status')
+      .select('id, stage_id, status, tournament_id')
       .eq('id', matchId)
       .single();
 
     if (matchErr || !match) {
       return { success: false, error: 'Match not found' };
     }
+
+    // 1b. Capture affected player IDs BEFORE deleting stats (for cache refresh)
+    const { data: affectedMps } = await supabase
+      .from('match_player_stats')
+      .select('player_id')
+      .eq('match_id', matchId);
+    const affectedPlayerIds = [...new Set((affectedMps ?? []).map((r: { player_id: number }) => r.player_id))];
 
     // 2. Delete player stats
     const { error: statsErr } = await supabase
@@ -115,6 +123,18 @@ export async function revertMatchToScheduledAction(matchId: number) {
       } catch (err) {
         console.error('Failed to recalculate standings:', err);
         // Don't fail the entire operation if standings recalc fails
+      }
+    }
+
+    // 6. Refresh pre-computed player stats cache for affected players
+    if (affectedPlayerIds.length > 0) {
+      try {
+        await refreshCareerStatsForPlayers(affectedPlayerIds);
+        if (match.tournament_id) {
+          await refreshTournamentStatsForPlayers(affectedPlayerIds, match.tournament_id);
+        }
+      } catch (err) {
+        console.error('Failed to refresh player stats cache:', err);
       }
     }
 
