@@ -403,6 +403,9 @@ export type StageConfig = {
   standalone_bracket_size?: number;
   groups_signature?: string;
 
+  // ----- Per-stage team selection (overrides tournament-wide pool) -----
+  stage_team_ids?: number[];
+
   // ----- KO → Groups intake -----
   from_knockout_stage_idx?: number;
   groups_intake?: IntakeMapping[];

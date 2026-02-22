@@ -255,6 +255,48 @@ export default function StageCard({
       ),
     } as any);
 
+  // ---- Per-stage team selection ----
+  const stageTeamIds: number[] | undefined = (cfg as any).stage_team_ids;
+  const hasStageFilter = Array.isArray(stageTeamIds) && stageTeamIds.length > 0;
+  const [teamPickerOpen, setTeamPickerOpen] = useState(false);
+  const [teamSearch, setTeamSearch] = useState("");
+
+  const stageTeamSet = useMemo(
+    () => new Set(hasStageFilter ? stageTeamIds : teams.map((t) => t.id)),
+    [hasStageFilter, stageTeamIds, teams]
+  );
+
+  const toggleStageTeam = (id: number) => {
+    const current = new Set(stageTeamSet);
+    if (current.has(id)) current.delete(id);
+    else current.add(id);
+    setCfg({ stage_team_ids: Array.from(current) });
+  };
+
+  const selectAllStageTeams = () => {
+    setCfg({ stage_team_ids: teams.map((t) => t.id) });
+  };
+
+  const clearStageTeams = () => {
+    setCfg({ stage_team_ids: [] });
+  };
+
+  // Filtered teams for this stage (used by InlineMatchPlanner)
+  const stageFilteredTeams = useMemo(() => {
+    if (!hasStageFilter) return teams;
+    const set = new Set(stageTeamIds);
+    return teams.filter((t) => set.has(t.id));
+  }, [hasStageFilter, stageTeamIds, teams]);
+
+  const searchedPickerTeams = useMemo(() => {
+    const term = teamSearch.trim().toLowerCase();
+    if (!term) return teams;
+    return teams.filter((t) => {
+      const name = ((t as any).name ?? catalog[t.id]?.name ?? `Team #${t.id}`).toLowerCase();
+      return name.includes(term) || String(t.id).includes(term);
+    });
+  }, [teams, teamSearch, catalog]);
+
   const miniPayload: NewTournamentPayload = {
     tournament: {
       name: "",
@@ -268,7 +310,7 @@ export default function StageCard({
       winner_team_id: null,
     },
     stages: allStages as any,
-    tournament_team_ids: teams.map((t) => t.id),
+    tournament_team_ids: stageFilteredTeams.map((t) => t.id),
   };
 
   const srcIdx = Number.isFinite((cfg as any)?.from_stage_idx as any)
@@ -438,11 +480,84 @@ export default function StageCard({
         </div>
       )}
 
+      {/* Per-stage team picker */}
+      <div className="mt-4 rounded-xl border border-gray-800 bg-black">
+        <button
+          type="button"
+          onClick={() => setTeamPickerOpen((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
+        >
+          <span>
+            Ομάδες σταδίου{" "}
+            <span className="text-gray-400">
+              ({hasStageFilter ? stageTeamIds.length : teams.length}/{teams.length})
+            </span>
+          </span>
+          <span className="text-gray-400 text-xs">
+            {teamPickerOpen ? "▲" : "▼"}
+          </span>
+        </button>
+
+        {teamPickerOpen && (
+          <div className="border-t border-gray-800 p-3 space-y-3">
+            {/* Search + actions */}
+            <div className="flex gap-2">
+              <input
+                className={`${fieldBase} flex-1`}
+                placeholder="Αναζήτηση ομάδας..."
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+              />
+              <button onClick={selectAllStageTeams} className={btnGhost} title="Επιλογή όλων">
+                Όλες
+              </button>
+              <button onClick={clearStageTeams} className={btnGhost} title="Καθαρισμός">
+                Καμία
+              </button>
+            </div>
+
+            {/* Team list */}
+            <ul className="max-h-56 overflow-auto divide-y divide-gray-800/50 rounded-lg border border-gray-800">
+              {searchedPickerTeams.map((t) => {
+                const name = (t as any).name ?? catalog[t.id]?.name ?? `Team #${t.id}`;
+                const logo = (t as any).logo ?? catalog[t.id]?.logo ?? null;
+                const checked = stageTeamSet.has(t.id);
+                return (
+                  <li key={t.id} className="flex items-center gap-3 px-3 py-2 hover:bg-white/5">
+                    <input
+                      type="checkbox"
+                      className="accent-white"
+                      checked={checked}
+                      onChange={() => toggleStageTeam(t.id)}
+                    />
+                    {logo && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={logo} alt="" className="h-6 w-6 rounded-full object-cover ring-1 ring-white/10" />
+                    )}
+                    <span className="text-sm text-white/90 truncate flex-1">{name}</span>
+                    <span className="text-xs text-gray-500">#{t.id}</span>
+                  </li>
+                );
+              })}
+              {searchedPickerTeams.length === 0 && (
+                <li className="px-3 py-4 text-center text-sm text-gray-500">
+                  Δεν βρέθηκαν ομάδες.
+                </li>
+              )}
+            </ul>
+
+            <p className="text-xs text-gray-400">
+              Επιλέξτε ποιες ομάδες θα συμμετέχουν σε αυτό το στάδιο. Πατήστε «Regenerate» στο match planner για να ανανεώσετε τα ματς.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Inline match planner */}
       <div className="mt-4 rounded-xl border border-gray-800 bg-black p-3">
         <InlineMatchPlanner
-          miniPayload={newMiniPayload(allStages, teams)}
-          teams={teams}
+          miniPayload={miniPayload}
+          teams={stageFilteredTeams}
           forceStageIdx={effectiveStageIdx}
         />
       </div>
@@ -483,23 +598,3 @@ export default function StageCard({
   );
 }
 
-function newMiniPayload(
-  allStages: NewTournamentPayload["stages"],
-  teams: TeamDraft[] 
-): NewTournamentPayload {
-  return {
-    tournament: {
-      name: "",
-      slug: null,
-      season: null,
-      status: "scheduled",
-      format: "league",
-      logo: null,
-      start_date: null,
-      end_date: null,
-      winner_team_id: null,
-    },
-    stages: allStages as any,
-    tournament_team_ids: teams.map((t) => t.id),
-  };
-}
