@@ -308,30 +308,50 @@ export async function refreshStatsForMatch(matchId: number) {
   }
 }
 
+// ─── Helper: paginate through an entire table ───────────────────────
+// Supabase PostgREST caps responses at ~1000 rows (server max-rows setting).
+// A single .limit(100000) does NOT override this. We must paginate with .range().
+
+const PAGE_SIZE = 500;
+
+async function fetchAllRows<T>(
+  table: string,
+  selectColumns: string,
+  orderColumn = "id",
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from(table)
+      .select(selectColumns)
+      .order(orderColumn, { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    all.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break; // last page
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 // ─── Public: full backfill of ALL players ───────────────────────────
 
 export async function refreshAllPlayerStats(): Promise<{
   careerRows: number;
   tournamentRows: number;
+  mpsRowsProcessed: number;
 }> {
-  // 1. Get ALL match_player_stats
-  const allMps = await fetchInBatches<MpsRow & { tournament_id?: number }>(
+  // 1. Paginate through ALL match_player_stats rows
+  const rows = await fetchAllRows<MpsRow>(
     "match_player_stats",
-    "player_id",
-    [], // we need all — use a different approach
     "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
   );
 
-  // fetchInBatches returns [] for empty ids, so use direct query for full table
-  const { data: fullMps, error: mpsErr } = await supabaseAdmin
-    .from("match_player_stats")
-    .select("player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper")
-    .limit(100000);
-
-  if (mpsErr) throw new Error(`Failed reading match_player_stats: ${mpsErr.message}`);
-  const rows = (fullMps ?? []) as MpsRow[];
-
-  // 2. Get ALL matches (for tournament_id + winner)
+  // 2. Get ALL matches (for tournament_id + winner) — via batched ID lookup
   const matchIds = [...new Set(rows.map((r) => r.match_id))];
   const matchRows = await fetchInBatches<{
     id: number;
@@ -393,7 +413,6 @@ export async function refreshAllPlayerStats(): Promise<{
   }
 
   // 4. Aggregate tournament stats
-  // Group mps rows by (player_id, tournament_id)
   const tourneyKey = (pid: number, tid: number) => `${pid}:${tid}`;
   const tourneyMap = new Map<string, TournamentBucket & { player_id: number; tournament_id: number }>();
   const tourneyMatchesPerPlayer = new Map<string, Set<number>>();
@@ -440,7 +459,6 @@ export async function refreshAllPlayerStats(): Promise<{
   }
 
   // 5. Clear and upsert career stats
-  // Delete all existing rows, then insert fresh (ensures deleted players are cleaned up)
   await supabaseAdmin.from("player_career_stats").delete().gte("player_id", 0);
 
   const careerUpserts = Array.from(careerMap.entries()).map(([pid, s]) => ({
@@ -471,5 +489,9 @@ export async function refreshAllPlayerStats(): Promise<{
     if (error) console.error("[backfill tournament] upsert error:", error.message);
   }
 
-  return { careerRows: careerUpserts.length, tournamentRows: tourneyUpserts.length };
+  return {
+    careerRows: careerUpserts.length,
+    tournamentRows: tourneyUpserts.length,
+    mpsRowsProcessed: rows.length,
+  };
 }

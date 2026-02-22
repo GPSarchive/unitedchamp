@@ -13,6 +13,11 @@ export default async function RefreshStatsPage() {
     .from("player_tournament_stats")
     .select("*", { count: "exact", head: true });
 
+  // Source table count — the backfill should process exactly this many rows
+  const { count: mpsCount } = await supabaseAdmin
+    .from("match_player_stats")
+    .select("*", { count: "exact", head: true });
+
   // Sample of top 10 career stats by goals
   const { data: topGoals } = await supabaseAdmin
     .from("player_career_stats")
@@ -49,7 +54,11 @@ export default async function RefreshStatsPage() {
         first time or to fix any drift.
       </p>
 
-      <div className="flex gap-8 text-sm">
+      <div className="flex flex-wrap gap-4 text-sm">
+        <div className="p-3 bg-yellow-900/40 border border-yellow-800 rounded-lg">
+          <span className="text-yellow-400">match_player_stats rows (source):</span>{" "}
+          <span className="font-mono font-bold">{mpsCount ?? 0}</span>
+        </div>
         <div className="p-3 bg-gray-800 rounded-lg">
           <span className="text-gray-400">Career stats rows:</span>{" "}
           <span className="font-mono font-bold">{careerCount ?? 0}</span>

@@ -7,6 +7,7 @@ export async function runFullBackfill(): Promise<{
   success: boolean;
   careerRows?: number;
   tournamentRows?: number;
+  mpsRowsProcessed?: number;
   error?: string;
 }> {
   try {
