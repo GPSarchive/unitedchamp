@@ -72,12 +72,11 @@ export function GlassCard({
   children,
   className = "",
   hover = true,
-  ...props
 }: {
   children: ReactNode;
   className?: string;
   hover?: boolean;
-} & React.HTMLAttributes<HTMLDivElement>) {
+}) {
   return (
     <motion.div
       className={`
@@ -88,7 +87,6 @@ export function GlassCard({
         ${className}
       `}
       whileHover={hover ? { y: -8, scale: 1.02, transition: { duration: 0.25 } } : undefined}
-      {...props}
     >
       {children}
     </motion.div>
