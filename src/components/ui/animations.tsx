@@ -44,20 +44,24 @@ export function Counter({
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const count = useMotionValue(from);
-  const rounded = useTransform(count, Math.round);
+  const [displayValue, setDisplayValue] = useState(from);
 
   useEffect(() => {
     if (isInView) {
-      animate(count, to, { duration: 1.5, ease: [0.16, 1, 0.3, 1] });
+      const controls = animate(from, to, { 
+        duration: 1.5, 
+        ease: [0.16, 1, 0.3, 1],
+        onUpdate: (value) => setDisplayValue(Math.round(value))
+      });
+      return () => controls.stop();
     }
-  }, [isInView, count, to]);
+  }, [isInView, from, to]);
 
   return (
-    <motion.span ref={ref} className={className}>
-      {rounded}
+    <span ref={ref} className={className}>
+      {displayValue}
       {suffix}
-    </motion.span>
+    </span>
   );
 }
 
