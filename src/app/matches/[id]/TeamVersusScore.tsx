@@ -223,16 +223,20 @@ function ScoreDisplay({
  * Animated Number with count-up effect
  */
 function AnimatedNumber({ value, isWinner }: { value: number; isWinner: boolean }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, Math.round);
+  const [displayValue, setDisplayValue] = useState(0);
   const hasAnimated = useRef(false);
 
   useEffect(() => {
     if (!hasAnimated.current) {
       hasAnimated.current = true;
-      animate(count, value, { duration: 1, ease: [0.16, 1, 0.3, 1] });
+      const controls = animate(0, value, { 
+        duration: 1, 
+        ease: [0.16, 1, 0.3, 1],
+        onUpdate: (v) => setDisplayValue(Math.round(v))
+      });
+      return () => controls.stop();
     }
-  }, [count, value]);
+  }, [value]);
 
   return (
     <motion.span
@@ -245,7 +249,7 @@ function AnimatedNumber({ value, isWinner }: { value: number; isWinner: boolean 
           : "0 4px 20px rgba(0,0,0,0.5)",
       }}
     >
-      {rounded}
+      {displayValue}
     </motion.span>
   );
 }
