@@ -16,8 +16,7 @@ import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 
-import VantaBg from "@/app/lib/VantaBg";
-import ShinyText from "./ShinyText";
+import AnimatedHeroBg from "@/components/ui/AnimatedHeroBg";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 
 // NEW COMPONENTS
