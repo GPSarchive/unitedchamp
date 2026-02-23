@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin'; // service role for writes (bypass RLS)
+import { refreshTournamentCounts } from '@/app/lib/refreshTournamentCounts';
 
 /* =========================================================
    Local server-only types (avoid importing from Client code)
@@ -544,6 +545,11 @@ export async function createTournamentAction(formData: FormData) {
       }
     }
   }
+
+  // Refresh denormalized tournament counts
+  await refreshTournamentCounts(tRow.id).catch((err) =>
+    console.error("[createTournament] refreshTournamentCounts error:", err)
+  );
 
   revalidatePath('/tournoua');
   redirect(`/tournoua/${tRow.slug ?? payload.tournament.slug ?? ''}`);
@@ -1151,6 +1157,11 @@ export async function updateTournamentAction(formData: FormData) {
       }
     }
   }
+
+  // Refresh denormalized tournament counts
+  await refreshTournamentCounts(tournamentId).catch((err) =>
+    console.error("[updateTournament] refreshTournamentCounts error:", err)
+  );
 
   revalidatePath('/tournaments');
   redirect(`/tournaments/${payload.tournament.slug ?? existing.slug ?? ''}`);

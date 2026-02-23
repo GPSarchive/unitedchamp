@@ -3,6 +3,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { refreshStatsForMatch } from "@/app/lib/refreshPlayerStats";
+import { refreshTournamentCounts } from "@/app/lib/refreshTournamentCounts";
 
 /** Service role key (server only) */
 const supabase = createClient(
@@ -310,6 +311,13 @@ export async function progressAfterMatch(matchId: Id) {
   await refreshStatsForMatch(matchId).catch((err) =>
     console.error("[progressAfterMatch] refreshStatsForMatch error:", err)
   );
+
+  // 8) Refresh denormalized tournament counts (teams_count, matches_count)
+  if (m.tournament_id) {
+    await refreshTournamentCounts(m.tournament_id).catch((err) =>
+      console.error("[progressAfterMatch] refreshTournamentCounts error:", err)
+    );
+  }
 
   return { ok: true };
 }

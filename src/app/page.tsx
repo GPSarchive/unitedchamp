@@ -170,7 +170,7 @@ async function fetchTournaments() {
   return withConsoleTiming('db:tournaments', async () => {
     const { data, error } = await supabaseAdmin
       .from('tournaments')
-      .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .select('id, name, slug, format, season, logo, status, winner_team_id, teams_count, matches_count')
       .order('id', { ascending: false })
       .limit(6); // Limit to 6 tournaments for homepage
 
@@ -181,29 +181,12 @@ async function fetchTournaments() {
 
     console.log(`Tournaments fetched: ${data?.length ?? 0}`);
 
-    // Fetch counts for each tournament
-    const tournamentsWithCounts = await Promise.all(
-      (data ?? []).map(async (tournament) => {
-        // Fetch teams count (distinct team_ids, since a team can appear in multiple group stages)
-        const { data: teamRows } = await supabaseAdmin
-          .from('tournament_teams')
-          .select('team_id')
-          .eq('tournament_id', tournament.id);
-        const teamsCount = new Set((teamRows ?? []).map((r: any) => r.team_id)).size;
-
-        // Fetch matches count
-        const { count: matchesCount } = await supabaseAdmin
-          .from('matches')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', tournament.id);
-
-        return {
-          ...tournament,
-          teams_count: String(teamsCount ?? 0),
-          matches_count: String(matchesCount ?? 0),
-        };
-      })
-    );
+    // Map denormalized counts to string format expected by Tournament type
+    const tournamentsWithCounts = (data ?? []).map((tournament) => ({
+      ...tournament,
+      teams_count: String(tournament.teams_count ?? 0),
+      matches_count: String(tournament.matches_count ?? 0),
+    }));
 
     // Sign tournament logos
     const signedTournaments = await signTournamentLogos(tournamentsWithCounts as Tournament[]);

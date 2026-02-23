@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { refreshTournamentCounts } from "@/app/lib/refreshTournamentCounts";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -565,6 +566,11 @@ if (body.matches?.upsert?.length) {
       out.matches = resolvedMatches ?? out.matches;
     }
     // ======================================================================
+
+    // Refresh denormalized tournament counts (teams_count, matches_count)
+    await refreshTournamentCounts(tournamentId).catch((err) =>
+      console.error("[save-all] refreshTournamentCounts error:", err)
+    );
 
     console.log("[save-all][out] Final:", JSON.stringify(out, null, 2));
     return NextResponse.json(out, { status: 200 });
