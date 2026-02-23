@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import { Trophy, Goal, Calendar, User } from "lucide-react";
 import type { Id } from "@/app/lib/types";
