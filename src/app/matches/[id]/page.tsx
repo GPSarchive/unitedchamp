@@ -203,15 +203,19 @@ export default async function Page({
   ];
 
   return (
-    <div className="relative min-h-dvh overflow-x-visible">
-      {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+    <div className="relative min-h-dvh overflow-x-visible bg-[#09090B]">
+      {/* Animated gradient background */}
+      <AnimatedHeroBg className="fixed inset-0 -z-10" variant="matches" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
           <TournamentHeader
             logo={match.tournament.logo}
             name={match.tournament.name}
+            matchday={match.matchday}
+            round={match.round}
+            matchDate={match.match_date}
+            tournamentId={match.tournament.id}
           />
         )}
       </div>
