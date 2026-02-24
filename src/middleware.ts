@@ -113,7 +113,9 @@ export async function middleware(req: NextRequest) {
   }
 
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  res.headers.set('X-Frame-Options', 'DENY')
+  // X-Frame-Options cannot express domain allowlists; frame-ancestors CSP directive handles it.
+  // DENY/SAMEORIGIN would override CSP for older browsers, so we remove it in favour of frame-ancestors.
+  res.headers.delete('X-Frame-Options')
   res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
@@ -158,7 +160,7 @@ export async function middleware(req: NextRequest) {
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
-    "frame-ancestors 'none'",
+    "frame-ancestors 'self' https://digitalfootprint.gr https://www.digitalfootprint.gr",
     `img-src ${imgSrc}`,
     `script-src ${scriptSrc}`,
     `style-src ${styleSources}`,

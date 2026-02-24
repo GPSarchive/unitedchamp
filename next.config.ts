@@ -118,7 +118,7 @@ const nextConfig: NextConfig = {
     const baseHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      // X-Frame-Options removed — frame-ancestors CSP directive in middleware.ts is authoritative
     ];
 
     const prodOnly = isProd
