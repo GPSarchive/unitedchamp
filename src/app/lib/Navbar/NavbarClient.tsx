@@ -9,130 +9,27 @@ import type { User } from "@supabase/supabase-js";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
-/* ===================== Data ===================== */
-const NAV_LINKS = [
-  { href: "/home", label: "HOME", img: "/field2.jpg" },
-  { href: "/articles", label: "ΑΡΘΡΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ", img: "/ανακοινωσεις.jpg" },
-  { href: "/OMADES", label: "ΟΜΑΔΕΣ", img: "/Ομαδες.jpg" },
-  { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ", img: "/tournamentPhoto.png" },
-  { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ", img: "/επικοινωνια.jpg" },
-  { href: "/paiktes", label: "ΠΑΙΚΤΕΣ", img: "/παικτες.jpg" },
-  { href: "/matches", label: "ΑΓΩΝΕΣ", img: "/αγωνες.jpg" },
-  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ", img: "/γενικη-καταταξη.jpg" },
-  { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ", img: "/κανονισμος.jpg" },
-] as const;
+/* ================================================================ *
+ *  Navigation data - Two columns                                   *
+ * ================================================================ */
+const COLUMN_1 = [
+  { href: "/home", label: "HOME" },
+  { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ" },
+  { href: "/matches", label: "ΑΓΩΝΕΣ" },
+  { href: "/OMADES", label: "ΟΜΑΔΕΣ" },
+  { href: "/paiktes", label: "ΠΑΙΚΤΕΣ" },
+];
 
-/* ===================== Styles ===================== */
-const TILE_CLASS =
-  "relative group block shrink-0 rounded-xl overflow-hidden " +
-  "border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900 " +
-  "hover:border-white/30 hover:shadow-lg hover:shadow-white/10 transition-all duration-300 " +
-  "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 " +
-  "focus-visible:ring-offset-2 focus-visible:ring-offset-black " +
-  "w-[180px] h-[64px] md:w-[260px] md:h-[84px] xl:w-[300px] xl:h-[90px]";
+const COLUMN_2 = [
+  { href: "/articles", label: "ΑΡΘΡΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ" },
+  { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ" },
+  { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
+  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ" },
+];
 
-/* ===================== Sub-components ===================== */
-
-const NavLink = memo(({ href, label, img, isActive, onClick }: {
-  href: string;
-  label: string;
-  img: string;
-  isActive?: "page";
-  onClick?: () => void;
-}) => (
-  <Link
-    href={href}
-    aria-current={isActive}
-    className={TILE_CLASS}
-    role="listitem"
-    onClick={onClick}
-  >
-    <Image
-      src={img}
-      alt={label}
-      fill
-      sizes="(min-width: 1280px) 300px, (min-width: 768px) 260px, 180px"
-      className="object-cover transition-transform duration-500 will-change-transform group-hover:scale-110"
-    />
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="rounded-md bg-black/30 px-3 py-1 text-white text-lg font-semibold tracking-wide backdrop-blur-[2px]">
-        {label}
-      </span>
-    </div>
-  </Link>
-));
-NavLink.displayName = "NavLink";
-
-const MobileNavLink = memo(({ href, label, img, isActive, onClick }: {
-  href: string;
-  label: string;
-  img: string;
-  isActive?: "page";
-  onClick: () => void;
-}) => (
-  <Link
-    href={href}
-    onClick={onClick}
-    aria-current={isActive}
-    className="relative group block w-full h-[70px] rounded-lg overflow-hidden border border-white/10 bg-gradient-to-b from-zinc-950 to-zinc-900 hover:border-white/30 transition active:scale-[0.98]"
-  >
-    <Image
-      src={img}
-      alt={label}
-      fill
-      sizes="100vw"
-      className="object-cover transition-transform duration-500 group-hover:scale-105"
-    />
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="rounded bg-black/30 px-2.5 py-0.5 text-white text-sm font-semibold tracking-wide backdrop-blur-[2px]">
-        {label}
-      </span>
-    </div>
-  </Link>
-));
-MobileNavLink.displayName = "MobileNavLink";
-
-const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean }) => {
-  const metadata = user?.user_metadata ?? {};
-  const avatarUrl: string | undefined = metadata.avatar_url || metadata.picture;
-  
-  const avatarContent = avatarUrl ? (
-    <Image src={avatarUrl} alt="Profile photo" width={24} height={24} className="rounded-full" />
-  ) : (
-    <svg viewBox="0 0 24 24" width={isMobile ? 20 : 22} height={isMobile ? 20 : 22} aria-hidden className="opacity-90">
-      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"/>
-    </svg>
-  );
-
-  if (isMobile) {
-    return (
-      <Link
-        href="/dashboard"
-        aria-label="Account"
-        className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
-        title={user.email ?? "Account"}
-      >
-        {avatarContent}
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      href="/dashboard"
-      className="inline-flex flex-col items-center bg-black/60 gap-1 rounded-full border border-white/15 px-3 py-2 hover:bg-white/5 transition min-w-0"
-      aria-label={`Account: ${user.email ?? "Unknown user"}`}
-      title={user.email ?? "Account"}
-    >
-      {avatarContent}
-      <span className="text-[11px] leading-tight opacity-90 max-w-40 truncate">
-        {user.email ?? "Account"}
-      </span>
-    </Link>
-  );
-});
-UserAvatar.displayName = "UserAvatar";
-
+/* ================================================================ *
+ *  Animated kintsugi background (original)                         *
+ * ================================================================ */
 const AnimatedBackground = memo(() => (
   <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
     <svg className="kintsugi-svg w-full h-full mix-blend-screen" viewBox="0 0 1440 200" preserveAspectRatio="none">
@@ -179,7 +76,129 @@ const AnimatedBackground = memo(() => (
 ));
 AnimatedBackground.displayName = "AnimatedBackground";
 
-/* ===================== Custom Hook: Desktop Scroll ===================== */
+/* ================================================================ *
+ *  Menu link with luxurious underline animation                    *
+ * ================================================================ */
+const MenuLink = memo(
+  ({
+    href,
+    label,
+    isActive,
+    onClick,
+    index,
+    columnOffset = 0,
+  }: {
+    href: string;
+    label: string;
+    isActive?: "page";
+    onClick: () => void;
+    index: number;
+    columnOffset?: number;
+  }) => {
+    const prefersReduced = useReducedMotion();
+    const delay = prefersReduced ? 0 : 0.08 + (index + columnOffset) * 0.05;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          delay,
+          duration: 0.5,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        <Link
+          href={href}
+          onClick={onClick}
+          aria-current={isActive}
+          className="group relative block py-3"
+        >
+          <span
+            className={`
+              text-sm md:text-base font-medium tracking-[0.15em] uppercase
+              transition-colors duration-500
+              ${isActive === "page" ? "text-amber-400" : "text-white/70 group-hover:text-white"}
+            `}
+          >
+            {label}
+          </span>
+          
+          {/* Luxurious underline */}
+          <span className="absolute bottom-2 left-0 h-px w-full overflow-hidden">
+            <span
+              className={`
+                block h-full bg-gradient-to-r from-amber-400/80 via-amber-300 to-amber-400/80
+                transition-all duration-500 ease-out
+                ${isActive === "page" ? "w-full" : "w-0 group-hover:w-full"}
+              `}
+              style={{ transformOrigin: "left" }}
+            />
+          </span>
+
+          {/* Subtle glow on hover */}
+          <span
+            className={`
+              absolute bottom-2 left-0 h-px w-full blur-sm
+              bg-gradient-to-r from-transparent via-amber-400/50 to-transparent
+              opacity-0 group-hover:opacity-100 transition-opacity duration-500
+              ${isActive === "page" ? "opacity-50" : ""}
+            `}
+          />
+        </Link>
+      </motion.div>
+    );
+  },
+);
+MenuLink.displayName = "MenuLink";
+
+/* ================================================================ *
+ *  User avatar                                                     *
+ * ================================================================ */
+const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean }) => {
+  const metadata = user?.user_metadata ?? {};
+  const avatarUrl: string | undefined = metadata.avatar_url || metadata.picture;
+  
+  const avatarContent = avatarUrl ? (
+    <Image src={avatarUrl} alt="Profile photo" width={24} height={24} className="rounded-full" />
+  ) : (
+    <svg viewBox="0 0 24 24" width={isMobile ? 20 : 22} height={isMobile ? 20 : 22} aria-hidden className="opacity-90">
+      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"/>
+    </svg>
+  );
+
+  if (isMobile) {
+    return (
+      <Link
+        href="/dashboard"
+        aria-label="Account"
+        className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
+        title={user.email ?? "Account"}
+      >
+        {avatarContent}
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href="/dashboard"
+      className="inline-flex flex-col items-center bg-black/60 gap-1 rounded-full border border-white/15 px-3 py-2 hover:bg-white/5 transition min-w-0"
+      aria-label={`Account: ${user.email ?? "Unknown user"}`}
+      title={user.email ?? "Account"}
+    >
+      {avatarContent}
+      <span className="text-[11px] leading-tight opacity-90 max-w-40 truncate">
+        {user.email ?? "Account"}
+      </span>
+    </Link>
+  );
+});
+UserAvatar.displayName = "UserAvatar";
+
+/* ================================================================ *
+ *  Scroll behavior hook                                            *
+ * ================================================================ */
 function useDesktopNavScroll({
   activateAt = 72,
   scrollDelta = 10,
@@ -216,14 +235,11 @@ function useDesktopNavScroll({
   return { stage, scrolled };
 }
 
-/* ===================== Main Component ===================== */
+/* ================================================================ *
+ *  Main navbar                                                     *
+ * ================================================================ */
 
-const MOBILE_MOTION_VARIANTS = {
-  visible: { y: 0 },
-  hidden: { y: "-100%" },
-} as const;
-
-const DESKTOP_MOTION_VARIANTS = {
+const MOTION_VARIANTS = {
   visible: { y: 0 },
   hidden: { y: "-100%" },
 } as const;
@@ -265,10 +281,10 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
   const prefersReduced = useReducedMotion();
 
-  // Mobile menu state
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const toggleMobile = useCallback(() => setMobileOpen(v => !v), []);
-  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  // Menu state
+  const [menuOpen, setMenuOpen] = useState(false);
+  const toggleMenu = useCallback(() => setMenuOpen(v => !v), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   // Desktop scroll behavior
   const { stage: desktopStage, scrolled } = useDesktopNavScroll({
@@ -276,9 +292,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     scrollDelta: 10,
   });
 
-  // Lock body scroll when mobile menu is open
+  // Lock body scroll when menu is open
   useEffect(() => {
-    if (mobileOpen) {
+    if (menuOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -286,23 +302,23 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     return () => {
       document.body.style.overflow = "";
     };
-  }, [mobileOpen]);
+  }, [menuOpen]);
 
   // Close on route change
   useEffect(() => {
-    closeMobile();
-  }, [pathname, closeMobile]);
+    closeMenu();
+  }, [pathname, closeMenu]);
 
   // Close on Escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && mobileOpen) {
-        closeMobile();
+      if (e.key === "Escape" && menuOpen) {
+        closeMenu();
       }
     };
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [mobileOpen, closeMobile]);
+  }, [menuOpen, closeMenu]);
 
   const loginUrl = useMemo(() => `/login?next=${encodeURIComponent(next)}`, [next]);
 
@@ -317,7 +333,6 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
   // Mobile navbar always visible, desktop uses scroll behavior
   const currentStage = isMobile ? "visible" : desktopStage;
-  const motionVariants = isMobile ? MOBILE_MOTION_VARIANTS : DESKTOP_MOTION_VARIANTS;
 
   return (
     <>
@@ -325,7 +340,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
         aria-label="Site header"
         initial={false}
         animate={prefersReduced ? "visible" : currentStage}
-        variants={motionVariants}
+        variants={MOTION_VARIANTS}
         transition={prefersReduced ? { duration: 0 } : { type: "tween", duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         className="fixed top-0 left-0 right-0 z-50"
         data-stage={currentStage}
@@ -336,46 +351,74 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
           className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-28"
           data-scrolled={scrolled}
         >
+          {/* Original animated background */}
           <AnimatedBackground />
 
           <div className="grain-layer" aria-hidden />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/20" />
 
-          {/* Left: Brand + Desktop tiles */}
-          <div className="relative z-10 flex items-center gap-3">
-            {/* Mobile brand */}
-            <Link href="/home" className="flex items-center gap-2 md:hidden">
+          {/* Left: Hamburger + Brand */}
+          <div className="relative z-10 flex items-center gap-2 md:gap-4">
+            {/* Hamburger button with Menu/Close label (from reference) */}
+            <button
+              type="button"
+              onClick={toggleMenu}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              aria-controls="main-menu"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
+            >
+              <div className="w-[18px] h-[14px] relative flex flex-col justify-between">
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300 origin-center
+                    ${menuOpen ? "rotate-45 translate-y-[6px]" : ""}
+                  `}
+                />
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300
+                    ${menuOpen ? "opacity-0 scale-x-0" : ""}
+                  `}
+                />
+                <span
+                  className={`
+                    block h-[2px] w-full bg-white rounded-full
+                    transition-all duration-300 origin-center
+                    ${menuOpen ? "-rotate-45 -translate-y-[6px]" : ""}
+                  `}
+                />
+              </div>
+              <span className="text-sm font-medium">
+                {menuOpen ? "Close" : "Menu"}
+              </span>
+            </button>
+
+            {/* Brand with Logo + Two-line text */}
+            <Link href="/home" className="flex items-center gap-2 md:gap-3">
               <Image
                 src="/UltraChampLogo.png"
                 alt="Ultra Champ"
                 width={28}
                 height={28}
-                className="rounded-sm shadow"
+                className="rounded-sm shadow md:w-10 md:h-10"
                 priority
               />
-              <span className="text-base font-semibold tracking-wide">Ultra Champ</span>
+              <div className="flex flex-col">
+                <span className="text-base md:text-lg font-bold tracking-wide leading-tight">
+                  Ultra Champ
+                </span>
+                <span className="text-[10px] md:text-xs font-medium tracking-[0.15em] uppercase text-white/60 leading-tight">
+                  Championship League
+                </span>
+              </div>
             </Link>
-
-            {/* Desktop tile links */}
-            <div
-              className="hidden md:flex items-center gap-4 overflow-x-auto desktop-scroll pr-1 max-w-[78vw] lg:max-w-[82vw] xl:max-w-[86vw]"
-              role="list"
-              aria-label="Primary navigation"
-            >
-              {NAV_LINKS.map(({ href, label, img }) => (
-                <NavLink
-                  key={href}
-                  href={href}
-                  label={label}
-                  img={img}
-                  isActive={isActive(href)}
-                />
-              ))}
-            </div>
           </div>
 
-          {/* Right: Session + Mobile Menu */}
+          {/* Right: User avatar/login */}
           <div className="relative z-10 flex items-center gap-2 md:gap-3">
             {/* Desktop session */}
             <div className="hidden md:flex items-center gap-3">
@@ -419,120 +462,194 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 </Link>
               )}
             </div>
-
-            {/* Mobile hamburger with label */}
-            <button
-              type="button"
-              onClick={toggleMobile}
-              aria-label="Menu"
-              aria-expanded={mobileOpen}
-              aria-controls="mobile-menu"
-              className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
-            >
-              <div className="w-[18px] h-[14px] relative flex flex-col justify-between">
-                <span
-                  className={`
-                    block h-[2px] w-full bg-white rounded-full
-                    transition-all duration-300 origin-center
-                    ${mobileOpen ? "rotate-45 translate-y-[6px]" : ""}
-                  `}
-                />
-                <span
-                  className={`
-                    block h-[2px] w-full bg-white rounded-full
-                    transition-all duration-300
-                    ${mobileOpen ? "opacity-0 scale-x-0" : ""}
-                  `}
-                />
-                <span
-                  className={`
-                    block h-[2px] w-full bg-white rounded-full
-                    transition-all duration-300 origin-center
-                    ${mobileOpen ? "-rotate-45 -translate-y-[6px]" : ""}
-                  `}
-                />
-              </div>
-              <span className="text-sm font-medium">
-                {mobileOpen ? "Close" : "Menu"}
-              </span>
-            </button>
           </div>
         </nav>
 
-        {/* Mobile dropdown - 75% screen height with premium scrollbar */}
+        {/* ─────────────── Dropdown Menu ─────────────── */}
         <AnimatePresence>
-          {mobileOpen && (
+          {menuOpen && (
             <motion.div
-              id="mobile-menu"
+              id="main-menu"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "75vh", opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={prefersReduced ? { duration: 0 } : { duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              className="md:hidden overflow-hidden border-b border-white/15 bg-gradient-to-b from-zinc-950/95 via-zinc-900/95 to-zinc-950/98 backdrop-blur-xl text-white mobile-menu-container"
+              transition={
+                prefersReduced
+                  ? { duration: 0 }
+                  : { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+              }
+              className="overflow-hidden"
             >
-              {/* Scrollable content area */}
-              <div className="h-full overflow-y-auto overscroll-contain mobile-menu-scroll">
-                {/* Top fade gradient */}
-                <div className="pointer-events-none sticky top-0 left-0 right-0 h-4 bg-gradient-to-b from-zinc-950/90 to-transparent z-10" />
-                
-                <div className="flex flex-col gap-3 px-4 pb-4">
-                  {NAV_LINKS.map(({ href, label, img }, index) => (
-                    <motion.div
-                      key={href}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ 
-                        delay: prefersReduced ? 0 : index * 0.04,
-                        duration: prefersReduced ? 0 : 0.3,
-                        ease: [0.22, 1, 0.36, 1]
-                      }}
-                    >
-                      <MobileNavLink
-                        href={href}
-                        label={label}
-                        img={img}
-                        isActive={isActive(href)}
-                        onClick={closeMobile}
-                      />
-                    </motion.div>
-                  ))}
-                  
-                  {/* Login/Logout button */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ 
-                      delay: prefersReduced ? 0 : NAV_LINKS.length * 0.04,
-                      duration: prefersReduced ? 0 : 0.3,
-                      ease: [0.22, 1, 0.36, 1]
-                    }}
-                    className="mt-2"
-                  >
-                    {user ? (
-                      <form method="post" action="/api/auth/sign-out">
-                        <button
-                          type="submit"
-                          className="w-full rounded-lg border border-white/20 bg-white/5 px-4 py-3.5 text-sm font-medium hover:bg-white/10 active:scale-[0.98] transition"
-                          aria-label="Sign out"
-                          onClick={closeMobile}
-                        >
-                          Sign out
-                        </button>
-                      </form>
-                    ) : (
-                      <Link
-                        href={loginUrl}
-                        className="block w-full text-center rounded-lg border border-white/20 bg-white/5 px-4 py-3.5 text-sm font-medium hover:bg-white/10 active:scale-[0.98] transition"
-                        onClick={closeMobile}
-                      >
-                        Login
-                      </Link>
-                    )}
-                  </motion.div>
-                </div>
+              {/* Menu background - static red/crimson gradient */}
+              <div
+                className="relative border-b border-white/10"
+                style={{
+                  background: "linear-gradient(180deg, #150a0a 0%, #0d0707 60%, #0a0606 100%)",
+                }}
+              >
+                {/* Subtle vignette overlay */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: "radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%)",
+                  }}
+                />
 
-                {/* Bottom fade gradient */}
-                <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-zinc-950/95 to-transparent" />
+                {/* Top accent line */}
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-red-800/40 to-transparent origin-center"
+                />
+
+                {/* Content container */}
+                <div className="relative max-h-[75vh] overflow-y-auto overscroll-contain menu-scroll">
+                  <div className="px-6 sm:px-10 lg:px-16 py-10 md:py-14">
+                    {/* Two columns grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 lg:gap-x-24 gap-y-1 max-w-4xl mx-auto">
+                      
+                      {/* Column 1 */}
+                      <div className="flex flex-col">
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.05, duration: 0.4 }}
+                          className="mb-4"
+                        >
+                          <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
+                            Navigation
+                          </span>
+                        </motion.div>
+
+                        {COLUMN_1.map((item, idx) => (
+                          <MenuLink
+                            key={item.href}
+                            href={item.href}
+                            label={item.label}
+                            isActive={isActive(item.href)}
+                            onClick={closeMenu}
+                            index={idx}
+                            columnOffset={0}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Column 2 */}
+                      <div className="flex flex-col mt-8 md:mt-0">
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.15, duration: 0.4 }}
+                          className="mb-4"
+                        >
+                          <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
+                            Information
+                          </span>
+                        </motion.div>
+
+                        {COLUMN_2.map((item, idx) => (
+                          <MenuLink
+                            key={item.href}
+                            href={item.href}
+                            label={item.label}
+                            isActive={isActive(item.href)}
+                            onClick={closeMenu}
+                            index={idx}
+                            columnOffset={COLUMN_1.length}
+                          />
+                        ))}
+
+                        {/* Auth section at bottom of column 2 */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            delay: prefersReduced ? 0 : 0.08 + (COLUMN_1.length + COLUMN_2.length) * 0.05,
+                            duration: 0.5,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                          className="mt-8 pt-6 border-t border-white/10"
+                        >
+                          {user ? (
+                            <div className="flex items-center justify-between gap-4">
+                              <Link
+                                href="/dashboard"
+                                onClick={closeMenu}
+                                className="group flex items-center gap-3"
+                              >
+                                <div className="size-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden group-hover:border-white/20 transition-all duration-300">
+                                  {user.user_metadata?.avatar_url ? (
+                                    <Image
+                                      src={user.user_metadata.avatar_url}
+                                      alt="Profile"
+                                      width={40}
+                                      height={40}
+                                      className="rounded-full"
+                                    />
+                                  ) : (
+                                    <svg viewBox="0 0 24 24" width={20} height={20} className="text-white/60">
+                                      <path
+                                        fill="currentColor"
+                                        d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"
+                                      />
+                                    </svg>
+                                  )}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-white/40 uppercase tracking-wider">Account</span>
+                                  <span className="text-sm font-medium text-white/80 group-hover:text-white truncate max-w-[180px] transition-colors duration-300">
+                                    {user.email}
+                                  </span>
+                                </div>
+                              </Link>
+                              <form method="post" action="/api/auth/sign-out">
+                                <button
+                                  type="submit"
+                                  onClick={closeMenu}
+                                  className="px-5 py-2.5 text-xs font-medium tracking-wider uppercase text-white/50 hover:text-white border border-white/15 rounded-lg hover:bg-white/5 hover:border-white/25 transition-all duration-300"
+                                >
+                                  Sign out
+                                </button>
+                              </form>
+                            </div>
+                          ) : (
+                            <Link
+                              href={loginUrl}
+                              onClick={closeMenu}
+                              className="group relative flex items-center justify-center gap-3 w-full py-4 overflow-hidden rounded-lg border border-white/10 hover:border-white/20 transition-all duration-500"
+                            >
+                              {/* Button background glow */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-red-950/30 via-red-900/20 to-red-950/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                              
+                              <svg viewBox="0 0 24 24" width={18} height={18} className="relative z-10 text-white/60 group-hover:text-amber-400 transition-colors duration-500">
+                                <path
+                                  fill="currentColor"
+                                  d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"
+                                />
+                              </svg>
+                              <span className="relative z-10 text-sm font-medium tracking-[0.15em] uppercase text-white/60 group-hover:text-white transition-colors duration-500">
+                                Login / Register
+                              </span>
+                            </Link>
+                          )}
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    {/* Bottom decorative element */}
+                    <motion.div
+                      initial={{ opacity: 0, scaleX: 0 }}
+                      animate={{ opacity: 1, scaleX: 1 }}
+                      transition={{
+                        delay: prefersReduced ? 0 : 0.5,
+                        duration: 0.8,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="mt-12 mx-auto max-w-xs h-px bg-gradient-to-r from-transparent via-white/10 to-transparent origin-center"
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -541,63 +658,36 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
       {/* Backdrop */}
       <AnimatePresence>
-        {mobileOpen && (
+        {menuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
-            onClick={closeMobile}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
+            onClick={closeMenu}
             aria-hidden="true"
           />
         )}
       </AnimatePresence>
 
       <style jsx>{`
-        .desktop-scroll {
-          scrollbar-gutter: stable both-edges;
-          overscroll-behavior-x: contain;
+        .menu-scroll {
           scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.45) transparent;
+          scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
         }
-        .desktop-scroll:hover {
-          scrollbar-color: rgba(255,255,255,0.70) transparent;
-        }
-        .desktop-scroll::-webkit-scrollbar {
-          height: 6px;
-        }
-        .desktop-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .desktop-scroll::-webkit-scrollbar-thumb {
-          background: linear-gradient(90deg, rgba(255,255,255,0.28), rgba(255,255,255,0.5));
-          border-radius: 9999px;
-          border: 2px solid transparent;
-          background-clip: padding-box;
-        }
-        .desktop-scroll:hover::-webkit-scrollbar-thumb {
-          background: linear-gradient(90deg, rgba(255,255,255,0.4), rgba(255,255,255,0.75));
-        }
-
-        /* Simple mobile menu scrollbar */
-        .mobile-menu-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255,255,255,0.3) transparent;
-        }
-        .mobile-menu-scroll::-webkit-scrollbar {
+        .menu-scroll::-webkit-scrollbar {
           width: 4px;
         }
-        .mobile-menu-scroll::-webkit-scrollbar-track {
+        .menu-scroll::-webkit-scrollbar-track {
           background: transparent;
-          margin: 8px 0;
         }
-        .mobile-menu-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.3);
+        .menu-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
           border-radius: 9999px;
         }
-        .mobile-menu-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255,255,255,0.5);
+        .menu-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
         }
       `}</style>
     </>
