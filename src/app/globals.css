@@ -48,14 +48,8 @@
 html { /* [CTRL-1] */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Account for fixed navbar: 64px mobile, 128px desktop */
-  scroll-padding-top: 4rem; /* 64px for mobile navbar */
-}
-
-@media (min-width: 768px) {
-  html {
-    scroll-padding-top: 8rem; /* 128px for desktop navbar */
-  }
+  /* Account for fixed navbar: 80px (h-20) on all breakpoints */
+  scroll-padding-top: 5rem; /* 80px navbar */
 }
 
 /* IMPORTANT: use background-color (not shorthand 'background') so we don't wipe out the dot-grid image */
