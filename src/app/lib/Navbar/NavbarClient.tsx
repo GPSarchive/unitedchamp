@@ -5,27 +5,31 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useCallback, memo, useRef } from "react";
+import type { CSSProperties } from "react";
 import type { User } from "@supabase/supabase-js";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
-/* ===================== Data ===================== */
-const NAV_LINKS = [
-  { href: "/home",            label: "HOME",                 img: "/field2.jpg" },
-  { href: "/articles",        label: "ΑΡΘΡΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ", img: "/ανακοινωσεις.jpg" },
-  { href: "/OMADES",          label: "ΟΜΑΔΕΣ",               img: "/Ομαδες.jpg" },
-  { href: "/tournaments",     label: "ΤΟΥΡΝΟΥΑ",             img: "/tournamentPhoto.png" },
-  { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ",          img: "/επικοινωνια.jpg" },
-  { href: "/paiktes",         label: "ΠΑΙΚΤΕΣ",              img: "/παικτες.jpg" },
-  { href: "/matches",         label: "ΑΓΩΝΕΣ",               img: "/αγωνες.jpg" },
-  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ",      img: "/γενικη-καταταξη.jpg" },
-  { href: "/kanonismos",      label: "ΚΑΝΟΝΙΣΜΟΣ",           img: "/κανονισμος.jpg" },
+/* ── Nav link data – split into two columns ── */
+const COL_1 = [
+  { href: "/home",        label: "HOME" },
+  { href: "/tournaments", label: "ΤΟΥΡΝΟΥΑ" },
+  { href: "/matches",     label: "ΑΓΩΝΕΣ" },
+  { href: "/OMADES",      label: "ΟΜΑΔΕΣ" },
+  { href: "/paiktes",     label: "ΠΑΙΚΤΕΣ" },
 ] as const;
 
-/* ===================== UserAvatar ===================== */
+const COL_2 = [
+  { href: "/articles",        label: "ΑΡΘΡΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ" },
+  { href: "/kanonismos",      label: "ΚΑΝΟΝΙΣΜΟΣ" },
+  { href: "/epikoinonia",     label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
+  { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ" },
+] as const;
+
+/* ── UserAvatar ── */
 const UserAvatar = memo(({ user }: { user: User }) => {
-  const metadata = user?.user_metadata ?? {};
-  const avatarUrl: string | undefined = metadata.avatar_url || metadata.picture;
+  const { avatar_url, picture } = user?.user_metadata ?? {};
+  const avatarUrl: string | undefined = avatar_url || picture;
   return (
     <Link
       href="/dashboard"
@@ -45,7 +49,7 @@ const UserAvatar = memo(({ user }: { user: User }) => {
 });
 UserAvatar.displayName = "UserAvatar";
 
-/* ===================== AnimatedBackground ===================== */
+/* ── Animated gold kintsugi lines ── */
 const AnimatedBackground = memo(() => (
   <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
     <svg
@@ -59,8 +63,8 @@ const AnimatedBackground = memo(() => (
           <stop offset="35%"  stopColor="#e8c66a" />
           <stop offset="65%"  stopColor="#caa94d" />
           <stop offset="100%" stopColor="#f6e27a" />
-          <animate attributeName="x1" values="0;0.2;0"   dur="9s"  repeatCount="indefinite" />
-          <animate attributeName="x2" values="1;0.8;1"   dur="9s"  repeatCount="indefinite" />
+          <animate attributeName="x1" values="0;0.2;0" dur="9s"  repeatCount="indefinite" />
+          <animate attributeName="x2" values="1;0.8;1" dur="9s"  repeatCount="indefinite" />
         </linearGradient>
         <filter id="navGlow" x="-20%" y="-20%" width="140%" height="160%">
           <feGaussianBlur stdDeviation="2.5" result="b" />
@@ -88,7 +92,7 @@ const AnimatedBackground = memo(() => (
 ));
 AnimatedBackground.displayName = "AnimatedBackground";
 
-/* ===================== Scroll Hook ===================== */
+/* ── Scroll hook ── */
 function useNavScroll({
   activateAt = 72,
   scrollDelta = 10,
@@ -114,9 +118,9 @@ function useNavScroll({
   return { stage, scrolled };
 }
 
-/* ===================== Main Component ===================== */
+/* ── Main Component ── */
 export default function NavbarClient({ initialUser }: { initialUser: User | null }) {
-  const pathname    = usePathname();
+  const pathname     = usePathname();
   const searchParams = useSearchParams();
 
   const isActive = useCallback(
@@ -124,10 +128,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
     [pathname]
   );
 
-  /* ── Auth state ── */
+  /* auth */
   const [user, setUser] = useState<User | null>(initialUser);
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-
   useEffect(() => {
     let ignore = false;
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -147,12 +150,12 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
 
   const prefersReduced = useReducedMotion();
 
-  /* ── Overlay state ── */
-  const [overlayOpen, setOverlayOpen] = useState(false);
-  const toggleOverlay = useCallback(() => setOverlayOpen(v => !v), []);
-  const closeOverlay  = useCallback(() => setOverlayOpen(false), []);
+  /* dropdown state */
+  const [dropOpen, setDropOpen] = useState(false);
+  const toggleDrop = useCallback(() => setDropOpen(v => !v), []);
+  const closeDrop  = useCallback(() => setDropOpen(false), []);
 
-  /* ── Scroll behaviour (desktop hides on scroll-down) ── */
+  /* scroll hide (desktop only) */
   const { stage, scrolled } = useNavScroll({ activateAt: 72, scrollDelta: 10 });
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -163,26 +166,26 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
   }, []);
   const currentStage = isMobile ? "visible" : stage;
 
-  /* ── Body scroll lock ── */
+  /* body scroll lock */
   useEffect(() => {
-    document.body.style.overflow = overlayOpen ? "hidden" : "";
+    document.body.style.overflow = dropOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [overlayOpen]);
+  }, [dropOpen]);
 
-  /* ── Close on route change ── */
-  useEffect(() => { closeOverlay(); }, [pathname, closeOverlay]);
+  /* close on route change */
+  useEffect(() => { closeDrop(); }, [pathname, closeDrop]);
 
-  /* ── Escape key ── */
+  /* Escape key */
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && overlayOpen) closeOverlay(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && dropOpen) closeDrop(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [overlayOpen, closeOverlay]);
+  }, [dropOpen, closeDrop]);
 
   /* ================================================================ */
   return (
     <>
-      {/* ── Fixed navbar ── */}
+      {/* ── Fixed header ── */}
       <motion.header
         aria-label="Site header"
         initial={false}
@@ -194,9 +197,8 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             : { type: "tween", duration: 0.28, ease: [0.22, 1, 0.36, 1] }
         }
         className="fixed top-0 left-0 right-0 z-50"
-        data-stage={currentStage}
-        data-scrolled={scrolled}
       >
+        {/* ── Navbar strip ── */}
         <nav
           aria-label="Main"
           data-scrolled={scrolled}
@@ -215,28 +217,43 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10" aria-hidden />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/20" aria-hidden />
 
-          {/* ── Logo ── */}
-          <Link href="/home" className="relative z-10 flex items-center gap-3" aria-label="Ultra Champ – home">
-            <Image
-              src="/UltraChampLogo.png"
-              alt="Ultra Champ"
-              width={34}
-              height={34}
-              className="rounded-sm shadow"
-              priority
-            />
-            <div className="leading-none select-none">
-              <span className="block text-[17px] font-semibold tracking-[0.22em] uppercase text-white leading-none">
-                Ultra&nbsp;Champ
-              </span>
-              <span className="block text-[8px] font-normal tracking-[0.34em] uppercase text-[#b8986a] mt-1">
-                Championship&nbsp;·&nbsp;League
-              </span>
-            </div>
-          </Link>
+          {/* Left: hamburger + logo */}
+          <div className="relative z-10 flex items-center gap-5">
+            <button
+              type="button"
+              onClick={toggleDrop}
+              aria-label={dropOpen ? "Close menu" : "Open menu"}
+              aria-expanded={dropOpen}
+              aria-controls="nav-dropdown"
+              className="nav-hamburger"
+            >
+              <span className={dropOpen ? "h-top" : ""} />
+              <span className={dropOpen ? "h-mid" : ""} />
+              <span className={dropOpen ? "h-bot" : ""} />
+            </button>
 
-          {/* ── Right controls ── */}
-          <div className="relative z-10 flex items-center gap-6">
+            <Link href="/home" className="flex items-center gap-3" aria-label="Ultra Champ – home">
+              <Image
+                src="/UltraChampLogo.png"
+                alt="Ultra Champ"
+                width={34}
+                height={34}
+                className="rounded-sm shadow"
+                priority
+              />
+              <div className="leading-none select-none">
+                <span className="block text-[17px] font-semibold tracking-[0.22em] uppercase text-white leading-none">
+                  Ultra&nbsp;Champ
+                </span>
+                <span className="block text-[8px] font-normal tracking-[0.34em] uppercase text-[#b8986a] mt-1">
+                  Championship&nbsp;·&nbsp;League
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Right: auth only */}
+          <div className="relative z-10 flex items-center">
             {user ? (
               <UserAvatar user={user} />
             ) : (
@@ -244,100 +261,92 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 Login
               </Link>
             )}
-
-            {/* Hamburger */}
-            <button
-              type="button"
-              onClick={toggleOverlay}
-              aria-label={overlayOpen ? "Close menu" : "Open menu"}
-              aria-expanded={overlayOpen}
-              aria-controls="nav-overlay"
-              className="nav-hamburger"
-            >
-              <span className={overlayOpen ? "h-top" : ""} />
-              <span className={overlayOpen ? "h-mid" : ""} />
-              <span className={overlayOpen ? "h-bot" : ""} />
-            </button>
           </div>
         </nav>
-      </motion.header>
 
-      {/* ── Full-screen overlay menu ── */}
-      <AnimatePresence>
-        {overlayOpen && (
-          <motion.div
-            id="nav-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation menu"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={prefersReduced ? { duration: 0 } : { duration: 0.45, ease: "easeInOut" }}
-            className="nav-overlay"
-          >
-            {/* Left: decorative image panel – click to close */}
-            <div
-              className="overlay-img-panel"
-              onClick={closeOverlay}
-              aria-hidden="true"
+        {/* ── Dropdown panel (attached below navbar, moves with it) ── */}
+        <AnimatePresence>
+          {dropOpen && (
+            <motion.div
+              id="nav-dropdown"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation menu"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={
+                prefersReduced
+                  ? { duration: 0 }
+                  : { duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+              }
+              className="drop-panel"
             >
-              <Image
-                src="/field2.jpg"
-                alt=""
-                fill
-                className="object-cover"
-                style={{ opacity: 0.55 }}
-              />
-            </div>
-
-            {/* Right: navigation links */}
-            <div className="overlay-links-panel">
-              <nav aria-label="Overlay navigation">
-                {NAV_LINKS.map(({ href, label }, i) => (
-                  <motion.div
-                    key={href}
-                    initial={prefersReduced ? {} : { opacity: 0, x: 28 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      delay: prefersReduced ? 0 : i * 0.04,
-                      duration: 0.3,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                  >
-                    <Link
-                      href={href}
-                      onClick={closeOverlay}
-                      aria-current={isActive(href)}
-                      className="overlay-nav-link link-underline"
+              {/* ── Column 1 ── */}
+              <div className="drop-col">
+                {COL_1.map(({ href, label }, i) => {
+                  const delay = i * 0.055;
+                  return (
+                    <motion.div
+                      key={href}
+                      initial={prefersReduced ? {} : { opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      {label}
-                    </Link>
-                  </motion.div>
-                ))}
+                      <Link
+                        href={href}
+                        onClick={closeDrop}
+                        aria-current={isActive(href)}
+                        className="drop-link"
+                        style={{ "--ul-delay": `${delay + 0.14}s` } as CSSProperties}
+                      >
+                        {label}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </div>
 
-                {/* Divider */}
-                <div className="overlay-divider" aria-hidden />
+              {/* ── Column 2 + auth ── */}
+              <div className="drop-col">
+                {COL_2.map(({ href, label }, i) => {
+                  const delay = (COL_1.length + i) * 0.055;
+                  return (
+                    <motion.div
+                      key={href}
+                      initial={prefersReduced ? {} : { opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay, duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <Link
+                        href={href}
+                        onClick={closeDrop}
+                        aria-current={isActive(href)}
+                        className="drop-link"
+                        style={{ "--ul-delay": `${delay + 0.14}s` } as CSSProperties}
+                      >
+                        {label}
+                      </Link>
+                    </motion.div>
+                  );
+                })}
 
-                {/* Auth row */}
+                {/* Divider + auth */}
                 <motion.div
-                  initial={prefersReduced ? {} : { opacity: 0, x: 28 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={prefersReduced ? {} : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    delay: prefersReduced ? 0 : NAV_LINKS.length * 0.04,
-                    duration: 0.3,
+                    delay: prefersReduced ? 0 : (COL_1.length + COL_2.length) * 0.055 + 0.04,
+                    duration: 0.28,
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
+                  <div className="drop-divider" aria-hidden />
                   {user ? (
-                    <div className="overlay-auth">
-                      <span className="overlay-auth-email">{user.email}</span>
+                    <div className="drop-auth">
+                      <span className="drop-auth-email">{user.email}</span>
                       <form method="post" action="/api/auth/sign-out">
-                        <button
-                          type="submit"
-                          className="overlay-auth-signout"
-                          onClick={closeOverlay}
-                        >
+                        <button type="submit" className="drop-auth-signout" onClick={closeDrop}>
                           Sign out
                         </button>
                       </form>
@@ -345,25 +354,43 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                   ) : (
                     <Link
                       href={loginUrl}
-                      onClick={closeOverlay}
-                      className="overlay-nav-link link-underline"
-                      style={{ fontSize: "clamp(1.1rem, 2.2vw, 1.8rem)" }}
+                      onClick={closeDrop}
+                      className="drop-link"
+                      style={{
+                        "--ul-delay": `${(COL_1.length + COL_2.length) * 0.055 + 0.18}s`,
+                        fontSize: "0.82rem",
+                      } as CSSProperties}
                     >
                       Login
                     </Link>
                   )}
                 </motion.div>
-              </nav>
-            </div>
-          </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.header>
+
+      {/* Invisible backdrop – closes dropdown when clicking outside */}
+      <AnimatePresence>
+        {dropOpen && (
+          <motion.div
+            className="fixed inset-0 z-40"
+            onClick={closeDrop}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            aria-hidden="true"
+          />
         )}
       </AnimatePresence>
 
       <style jsx>{`
         /* ─── Hamburger ─── */
         .nav-hamburger {
-          width: 30px;
-          height: 20px;
+          width: 28px;
+          height: 18px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -371,6 +398,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
           border: none;
           background: none;
           padding: 0;
+          flex-shrink: 0;
         }
         .nav-hamburger span {
           display: block;
@@ -380,11 +408,11 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
           transition: transform 0.35s ease, opacity 0.25s ease;
           transform-origin: center;
         }
-        .nav-hamburger span.h-top { transform: translateY(9.5px) rotate(45deg); }
+        .nav-hamburger span.h-top { transform: translateY(8.5px) rotate(45deg); }
         .nav-hamburger span.h-mid { opacity: 0; }
-        .nav-hamburger span.h-bot { transform: translateY(-9.5px) rotate(-45deg); }
+        .nav-hamburger span.h-bot { transform: translateY(-8.5px) rotate(-45deg); }
 
-        /* ─── Login / CTA button (Ritual Book-Now style) ─── */
+        /* ─── Login / CTA button ─── */
         .btn-nav-login {
           font-size: 10px;
           font-weight: 500;
@@ -401,106 +429,117 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
         }
         .btn-nav-login:hover { background: #ffffff; color: #1a1a18; }
 
-        /* ─── Full-screen overlay ─── */
-        .nav-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 40;
+        /* ─── Dropdown panel ─── */
+        .drop-panel {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          width: 100%;
+          /* Matches the navbar's crimson-kintsugi palette exactly */
+          background-color: #0d0707;
+          background-image:
+            radial-gradient(80% 160% at 50% -10%, rgba(248, 113, 113, 0.07), transparent 55%),
+            radial-gradient(50% 100% at 0%  110%, rgba(127, 29,  29,  0.10), transparent 65%),
+            radial-gradient(40% 80%  at 100% 0%,  rgba(190, 18,  60,  0.07), transparent 55%),
+            linear-gradient(to bottom, #0d0707, #130909 55%, #0d0707);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
           display: grid;
           grid-template-columns: 1fr 1fr;
-          background: rgba(11, 6, 6, 0.97);
+          gap: 0 56px;
+          padding: 32px 64px 40px;
         }
 
-        /* ─── Left image panel ─── */
-        .overlay-img-panel {
-          position: relative;
-          height: 100%;
-          overflow: hidden;
-          cursor: pointer;
-        }
-
-        /* ─── Right links panel ─── */
-        .overlay-links-panel {
+        /* ─── Column ─── */
+        .drop-col {
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          padding: 100px 64px 80px 60px;
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(184, 152, 106, 0.35) transparent;
-        }
-        .overlay-links-panel::-webkit-scrollbar { width: 4px; }
-        .overlay-links-panel::-webkit-scrollbar-track { background: transparent; }
-        .overlay-links-panel::-webkit-scrollbar-thumb {
-          background: rgba(184, 152, 106, 0.35);
-          border-radius: 9999px;
-        }
-        .overlay-links-panel::-webkit-scrollbar-thumb:hover {
-          background: rgba(184, 152, 106, 0.6);
+          gap: 0;
         }
 
-        /* ─── Overlay nav links ─── */
-        .overlay-nav-link {
-          display: block;
+        /* ─── Individual link ─── */
+        .drop-link {
+          display: inline-block;
+          position: relative;
           font-style: italic;
           font-weight: 300;
           color: rgba(255, 255, 255, 0.70);
           text-decoration: none;
           letter-spacing: 0.04em;
-          line-height: 1.55;
-          font-size: clamp(1.4rem, 3vw, 2.5rem);
+          line-height: 1.7;
+          font-size: clamp(0.95rem, 1.55vw, 1.28rem);
+          padding: 2px 0;
           transition: color 0.25s ease, letter-spacing 0.25s ease;
         }
-        .overlay-nav-link:hover,
-        .overlay-nav-link[aria-current="page"] {
+        .drop-link:hover,
+        .drop-link[aria-current="page"] {
           color: #ffffff;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.07em;
+        }
+
+        /* Underline: sweeps in from left as soon as the link appears */
+        .drop-link::after {
+          content: "";
+          position: absolute;
+          bottom: 1px;
+          left: 0;
+          height: 1px;
+          width: 0;
+          background: linear-gradient(90deg, #f5d37a, #d9a94f, #f5d37a);
+          border-radius: 999px;
+          animation: dropUlIn 0.55s ease forwards;
+          animation-delay: var(--ul-delay, 0s);
+        }
+        @keyframes dropUlIn {
+          from { width: 0; }
+          to   { width: 100%; }
         }
 
         /* ─── Gold divider ─── */
-        .overlay-divider {
-          width: 30px;
+        .drop-divider {
+          width: 28px;
           height: 1px;
           background: #b8986a;
           opacity: 0.5;
-          margin: 14px 0;
+          margin: 14px 0 10px;
         }
 
         /* ─── Auth section ─── */
-        .overlay-auth {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .overlay-auth-email {
-          font-size: 10px;
-          font-weight: 400;
+        .drop-auth { display: flex; flex-direction: column; gap: 4px; }
+        .drop-auth-email {
+          font-size: 9px;
           letter-spacing: 0.18em;
           color: #b8986a;
           text-transform: uppercase;
           line-height: 2;
         }
-        .overlay-auth-signout {
-          font-size: 10px;
+        .drop-auth-signout {
+          font-size: 9px;
           font-weight: 500;
           letter-spacing: 0.18em;
           text-transform: uppercase;
-          color: rgba(255, 255, 255, 0.55);
+          color: rgba(255, 255, 255, 0.5);
           background: none;
           border: none;
           cursor: pointer;
           padding: 0;
           display: block;
           text-align: left;
-          transition: color 0.2s ease;
+          transition: color 0.2s;
         }
-        .overlay-auth-signout:hover { color: #ffffff; }
+        .drop-auth-signout:hover { color: #ffffff; }
 
-        /* ─── Mobile ─── */
+        /* ─── Mobile: stack columns ─── */
         @media (max-width: 767px) {
-          .nav-overlay { grid-template-columns: 1fr; }
-          .overlay-img-panel { display: none; }
-          .overlay-links-panel { padding: 100px 32px 80px 32px; }
+          .drop-panel {
+            grid-template-columns: 1fr;
+            padding: 24px 32px 32px;
+            gap: 0;
+          }
+          .drop-col + .drop-col {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+          }
         }
       `}</style>
     </>
