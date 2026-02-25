@@ -480,20 +480,16 @@ export default async function Home() {
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto max-w-7xl">
-          {/* Desktop: Side by side, Mobile: Stacked */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_480px] gap-6 lg:gap-8">
-            
-            {/* Left: Team Dashboard */}
-            <div className="flex flex-col">
-              <TeamDashboard
-                allMatches={eventsToPass}
-                userTeams={[]} // TODO: Get from user auth/profile when implemented
-                className="flex-1"
-              />
-            </div>
+          <div className="flex flex-col gap-6 lg:gap-8">
 
-            {/* Right: Calendar */}
-            <div className="flex flex-col lg:sticky lg:top-4 lg:self-start">
+            {/* Team Dashboard */}
+            <TeamDashboard
+              allMatches={eventsToPass}
+              userTeams={[]} // TODO: Get from user auth/profile when implemented
+            />
+
+            {/* Calendar — below matches, above Top Scorers */}
+            <div>
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -501,15 +497,14 @@ export default async function Home() {
                 Πλήρες Πρόγραμμα Αγώνων
               </h2>
               <EnhancedMobileCalendar
-              initialEvents={eventsToPass}
-              highlightTeams={[]} // TODO: Match userTeams above
-              className="h-full"
-            />
+                initialEvents={eventsToPass}
+                highlightTeams={[]} // TODO: Match userTeams above
+              />
             </div>
 
           </div>
         </div>
-       </GridBgSection>
+      </GridBgSection>
 
       {/* Top Scorers Section */}
       <TopScorers scorers={topScorers} />
