@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronsDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -513,23 +513,18 @@ export default function EnhancedMobileCalendar({
     setCurrentYear(today.getFullYear());
   };
 
+  const PEEK_HEIGHT = 152; // px — shows Σήμερα + day headers + hint of first row
+
   return (
     <>
       <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden ${className}`}>
 
-        {/* ── Header — always visible, full row is clickable ── */}
-        <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={!isMinimized}
-          aria-label={isMinimized ? 'Ανάπτυξη ημερολογίου' : 'Σύμπτυξη ημερολογίου'}
-          onClick={() => setIsMinimized(!isMinimized)}
-          onKeyDown={(e) => e.key === 'Enter' && setIsMinimized(!isMinimized)}
-          className="relative flex items-center gap-2 px-3 py-3 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 cursor-pointer select-none hover:bg-white/[0.03] transition-colors"
-        >
+        {/* ── Header — compact nav bar, always visible ── */}
+        <div className="relative flex items-center gap-2 px-3 py-3 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 select-none">
+
           {/* Prev month */}
           <button
-            onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+            onClick={goToPrevMonth}
             className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
             aria-label="Προηγούμενος μήνας"
           >
@@ -548,93 +543,110 @@ export default function EnhancedMobileCalendar({
 
           {/* Next month */}
           <button
-            onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+            onClick={goToNextMonth}
             className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
             aria-label="Επόμενος μήνας"
           >
             <ChevronRight className="h-4 w-4 text-white/60" />
           </button>
 
-          {/* Animated expand / collapse arrow */}
-          <div className="shrink-0 ml-1">
-            <motion.div
-              animate={isMinimized ? { y: [0, 5, 0] } : { y: 0 }}
-              transition={
-                isMinimized
-                  ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' }
-                  : { duration: 0.2 }
-              }
-            >
-              <motion.div
-                animate={{ rotate: isMinimized ? 0 : 180 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
+          {/* Small collapse indicator — visible only when expanded */}
+          <AnimatePresence>
+            {!isMinimized && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMinimized(true)}
+                className="shrink-0 ml-1 p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                aria-label="Σύμπτυξη ημερολογίου"
               >
-                <ChevronDown className="h-5 w-5 text-orange-400" />
-              </motion.div>
-            </motion.div>
-          </div>
-
-          {/* Bottom accent line — only when minimized */}
-          {isMinimized && (
-            <span className="pointer-events-none absolute bottom-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent" />
-          )}
+                <ChevronDown className="h-4 w-4 text-white/40 rotate-180" />
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ── Expandable body ── */}
-        <AnimatePresence initial={false}>
-          {!isMinimized && (
-            <motion.div
-              key="calendar-body"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              style={{ overflow: 'hidden' }}
-            >
-              {/* Σήμερα — inside the expanded section */}
-              <div className="px-4 pt-3 pb-1 border-t border-zinc-800/60">
-                <button
-                  onClick={goToToday}
-                  className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
+        {/* ── Content: always rendered, height-clipped when minimized ── */}
+        <div className="relative">
+          <motion.div
+            animate={{ height: isMinimized ? PEEK_HEIGHT : 'auto' }}
+            transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            {/* Σήμερα */}
+            <div className="px-4 pt-3 pb-1 border-t border-zinc-800/60">
+              <button
+                onClick={goToToday}
+                className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
+              >
+                Σήμερα
+              </button>
+            </div>
+
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
+              {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
+                <div key={i} className="text-center text-xs font-bold text-white/50 py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Day grid */}
+            <div className="grid grid-cols-7 gap-1 p-2">
+              {days.map((day, index) => (
+                <DayCell
+                  key={index}
+                  day={day}
+                  onClick={() => setSelectedDay(day)}
+                  highlightTeams={highlightTeams}
+                />
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
+              <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
+              {highlightTeams.length > 0 && (
+                <p className="flex items-center justify-center gap-1.5">
+                  <span className="h-2 w-2 bg-blue-400 rounded-full" />
+                  <span>= Η ομάδα σου παίζει</span>
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── Gradient veil + large bouncing expand button (minimized only) ── */}
+          <AnimatePresence>
+            {isMinimized && (
+              <motion.div
+                key="veil"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-3"
+                style={{
+                  height: 110,
+                  background: 'linear-gradient(to bottom, transparent 0%, #09090b 60%)',
+                }}
+              >
+                {/* Large white bouncing button */}
+                <motion.button
+                  onClick={() => setIsMinimized(false)}
+                  animate={{ y: [0, -11, 0] }}
+                  transition={{ duration: 1.15, repeat: Infinity, ease: 'easeInOut' }}
+                  className="pointer-events-auto flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_0_32px_6px_rgba(255,255,255,0.18)]"
+                  aria-label="Ανάπτυξη ημερολογίου"
+                  style={{ pointerEvents: 'auto' }}
                 >
-                  Σήμερα
-                </button>
-              </div>
-
-              {/* Day-of-week headers */}
-              <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
-                {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
-                  <div key={i} className="text-center text-xs font-bold text-white/50 py-2">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Day grid */}
-              <div className="grid grid-cols-7 gap-1 p-2">
-                {days.map((day, index) => (
-                  <DayCell
-                    key={index}
-                    day={day}
-                    onClick={() => setSelectedDay(day)}
-                    highlightTeams={highlightTeams}
-                  />
-                ))}
-              </div>
-
-              {/* Footer */}
-              <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
-                <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
-                {highlightTeams.length > 0 && (
-                  <p className="flex items-center justify-center gap-1.5">
-                    <span className="h-2 w-2 bg-blue-400 rounded-full" />
-                    <span>= Η ομάδα σου παίζει</span>
-                  </p>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                  <ChevronsDown className="h-8 w-8 text-zinc-900" strokeWidth={2.5} />
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {selectedDay && (
