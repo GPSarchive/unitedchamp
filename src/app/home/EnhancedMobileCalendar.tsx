@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronsDown, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -550,21 +550,6 @@ export default function EnhancedMobileCalendar({
             <ChevronRight className="h-4 w-4 text-white/60" />
           </button>
 
-          {/* Small collapse indicator — visible only when expanded */}
-          <AnimatePresence>
-            {!isMinimized && (
-              <motion.button
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMinimized(true)}
-                className="shrink-0 ml-1 p-1.5 hover:bg-white/10 rounded-full transition-colors"
-                aria-label="Σύμπτυξη ημερολογίου"
-              >
-                <ChevronDown className="h-4 w-4 text-white/40 rotate-180" />
-              </motion.button>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* ── Content: always rendered, height-clipped when minimized ── */}
@@ -616,6 +601,27 @@ export default function EnhancedMobileCalendar({
               )}
             </div>
           </motion.div>
+
+          {/* ── Large white bouncing collapse button — expanded only, top-left ── */}
+          <AnimatePresence>
+            {!isMinimized && (
+              <motion.button
+                key="collapse-btn"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, y: [0, -11, 0] }}
+                exit={{ opacity: 0, y: 0 }}
+                transition={{
+                  opacity: { duration: 0.25 },
+                  y: { duration: 1.15, repeat: Infinity, ease: 'easeInOut' },
+                }}
+                onClick={() => setIsMinimized(true)}
+                className="absolute top-3 left-3 z-10 flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_0_32px_6px_rgba(255,255,255,0.18)]"
+                aria-label="Σύμπτυξη ημερολογίου"
+              >
+                <ChevronsUp className="h-8 w-8 text-zinc-900" strokeWidth={2.5} />
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           {/* ── Gradient veil + large bouncing expand button (minimized only) ── */}
           <AnimatePresence>
