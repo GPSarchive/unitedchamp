@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -515,51 +515,72 @@ export default function EnhancedMobileCalendar({
 
   return (
     <>
-      <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl ${className}`}>
-        <div className={`bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800 p-4 ${isMinimized ? 'rounded-xl border-b-0' : 'rounded-t-xl'}`}>
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={goToPrevMonth}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              aria-label="Προηγούμενος μήνας"
-            >
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </button>
+      <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden ${className}`}>
 
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+        {/* ── Header — always visible, full row is clickable ── */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={!isMinimized}
+          aria-label={isMinimized ? 'Ανάπτυξη ημερολογίου' : 'Σύμπτυξη ημερολογίου'}
+          onClick={() => setIsMinimized(!isMinimized)}
+          onKeyDown={(e) => e.key === 'Enter' && setIsMinimized(!isMinimized)}
+          className="relative flex items-center gap-2 px-3 py-3 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 cursor-pointer select-none hover:bg-white/[0.03] transition-colors"
+        >
+          {/* Prev month */}
+          <button
+            onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
+            className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
+            aria-label="Προηγούμενος μήνας"
+          >
+            <ChevronLeft className="h-4 w-4 text-white/60" />
+          </button>
+
+          {/* Calendar icon + month name */}
+          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+            <svg className="h-4 w-4 text-orange-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-bold text-white uppercase tracking-widest truncate">
               {monthName}
-            </h2>
-
-            <button
-              onClick={goToNextMonth}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              aria-label="Επόμενος μήνας"
-            >
-              <ChevronRight className="h-5 w-5 text-white" />
-            </button>
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={goToToday}
-              className="flex-1 py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
-            >
-              Σήμερα
-            </button>
-            <button
-              onClick={() => setIsMinimized(!isMinimized)}
-              className="p-2 hover:bg-white/10 rounded-lg border border-white/10 transition-colors"
-              aria-label={isMinimized ? 'Ανάπτυξη ημερολογίου' : 'Σύμπτυξη ημερολογίου'}
-            >
-              {isMinimized
-                ? <ChevronDown className="h-5 w-5 text-white/70" />
-                : <ChevronUp className="h-5 w-5 text-white/70" />
+          {/* Next month */}
+          <button
+            onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
+            className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
+            aria-label="Επόμενος μήνας"
+          >
+            <ChevronRight className="h-4 w-4 text-white/60" />
+          </button>
+
+          {/* Animated expand / collapse arrow */}
+          <div className="shrink-0 ml-1">
+            <motion.div
+              animate={isMinimized ? { y: [0, 5, 0] } : { y: 0 }}
+              transition={
+                isMinimized
+                  ? { duration: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                  : { duration: 0.2 }
               }
-            </button>
+            >
+              <motion.div
+                animate={{ rotate: isMinimized ? 0 : 180 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+              >
+                <ChevronDown className="h-5 w-5 text-orange-400" />
+              </motion.div>
+            </motion.div>
           </div>
 
+          {/* Bottom accent line — only when minimized */}
+          {isMinimized && (
+            <span className="pointer-events-none absolute bottom-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent" />
+          )}
         </div>
 
+        {/* ── Expandable body ── */}
         <AnimatePresence initial={false}>
           {!isMinimized && (
             <motion.div
@@ -570,17 +591,26 @@ export default function EnhancedMobileCalendar({
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               style={{ overflow: 'hidden' }}
             >
+              {/* Σήμερα — inside the expanded section */}
+              <div className="px-4 pt-3 pb-1 border-t border-zinc-800/60">
+                <button
+                  onClick={goToToday}
+                  className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
+                >
+                  Σήμερα
+                </button>
+              </div>
+
+              {/* Day-of-week headers */}
               <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
                 {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
-                  <div
-                    key={i}
-                    className="text-center text-xs font-bold text-white/50 py-2"
-                  >
+                  <div key={i} className="text-center text-xs font-bold text-white/50 py-2">
                     {day}
                   </div>
                 ))}
               </div>
 
+              {/* Day grid */}
               <div className="grid grid-cols-7 gap-1 p-2">
                 {days.map((day, index) => (
                   <DayCell
@@ -592,6 +622,7 @@ export default function EnhancedMobileCalendar({
                 ))}
               </div>
 
+              {/* Footer */}
               <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
                 <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
                 {highlightTeams.length > 0 && (
