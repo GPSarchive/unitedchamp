@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -466,6 +466,7 @@ export default function EnhancedMobileCalendar({
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   const matchesByDate = useMemo(
     () => groupMatchesByDate(initialEvents),
@@ -488,6 +489,10 @@ export default function EnhancedMobileCalendar({
     month: 'long',
     year: 'numeric',
   });
+
+  const totalMatchesThisMonth = useMemo(() => {
+    return days.filter(d => d.isCurrentMonth).reduce((sum, d) => sum + d.matches.length, 0);
+  }, [days]);
 
   const goToPrevMonth = () => {
     if (currentMonth === 0) {
@@ -515,7 +520,7 @@ export default function EnhancedMobileCalendar({
   return (
     <>
       <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl ${className}`}>
-        <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800 p-4 rounded-t-xl">
+        <div className={`bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800 p-4 ${isMinimized ? 'rounded-xl border-b-0' : 'rounded-t-xl'}`}>
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={goToPrevMonth}
@@ -538,45 +543,76 @@ export default function EnhancedMobileCalendar({
             </button>
           </div>
 
-          <button
-            onClick={goToToday}
-            className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
-          >
-            Σήμερα
-          </button>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
-          {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
-            <div
-              key={i}
-              className="text-center text-xs font-bold text-white/50 py-2"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToToday}
+              className="flex-1 py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
             >
-              {day}
-            </div>
-          ))}
-        </div>
+              Σήμερα
+            </button>
+            <button
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="p-2 hover:bg-white/10 rounded-lg border border-white/10 transition-colors"
+              aria-label={isMinimized ? 'Ανάπτυξη ημερολογίου' : 'Σύμπτυξη ημερολογίου'}
+            >
+              {isMinimized
+                ? <ChevronDown className="h-5 w-5 text-white/70" />
+                : <ChevronUp className="h-5 w-5 text-white/70" />
+              }
+            </button>
+          </div>
 
-        <div className="grid grid-cols-7 gap-1 p-2">
-          {days.map((day, index) => (
-            <DayCell
-              key={index}
-              day={day}
-              onClick={() => setSelectedDay(day)}
-              highlightTeams={highlightTeams}
-            />
-          ))}
-        </div>
-
-        <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
-          <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
-          {highlightTeams.length > 0 && (
-            <p className="flex items-center justify-center gap-1.5">
-              <span className="h-2 w-2 bg-blue-400 rounded-full" />
-              <span>= Η ομάδα σου παίζει</span>
+          {isMinimized && totalMatchesThisMonth > 0 && (
+            <p className="text-xs text-white/50 text-center mt-3">
+              {totalMatchesThisMonth} αγώνες αυτό τον μήνα
             </p>
           )}
         </div>
+
+        <AnimatePresence initial={false}>
+          {!isMinimized && (
+            <motion.div
+              key="calendar-body"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
+                {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
+                  <div
+                    key={i}
+                    className="text-center text-xs font-bold text-white/50 py-2"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 p-2">
+                {days.map((day, index) => (
+                  <DayCell
+                    key={index}
+                    day={day}
+                    onClick={() => setSelectedDay(day)}
+                    highlightTeams={highlightTeams}
+                  />
+                ))}
+              </div>
+
+              <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
+                <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
+                {highlightTeams.length > 0 && (
+                  <p className="flex items-center justify-center gap-1.5">
+                    <span className="h-2 w-2 bg-blue-400 rounded-full" />
+                    <span>= Η ομάδα σου παίζει</span>
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {selectedDay && (
