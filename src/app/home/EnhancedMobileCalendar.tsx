@@ -602,28 +602,31 @@ export default function EnhancedMobileCalendar({
             </div>
           </motion.div>
 
-          {/* ── Large white bouncing collapse button — expanded only, top-left ── */}
+          {/* ── Frosted pill — collapse (expanded only, top-left) ── */}
           <AnimatePresence>
             {!isMinimized && (
               <motion.button
-                key="collapse-btn"
+                key="collapse-pill"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1, y: [0, -11, 0] }}
-                exit={{ opacity: 0, y: 0 }}
+                animate={{ opacity: 1, y: [0, -5, 0] }}
+                exit={{ opacity: 0 }}
                 transition={{
-                  opacity: { duration: 0.25 },
-                  y: { duration: 1.15, repeat: Infinity, ease: 'easeInOut' },
+                  opacity: { duration: 0.2 },
+                  y: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
                 }}
                 onClick={() => setIsMinimized(true)}
-                className="absolute top-3 left-3 z-10 flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_0_32px_6px_rgba(255,255,255,0.18)]"
                 aria-label="Σύμπτυξη ημερολογίου"
+                className="absolute top-3 left-3 z-10 flex items-center gap-1.5 h-8 px-4 rounded-full
+                           bg-white/[0.07] border border-white/[0.13] backdrop-blur-sm
+                           shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(0,0,0,0.4)]
+                           text-white/50 hover:text-white/80 hover:bg-white/[0.12] transition-colors"
               >
-                <ChevronsUp className="h-8 w-8 text-zinc-900" strokeWidth={2.5} />
+                <ChevronsUp className="h-3.5 w-3.5" strokeWidth={2} />
               </motion.button>
             )}
           </AnimatePresence>
 
-          {/* ── Gradient veil + large bouncing expand button (minimized only) ── */}
+          {/* ── Gradient veil + frosted pill expand (minimized only) ── */}
           <AnimatePresence>
             {isMinimized && (
               <motion.div
@@ -638,16 +641,18 @@ export default function EnhancedMobileCalendar({
                   background: 'linear-gradient(to bottom, transparent 0%, #09090b 60%)',
                 }}
               >
-                {/* Large white bouncing button */}
                 <motion.button
                   onClick={() => setIsMinimized(false)}
-                  animate={{ y: [0, -11, 0] }}
-                  transition={{ duration: 1.15, repeat: Infinity, ease: 'easeInOut' }}
-                  className="pointer-events-auto flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_0_32px_6px_rgba(255,255,255,0.18)]"
+                  animate={{ y: [0, 5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                   aria-label="Ανάπτυξη ημερολογίου"
+                  className="pointer-events-auto flex items-center gap-1.5 h-8 px-5 rounded-full
+                             bg-white/[0.07] border border-white/[0.13] backdrop-blur-sm
+                             shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(0,0,0,0.4)]
+                             text-white/50 hover:text-white/80 hover:bg-white/[0.12] transition-colors"
                   style={{ pointerEvents: 'auto' }}
                 >
-                  <ChevronsDown className="h-8 w-8 text-zinc-900" strokeWidth={2.5} />
+                  <ChevronsDown className="h-3.5 w-3.5" strokeWidth={2} />
                 </motion.button>
               </motion.div>
             )}
