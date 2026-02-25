@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -466,6 +466,7 @@ export default function EnhancedMobileCalendar({
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   const matchesByDate = useMemo(
     () => groupMatchesByDate(initialEvents),
@@ -512,70 +513,150 @@ export default function EnhancedMobileCalendar({
     setCurrentYear(today.getFullYear());
   };
 
+  const PEEK_HEIGHT = 152; // px — shows Σήμερα + day headers + hint of first row
+
   return (
     <>
-      <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl ${className}`}>
-        <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border-b border-zinc-800 p-4 rounded-t-xl">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={goToPrevMonth}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              aria-label="Προηγούμενος μήνας"
-            >
-              <ChevronLeft className="h-5 w-5 text-white" />
-            </button>
+      <div className={`bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden ${className}`}>
 
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+        {/* ── Header — compact nav bar, always visible ── */}
+        <div className="relative flex items-center gap-2 px-3 py-3 bg-gradient-to-r from-zinc-900 via-zinc-800/60 to-zinc-900 select-none">
+
+          {/* Prev month */}
+          <button
+            onClick={goToPrevMonth}
+            className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
+            aria-label="Προηγούμενος μήνας"
+          >
+            <ChevronLeft className="h-4 w-4 text-white/60" />
+          </button>
+
+          {/* Calendar icon + month name */}
+          <div className="flex-1 flex items-center justify-center gap-2 min-w-0">
+            <svg className="h-4 w-4 text-orange-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-bold text-white uppercase tracking-widest truncate">
               {monthName}
-            </h2>
-
-            <button
-              onClick={goToNextMonth}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              aria-label="Επόμενος μήνας"
-            >
-              <ChevronRight className="h-5 w-5 text-white" />
-            </button>
+            </span>
           </div>
 
+          {/* Next month */}
           <button
-            onClick={goToToday}
-            className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
+            onClick={goToNextMonth}
+            className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0"
+            aria-label="Επόμενος μήνας"
           >
-            Σήμερα
+            <ChevronRight className="h-4 w-4 text-white/60" />
           </button>
+
         </div>
 
-        <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
-          {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
-            <div
-              key={i}
-              className="text-center text-xs font-bold text-white/50 py-2"
-            >
-              {day}
+        {/* ── Content: always rendered, height-clipped when minimized ── */}
+        <div className="relative">
+          <motion.div
+            animate={{ height: isMinimized ? PEEK_HEIGHT : 'auto' }}
+            transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+            style={{ overflow: 'hidden' }}
+          >
+            {/* Σήμερα */}
+            <div className="px-4 pt-3 pb-1 border-t border-zinc-800/60">
+              <button
+                onClick={goToToday}
+                className="w-full py-2 px-4 bg-orange-500/20 hover:bg-orange-500/30 border border-orange-400/30 rounded-lg text-sm font-bold text-orange-300 transition-colors"
+              >
+                Σήμερα
+              </button>
             </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-7 gap-1 p-2">
-          {days.map((day, index) => (
-            <DayCell
-              key={index}
-              day={day}
-              onClick={() => setSelectedDay(day)}
-              highlightTeams={highlightTeams}
-            />
-          ))}
-        </div>
+            {/* Day-of-week headers */}
+            <div className="grid grid-cols-7 gap-1 p-2 bg-zinc-900/50">
+              {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((day, i) => (
+                <div key={i} className="text-center text-xs font-bold text-white/50 py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
 
-        <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
-          <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
-          {highlightTeams.length > 0 && (
-            <p className="flex items-center justify-center gap-1.5">
-              <span className="h-2 w-2 bg-blue-400 rounded-full" />
-              <span>= Η ομάδα σου παίζει</span>
-            </p>
-          )}
+            {/* Day grid */}
+            <div className="grid grid-cols-7 gap-1 p-2">
+              {days.map((day, index) => (
+                <DayCell
+                  key={index}
+                  day={day}
+                  onClick={() => setSelectedDay(day)}
+                  highlightTeams={highlightTeams}
+                />
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-zinc-800 p-4 text-xs text-white/50 text-center space-y-1">
+              <p>Πατήστε σε ημέρα για να δείτε τους αγώνες</p>
+              {highlightTeams.length > 0 && (
+                <p className="flex items-center justify-center gap-1.5">
+                  <span className="h-2 w-2 bg-blue-400 rounded-full" />
+                  <span>= Η ομάδα σου παίζει</span>
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── Frosted pill — collapse (expanded only, top-left) ── */}
+          <AnimatePresence>
+            {!isMinimized && (
+              <motion.button
+                key="collapse-pill"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, y: [0, -5, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  opacity: { duration: 0.2 },
+                  y: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+                }}
+                onClick={() => setIsMinimized(true)}
+                aria-label="Σύμπτυξη ημερολογίου"
+                className="absolute top-3 left-3 z-10 flex items-center gap-1.5 h-8 px-4 rounded-full
+                           bg-white/[0.07] border border-white/[0.13] backdrop-blur-sm
+                           shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(0,0,0,0.4)]
+                           text-white/50 hover:text-white/80 hover:bg-white/[0.12] transition-colors"
+              >
+                <ChevronsUp className="h-3.5 w-3.5" strokeWidth={2} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+
+          {/* ── Gradient veil + frosted pill expand (minimized only) ── */}
+          <AnimatePresence>
+            {isMinimized && (
+              <motion.div
+                key="veil"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-3"
+                style={{
+                  height: 110,
+                  background: 'linear-gradient(to bottom, transparent 0%, #09090b 60%)',
+                }}
+              >
+                <motion.button
+                  onClick={() => setIsMinimized(false)}
+                  animate={{ y: [0, 5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  aria-label="Ανάπτυξη ημερολογίου"
+                  className="pointer-events-auto flex items-center gap-1.5 h-8 px-5 rounded-full
+                             bg-white/[0.07] border border-white/[0.13] backdrop-blur-sm
+                             shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(0,0,0,0.4)]
+                             text-white/50 hover:text-white/80 hover:bg-white/[0.12] transition-colors"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <ChevronsDown className="h-3.5 w-3.5" strokeWidth={2} />
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
