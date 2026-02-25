@@ -21,7 +21,7 @@ const COLUMN_1 = [
 ];
 
 const COLUMN_2 = [
-  { href: "/articles", label: "ΑΡΘΡΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ" },
+  { href: "/articles", label: "ΝΕΑ & ΑΝΑΚΟΙΝΩΣΕΙΣ" },
   { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ" },
   { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
   { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ" },
@@ -87,6 +87,7 @@ const MenuLink = memo(
     onClick,
     index,
     columnOffset = 0,
+    count,
   }: {
     href: string;
     label: string;
@@ -94,6 +95,7 @@ const MenuLink = memo(
     onClick: () => void;
     index: number;
     columnOffset?: number;
+    count?: number;
   }) => {
     const prefersReduced = useReducedMotion();
     const delay = prefersReduced ? 0 : 0.08 + (index + columnOffset) * 0.05;
@@ -114,14 +116,21 @@ const MenuLink = memo(
           aria-current={isActive}
           className="group relative block py-3"
         >
-          <span
-            className={`
-              text-sm md:text-base font-medium tracking-[0.15em] uppercase
-              transition-colors duration-500
-              ${isActive === "page" ? "text-amber-400" : "text-white/70 group-hover:text-white"}
-            `}
-          >
-            {label}
+          <span className="inline-flex items-center gap-2">
+            <span
+              className={`
+                text-sm md:text-base font-medium tracking-[0.15em] uppercase
+                transition-colors duration-500
+                ${isActive === "page" ? "text-amber-400" : "text-white/70 group-hover:text-white"}
+              `}
+            >
+              {label}
+            </span>
+            {count != null && count > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-[0_0_8px_rgba(251,191,36,0.7),0_0_16px_rgba(251,191,36,0.4)]">
+                {count > 9 ? "9+" : count}
+              </span>
+            )}
           </span>
           
           {/* Luxurious underline */}
@@ -244,7 +253,7 @@ const MOTION_VARIANTS = {
   hidden: { y: "-100%" },
 } as const;
 
-export default function NavbarClient({ initialUser }: { initialUser: User | null }) {
+export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUser: User | null; newsCount?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
@@ -557,6 +566,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                             onClick={closeMenu}
                             index={idx}
                             columnOffset={COLUMN_1.length}
+                            count={item.href === "/articles" ? newsCount : undefined}
                           />
                         ))}
 
