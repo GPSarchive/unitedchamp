@@ -364,7 +364,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
             <button
               type="button"
               onClick={toggleMenu}
-              aria-label="Menu"
+              aria-label="Μενού"
               aria-expanded={menuOpen}
               aria-controls="main-menu"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-black/40 hover:bg-white/10 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-white/40"
@@ -393,7 +393,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                 />
               </div>
               <span className="text-sm font-medium">
-                {menuOpen ? "Close" : "Menu"}
+                {menuOpen ? "Κλείσιμο" : "Μενού"}
               </span>
             </button>
 
@@ -429,9 +429,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                     <button
                       type="submit"
                       className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
-                      aria-label="Sign out"
+                      aria-label="Αποσύνδεση"
                     >
-                      Sign out
+                      Αποσύνδεση
                     </button>
                   </form>
                 </>
@@ -440,7 +440,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                   href={loginUrl}
                   className="inline-flex items-center rounded-md border border-white/20 bg-white/5 px-3 py-2 text-sm font-medium hover:bg-white/10 transition"
                 >
-                  Login
+                  Σύνδεση
                 </Link>
               )}
             </div>
@@ -452,9 +452,9 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
               ) : (
                 <Link
                   href={loginUrl}
-                  aria-label="Login"
+                  aria-label="Σύνδεση"
                   className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
-                  title="Login"
+                  title="Σύνδεση"
                 >
                   <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden className="opacity-90">
                     <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"/>
@@ -518,7 +518,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                           className="mb-4"
                         >
                           <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
-                            Navigation
+                            Πλοήγηση
                           </span>
                         </motion.div>
 
@@ -544,7 +544,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                           className="mb-4"
                         >
                           <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
-                            Information
+                            Πληροφορίες
                           </span>
                         </motion.div>
 
@@ -597,7 +597,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                                   )}
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="text-xs text-white/40 uppercase tracking-wider">Account</span>
+                                  <span className="text-xs text-white/40 uppercase tracking-wider">Λογαριασμός</span>
                                   <span className="text-sm font-medium text-white/80 group-hover:text-white truncate max-w-[180px] transition-colors duration-300">
                                     {user.email}
                                   </span>
@@ -609,7 +609,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                                   onClick={closeMenu}
                                   className="px-5 py-2.5 text-xs font-medium tracking-wider uppercase text-white/50 hover:text-white border border-white/15 rounded-lg hover:bg-white/5 hover:border-white/25 transition-all duration-300"
                                 >
-                                  Sign out
+                                  Αποσύνδεση
                                 </button>
                               </form>
                             </div>
@@ -629,7 +629,7 @@ export default function NavbarClient({ initialUser }: { initialUser: User | null
                                 />
                               </svg>
                               <span className="relative z-10 text-sm font-medium tracking-[0.15em] uppercase text-white/60 group-hover:text-white transition-colors duration-500">
-                                Login / Register
+                                Σύνδεση / Εγγραφή
                               </span>
                             </Link>
                           )}
