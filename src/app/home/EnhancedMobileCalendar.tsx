@@ -550,6 +550,24 @@ export default function EnhancedMobileCalendar({
             <ChevronRight className="h-4 w-4 text-white/60" />
           </button>
 
+          {/* Minimize button — top-right of calendar */}
+          <AnimatePresence>
+            {!isMinimized && (
+              <motion.button
+                key="collapse-pill"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ opacity: { duration: 0.2 } }}
+                onClick={() => setIsMinimized(true)}
+                aria-label="Σύμπτυξη ημερολογίου"
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0 text-white/50 hover:text-white/80"
+              >
+                <ChevronsUp className="h-4 w-4" strokeWidth={2} />
+              </motion.button>
+            )}
+          </AnimatePresence>
+
         </div>
 
         {/* ── Content: always rendered, height-clipped when minimized ── */}
@@ -601,30 +619,6 @@ export default function EnhancedMobileCalendar({
               )}
             </div>
           </motion.div>
-
-          {/* ── Frosted pill — collapse (expanded only, top-left) ── */}
-          <AnimatePresence>
-            {!isMinimized && (
-              <motion.button
-                key="collapse-pill"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1, y: [0, -5, 0] }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  opacity: { duration: 0.2 },
-                  y: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
-                }}
-                onClick={() => setIsMinimized(true)}
-                aria-label="Σύμπτυξη ημερολογίου"
-                className="absolute top-3 left-3 z-10 flex items-center gap-1.5 h-8 px-4 rounded-full
-                           bg-white/[0.07] border border-white/[0.13] backdrop-blur-sm
-                           shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(0,0,0,0.4)]
-                           text-white/50 hover:text-white/80 hover:bg-white/[0.12] transition-colors"
-              >
-                <ChevronsUp className="h-3.5 w-3.5" strokeWidth={2} />
-              </motion.button>
-            )}
-          </AnimatePresence>
 
           {/* ── Gradient veil + frosted pill expand (minimized only) ── */}
           <AnimatePresence>
