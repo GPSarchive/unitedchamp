@@ -480,7 +480,7 @@ export default async function Home() {
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto max-w-7xl">
-          <div className="flex flex-col gap-6 lg:gap-8">
+          <div className="flex flex-col gap-10 lg:gap-14">
 
             {/* Team Dashboard */}
             <TeamDashboard

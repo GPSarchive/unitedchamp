@@ -490,10 +490,6 @@ export default function EnhancedMobileCalendar({
     year: 'numeric',
   });
 
-  const totalMatchesThisMonth = useMemo(() => {
-    return days.filter(d => d.isCurrentMonth).reduce((sum, d) => sum + d.matches.length, 0);
-  }, [days]);
-
   const goToPrevMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
@@ -562,11 +558,6 @@ export default function EnhancedMobileCalendar({
             </button>
           </div>
 
-          {isMinimized && totalMatchesThisMonth > 0 && (
-            <p className="text-xs text-white/50 text-center mt-3">
-              {totalMatchesThisMonth} αγώνες αυτό τον μήνα
-            </p>
-          )}
         </div>
 
         <AnimatePresence initial={false}>
