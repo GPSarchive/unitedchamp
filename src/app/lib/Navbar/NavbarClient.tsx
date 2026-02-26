@@ -127,7 +127,7 @@ const MenuLink = memo(
               {label}
             </span>
             {count != null && count > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-[0_0_8px_rgba(251,191,36,0.7),0_0_16px_rgba(251,191,36,0.4)]">
+              <span className="flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold">
                 {count > 9 ? "9+" : count}
               </span>
             )}

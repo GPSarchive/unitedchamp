@@ -181,7 +181,7 @@ export default function UnifiedContentPage() {
               </button>
               <button
                 onClick={() => setFilter('articles')}
-                className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
+                className={`relative px-6 py-2 rounded-lg font-medium transition-all ${
                   filter === 'articles'
                     ? 'bg-blue-600 text-white'
                     : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
@@ -189,14 +189,14 @@ export default function UnifiedContentPage() {
               >
                 Άρθρα
                 {articlesCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-[0_0_8px_rgba(251,191,36,0.7),0_0_16px_rgba(251,191,36,0.4)]">
+                  <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold">
                     {articlesCount > 9 ? '9+' : articlesCount}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setFilter('announcements')}
-                className={`inline-flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
+                className={`relative px-6 py-2 rounded-lg font-medium transition-all ${
                   filter === 'announcements'
                     ? 'bg-amber-600 text-white'
                     : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
@@ -204,7 +204,7 @@ export default function UnifiedContentPage() {
               >
                 Ανακοινώσεις
                 {announcementsCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-[0_0_8px_rgba(251,191,36,0.7),0_0_16px_rgba(251,191,36,0.4)]">
+                  <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] sm:min-w-[20px] h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold">
                     {announcementsCount > 9 ? '9+' : announcementsCount}
                   </span>
                 )}
