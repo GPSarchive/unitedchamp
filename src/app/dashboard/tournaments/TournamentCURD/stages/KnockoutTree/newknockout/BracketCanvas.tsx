@@ -59,6 +59,20 @@ const nextId = (() => {
 
 const keyOf = (r?: number | null, p?: number | null) => (r && p ? `R${r}-B${p}` : null);
 
+/** Human-readable label for a KO round based on its position relative to the final. */
+function getRoundLabel(round: number, totalRounds: number): string {
+  const fromFinal = totalRounds - round;
+  switch (fromFinal) {
+    case 0: return "Final";
+    case 1: return "Semi-finals";
+    case 2: return "Quarter-finals";
+    default: {
+      const teamsInRound = Math.pow(2, fromFinal + 1);
+      return `Round of ${teamsInRound}`;
+    }
+  }
+}
+
 function rowSignature(m: DraftMatch) {
   const parts = [
     m.stageIdx ?? "",
@@ -594,7 +608,9 @@ export default function BracketCanvas({
           }`
         : null;
 
-    const tag = meta ? `Round ${meta.round} • B${meta.bracket_pos}` : n.id;
+    const tag = meta
+      ? `${getRoundLabel(meta.round, totalRounds)} (R${meta.round}) • B${meta.bracket_pos}`
+      : n.id;
 
     const finished = (() => {
       const r = rowByNodeKey.get(n.id);
@@ -699,9 +715,8 @@ export default function BracketCanvas({
     return p;
   }
 
-  function addFirstRoundMatch() {
+  function addMatchToRound(round: number) {
     if (!allowWrites) return;
-    const round = 1;
     const bracket_pos = firstFreePos(round);
     ensureRowExists(round, bracket_pos);
 
@@ -712,6 +727,13 @@ export default function BracketCanvas({
 
     setNodes((prev) => [...prev, { id, x, y, w: 220, h: 120, label: `R${round} • Pos ${bracket_pos}` }]);
     setNodeMeta((prev) => ({ ...prev, [id]: { round, bracket_pos } }));
+  }
+
+  function addNewRound() {
+    if (!allowWrites) return;
+    const existingRounds = Object.values(nodeMeta).map((m) => m.round);
+    const maxRound = existingRounds.length ? Math.max(...existingRounds) : 0;
+    addMatchToRound(maxRound + 1);
   }
 
   function writeLinksForChild(round: number, bracket_pos: number, parentA: NodeMeta, parentB: NodeMeta) {
@@ -940,11 +962,17 @@ export default function BracketCanvas({
   /* ============================
      UI
      ============================ */
+  const existingRounds = useMemo(() => {
+    const rounds = new Set(Object.values(nodeMeta).map((m) => m.round));
+    return [...rounds].sort((a, b) => a - b);
+  }, [nodeMeta]);
+  const totalRounds = existingRounds.length ? Math.max(...existingRounds) : 0;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <button
-          className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+          className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] text-sm transition"
           onClick={loadFromStore}
           title="Reload from store (discard local layout changes)"
         >
@@ -952,42 +980,69 @@ export default function BracketCanvas({
         </button>
 
         <button
-          className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+          className={`px-3 py-1.5 rounded-lg border text-sm transition ${
+            showTools
+              ? "border-violet-400/30 bg-violet-500/15 text-violet-200"
+              : "border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08]"
+          }`}
           onClick={() => {
             setShowTools((s) => {
               const next = !s;
-              setAllowWrites(next); // writes only when tools are visible
+              setAllowWrites(next);
               return next;
             });
           }}
           title="Show/hide knockout designer tools"
         >
-          {showTools ? "Hide design tools (writing enabled)" : "Design tools (enable writing)"}
+          {showTools ? "Design tools (active)" : "Design tools"}
         </button>
-
-        {showTools && (
-          <button
-            className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
-            onClick={addFirstRoundMatch}
-            title="Create a new Round 1 slot and persist it in the store"
-            disabled={!allowWrites}
-          >
-            + Add 1st-round match
-          </button>
-        )}
       </div>
+
+      {/* Per-round "Add Match" buttons */}
+      {showTools && (
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Add match to round</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {existingRounds.map((r) => {
+              const label = getRoundLabel(r, totalRounds);
+              const matchCount = Object.values(nodeMeta).filter((m) => m.round === r).length;
+              return (
+                <button
+                  key={`add-r${r}`}
+                  className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
+                  onClick={() => addMatchToRound(r)}
+                  title={`Add a new match to Round ${r} (${label})`}
+                  disabled={!allowWrites}
+                >
+                  + Round {r} &mdash; {label}
+                  <span className="ml-1.5 text-white/30">({matchCount})</span>
+                </button>
+              );
+            })}
+            <button
+              className="px-3 py-1.5 rounded-lg border border-emerald-400/25 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50 text-xs transition"
+              onClick={addNewRound}
+              title="Add a brand new round after the last existing round"
+              disabled={!allowWrites}
+            >
+              + New Round {totalRounds + 1}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Designer tools */}
       {showTools && (
-        <div className="rounded-xl border border-white/10 bg-gradient-to-br from-black/50 via-red-950/30 to-amber-900/20 p-3 space-y-2 shadow-inner">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+          <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Link Builder</div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={selA}
                 onChange={(e) => setSelA(e.target.value)}
               >
-                <option value="">Parent A…</option>
+                <option value="">Parent A...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -995,11 +1050,11 @@ export default function BracketCanvas({
                 ))}
               </select>
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={selB}
                 onChange={(e) => setSelB(e.target.value)}
               >
-                <option value="">Parent B…</option>
+                <option value="">Parent B...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -1007,22 +1062,22 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
                 onClick={addChildFromTwoParents}
-                title="Create child in next round and connect both parents (and persist links)"
+                title="Create child in next round and connect both parents"
                 disabled={!allowWrites}
               >
                 + Child of A & B
               </button>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <select
-                className="px-2 py-1 rounded bg-zinc-900 text-white border border-white/10"
+                className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] text-white border border-white/[0.1] text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
                 value={target}
                 onChange={(e) => setTarget(e.target.value)}
               >
-                <option value="">Target…</option>
+                <option value="">Target...</option>
                 {nodeOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -1030,22 +1085,22 @@ export default function BracketCanvas({
                 ))}
               </select>
               <button
-                className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20 disabled:opacity-50 text-xs transition"
                 onClick={connectParentsToTarget}
-                title="Connect selected parent(s) to target (and persist links)"
+                title="Connect selected parent(s) to target"
                 disabled={!allowWrites}
               >
-                Connect → Target
+                Connect to Target
               </button>
             </div>
 
-            <span className="mx-2 h-5 w-px bg-white/10" />
+            <span className="mx-2 h-5 w-px bg-white/[0.08]" />
 
             <button
-              className="px-3 py-1.5 rounded-md border border-white/15 bg-white/5 text-white hover:bg-white/10"
+              className="px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] text-xs transition"
               onClick={reflowFromMeta}
             >
-              Reflow from meta
+              Reflow layout
             </button>
           </div>
         </div>

@@ -372,35 +372,44 @@ export default function ReviewAndSubmit({
     });
   };
 
+  const summaryItems = [
+    { label: "Tournament", value: payload.tournament.name || "Untitled" },
+    { label: "Format", value: (payload.tournament.format ?? "league").charAt(0).toUpperCase() + (payload.tournament.format ?? "league").slice(1) },
+    { label: "Stages", value: String(payload.stages.length) },
+    { label: "Teams", value: String(teams.length) },
+    { label: "Matches", value: String(draftMatches.length) },
+  ];
+
   return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-4">
-      <h3 className="text-xl font-semibold text-cyan-200">Review</h3>
-      <ul className="list-disc pl-5 text-sm text-white/85">
-        <li>Name: {payload.tournament.name}</li>
-        <li>Format: {payload.tournament.format}</li>
-        <li>Stages: {payload.stages.length}</li>
-        <li>Teams: {teams.length}</li>
-        <li>Preview/Live matches in state: {draftMatches.length}</li>
-      </ul>
+    <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-slate-900/80 to-indigo-950/60 p-5 sm:p-6 shadow-2xl space-y-5">
+      {/* Summary grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {summaryItems.map((item) => (
+          <div key={item.label} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-center">
+            <div className="text-lg font-bold text-white">{item.value}</div>
+            <div className="text-[11px] text-white/40 mt-0.5">{item.label}</div>
+          </div>
+        ))}
+      </div>
 
       {warningsUi.length > 0 && (
-        <pre className="whitespace-pre-wrap text-amber-300/90 text-sm bg-amber-500/10 border border-amber-400/20 rounded-md p-2">
-          ⚠ Warnings:
-          {"\n"}
-          {warningsUi.join("\n")}
-        </pre>
+        <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-3 space-y-1">
+          <div className="text-xs font-medium text-amber-300">Warnings</div>
+          <div className="text-sm text-amber-200/80 whitespace-pre-wrap">{warningsUi.join("\n")}</div>
+        </div>
       )}
 
       {error && (
-        <pre className="whitespace-pre-wrap text-rose-300 text-sm bg-rose-500/10 border border-rose-400/20 rounded-md p-2">
-          ⚠ {error}
-        </pre>
+        <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 p-3 space-y-1">
+          <div className="text-xs font-medium text-rose-300">Error</div>
+          <div className="text-sm text-rose-200/80 whitespace-pre-wrap">{error}</div>
+        </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-3 pt-2">
         <button
           onClick={onBack}
-          className="px-3 py-2 rounded-md border border-white/10 bg-slate-900/40 text-white/90 hover:bg-cyan-500/5 hover:border-cyan-400/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="px-4 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.08] transition text-sm"
         >
           Back
         </button>
@@ -409,17 +418,23 @@ export default function ReviewAndSubmit({
           onClick={submit}
           disabled={pending || busy}
           aria-busy={pending || busy}
-          className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-sm font-medium
+                     hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 disabled:cursor-not-allowed
+                     shadow-lg shadow-emerald-500/20 transition"
           title={!anyDirty && mode === "edit" ? "No changes to save" : undefined}
         >
           {pending || busy
             ? mode === "edit"
-              ? "Saving…"
-              : "Creating…"
+              ? "Saving..."
+              : "Creating..."
             : mode === "edit"
             ? "Save Changes"
             : "Create & Save All"}
         </button>
+
+        {!anyDirty && mode === "edit" && (
+          <span className="text-xs text-white/30">No unsaved changes</span>
+        )}
       </div>
     </div>
   );

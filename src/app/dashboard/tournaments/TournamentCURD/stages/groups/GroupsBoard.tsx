@@ -38,21 +38,21 @@ export default function GroupsBoard({
   );
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onAddGroup}
-          className="px-2 py-1 rounded-md border border-white/15 text-white/80 hover:text-white hover:border-white/30"
+          className="px-3 py-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 text-violet-200 text-sm hover:bg-violet-500/20 transition"
         >
-          + Προσθήκη Ομίλου
+          + Add Group
         </button>
-        <label className="text-sm text-white/70">
-          Σύνολο ομίλων:
+        <label className="flex items-center gap-2 text-sm text-white/50">
+          Total:
           <input
             type="number"
             min={1}
-            className="ml-2 w-20 bg-slate-950 border border-white/15 rounded-md px-2 py-1 text-white"
+            className="w-16 bg-white/[0.05] border border-white/[0.1] rounded-lg px-2 py-1.5 text-white text-center focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
             value={groupsArr.length || 1}
             onChange={(e) => onSetGroupCount(Number(e.target.value) || 1)}
           />
@@ -63,115 +63,121 @@ export default function GroupsBoard({
         {groupsArr.map((g, gi) => (
           <div
             key={`${g.name}-${gi}`}
-            className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+            className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-2">
+            {/* Group header */}
+            <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
               <input
-                className="bg-transparent border-b border-white/15 focus:border-white/40 outline-none text-white/90 font-medium"
+                className="bg-transparent border-none outline-none text-white/90 font-medium text-sm focus:ring-0 min-w-0 flex-1"
                 value={g.name}
                 onChange={(e) => onRenameGroup(gi, e.target.value)}
               />
-              <button
-                type="button"
-                onClick={() => onRemoveGroup(gi)}
-                className="px-2 py-1 text-xs rounded-md border border-white/15 text-white/70 hover:text-white hover:border-white/30"
-                title="Διαγραφή ομίλου"
-              >
-                Διαγραφή
-              </button>
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-[11px] text-white/30">{groupsOccupancy[gi]?.length ?? 0} teams</span>
+                <button
+                  type="button"
+                  onClick={() => onRemoveGroup(gi)}
+                  className="px-1.5 py-0.5 text-[11px] rounded-md border border-rose-400/20 text-rose-300/70 hover:text-rose-200 hover:bg-rose-500/10 transition"
+                  title="Delete group"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
 
-            <ul className="text-sm space-y-1">
-              {intakeMode ? (
-                <li className="text-white/50 italic">
-                  — δυναμική εισαγωγή από Knockout —
-                </li>
-              ) : groupsOccupancy[gi]?.length ? (
-                groupsOccupancy[gi].map((t) => (
-                  <li key={t.id} className="flex items-center justify-between gap-1">
-                    <span className="text-white/90 truncate">
-                      {(t as any)?.name ?? `Team #${t.id}`}
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {t.seed != null ? (
-                        <span className="text-white/50 text-xs">S{t.seed}</span>
-                      ) : null}
-                      {onUnassignTeam && (
-                        <button
-                          type="button"
-                          onClick={() => onUnassignTeam(t.id)}
-                          className="px-1 py-0.5 text-xs rounded border border-rose-400/30 text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/10"
-                          title="Αφαίρεση από όμιλο"
-                        >
-                          ✕
-                        </button>
+            {/* Team list */}
+            <div className="p-3">
+              <ul className="text-sm space-y-1.5">
+                {intakeMode ? (
+                  <li className="text-white/30 italic text-xs py-2 text-center">
+                    Dynamically filled from Knockout
+                  </li>
+                ) : groupsOccupancy[gi]?.length ? (
+                  groupsOccupancy[gi].map((t) => (
+                    <li key={t.id} className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg hover:bg-white/[0.03]">
+                      <span className="text-white/80 truncate text-sm">
+                        {(t as any)?.name ?? `Team #${t.id}`}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {t.seed != null ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-violet-500/15 text-violet-300 font-medium">S{t.seed}</span>
+                        ) : null}
+                        {onUnassignTeam && (
+                          <button
+                            type="button"
+                            onClick={() => onUnassignTeam(t.id)}
+                            className="w-5 h-5 flex items-center justify-center rounded text-[11px] border border-rose-400/20 text-rose-300/60 hover:text-rose-200 hover:bg-rose-500/10 transition"
+                            title="Remove from group"
+                          >
+                            x
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-white/20 italic text-xs py-3 text-center">No teams assigned</li>
+                )}
+              </ul>
+
+              {/* Add team dropdown */}
+              {!intakeMode && onAssignTeam && (
+                <div className="mt-2 relative">
+                  {openDropdown === gi ? (
+                    <div className="space-y-1">
+                      <input
+                        autoFocus
+                        className="w-full bg-white/[0.05] border border-violet-400/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500/40 transition"
+                        placeholder="Search team..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setOpenDropdown(null);
+                            setSearch("");
+                          }, 200);
+                        }}
+                      />
+                      {filteredAvailable.length > 0 ? (
+                        <ul className="max-h-36 overflow-auto rounded-lg border border-white/[0.08] bg-slate-950 divide-y divide-white/[0.04]">
+                          {filteredAvailable.map((t) => (
+                            <li key={t.id}>
+                              <button
+                                type="button"
+                                className="w-full text-left px-2.5 py-1.5 text-xs text-white/70 hover:bg-violet-500/10 hover:text-white transition"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  onAssignTeam(t.id, gi);
+                                  setOpenDropdown(null);
+                                  setSearch("");
+                                }}
+                              >
+                                {t.name}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-xs text-white/30 px-2 py-1">
+                          No available teams
+                        </div>
                       )}
                     </div>
-                  </li>
-                ))
-              ) : (
-                <li className="text-white/50 italic">— καμία ομάδα —</li>
-              )}
-            </ul>
-
-            {/* Add team to this group */}
-            {!intakeMode && onAssignTeam && (
-              <div className="mt-2 relative">
-                {openDropdown === gi ? (
-                  <div className="space-y-1">
-                    <input
-                      autoFocus
-                      className="w-full bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
-                      placeholder="Αναζήτηση ομάδας…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      onBlur={() => {
-                        // Delay close so click on option can register
-                        setTimeout(() => {
-                          setOpenDropdown(null);
-                          setSearch("");
-                        }, 200);
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenDropdown(gi);
+                        setSearch("");
                       }}
-                    />
-                    {filteredAvailable.length > 0 ? (
-                      <ul className="max-h-36 overflow-auto rounded-md border border-white/10 bg-slate-950 divide-y divide-white/5">
-                        {filteredAvailable.map((t) => (
-                          <li key={t.id}>
-                            <button
-                              type="button"
-                              className="w-full text-left px-2 py-1.5 text-xs text-white/80 hover:bg-cyan-500/10 hover:text-white"
-                              onMouseDown={(e) => {
-                                e.preventDefault(); // Prevent blur
-                                onAssignTeam(t.id, gi);
-                                setOpenDropdown(null);
-                                setSearch("");
-                              }}
-                            >
-                              {t.name}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-xs text-white/40 px-2 py-1">
-                        Δεν υπάρχουν διαθέσιμες ομάδες
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenDropdown(gi);
-                      setSearch("");
-                    }}
-                    className="w-full text-left px-2 py-1 text-xs rounded-md border border-dashed border-white/15 text-white/50 hover:text-white/80 hover:border-white/30"
-                  >
-                    + Προσθήκη ομάδας
-                  </button>
-                )}
-              </div>
-            )}
+                      className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg border-2 border-dashed border-white/[0.08] text-white/30 hover:text-white/60 hover:border-white/[0.15] transition"
+                    >
+                      + Add team
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
