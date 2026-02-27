@@ -268,9 +268,11 @@ function CompactMatchRow({ match }: { match: Match }) {
 export default function TeamDashboard({ allMatches = [], userTeams = [], className = "" }: TeamDashboardProps) {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(userTeams.length > 0 ? userTeams[0] : null);
 
-  // Only upcoming matches, sorted by start date
+  // Only upcoming matches without a score, sorted by start date
   const upcomingMatches = useMemo(() => {
-    return allMatches.filter((m) => isUpcoming(m.start)).sort((a, b) => a.start.localeCompare(b.start));
+    return allMatches
+      .filter((m) => isUpcoming(m.start) && !m.score)
+      .sort((a, b) => a.start.localeCompare(b.start));
   }, [allMatches]);
 
   // Teams from upcoming matches only
