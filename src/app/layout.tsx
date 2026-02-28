@@ -3,6 +3,7 @@ import React from "react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 import Navbar from "./lib/Navbar/Navbar";
@@ -129,6 +130,8 @@ export default async function RootLayout({
             { id: "after-hydrate", strategy: "afterInteractive", nonce, key: "after-hydrate" },
             `console.debug("hydrated");`
           ),
+
+          React.createElement(Analytics, { key: "analytics" }),
         ]
       ),
     ]
