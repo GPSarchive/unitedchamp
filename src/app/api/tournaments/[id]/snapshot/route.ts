@@ -1,6 +1,7 @@
 // app/api/tournaments/[id]/snapshot/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // service role for server routes
+import { requireAdmin } from "@/app/lib/supabase/apiAuth";
 import type { FullTournamentSnapshot } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 /** Avoid ISR here; editor needs fresh reads */
@@ -12,6 +13,10 @@ export async function GET(
   _req: Request,
   context: { params: Promise<Params> } // <-- exactly a Promise (matches Next's RouteContext check)
 ) {
+  // Full editor snapshot uses the service-role key; restrict to admins.
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
+
   const { id } = await context.params; // await the params
   const num = Number(id);
 
