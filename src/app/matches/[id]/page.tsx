@@ -159,7 +159,7 @@ export default async function Page({
       };
     });
 
-  // Prepare participants data
+  // Prepare participants data (includes full stats from stats editor)
   const participantsData = Array.from(participants.values())
     .map((part) => {
       const player = [...teamAPlayers, ...teamBPlayers].find(
@@ -177,6 +177,18 @@ export default async function Page({
         teamId: part.team_id,
         played: part.played,
         playerNumber: stats?.player_number ?? null,
+        // Full stats from stats editor
+        goals: stats?.goals ?? 0,
+        assists: stats?.assists ?? 0,
+        ownGoals: stats?.own_goals ?? 0,
+        yellowCards: stats?.yellow_cards ?? 0,
+        redCards: stats?.red_cards ?? 0,
+        blueCards: stats?.blue_cards ?? 0,
+        isCaptain: stats?.is_captain ?? false,
+        isGK: stats?.gk ?? false,
+        isMvp: stats?.mvp ?? false,
+        isBestGK: stats?.best_goalkeeper ?? false,
+        position: stats?.position ?? null,
       };
     })
     .filter((p) => p !== null);

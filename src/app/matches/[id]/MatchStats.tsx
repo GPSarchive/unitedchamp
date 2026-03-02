@@ -4,6 +4,17 @@ import type { Id, PlayerAssociation } from "@/app/lib/types";
 import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
 import GlossOverlay from "@/app/paiktes/GlossOverlay";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
+import {
+  SoccerBall,
+  AssistIcon,
+  YellowCard,
+  RedCard,
+  BlueCard,
+  OwnGoalIcon,
+  CaptainIcon,
+  GoalkeeperIcon,
+  MvpIcon,
+} from "@/app/lib/MatchIcons";
 
 /* ──────────────────────────────────────────────────────────
    Glass UI tokens
@@ -144,28 +155,80 @@ function TeamPanel({
 
                   <div className="flex flex-wrap items-center gap-2">
                     {pos && <Badge>Pos: {pos}</Badge>}
-                    {isCaptain && <Badge>Captain</Badge>}
-                    {isGK && <Badge>GK</Badge>}
-                    {isMvp && <Badge>🏅 MVP</Badge>}
-                    {isBestGk && <Badge>🧤 Best GK</Badge>}
+                    {isCaptain && (
+                      <Badge>
+                        <span className="inline-flex items-center gap-1">
+                          <CaptainIcon className="h-3.5 w-3.5 text-amber-400" />
+                          Αρχηγός
+                        </span>
+                      </Badge>
+                    )}
+                    {isGK && (
+                      <Badge>
+                        <span className="inline-flex items-center gap-1">
+                          <GoalkeeperIcon className="h-3.5 w-3.5 text-emerald-400" />
+                          GK
+                        </span>
+                      </Badge>
+                    )}
+                    {isMvp && (
+                      <Badge>
+                        <span className="inline-flex items-center gap-1">
+                          <MvpIcon className="h-3.5 w-3.5 text-yellow-400" />
+                          MVP
+                        </span>
+                      </Badge>
+                    )}
+                    {isBestGk && (
+                      <Badge>
+                        <span className="inline-flex items-center gap-1">
+                          <GoalkeeperIcon className="h-3.5 w-3.5 text-sky-400" />
+                          Best GK
+                        </span>
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="mt-4 flex flex-col gap-3 border-t border-black/30 pt-4">
-                <StatLine icon="⚽️" label="Goals" value={goals} />
-                <StatLine icon="🅰️" label="Assists" value={assists} color="text-sky-400" />
+                <StatLine
+                  icon={<SoccerBall className="h-5 w-5 text-white" />}
+                  label="Goals"
+                  value={goals}
+                />
+                <StatLine
+                  icon={<AssistIcon className="h-5 w-5 text-sky-400" />}
+                  label="Assists"
+                  value={assists}
+                  color="text-sky-400"
+                />
                 {ownGoals > 0 && (
-                  <StatLine 
-                    icon="🔴" 
-                    label="Own Goals" 
-                    value={ownGoals} 
-                    color="text-orange-500" 
+                  <StatLine
+                    icon={<OwnGoalIcon className="h-5 w-5 text-orange-400" />}
+                    label="Own Goals"
+                    value={ownGoals}
+                    color="text-orange-500"
                   />
                 )}
-                <StatLine icon="🟨" label="Κίτρινη Κάρτα" value={yellow} color="text-yellow-400" />
-                <StatLine icon="🟥" label="Κόκκινη Κάρτα" value={red} color="text-red-400" />
-                <StatLine icon="🟦" label="Μπλέ καρτα" value={blue} color="text-blue-400" />
+                <StatLine
+                  icon={<YellowCard className="h-6 w-5" />}
+                  label="Κίτρινη Κάρτα"
+                  value={yellow}
+                  color="text-yellow-400"
+                />
+                <StatLine
+                  icon={<RedCard className="h-6 w-5" />}
+                  label="Κόκκινη Κάρτα"
+                  value={red}
+                  color="text-red-400"
+                />
+                <StatLine
+                  icon={<BlueCard className="h-6 w-5" />}
+                  label="Μπλέ Κάρτα"
+                  value={blue}
+                  color="text-blue-400"
+                />
               </div>
             </div>
           );
