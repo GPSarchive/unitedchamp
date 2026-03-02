@@ -814,7 +814,9 @@ export default function MatchesDashboard({
                               <img src={b.logo} alt={b.name} className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 shrink-0" />
                             )}
                             {r.winner_team_id && (
-                              <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" title="Έχει νικητή" />
+                              <span title="Έχει νικητή">
+                                <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                              </span>
                             )}
                           </div>
                           {/* Tour + stage */}
