@@ -22,6 +22,7 @@ import { supabase } from "@/app/lib/supabase/supabaseClient";
 
 import RowEditor from "./RowEditor";
 import PostponeDialog from "./PostponeDialog";
+import PlayerPhoto from "@/app/dashboard/players/PlayerPhoto";
 import type {
   Id,
   TeamLite,
@@ -298,31 +299,97 @@ export default function MatchesDashboard({
     );
   }
 
-  /* ─── Scorers list ─── */
+  /* ─── Player event cards (scorers + card recipients) ─── */
   function ScorersList({ matchId, teamAId, teamBId }: { matchId: number; teamAId: Id; teamBId: Id }) {
     const summary = statsByMatch[matchId];
-    if (!summary || summary.scorers.length === 0) return null;
+    if (!summary || (summary.scorers.length === 0 && summary.cards.length === 0)) return null;
+
+    type PlayerEvent = {
+      player_id: number;
+      team_id: number;
+      first_name: string | null;
+      last_name: string | null;
+      photo: string | null;
+      goals: number;
+      own_goals: number;
+      yellow_cards: number;
+      red_cards: number;
+      blue_cards: number;
+    };
+
+    const byPlayer = new Map<number, PlayerEvent>();
+    for (const s of summary.scorers) {
+      byPlayer.set(s.player_id, {
+        player_id: s.player_id, team_id: s.team_id,
+        first_name: s.first_name, last_name: s.last_name, photo: s.photo,
+        goals: s.goals, own_goals: s.own_goals,
+        yellow_cards: 0, red_cards: 0, blue_cards: 0,
+      });
+    }
+    for (const c of summary.cards) {
+      const ex = byPlayer.get(c.player_id);
+      if (ex) {
+        ex.yellow_cards = c.yellow_cards;
+        ex.red_cards = c.red_cards;
+        ex.blue_cards = c.blue_cards;
+      } else {
+        byPlayer.set(c.player_id, {
+          player_id: c.player_id, team_id: c.team_id,
+          first_name: c.first_name, last_name: c.last_name, photo: c.photo,
+          goals: 0, own_goals: 0,
+          yellow_cards: c.yellow_cards, red_cards: c.red_cards, blue_cards: c.blue_cards,
+        });
+      }
+    }
 
     return (
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        {summary.scorers.map((s) => {
-          const name =
-            `${s.first_name ?? ""} ${s.last_name ?? ""}`.trim() || `#${s.player_id}`;
-          const isTeamA = String(s.team_id) === String(teamAId);
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {Array.from(byPlayer.values()).map((p) => {
+          const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || `#${p.player_id}`;
+          const shortName = p.last_name || name;
+          const isTeamA = String(p.team_id) === String(teamAId);
           return (
-            <span
-              key={`${s.player_id}-${s.team_id}`}
-              className="inline-flex items-center gap-1 text-xs text-white/70"
-            >
-              <SoccerBall className={`h-3 w-3 shrink-0 ${isTeamA ? "text-emerald-400" : "text-sky-400"}`} />
-              {name}
-              {s.goals > 1 && (
-                <span className="text-white/40">×{s.goals}</span>
-              )}
-              {s.own_goals > 0 && (
-                <span className="text-orange-400/80">(αυτ.)</span>
-              )}
-            </span>
+            <div key={p.player_id} title={name} className="flex flex-col items-center w-10 shrink-0">
+              {/* Photo with icon badges */}
+              <div className="relative w-10 h-10 rounded-md overflow-hidden border border-white/15 bg-zinc-900 shrink-0">
+                {p.photo ? (
+                  <PlayerPhoto path={p.photo} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center text-[11px] font-bold ${isTeamA ? "text-emerald-400" : "text-sky-400"}`}>
+                    {(p.first_name?.[0] ?? "") + (p.last_name?.[0] ?? "") || "?"}
+                  </div>
+                )}
+                {/* Goal badges – top-left */}
+                {(p.goals > 0 || p.own_goals > 0) && (
+                  <div className="absolute top-0.5 left-0.5 flex flex-col gap-0.5">
+                    {p.goals > 0 && (
+                      <span className="flex items-center gap-0.5 rounded bg-black/75 px-0.5 leading-none">
+                        <SoccerBall className={`h-2.5 w-2.5 ${isTeamA ? "text-emerald-400" : "text-sky-400"}`} />
+                        {p.goals > 1 && <span className="text-[8px] font-bold text-white">×{p.goals}</span>}
+                      </span>
+                    )}
+                    {p.own_goals > 0 && (
+                      <span className="flex items-center gap-0.5 rounded bg-black/75 px-0.5 leading-none">
+                        <SoccerBall className="h-2.5 w-2.5 text-orange-400" />
+                        <span className="text-[8px] font-bold text-orange-300">OG</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* Card badges – top-right */}
+                {(p.yellow_cards > 0 || p.red_cards > 0 || p.blue_cards > 0) && (
+                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0.5 items-end">
+                    {p.yellow_cards > 0 && <YellowCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                    {p.red_cards > 0 && <RedCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                    {p.blue_cards > 0 && <BlueCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                  </div>
+                )}
+              </div>
+              {/* Name */}
+              <span className={`text-[9px] mt-0.5 w-full text-center truncate leading-tight ${isTeamA ? "text-emerald-300/80" : "text-sky-300/80"}`}>
+                {shortName}
+              </span>
+            </div>
           );
         })}
       </div>

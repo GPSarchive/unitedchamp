@@ -13,12 +13,16 @@ export type MatchStatSummary = {
     team_id: number;
     first_name: string | null;
     last_name: string | null;
+    photo: string | null;
     goals: number;
     own_goals: number;
   }>;
   cards: Array<{
     player_id: number;
     team_id: number;
+    first_name: string | null;
+    last_name: string | null;
+    photo: string | null;
     yellow_cards: number;
     red_cards: number;
     blue_cards: number;
@@ -80,7 +84,7 @@ export default async function MatchesPage({
       yellow_cards,
       red_cards,
       blue_cards,
-      player:player_id(first_name, last_name)
+      player:player_id(first_name, last_name, photo)
     `
     )
     .or("goals.gt.0,own_goals.gt.0,yellow_cards.gt.0,red_cards.gt.0,blue_cards.gt.0");
@@ -104,6 +108,7 @@ export default async function MatchesPage({
         team_id: r.team_id,
         first_name: r.player?.first_name ?? null,
         last_name: r.player?.last_name ?? null,
+        photo: r.player?.photo ?? null,
         goals: r.goals ?? 0,
         own_goals: r.own_goals ?? 0,
       });
@@ -117,6 +122,9 @@ export default async function MatchesPage({
       summary.cards.push({
         player_id: r.player_id,
         team_id: r.team_id,
+        first_name: r.player?.first_name ?? null,
+        last_name: r.player?.last_name ?? null,
+        photo: r.player?.photo ?? null,
         yellow_cards: r.yellow_cards ?? 0,
         red_cards: r.red_cards ?? 0,
         blue_cards: r.blue_cards ?? 0,
