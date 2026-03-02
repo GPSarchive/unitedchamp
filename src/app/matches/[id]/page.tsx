@@ -25,6 +25,7 @@ import WelcomeMessage from "./WelcomeMessage";
 import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
+import ParticipantsStats from "./MatchStats";
 import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
 import MatchAdminActions from "./MatchAdminActions";
@@ -258,7 +259,7 @@ export default async function Page({
           scorers={scorers}
         />
 
-        {/* Show full rosters for scheduled matches, participants for finished matches */}
+        {/* Show full rosters for scheduled matches; premium stats display for finished matches */}
         {isScheduled && rosterData.length > 0 ? (
           <TeamRostersDisplay
             teamAId={match.team_a.id}
@@ -268,6 +269,17 @@ export default async function Page({
             teamALogo={match.team_a.logo ?? null}
             teamBLogo={match.team_b.logo ?? null}
             rosterPlayers={rosterData}
+          />
+        ) : !isScheduled && (participants.size > 0 || existingStats.size > 0) ? (
+          <ParticipantsStats
+            teamA={{ id: match.team_a.id, name: match.team_a.name }}
+            teamB={{ id: match.team_b.id, name: match.team_b.name }}
+            teamALogo={match.team_a.logo ?? null}
+            teamBLogo={match.team_b.logo ?? null}
+            associationsA={teamAPlayers}
+            associationsB={teamBPlayers}
+            statsByPlayer={existingStats}
+            participants={participants}
           />
         ) : participantsData.length > 0 ? (
           <MatchParticipantsShowcase
