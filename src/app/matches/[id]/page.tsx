@@ -28,6 +28,7 @@ import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
 import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
 import MatchAdminActions from "./MatchAdminActions";
+import ParticipantsStats from "./MatchStats";
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -177,6 +178,17 @@ export default async function Page({
         teamId: part.team_id,
         played: part.played,
         playerNumber: stats?.player_number ?? null,
+        goals: stats?.goals ?? 0,
+        assists: stats?.assists ?? 0,
+        ownGoals: stats?.own_goals ?? 0,
+        yellowCards: stats?.yellow_cards ?? 0,
+        redCards: stats?.red_cards ?? 0,
+        blueCards: stats?.blue_cards ?? 0,
+        isCaptain: stats?.is_captain ?? false,
+        isGK: stats?.gk ?? false,
+        isMvp: stats?.mvp ?? false,
+        isBestGk: stats?.best_goalkeeper ?? false,
+        position: stats?.position ?? null,
       };
     })
     .filter((p) => p !== null);
@@ -280,6 +292,19 @@ export default async function Page({
             participants={participantsData}
           />
         ) : null}
+
+        {/* Detailed player stats — shown for finished matches when stats exist */}
+        {!isScheduled && existingStats.size > 0 && (
+          <ParticipantsStats
+            teamA={match.team_a}
+            teamB={match.team_b}
+            associationsA={teamAPlayers}
+            associationsB={teamBPlayers}
+            statsByPlayer={existingStats}
+            participants={participants}
+            labels={{ left: match.team_a.name, right: match.team_b.name }}
+          />
+        )}
 
         {/* Match Video - only show if there is a valid videoId (DB or ?video= override) */}
         {videoId && (
