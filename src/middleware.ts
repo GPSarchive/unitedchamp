@@ -76,39 +76,57 @@ export async function middleware(req: NextRequest) {
   const nonce = makeNonce()
   res.headers.set('x-nonce', nonce)
 
-  const needsAuth = path.startsWith('/dashboard')
-  if (needsAuth) {
+  // API paths that are intentionally public (auth flow + public asset proxy).
+  // Everything else that mutates data (POST/PUT/PATCH/DELETE) must have a
+  // valid Supabase session — this is the last-resort safety net so no future
+  // route can accidentally skip auth on a write operation.
+  const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/public/']
+  const isPublicApi = PUBLIC_API_PREFIXES.some(p => path.startsWith(p))
+  const isApiMutation =
+    isApi && !isPublicApi && (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE')
+
+  const needsDashboardAuth = path.startsWith('/dashboard')
+
+  if (needsDashboardAuth || isApiMutation) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           getAll: () => req.cookies.getAll(),
-          setAll: (cookies) => { 
-            cookies.forEach(({ name, value, options }) => res.cookies.set(name, value, options)) 
+          setAll: (cookies) => {
+            cookies.forEach(({ name, value, options }) => res.cookies.set(name, value, options))
           },
         },
       }
     )
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      const url = req.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('next', req.nextUrl.pathname + req.nextUrl.search)
-      return NextResponse.redirect(url, { headers: res.headers })
+
+    // API mutation with no session → 401 (never trust the client)
+    if (isApiMutation && !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const roles = Array.isArray(user.app_metadata?.roles) 
-      ? (user.app_metadata!.roles as string[]) 
-      : []
-    const isAdmin = roles.includes('admin')
-    const emailIsAdmin = !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
-    if (!isAdmin && !emailIsAdmin) {
-      const url = req.nextUrl.clone()
-      url.pathname = '/403'
-      url.searchParams.delete('next')
-      return NextResponse.redirect(url, { headers: res.headers })
+    if (needsDashboardAuth) {
+      if (!user) {
+        const url = req.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('next', req.nextUrl.pathname + req.nextUrl.search)
+        return NextResponse.redirect(url, { headers: res.headers })
+      }
+
+      const roles = Array.isArray(user.app_metadata?.roles)
+        ? (user.app_metadata!.roles as string[])
+        : []
+      const isAdmin = roles.includes('admin')
+      const emailIsAdmin = !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
+      if (!isAdmin && !emailIsAdmin) {
+        const url = req.nextUrl.clone()
+        url.pathname = '/403'
+        url.searchParams.delete('next')
+        return NextResponse.redirect(url, { headers: res.headers })
+      }
     }
   }
 

@@ -2,8 +2,11 @@
 // Temporary debug endpoint to track function invocations
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { requireAdmin } from '@/app/lib/supabase/apiAuth';
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
   try {
     // Get some sample rate limit keys to see activity
     const now = Math.floor(Date.now() / 1000);
