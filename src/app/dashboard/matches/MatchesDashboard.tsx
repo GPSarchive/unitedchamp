@@ -13,19 +13,34 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Search,
+  Trophy,
+  ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/app/lib/supabase/supabaseClient";
 
 import RowEditor from "./RowEditor";
 import PostponeDialog from "./PostponeDialog";
+import PlayerPhoto from "@/app/dashboard/players/PlayerPhoto";
 import type {
   Id,
   TeamLite,
   MatchRow as BaseMatchRow,
   MaybeArray,
 } from "@/app/lib/types";
+import type { MatchStatSummary } from "./page";
+import {
+  SoccerBall,
+  YellowCard,
+  RedCard,
+  BlueCard,
+  FinishedIcon,
+  ScheduledIcon,
+  PostponedIcon,
+} from "@/app/lib/MatchIcons";
 
-// Extend the shared MatchRow with joined objects (and a few optional meta columns)
+// Extend the shared MatchRow with joined objects
 export type MatchRow = BaseMatchRow & {
   teamA?: MaybeArray<TeamLite>;
   teamB?: MaybeArray<TeamLite>;
@@ -44,8 +59,8 @@ export type MatchRow = BaseMatchRow & {
 type MatchesDashboardProps = {
   initialTeams?: TeamLite[];
   initialMatches?: MatchRow[];
-  /** Comes from the parent (?tid=...) and is used to preselect the tournament filter */
   defaultTournamentId?: number | null;
+  statsByMatch?: Record<number, MatchStatSummary>;
 };
 
 // ===== Small helpers =====
@@ -58,15 +73,11 @@ function isoToDTString(iso: string | null): string {
   const day = pad(d.getUTCDate());
   const hh = pad(d.getUTCHours());
   const mm = pad(d.getUTCMinutes());
-  return `${y}-${m}-${day} ${hh}:${mm}`;
+  return `${day}/${m}/${y} ${hh}:${mm}`;
 }
 
 function one<T>(v: MaybeArray<T> | undefined): T | null {
   return Array.isArray(v) ? v[0] ?? null : ((v as unknown) as T | null) ?? null;
-}
-
-function teamLabel(t: TeamLite | null, fallbackId?: Id) {
-  return t ? `${t.name} (#${t.id})` : `#${fallbackId ?? ""}`;
 }
 
 function stageLabel(r: MatchRow): string | null {
@@ -75,10 +86,10 @@ function stageLabel(r: MatchRow): string | null {
   const parts: string[] = [];
   if (s?.name) parts.push(s.name);
   if (g?.name) parts.push(g.name);
-  if (typeof r.matchday === "number") parts.push(`MD ${r.matchday}`);
+  if (typeof r.matchday === "number") parts.push(`ΑΓ ${r.matchday}`);
   if (typeof r.round === "number") parts.push(`R${r.round}`);
   if (typeof r.bracket_pos === "number") parts.push(`Pos ${r.bracket_pos}`);
-  return parts.length ? parts.join(" • ") : null;
+  return parts.length ? parts.join(" · ") : null;
 }
 
 const PAGE_SIZE = 20;
@@ -87,10 +98,10 @@ export default function MatchesDashboard({
   initialTeams = [],
   initialMatches = [],
   defaultTournamentId = null,
+  statsByMatch = {},
 }: MatchesDashboardProps) {
   const router = useRouter();
 
-  // Local copies for client-side filter/sort and optimistic updates.
   const [teams, setTeams] = useState<TeamLite[]>(initialTeams);
   const [rows, setRows] = useState<MatchRow[]>(initialMatches);
   const [error, setError] = useState<string | null>(null);
@@ -99,26 +110,20 @@ export default function MatchesDashboard({
   const [postponingId, setPostponingId] = useState<Id | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Filters & sorting
   const [tournamentFilter, setTournamentFilter] = useState<string>("all");
   const [teamQuery, setTeamQuery] = useState<string>("");
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "updated">("newest");
-
-  // Pagination state
   const [page, setPage] = useState<number>(1);
 
-  // Keep local state in sync when the server re-hydrates with new data
   useEffect(() => setTeams(initialTeams), [initialTeams]);
   useEffect(() => setRows(initialMatches), [initialMatches]);
 
-  // Initialize tournament filter from parent (?tid=...)
   useEffect(() => {
     if (defaultTournamentId != null) {
       setTournamentFilter(String(defaultTournamentId));
     }
   }, [defaultTournamentId]);
 
-  // Reset to first page whenever filters, sort, or source rows change
   useEffect(() => {
     setPage(1);
   }, [tournamentFilter, teamQuery, sortMode, rows.length]);
@@ -145,7 +150,6 @@ export default function MatchesDashboard({
 
   async function remove(id: Id) {
     if (!confirm("Delete this match? This cannot be undone.")) return;
-
     try {
       const res = await fetch(`/api/matches/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
@@ -158,8 +162,6 @@ export default function MatchesDashboard({
           "";
         throw new Error(dbg ? `${base} — ${dbg}` : base);
       }
-
-      // Optimistic update for snappy UX
       setRows((r) => r.filter((x) => x.id !== id));
       await refreshFromServer();
     } catch (e: any) {
@@ -167,13 +169,7 @@ export default function MatchesDashboard({
     }
   }
 
-  async function testRlsCondition() {
-    const { data, error } = await supabase.rpc("test_admin_role");
-    if (error) console.error("RLS Test Error:", error);
-    console.log("Is admin role present?:", data);
-  }
-
-  // Build distinct tournament options from rows
+  // Build tournament options from rows
   const tournamentOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const r of rows) {
@@ -187,12 +183,11 @@ export default function MatchesDashboard({
     );
   }, [rows]);
 
-  // Get postponed matches (not affected by filters)
-  const postponedMatches = useMemo(() => {
-    return rows.filter((r) => r.status === "postponed");
-  }, [rows]);
+  const postponedMatches = useMemo(
+    () => rows.filter((r) => r.status === "postponed"),
+    [rows]
+  );
 
-  // Derive visible list (filter + sort)
   const displayRows = useMemo(() => {
     let out = [...rows];
 
@@ -237,76 +232,203 @@ export default function MatchesDashboard({
     return displayRows.slice(start, start + PAGE_SIZE);
   }, [displayRows, page]);
 
-  const btn = (active: boolean) =>
-    `inline-flex items-center gap-1 px-2 py-1 rounded-md border text-sm ${
-      active
-        ? "border-emerald-400/40 bg-emerald-700/30 text-white"
-        : "border-white/15 bg-zinc-950 text-white hover:bg-zinc-900"
-    }`;
-
-  // Row styling helper: zebra + status accent + hover
-  function rowClass(i: number, s: MatchRow["status"]) {
-    return [
-      "group relative transition-colors border-t border-white/8",
-      i % 2 ? "bg-[#0b0b10]" : "bg-[#101215]",
-      "hover:bg-red-500/10 focus-within:bg-black-500/15 active:bg-red-500/20",
-      "text-white/90 hover:text-white focus-within:text-white active:text-white",
-      "hover:[&_svg]:text-white hover:[&_span]:text-white hover:[&_div]:text-white hover:[&_p]:text-white",
-      "focus-within:[&_svg]:text-white focus-within:[&_span]:text-white focus-within:[&_div]:text-white",
-      "active:[&_svg]:text-white active:[&_span]:text-white active:[&_div]:text-white",
-      "before:absolute before:left-0 before:top-0 before:h-full before:w-1",
-      s === "finished" ? "before:bg-emerald-500/80" : "before:bg-zinc-400/40",
-    ].join(" ");
+  /* ─── Status badge ─── */
+  function StatusBadge({ status }: { status: MatchRow["status"] }) {
+    if (status === "finished")
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-600/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-300">
+          <FinishedIcon className="h-3 w-3" />
+          Ολοκληρώθηκε
+        </span>
+      );
+    if (status === "postponed")
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-600/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-orange-300">
+          <PostponedIcon className="h-3 w-3" />
+          Αναβλήθηκε
+        </span>
+      );
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/70">
+        <ScheduledIcon className="h-3 w-3" />
+        Προγρ.
+      </span>
+    );
   }
 
+  /* ─── Stats summary chips ─── */
+  function MatchStatsSummary({ matchId, teamAId, teamBId }: { matchId: number; teamAId: Id; teamBId: Id }) {
+    const summary = statsByMatch[matchId];
+    if (!summary) return null;
+
+    const totalGoals = summary.scorers.reduce((sum, s) => sum + s.goals + s.own_goals, 0);
+    const totalYellow = summary.cards.reduce((sum, c) => sum + c.yellow_cards, 0);
+    const totalRed = summary.cards.reduce((sum, c) => sum + c.red_cards, 0);
+    const totalBlue = summary.cards.reduce((sum, c) => sum + c.blue_cards, 0);
+
+    if (totalGoals === 0 && totalYellow === 0 && totalRed === 0 && totalBlue === 0)
+      return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {totalGoals > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/8 px-1.5 py-0.5 text-xs font-medium text-white">
+            <SoccerBall className="h-3.5 w-3.5 text-emerald-400" />
+            {totalGoals}
+          </span>
+        )}
+        {totalYellow > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-yellow-400/20 bg-yellow-500/10 px-1.5 py-0.5 text-xs font-medium text-yellow-300">
+            <YellowCard className="h-4 w-3" />
+            {totalYellow}
+          </span>
+        )}
+        {totalRed > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-red-400/20 bg-red-500/10 px-1.5 py-0.5 text-xs font-medium text-red-300">
+            <RedCard className="h-4 w-3" />
+            {totalRed}
+          </span>
+        )}
+        {totalBlue > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-blue-400/20 bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-300">
+            <BlueCard className="h-4 w-3" />
+            {totalBlue}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  /* ─── Player event cards (scorers + card recipients) ─── */
+  function ScorersList({ matchId, teamAId, teamBId }: { matchId: number; teamAId: Id; teamBId: Id }) {
+    const summary = statsByMatch[matchId];
+    if (!summary || (summary.scorers.length === 0 && summary.cards.length === 0)) return null;
+
+    type PlayerEvent = {
+      player_id: number;
+      team_id: number;
+      first_name: string | null;
+      last_name: string | null;
+      photo: string | null;
+      goals: number;
+      own_goals: number;
+      yellow_cards: number;
+      red_cards: number;
+      blue_cards: number;
+    };
+
+    const byPlayer = new Map<number, PlayerEvent>();
+    for (const s of summary.scorers) {
+      byPlayer.set(s.player_id, {
+        player_id: s.player_id, team_id: s.team_id,
+        first_name: s.first_name, last_name: s.last_name, photo: s.photo,
+        goals: s.goals, own_goals: s.own_goals,
+        yellow_cards: 0, red_cards: 0, blue_cards: 0,
+      });
+    }
+    for (const c of summary.cards) {
+      const ex = byPlayer.get(c.player_id);
+      if (ex) {
+        ex.yellow_cards = c.yellow_cards;
+        ex.red_cards = c.red_cards;
+        ex.blue_cards = c.blue_cards;
+      } else {
+        byPlayer.set(c.player_id, {
+          player_id: c.player_id, team_id: c.team_id,
+          first_name: c.first_name, last_name: c.last_name, photo: c.photo,
+          goals: 0, own_goals: 0,
+          yellow_cards: c.yellow_cards, red_cards: c.red_cards, blue_cards: c.blue_cards,
+        });
+      }
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {Array.from(byPlayer.values()).map((p) => {
+          const name = `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || `#${p.player_id}`;
+          const shortName = p.last_name || name;
+          const isTeamA = String(p.team_id) === String(teamAId);
+          return (
+            <div key={p.player_id} title={name} className="flex flex-col items-center w-10 shrink-0">
+              {/* Photo with icon badges */}
+              <div className="relative w-10 h-10 rounded-md overflow-hidden border border-white/15 bg-zinc-900 shrink-0">
+                {p.photo ? (
+                  <PlayerPhoto path={p.photo} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center text-[11px] font-bold ${isTeamA ? "text-emerald-400" : "text-sky-400"}`}>
+                    {(p.first_name?.[0] ?? "") + (p.last_name?.[0] ?? "") || "?"}
+                  </div>
+                )}
+                {/* Goal badges – top-left */}
+                {(p.goals > 0 || p.own_goals > 0) && (
+                  <div className="absolute top-0.5 left-0.5 flex flex-col gap-0.5">
+                    {p.goals > 0 && (
+                      <span className="flex items-center gap-0.5 rounded bg-black/75 px-0.5 leading-none">
+                        <SoccerBall className={`h-2.5 w-2.5 ${isTeamA ? "text-emerald-400" : "text-sky-400"}`} />
+                        {p.goals > 1 && <span className="text-[8px] font-bold text-white">×{p.goals}</span>}
+                      </span>
+                    )}
+                    {p.own_goals > 0 && (
+                      <span className="flex items-center gap-0.5 rounded bg-black/75 px-0.5 leading-none">
+                        <SoccerBall className="h-2.5 w-2.5 text-orange-400" />
+                        <span className="text-[8px] font-bold text-orange-300">OG</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* Card badges – top-right */}
+                {(p.yellow_cards > 0 || p.red_cards > 0 || p.blue_cards > 0) && (
+                  <div className="absolute top-0.5 right-0.5 flex flex-col gap-0.5 items-end">
+                    {p.yellow_cards > 0 && <YellowCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                    {p.red_cards > 0 && <RedCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                    {p.blue_cards > 0 && <BlueCard className="h-3.5 w-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" />}
+                  </div>
+                )}
+              </div>
+              {/* Name */}
+              <span className={`text-[9px] mt-0.5 w-full text-center truncate leading-tight ${isTeamA ? "text-emerald-300/80" : "text-sky-300/80"}`}>
+                {shortName}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ─── Pagination ─── */
   function Pagination() {
     const canPrev = page > 1;
     const canNext = page < totalPages;
+    const paginationBtn =
+      "min-h-[40px] flex-1 md:flex-none inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-lg border border-white/12 bg-zinc-950/80 text-white/80 hover:bg-zinc-900 hover:text-white disabled:opacity-35 transition-colors text-sm";
 
     return (
-      <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 justify-between px-3 py-2 bg-gradient-to-r from-black to-zinc-950 border-t border-white/10">
-        <div className="text-xs text-white/60 order-2 md:order-1">
-          Showing {" "}
-          <span className="text-white">{displayRows.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}</span>
-          –<span className="text-white">{Math.min(page * PAGE_SIZE, displayRows.length)}</span> of
-          <span className="text-white"> {displayRows.length}</span>
+      <div className="flex flex-col md:flex-row items-center gap-3 justify-between px-4 py-2.5 bg-gradient-to-r from-zinc-950 to-black border-t border-white/8">
+        <div className="text-xs text-white/50 order-2 md:order-1">
+          Εμφάνιση{" "}
+          <span className="text-white/80">
+            {displayRows.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–
+            {Math.min(page * PAGE_SIZE, displayRows.length)}
+          </span>{" "}
+          από <span className="text-white/80">{displayRows.length}</span>
         </div>
         <div className="flex items-center gap-1 w-full md:w-auto order-1 md:order-2">
-          <button
-            onClick={() => setPage(1)}
-            disabled={!canPrev}
-            className="min-h-[44px] flex-1 md:flex-none md:min-w-[44px] inline-flex items-center justify-center px-2 py-1 rounded-md border border-white/15 bg-black/60 text-white disabled:opacity-40 hover:bg-black"
-            aria-label="First page"
-          >
+          <button onClick={() => setPage(1)} disabled={!canPrev} className={paginationBtn} aria-label="Πρώτη">
             <ChevronsLeft className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!canPrev}
-            className="min-h-[44px] flex-1 md:flex-none inline-flex items-center justify-center px-2 py-1 rounded-md border border-white/15 bg-black/60 text-white disabled:opacity-40 hover:bg-black"
-            aria-label="Previous page"
-          >
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canPrev} className={paginationBtn} aria-label="Προηγούμενη">
             <ChevronLeft className="h-4 w-4" />
-            <span className="hidden md:inline">Prev</span>
+            <span className="hidden md:inline">Προηγ.</span>
           </button>
-          <span className="px-2 text-xs text-white/70 hidden md:inline">
-            Page <span className="text-white">{page}</span> / <span className="text-white">{totalPages}</span>
+          <span className="px-3 text-xs text-white/60 hidden md:inline">
+            <span className="text-white">{page}</span> / <span className="text-white">{totalPages}</span>
           </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={!canNext}
-            className="min-h-[44px] flex-1 md:flex-none inline-flex items-center justify-center px-2 py-1 rounded-md border border-white/15 bg-black/60 text-white disabled:opacity-40 hover:bg-black"
-            aria-label="Next page"
-          >
-            <span className="hidden md:inline">Next</span>
+          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={!canNext} className={paginationBtn} aria-label="Επόμενη">
+            <span className="hidden md:inline">Επόμ.</span>
             <ChevronRight className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setPage(totalPages)}
-            disabled={!canNext}
-            className="min-h-[44px] flex-1 md:flex-none md:min-w-[44px] inline-flex items-center justify-center px-2 py-1 rounded-md border border-white/15 bg-black/60 text-white disabled:opacity-40 hover:bg-black"
-            aria-label="Last page"
-          >
+          <button onClick={() => setPage(totalPages)} disabled={!canNext} className={paginationBtn} aria-label="Τελευταία">
             <ChevronsRight className="h-4 w-4" />
           </button>
         </div>
@@ -315,96 +437,84 @@ export default function MatchesDashboard({
   }
 
   return (
-    <section className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between rounded-xl border border-emerald-400/20 bg-gradient-to-r from-black via-zinc-950 to-black px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-        <h2 className="text-xl font-bold text-white tracking-wide">
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-emerald-300">
-            Matches
-          </span>
-        </h2>
+    <section className="space-y-5">
+      {/* ─── Header ─── */}
+      <header className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between rounded-xl border border-emerald-400/20 bg-gradient-to-r from-zinc-950 via-black to-zinc-950 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="flex items-center gap-2.5">
+          <SoccerBall className="h-6 w-6 text-emerald-400" />
+          <h2 className="text-xl font-bold">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-emerald-300">
+              Αγώνες
+            </span>
+          </h2>
+        </div>
         <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
           <button
             onClick={refreshFromServer}
-            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-black/60 text-white hover:bg-black disabled:opacity-60"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/12 bg-zinc-950/80 text-white/80 hover:bg-zinc-900 hover:text-white disabled:opacity-60 transition-colors"
             disabled={isRefreshing}
-            title="Re-fetch from server (router.refresh)"
           >
             <RefreshCw className={`${isRefreshing ? "animate-spin" : ""} h-4 w-4`} />
-            <span className="hidden sm:inline">Refresh</span>
+            <span className="hidden sm:inline text-sm">Ανανέωση</span>
           </button>
           <button
             onClick={() => setCreating(true)}
-            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/30 text-white hover:bg-emerald-700/50 shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]"
+            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/25 text-white hover:bg-emerald-700/40 transition-colors shadow-[0_0_0_1px_rgba(16,185,129,0.25)_inset]"
           >
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">New match</span>
-          </button>
-          <button
-            onClick={testRlsCondition}
-            className="min-h-[44px] inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-blue-400/40 bg-blue-700/30 text-white hover:bg-blue-700/50"
-          >
-            <span className="hidden sm:inline">Test RLS</span>
-            <span className="sm:hidden">RLS</span>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">Νέος αγώνας</span>
           </button>
         </div>
       </header>
 
-      {/* Search + filters + sort */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 rounded-xl border border-white/10 bg-black/40 p-3 ring-1 ring-white/5">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-white/70 shrink-0">Search</label>
+      {/* ─── Filters ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 rounded-xl border border-white/8 bg-zinc-950/60 p-3 ring-1 ring-white/4">
+        <div className="relative flex items-center">
+          <Search className="absolute left-3 h-4 w-4 text-white/40 pointer-events-none" />
           <input
             type="text"
             value={teamQuery}
             onChange={(e) => setTeamQuery(e.target.value)}
-            placeholder="Search team name…"
-            className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-950 text-white ring-1 ring-white/10 placeholder:text-white/40 focus:outline-none focus:ring-emerald-400/40 w-full"
+            placeholder="Αναζήτηση ομάδας…"
+            className="pl-9 pr-3 py-2 min-h-[44px] rounded-lg bg-black/60 text-white ring-1 ring-white/10 placeholder:text-white/35 focus:outline-none focus:ring-emerald-400/40 w-full text-sm transition-shadow"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-white/70 shrink-0">Tournament</label>
-          <select
-            value={tournamentFilter}
-            onChange={(e) => setTournamentFilter(e.target.value)}
-            className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-950 text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-400/40 w-full"
-          >
-            <option value="all">All tournaments</option>
-            {tournamentOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={tournamentFilter}
+          onChange={(e) => setTournamentFilter(e.target.value)}
+          className="px-3 py-2 min-h-[44px] rounded-lg bg-black/60 text-white ring-1 ring-white/10 focus:outline-none focus:ring-emerald-400/40 w-full text-sm"
+        >
+          <option value="all">Όλες οι διοργανώσεις</option>
+          {tournamentOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.name}
+            </option>
+          ))}
+        </select>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-white/70 shrink-0">Sort</span>
-          <div className="grid grid-cols-3 gap-2 w-full">
-            <button
-              className={`${btn(sortMode === "oldest")} min-h-[40px]`}
-              onClick={() => setSortMode("oldest")}
-              title="Oldest by match date"
-            >
-              <Calendar className="h-4 w-4" />
-              <span className="hidden lg:inline">Oldest</span>
-            </button>
-            <button
-              className={`${btn(sortMode === "newest")} min-h-[40px]`}
-              onClick={() => setSortMode("newest")}
-              title="Newest by match date"
-            >
-              <Calendar className="h-4 w-4" />
-              <span className="hidden lg:inline">Newest</span>
-            </button>
-            <button
-              className={`${btn(sortMode === "updated")} min-h-[40px]`}
-              onClick={() => setSortMode("updated")}
-              title="Most recently updated"
-            >
-              <Clock className="h-4 w-4" />
-              <span className="hidden lg:inline">Last updated</span>
-            </button>
+          <span className="text-xs text-white/50 shrink-0">Ταξινόμηση</span>
+          <div className="grid grid-cols-3 gap-1.5 flex-1">
+            {(["newest", "oldest", "updated"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setSortMode(mode)}
+                className={`min-h-[40px] inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg border text-xs transition-colors ${
+                  sortMode === mode
+                    ? "border-emerald-400/40 bg-emerald-700/25 text-white"
+                    : "border-white/10 bg-black/40 text-white/60 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                {mode === "oldest" ? (
+                  <><Calendar className="h-3.5 w-3.5" /> Παλαιότ.</>
+                ) : mode === "newest" ? (
+                  <><Calendar className="h-3.5 w-3.5" /> Νεότερα</>
+                ) : (
+                  <><Clock className="h-3.5 w-3.5" /> Αλλαγές</>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -415,132 +525,115 @@ export default function MatchesDashboard({
               setTeamQuery("");
               setSortMode("newest");
             }}
-            className="sm:col-span-2 lg:col-span-3 inline-flex items-center justify-center gap-1 px-3 py-2 min-h-[44px] rounded-md border border-white/15 bg-zinc-950 text-white hover:bg-zinc-900 text-sm"
-            title="Reset filters"
+            className="sm:col-span-2 lg:col-span-3 inline-flex items-center justify-center gap-2 px-3 py-2 min-h-[44px] rounded-lg border border-white/10 bg-black/40 text-white/70 hover:text-white hover:bg-white/5 text-sm transition-colors"
           >
-            Reset filters
+            Επαναφορά φίλτρων
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/40 bg-red-900/30 p-3 text-red-200">
-          Error: {error}
+        <div className="rounded-lg border border-red-500/40 bg-red-900/25 p-3 text-red-200 text-sm flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {error}
         </div>
       )}
 
-      {/* Postponed Matches Section */}
+      {/* ─── Postponed Matches Alert Section ─── */}
       {postponedMatches.length > 0 && (
-        <div className="border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/40">
-          <div className="bg-gradient-to-r from-zinc-950 to-black px-4 py-3 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5 text-white" />
-              <h3 className="text-lg font-bold text-white">
-                Αναβληθέντες Αγώνες ({postponedMatches.length})
+        <div className="rounded-2xl border border-orange-400/20 overflow-hidden shadow-xl shadow-black/40">
+          <div className="bg-gradient-to-r from-orange-950/60 to-zinc-950 px-4 py-3 border-b border-orange-400/20 flex items-center gap-3">
+            <PostponedIcon className="h-5 w-5 text-orange-400 shrink-0" />
+            <div>
+              <h3 className="font-bold text-white text-base">
+                Αναβληθέντες Αγώνες
+                <span className="ml-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-orange-500/30 border border-orange-400/30 text-orange-200 text-[10px] font-bold">
+                  {postponedMatches.length}
+                </span>
               </h3>
+              <p className="text-xs text-orange-200/60 mt-0.5">
+                Αναμένουν επιβεβαίωση νέας ημερομηνίας
+              </p>
             </div>
-            <p className="text-sm text-white/70 mt-1">
-              Αγώνες που έχουν αναβληθεί και αναμένουν επιβεβαίωση νέας ημερομηνίας
-            </p>
           </div>
 
-          <div className="divide-y divide-white/10">
+          <div className="divide-y divide-white/8">
             {postponedMatches.map((r) => {
               const a = one<TeamLite>(r.teamA);
               const b = one<TeamLite>(r.teamB);
-              const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+              const tourName =
+                one(r.tournament)?.name ??
+                (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
               const stageTxt = stageLabel(r);
 
               return (
                 <div
                   key={r.id}
-                  className="p-4 bg-zinc-950/50 hover:bg-zinc-900/60 transition-colors"
+                  className="p-4 bg-orange-950/15 hover:bg-orange-950/25 transition-colors"
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    {/* Match Info */}
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3">
+                      {/* Teams */}
+                      <div className="flex items-center gap-2 flex-wrap">
                         {a?.logo && (
-                          <img
-                            src={a.logo}
-                            alt={a.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
-                          />
+                          <img src={a.logo} alt={a.name} className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10" />
                         )}
-                        <span className="font-semibold text-white text-lg">
-                          {a?.name ?? r.team_a_id}
-                        </span>
-                        <span className="text-white/60">vs</span>
-                        <span className="font-semibold text-white text-lg">
-                          {b?.name ?? r.team_b_id}
-                        </span>
+                        <span className="font-semibold text-white">{a?.name ?? r.team_a_id}</span>
+                        <span className="text-white/40 text-sm">vs</span>
+                        <span className="font-semibold text-white">{b?.name ?? r.team_b_id}</span>
                         {b?.logo && (
-                          <img
-                            src={b.logo}
-                            alt={b.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
-                          />
+                          <img src={b.logo} alt={b.name} className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10" />
                         )}
                       </div>
-
-                      <div className="flex flex-wrap gap-2 text-sm text-white/80">
-                        <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
-                          {tourName}
+                      {/* Tour + stage */}
+                      <div className="flex flex-wrap gap-1.5 text-xs">
+                        <span className="px-2 py-0.5 rounded bg-white/8 border border-white/10 text-white/70">{tourName}</span>
+                        {stageTxt && <span className="px-2 py-0.5 rounded bg-white/8 border border-white/10 text-white/70">{stageTxt}</span>}
+                      </div>
+                      {/* Dates */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs text-white/70">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-white/40" />
+                          <span className="text-white/50">Αρχική:</span>
+                          {r.original_match_date ? isoToDTString(r.original_match_date) : "—"}
                         </span>
-                        {stageTxt && (
-                          <span className="px-2 py-1 rounded bg-white/10 border border-white/15">
-                            {stageTxt}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-2 text-white/90">
-                          <Calendar className="h-4 w-4 text-white/70" />
-                          <span className="font-medium">Αρχική:</span>
-                          <span>{r.original_match_date ? isoToDTString(r.original_match_date) : "—"}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-white/90">
-                          <Calendar className="h-4 w-4 text-white/70" />
-                          <span className="font-medium">Νέα:</span>
-                          <span>
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-orange-400" />
+                          <span className="text-white/50">Νέα:</span>
+                          <span className={r.match_date && r.match_date !== r.original_match_date ? "text-orange-300" : "text-white/40"}>
                             {r.match_date && r.match_date !== r.original_match_date
                               ? isoToDTString(r.match_date)
                               : "ΘΑ ΑΝΑΚΟΙΝΩΘΕΙ"}
                           </span>
-                        </div>
+                        </span>
                       </div>
-
                       {r.postponement_reason && (
-                        <div className="flex items-start gap-2 text-sm text-white/80 bg-white/5 p-2 rounded border border-white/10">
-                          <span className="font-medium">Λόγος:</span>
-                          <span>{r.postponement_reason}</span>
-                        </div>
+                        <p className="text-xs text-orange-200/70 bg-orange-500/8 rounded px-2 py-1 border border-orange-400/15">
+                          {r.postponement_reason}
+                        </p>
                       )}
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 shrink-0">
                       <button
                         onClick={() => setPostponingId(r.id)}
-                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 text-white transition-colors"
-                        title="Ενημέρωση ημερομηνίας"
+                        className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-400/30 bg-emerald-700/20 hover:bg-emerald-700/35 text-white text-sm transition-colors"
                       >
-                        <Clock className="h-4 w-4" />
-                        <span>Ενημέρωση</span>
+                        <Clock className="h-3.5 w-3.5" />
+                        Ενημέρωση
                       </button>
                       <button
                         onClick={() => setEditingId(r.id)}
-                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900 text-white transition-colors"
+                        className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/12 bg-zinc-950 hover:bg-zinc-900 text-white text-sm transition-colors"
                       >
-                        <Edit3 className="h-4 w-4" />
-                        <span>Edit</span>
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Επεξεργασία
                       </button>
                     </div>
                   </div>
 
                   {editingId === r.id && (
-                    <div className="mt-4 p-4 bg-black/40 rounded-lg border border-white/10">
+                    <div className="mt-4 p-4 bg-black/40 rounded-xl border border-white/10">
                       <RowEditor
                         initial={r}
                         teams={teams}
@@ -561,6 +654,7 @@ export default function MatchesDashboard({
         </div>
       )}
 
+      {/* ─── New match editor ─── */}
       {creating && (
         <RowEditor
           initial={{}}
@@ -575,80 +669,140 @@ export default function MatchesDashboard({
         />
       )}
 
-      {/* Responsive list/table */}
+      {/* ─── Match list ─── */}
       {rows.length === 0 ? (
-        <p className="text-white/70">No matches yet.</p>
+        <div className="rounded-xl border border-white/8 bg-white/3 p-12 text-center">
+          <SoccerBall className="h-10 w-10 text-white/20 mx-auto mb-3" />
+          <p className="text-white/50 text-sm">Δεν υπάρχουν αγώνες ακόμα.</p>
+        </div>
       ) : (
-        <div className="border border-white/10 rounded-2xl overflow-hidden shadow-xl shadow-black/40">
-          {/* Pagination (top) */}
-          <div className="bg-gradient-to-r from-zinc-950 to-black">
-            <Pagination />
-          </div>
+        <div className="rounded-2xl border border-white/10 overflow-hidden shadow-xl shadow-black/40">
+          <Pagination />
 
-          {/* Mobile cards */}
-          <ul className="md:hidden divide-y divide-white/10">
+          {/* ── Mobile card view ── */}
+          <ul className="md:hidden divide-y divide-white/8">
             {pagedRows.map((r, i) => {
               const a = one<TeamLite>(r.teamA);
               const b = one<TeamLite>(r.teamB);
-              const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+              const tourName =
+                one(r.tournament)?.name ??
+                (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
               const stageTxt = stageLabel(r);
+
               return (
-                <li key={r.id} className="p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs text-white/60">{r.match_date ? isoToDTString(r.match_date) : "—"}</div>
-                    <span className={`px-2 py-0.5 rounded-full border text-[11px] capitalize ${
-                      r.status === "finished"
-                        ? "border-emerald-400/30 bg-emerald-600/20 text-emerald-200"
-                        : r.status === "postponed"
-                        ? "border-orange-400/30 bg-orange-600/20 text-orange-200"
-                        : "border-white/10 bg-zinc-800/60 text-white"
-                    }`}>
-                      {r.status === "postponed" ? "ΑΝΑΒΛΗΘΗΚΕ" : r.status}
+                <li
+                  key={r.id}
+                  className={`${i % 2 ? "bg-[#0b0b10]" : "bg-[#0f1015]"} transition-colors`}
+                >
+                  {/* Card top: date + status */}
+                  <div className={`flex items-center justify-between px-3 py-2 border-b border-white/6 ${
+                    r.status === "finished"
+                      ? "border-l-2 border-l-emerald-500/70"
+                      : r.status === "postponed"
+                      ? "border-l-2 border-l-orange-500/70"
+                      : "border-l-2 border-l-white/20"
+                  }`}>
+                    <span className="text-xs text-white/50 flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {r.match_date ? isoToDTString(r.match_date) : "—"}
                     </span>
+                    <StatusBadge status={r.status} />
                   </div>
 
-                  <div className="mt-2 flex items-center gap-2">
-                    {a?.logo && <img src={a.logo} alt={a.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10" />}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{a?.name ?? r.team_a_id}</span>
-                        <span className="text-white/50">vs</span>
-                        <span className="font-semibold text-white">{b?.name ?? r.team_b_id}</span>
+                  {/* Main match info */}
+                  <div className="px-3 py-3 space-y-2.5">
+                    {/* Teams + score */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {a?.logo && (
+                          <img src={a.logo} alt={a.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-bold text-white text-sm truncate">{a?.name ?? r.team_a_id}</p>
+                        </div>
                       </div>
-                      <div className="text-xs text-white/70 mt-1 line-clamp-1">{tourName} • {stageTxt ?? "—"}</div>
+
+                      {/* Score */}
+                      <div className="flex items-center gap-1.5 shrink-0 px-3 py-1 rounded-lg bg-black/60 border border-white/10">
+                        <span className={`text-xl font-black tabular-nums ${r.winner_team_id && r.winner_team_id === r.team_a_id ? "text-amber-400" : "text-white"}`}>
+                          {r.team_a_score ?? "—"}
+                        </span>
+                        <span className="text-white/30 text-sm font-medium">:</span>
+                        <span className={`text-xl font-black tabular-nums ${r.winner_team_id && r.winner_team_id === r.team_b_id ? "text-amber-400" : "text-white"}`}>
+                          {r.team_b_score ?? "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                        <div className="min-w-0 text-right">
+                          <p className="font-bold text-white text-sm truncate">{b?.name ?? r.team_b_id}</p>
+                        </div>
+                        {b?.logo && (
+                          <img src={b.logo} alt={b.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10 shrink-0" />
+                        )}
+                      </div>
                     </div>
-                    {b?.logo && <img src={b.logo} alt={b.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10" />}
+
+                    {/* Tournament + stage */}
+                    <div className="flex flex-wrap gap-1 text-xs">
+                      <span className="px-2 py-0.5 rounded bg-white/6 border border-white/8 text-white/60">{tourName}</span>
+                      {stageTxt && <span className="px-2 py-0.5 rounded bg-white/6 border border-white/8 text-white/60">{stageTxt}</span>}
+                    </div>
+
+                    {/* Stats summary */}
+                    <MatchStatsSummary matchId={r.id} teamAId={r.team_a_id} teamBId={r.team_b_id} />
+
+                    {/* Scorers */}
+                    <ScorersList matchId={r.id} teamAId={r.team_a_id} teamBId={r.team_b_id} />
+
+                    {/* Winner badge */}
+                    {r.winner_team_id && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-300">
+                        <Trophy className="h-3.5 w-3.5" />
+                        Νικητής: {
+                          r.winner_team_id === r.team_a_id
+                            ? a?.name ?? `#${r.team_a_id}`
+                            : b?.name ?? `#${r.team_b_id}`
+                        }
+                      </div>
+                    )}
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="text-lg font-semibold">{r.team_a_score} – {r.team_b_score}</div>
-                    <div className="flex gap-2">
-                      {(r.status === "scheduled" || r.status === "postponed") && (
-                        <button
-                          onClick={() => setPostponingId(r.id)}
-                          className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                          title="Αναβολή αγώνα"
-                        >
-                          <Clock className="h-4 w-4" /> <span className="hidden sm:inline">Αναβολή</span>
-                        </button>
-                      )}
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 px-3 pb-3">
+                    <a
+                      href={`/matches/${r.id}`}
+                      className="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Προβολή
+                    </a>
+                    {(r.status === "scheduled" || r.status === "postponed") && (
                       <button
-                        onClick={() => setEditingId((prev) => (prev === r.id ? null : r.id))}
-                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900"
+                        onClick={() => setPostponingId(r.id)}
+                        className="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-orange-400/30 bg-orange-700/20 hover:bg-orange-700/35 text-white text-xs transition-colors"
                       >
-                        <Edit3 className="h-4 w-4" /> Edit
+                        <Clock className="h-3.5 w-3.5" />
+                        Αναβολή
                       </button>
-                      <button
-                        onClick={() => remove(r.id)}
-                        className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={() => setEditingId((prev) => (prev === r.id ? null : r.id))}
+                      className="min-h-[36px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/12 bg-zinc-950 hover:bg-zinc-900 text-white text-xs transition-colors"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      {editingId === r.id ? "Κλείσιμο" : "Επεξεργασία"}
+                    </button>
+                    <button
+                      onClick={() => remove(r.id)}
+                      className="min-h-[36px] inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red-400/30 bg-red-900/20 hover:bg-red-900/35 text-white text-xs transition-colors ml-auto"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
 
                   {editingId === r.id && (
-                    <div className="mt-3">
+                    <div className="px-3 pb-3">
                       <RowEditor
                         initial={r}
                         teams={teams}
@@ -667,121 +821,145 @@ export default function MatchesDashboard({
             })}
           </ul>
 
-          {/* Desktop table */}
+          {/* ── Desktop table view ── */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full text-[15px] md:text-base leading-6 text-left text-white/90">
-              <thead className="bg-zinc-950/90 text-white sticky top-0 z-10 backdrop-blur supports-backdrop-blur:bg-zinc-950/70">
+            <table className="min-w-full text-sm leading-relaxed text-left text-white/90">
+              <thead className="bg-zinc-950/95 text-white/60 sticky top-0 z-10 backdrop-blur border-b border-white/8">
                 <tr>
-                  <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Match</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Score</th>
-                  <th className="px-3 py-2 text-right">Actions</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap">Ημερομηνία</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Αγώνας</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider whitespace-nowrap">Κατάσταση</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-center">Σκορ</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider">Στατιστικά</th>
+                  <th className="px-4 py-3 font-medium text-xs uppercase tracking-wider text-right">Ενέργειες</th>
                 </tr>
               </thead>
-              <tbody className="[&>tr]:border-t [&>tr]:border-white/8">
+              <tbody>
                 {pagedRows.map((r, i) => {
                   const a = one<TeamLite>(r.teamA);
                   const b = one<TeamLite>(r.teamB);
-                  const tourName = one(r.tournament)?.name ?? (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
+                  const tourName =
+                    one(r.tournament)?.name ??
+                    (r.tournament_id ? `Tournament #${r.tournament_id}` : "—");
                   const stageTxt = stageLabel(r);
 
                   return (
                     <React.Fragment key={r.id}>
-                      <tr className={rowClass(i, r.status)} tabIndex={0}>
-                        <td className="px-4 py-3 align-middle whitespace-nowrap">
+                      <tr
+                        className={[
+                          "group border-t border-white/6 transition-colors",
+                          i % 2 ? "bg-[#0b0b10]" : "bg-[#0f1015]",
+                          "hover:bg-white/4",
+                          "relative",
+                          r.status === "finished"
+                            ? "border-l-2 border-l-emerald-500/60"
+                            : r.status === "postponed"
+                            ? "border-l-2 border-l-orange-500/60"
+                            : "border-l-2 border-l-white/10",
+                        ].join(" ")}
+                      >
+                        {/* Date */}
+                        <td className="px-4 py-3 whitespace-nowrap text-white/55 text-xs">
                           {r.match_date ? isoToDTString(r.match_date) : "—"}
                         </td>
-                        <td className="px-3 py-2 align-top">
-                          <div className="flex items-center gap-3">
+
+                        {/* Match */}
+                        <td className="px-4 py-3">
+                          {/* Teams row */}
+                          <div className="flex items-center gap-2">
                             {a?.logo && (
-                              <img
-                                src={a.logo}
-                                alt={a.name}
-                                className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
-                              />
+                              <img src={a.logo} alt={a.name} className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 shrink-0" />
                             )}
-                            <span className="font-semibold text-[16px] md:text-[17px] text-white">
-                              {a?.name ?? r.team_a_id}
+                            <span className={`font-semibold text-sm ${r.winner_team_id && r.winner_team_id === r.team_a_id ? "text-amber-300" : "text-white"}`}>
+                              {a?.name ?? `#${r.team_a_id}`}
                             </span>
-                            <span className="text-white/60 text-sm">#{a?.id ?? r.team_a_id}</span>
-
-                            <span className="text-white/50 text-base mx-1.5">vs</span>
-
+                            <span className="text-white/25 text-xs">vs</span>
+                            <span className={`font-semibold text-sm ${r.winner_team_id && r.winner_team_id === r.team_b_id ? "text-amber-300" : "text-white"}`}>
+                              {b?.name ?? `#${r.team_b_id}`}
+                            </span>
                             {b?.logo && (
-                              <img
-                                src={b.logo}
-                                alt={b.name}
-                                className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
-                              />
+                              <img src={b.logo} alt={b.name} className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 shrink-0" />
                             )}
-                            <span className="font-semibold text-[16px] md:text-[17px] text-white">
-                              {b?.name ?? r.team_b_id}
-                            </span>
-                            <span className="text-white/60 text-sm">#{b?.id ?? r.team_b_id}</span>
+                            {r.winner_team_id && (
+                              <span title="Έχει νικητή">
+                                <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                              </span>
+                            )}
                           </div>
-
-                          <div className="mt-1 text-xs text-white/80 flex gap-2">
-                            <span
-                              className="px-1.5 py-0.5 rounded bg-white/10 text-white/90 ring-1 ring-white/15"
-                              title={`tournament_id=${r.tournament_id ?? "—"}`}
-                            >
-                              {tourName}
-                            </span>
-                            <span
-                              className="px-1.5 py-0.5 rounded bg-white/10 text-white/90 ring-1 ring-white/15"
-                              title={`stage_id=${r.stage_id ?? "—"} group_id=${r.group_id ?? "—"}`}
-                            >
-                              {stageTxt ?? "—"}
-                            </span>
+                          {/* Tour + stage */}
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            <span className="px-1.5 py-0.5 rounded text-[11px] bg-white/6 border border-white/8 text-white/55">{tourName}</span>
+                            {stageTxt && <span className="px-1.5 py-0.5 rounded text-[11px] bg-white/6 border border-white/8 text-white/55">{stageTxt}</span>}
                           </div>
                         </td>
-                        <td className="px-3 py-2 align-top">
-                          <span
-                            className={`px-2 py-1 rounded-full border text-xs capitalize ${
-                              r.status === "finished"
-                                ? "border-emerald-400/30 bg-emerald-600/20 text-emerald-200"
-                                : r.status === "postponed"
-                                ? "border-orange-400/30 bg-orange-600/20 text-orange-200"
-                                : "border-white/10 bg-zinc-800/60 text-white"
-                            }`}
-                          >
-                            {r.status === "postponed" ? "ΑΝΑΒΛΗΘΗΚΕ" : r.status}
+
+                        {/* Status */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <StatusBadge status={r.status} />
+                        </td>
+
+                        {/* Score */}
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-black/60 border border-white/10 font-black text-lg tabular-nums tracking-tight">
+                            <span className={r.winner_team_id && r.winner_team_id === r.team_a_id ? "text-amber-400" : "text-white"}>
+                              {r.team_a_score ?? "—"}
+                            </span>
+                            <span className="text-white/25 font-normal text-sm">:</span>
+                            <span className={r.winner_team_id && r.winner_team_id === r.team_b_id ? "text-amber-400" : "text-white"}>
+                              {r.team_b_score ?? "—"}
+                            </span>
                           </span>
                         </td>
-                        <td className="px-3 py-2 align-top">
-                          {r.team_a_score} – {r.team_b_score}
+
+                        {/* Stats */}
+                        <td className="px-4 py-3">
+                          <div className="space-y-1.5">
+                            <MatchStatsSummary matchId={r.id} teamAId={r.team_a_id} teamBId={r.team_b_id} />
+                            <ScorersList matchId={r.id} teamAId={r.team_a_id} teamBId={r.team_b_id} />
+                          </div>
                         </td>
-                        <td className="px-3 py-2 align-top">
-                          <div className="flex items-center gap-2 justify-end">
+
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                            <a
+                              href={`/matches/${r.id}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs transition-colors"
+                              title="Προβολή αγώνα"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
                             {(r.status === "scheduled" || r.status === "postponed") && (
                               <button
                                 onClick={() => setPostponingId(r.id)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                                title="Αναβολή αγώνα"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-orange-400/30 bg-orange-700/15 hover:bg-orange-700/30 text-white text-xs transition-colors"
+                                title="Αναβολή"
                               >
-                                <Clock className="h-4 w-4" /> Αναβολή
+                                <Clock className="h-3.5 w-3.5" />
                               </button>
                             )}
                             <button
                               onClick={() => setEditingId((prev) => (prev === r.id ? null : r.id))}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-white/15 bg-zinc-950 hover:bg-zinc-900"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/12 bg-zinc-950 hover:bg-zinc-800 text-white text-xs transition-colors"
+                              title="Επεξεργασία"
                             >
-                              <Edit3 className="h-4 w-4" /> {editingId === r.id ? "Close" : "Edit"}
+                              <Edit3 className="h-3.5 w-3.5" />
+                              {editingId === r.id ? "Κλείσιμο" : "Επεξ."}
                             </button>
                             <button
                               onClick={() => remove(r.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-400/30 bg-red-900/15 hover:bg-red-900/30 text-white text-xs transition-colors"
+                              title="Διαγραφή"
                             >
-                              <Trash2 className="h-4 w-4" /> Delete
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
                         </td>
                       </tr>
 
                       {editingId === r.id && (
-                        <tr className="bg-black/60">
-                          <td className="px-3 py-2 align-top" colSpan={5}>
+                        <tr className="bg-black/70 border-t border-white/6">
+                          <td className="px-4 py-3" colSpan={6}>
                             <RowEditor
                               initial={r}
                               teams={teams}
@@ -803,12 +981,11 @@ export default function MatchesDashboard({
             </table>
           </div>
 
-          {/* Pagination (bottom) */}
           <Pagination />
         </div>
       )}
 
-      {/* Postpone Dialog */}
+      {/* ─── Postpone Dialog ─── */}
       {postponingRow && (
         <PostponeDialog
           match={postponingRow}
