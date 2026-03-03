@@ -193,10 +193,11 @@ export async function middleware(req: NextRequest) {
     "'self'",
     'data:',
     'blob:',
-    'https:',
     supabaseOrigin,
     appOrigin,
-    ...(CDN_DOMAIN ? [`https://${CDN_DOMAIN}`] : []), // ✅ NEW
+    ...(CDN_DOMAIN ? [`https://${CDN_DOMAIN}`] : []),
+    'https://lh3.googleusercontent.com',
+    'https://avatars.githubusercontent.com',
   ].filter(Boolean).join(' ')
 
   const connectSrc = [
@@ -232,7 +233,7 @@ export async function middleware(req: NextRequest) {
     `style-src ${styleSources}`,
     `style-src-elem ${styleSources}`,
     `style-src-attr 'unsafe-inline'`,
-    "font-src 'self' data: https://fonts.gstatic.com https:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src ${connectSrc}`,
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com", // ✅ Allow YouTube embeds
     "worker-src 'self' blob:",
