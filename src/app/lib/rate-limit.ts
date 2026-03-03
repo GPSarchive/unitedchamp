@@ -62,7 +62,7 @@ export async function checkLimit(
 
 /** Global limit: protects entire app from DDoS (10k req/min) */
 export async function checkGlobalLimit(): Promise<LimitResult> {
-  return checkLimit('global', 2500, 60)
+  return checkLimit('global', 2000, 60)
 }
 
 /** Per-endpoint limit: protects individual API routes (1k req/min) */
