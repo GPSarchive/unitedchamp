@@ -105,6 +105,25 @@ const domains = Array.from(
 
 const isProd = process.env.NODE_ENV === "production";
 
+// Keep in sync with the Permissions-Policy set in src/middleware.ts.
+// This copy covers static assets that bypass the middleware matcher.
+const PERMISSIONS_POLICY = [
+  "camera=()", "microphone=()", "geolocation=()",
+  "usb=()", "bluetooth=()", "serial=()", "midi=()", "hid=()",
+  "ambient-light-sensor=()", "accelerometer=()", "gyroscope=()",
+  "magnetometer=()", "battery=()",
+  "payment=()",
+  "display-capture=()", "screen-wake-lock=()", "window-management=()",
+  "fullscreen=(self)", "picture-in-picture=(self)",
+  "autoplay=(self)", "encrypted-media=(self)",
+  "clipboard-read=(self)", "clipboard-write=(self)",
+  "otp-credentials=()", "publickey-credentials-create=()",
+  "publickey-credentials-get=()", "identity-credentials-get=()",
+  "interest-cohort=()", "idle-detection=()", "storage-access=()",
+  "document-domain=()", "xr-spatial-tracking=()",
+  "local-fonts=()", "web-share=()",
+].join(", ");
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns,
@@ -133,7 +152,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/(.*)",
-        headers: [...baseHeaders, ...prodOnly],
+        headers: [
+          ...baseHeaders,
+          ...prodOnly,
+          { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
+        ],
       },
     ];
   },

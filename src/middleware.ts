@@ -134,7 +134,55 @@ export async function middleware(req: NextRequest) {
   // X-Frame-Options cannot express domain allowlists; frame-ancestors CSP directive handles it.
   // DENY/SAMEORIGIN would override CSP for older browsers, so we remove it in favour of frame-ancestors.
   res.headers.delete('X-Frame-Options')
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  // Permissions-Policy: explicitly deny every browser feature this app does not use.
+  // Only features actively required are allowed at (self); everything else is ().
+  const permissionsPolicy = [
+    // --- Hardware access (none needed) ---
+    'camera=()',
+    'microphone=()',
+    'geolocation=()',
+    'usb=()',
+    'bluetooth=()',
+    'serial=()',
+    'midi=()',
+    'hid=()',
+    'ambient-light-sensor=()',
+    'accelerometer=()',
+    'gyroscope=()',
+    'magnetometer=()',
+    'battery=()',
+    // --- Payments ---
+    'payment=()',
+    // --- Screen / display ---
+    'display-capture=()',
+    'screen-wake-lock=()',
+    'window-management=()',
+    // Allow same-origin fullscreen (e.g. 3D canvas); YouTube iframes use allowfullscreen attribute
+    'fullscreen=(self)',
+    // Allow same-origin PiP; third-party iframes control their own
+    'picture-in-picture=(self)',
+    // --- Media ---
+    'autoplay=(self)',
+    'encrypted-media=(self)',
+    // --- Clipboard (Tiptap rich-text editor needs copy/paste) ---
+    'clipboard-read=(self)',
+    'clipboard-write=(self)',
+    // --- Credentials / identity ---
+    'otp-credentials=()',
+    'publickey-credentials-create=()',
+    'publickey-credentials-get=()',
+    'identity-credentials-get=()',
+    // --- Privacy ---
+    'interest-cohort=()',   // blocks FLoC / Topics API
+    'idle-detection=()',
+    'storage-access=()',
+    // --- Misc ---
+    'document-domain=()',   // prevents domain-relaxation attacks
+    'xr-spatial-tracking=()',
+    'local-fonts=()',
+    'web-share=()',
+  ].join(', ')
+  res.headers.set('Permissions-Policy', permissionsPolicy)
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
   res.headers.set('Origin-Agent-Cluster', '?1')
