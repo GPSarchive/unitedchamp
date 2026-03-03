@@ -20,6 +20,7 @@ import TopScorers from './home/TopScorers';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
+
 /**
  * ------------------------------
  * Date/Time helpers — preserve wall-clock time from DB and drop timezone
@@ -35,22 +36,19 @@ function parseIsoPreserveClock(iso: string) {
   return { y: +y, M: +M, d: +d, h: +h, min: +min, s: +s };
 }
 
-// Format like SQL timestamp (no tz)
 function toTimestampNoTz(iso: string) {
   const { y, M, d, h, min, s } = parseIsoPreserveClock(iso);
   return `${y}-${pad2(M)}-${pad2(d)} ${pad2(h)}:${pad2(min)}:${pad2(s)}`;
 }
 
-// For components expecting 'YYYY-MM-DDTHH:mm:ss'
 function toNaiveIso(iso: string) {
   return toTimestampNoTz(iso).replace(' ', 'T');
 }
 
 function daysInMonth(y: number, M: number) {
-  return new Date(y, M, 0).getDate(); // M is 1..12
+  return new Date(y, M, 0).getDate();
 }
 
-// Add minutes without timezone math; just tick the clock/date forward
 function addMinutesNaive(
   parts: { y: number; M: number; d: number; h: number; min: number; s: number },
   deltaMin: number
@@ -67,7 +65,6 @@ function addMinutesNaive(
   let min = minutesInDay % 60;
   let { y, M, d } = parts;
   d += dayDelta;
-  // Normalize date forward (sufficient for +50 min)
   while (true) {
     const dim = daysInMonth(y, M);
     if (d <= dim) break;
@@ -94,16 +91,8 @@ function partsToIso(
  * Utility helpers
  * ------------------------------
  */
-const pretty = (v: unknown) =>
-  JSON.stringify(v, (k, val) => (typeof val === 'bigint' ? val.toString() : val), 2);
-
 async function withConsoleTiming<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  console.time(label);
-  try {
-    return await fn();
-  } finally {
-    console.timeEnd(label);
-  }
+  return await fn();
 }
 
 /**
@@ -118,11 +107,6 @@ async function fetchSingleUser() {
       .select('id, name')
       .limit(1)
       .single<DbUser>();
-    if (error) {
-      console.error('Error fetching user:', error.message);
-    } else {
-      console.log('User query result:', data ? pretty(data) : 'No user found');
-    }
     return { user: data ?? null, userError: error as { message: string } | null };
   });
 }
@@ -151,17 +135,6 @@ async function fetchMatchesWithTeams() {
       `
       )
       .order('match_date', { ascending: true })) as unknown as SupaResp;
-    if (error) {
-      console.error('Error fetching matches:', error.message);
-    } else {
-      console.log(`Matches fetched: ${data?.length ?? 0}`);
-      const matchesTimestampView = (data ?? []).map((m) => ({
-        ...m,
-        // Only format when a date exists
-        match_date_timestamp: m.match_date ? toTimestampNoTz(m.match_date) : null,
-      }));
-      console.log('Matches (match_date as timestamp, up to 5):\n', pretty(matchesTimestampView.slice(0, 5)));
-    }
     return { rawMatches: data ?? [], matchesError: error };
   });
 }
@@ -172,26 +145,20 @@ async function fetchTournaments() {
       .from('tournaments')
       .select('id, name, slug, format, season, logo, status, winner_team_id')
       .order('id', { ascending: false })
-      .limit(6); // Limit to 6 tournaments for homepage
+      .limit(6);
 
     if (error) {
-      console.error('Error fetching tournaments:', error.message);
       return { tournaments: [], tournamentsError: error };
     }
 
-    console.log(`Tournaments fetched: ${data?.length ?? 0}`);
-
-    // Fetch counts for each tournament
     const tournamentsWithCounts = await Promise.all(
       (data ?? []).map(async (tournament) => {
-        // Fetch teams count (distinct team_ids, since a team can appear in multiple group stages)
         const { data: teamRows } = await supabaseAdmin
           .from('tournament_teams')
           .select('team_id')
           .eq('tournament_id', tournament.id);
         const teamsCount = new Set((teamRows ?? []).map((r: any) => r.team_id)).size;
 
-        // Fetch matches count
         const { count: matchesCount } = await supabaseAdmin
           .from('matches')
           .select('*', { count: 'exact', head: true })
@@ -205,7 +172,6 @@ async function fetchTournaments() {
       })
     );
 
-    // Sign tournament logos
     const signedTournaments = await signTournamentLogos(tournamentsWithCounts as Tournament[]);
 
     return { tournaments: signedTournaments, tournamentsError: null };
@@ -214,35 +180,23 @@ async function fetchTournaments() {
 
 async function fetchRecentContentCount() {
   return withConsoleTiming('db:recent-content', async () => {
-    // Calculate date 2 days ago
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     const twoDaysAgoISO = twoDaysAgo.toISOString();
 
-    // Fetch recent announcements count
-    const { count: announcementsCount, error: announcementsError } = await supabaseAdmin
+    const { count: announcementsCount } = await supabaseAdmin
       .from('announcements')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'published')
       .gte('created_at', twoDaysAgoISO);
 
-    if (announcementsError) {
-      console.error('Error fetching recent announcements count:', announcementsError.message);
-    }
-
-    // Fetch recent articles count
-    const { count: articlesCount, error: articlesError } = await supabaseAdmin
+    const { count: articlesCount } = await supabaseAdmin
       .from('articles')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'published')
       .gte('published_at', twoDaysAgoISO);
 
-    if (articlesError) {
-      console.error('Error fetching recent articles count:', articlesError.message);
-    }
-
     const totalCount = (announcementsCount ?? 0) + (articlesCount ?? 0);
-    console.log(`Recent content count: ${announcementsCount ?? 0} announcements + ${articlesCount ?? 0} articles = ${totalCount}`);
 
     return { recentContentCount: totalCount };
   });
@@ -250,43 +204,32 @@ async function fetchRecentContentCount() {
 
 async function fetchTopScorers() {
   return withConsoleTiming('db:top-scorers', async () => {
-    // Fetch top 3 scorers from player_statistics
     const { data: statsData, error: statsError } = await supabaseAdmin
       .from('player_statistics')
       .select('player_id, total_goals, total_assists')
       .order('total_goals', { ascending: false })
       .limit(3);
 
-    if (statsError) {
-      console.error('Error fetching top scorers stats:', statsError.message);
-      return { topScorers: [] };
-    }
-
-    if (!statsData || statsData.length === 0) {
-      console.log('No scorer data found');
+    if (statsError || !statsData || statsData.length === 0) {
       return { topScorers: [] };
     }
 
     const playerIds = statsData.map(s => s.player_id);
 
-    // Fetch player details
     const { data: playersData, error: playersError } = await supabaseAdmin
       .from('player')
       .select('id, first_name, last_name, photo')
       .in('id', playerIds);
 
     if (playersError) {
-      console.error('Error fetching player details:', playersError.message);
       return { topScorers: [] };
     }
 
-    // Fetch match_player_stats to count matches
     const { data: mpsData } = await supabaseAdmin
       .from('match_player_stats')
       .select('player_id, match_id')
       .in('player_id', playerIds);
 
-    // Count unique matches per player
     const matchesByPlayer = new Map<number, Set<number>>();
     for (const row of (mpsData ?? [])) {
       if (!matchesByPlayer.has(row.player_id)) {
@@ -295,13 +238,11 @@ async function fetchTopScorers() {
       matchesByPlayer.get(row.player_id)!.add(row.match_id);
     }
 
-    // Fetch player teams (get main team)
     const { data: playerTeamsData } = await supabaseAdmin
       .from('player_teams')
       .select('player_id, team_id')
       .in('player_id', playerIds);
 
-    // Fetch team details
     const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
     const { data: teamsData } = teamIds.length > 0
       ? await supabaseAdmin
@@ -313,22 +254,17 @@ async function fetchTopScorers() {
     const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
     const playerTeamMap = new Map((playerTeamsData ?? []).map(pt => [pt.player_id, pt.team_id]));
 
-    // Combine all data
     const topScorers = statsData.map(stat => {
       const player = playersData?.find(p => p.id === stat.player_id);
       const teamId = playerTeamMap.get(stat.player_id);
       const team = teamId ? teamMap.get(teamId) : null;
       const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
 
-      // Resolve image URLs to public URLs
       const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
 
-      // Check if player has a real photo (only /player-placeholder.jpg is treated as placeholder)
       const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
-
       const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
 
-      // Use player photo, fallback to team logo, then to placeholder
       const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
 
       return {
@@ -344,7 +280,6 @@ async function fetchTopScorers() {
       };
     });
 
-    console.log(`Top scorers fetched: ${topScorers.length}`);
     return { topScorers };
   });
 }
@@ -356,31 +291,25 @@ async function fetchTopScorers() {
  */
 function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   if (!m.match_date) {
-    // Skip matches that don't have a scheduled date yet
     return null;
   }
   const a = normalizeTeam(m.teamA);
   const b = normalizeTeam(m.teamB);
-  // start: keep same clock time as DB, drop offset
-  const startIso = toNaiveIso(m.match_date); // 'YYYY-MM-DDTHH:mm:ss'
-  // end: naive +50 minutes, normalized across midnight/month
+  const startIso = toNaiveIso(m.match_date);
   const startParts = parseIsoPreserveClock(m.match_date);
   const endParts = addMinutesNaive(startParts, 50);
   const endIso = partsToIso(endParts, 'T');
 
-  // Extend with DB status + scores so the client pill can render them
   const teamAScore = (m as any).team_a_score ?? null;
   const teamBScore = (m as any).team_b_score ?? null;
-  const status = (m as any).status ?? null; // 'scheduled' | 'finished'
+  const status = (m as any).status ?? null;
 
-  // Tournament and matchday/round info
   const tournament = (m as any).tournament ?? null;
   const tournamentName = tournament?.name ?? null;
   const tournamentLogo = tournament?.logo ?? null;
   const matchday = (m as any).matchday ?? null;
   const round = (m as any).round ?? null;
 
-  // NOTE: CalendarEvent doesn't know these extra fields, but it's fine to attach them.
   const ev: CalendarEvent & any = {
     id: String(m.id),
     title: `${a?.name ?? 'Άγνωστο'} vs ${b?.name ?? 'Άγνωστο'}`,
@@ -389,16 +318,12 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
     all_day: false,
     teams: [a?.name ?? 'Άγνωστο', b?.name ?? 'Άγνωστο'],
     logos: [a?.logo ?? '/placeholder.png', b?.logo ?? '/placeholder.png'],
-
-    // NEW: match state/score for EventPillShrimp
     status,
     home_score: teamAScore,
     away_score: teamBScore,
     score: (typeof teamAScore === 'number' && typeof teamBScore === 'number')
       ? [teamAScore, teamBScore]
       : undefined,
-
-    // Tournament and matchday/round info
     tournament_name: tournamentName,
     tournament_logo: tournamentLogo,
     matchday,
@@ -409,16 +334,12 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
 }
 
 function mapMatchesToEvents(rows: MatchRowRaw[]): CalendarEvent[] {
-  const events = rows
+  return rows
     .map(matchRowToEvent)
     .filter((e): e is CalendarEvent => e !== null);
-  console.log(`Events mapped for calendar: ${events.length}`);
-  console.log('Events (after formation, up to 5):\n', pretty(events.slice(0, 5)));
-  return events;
 }
 
 function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
-  // Resolve tournament logos to public URLs
   return events.map((e: any) => {
     if (e.tournament_logo) {
       const resolvedLogo = resolveImageUrl(e.tournament_logo, ImageType.TOURNAMENT);
@@ -434,7 +355,7 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
  * ------------------------------
  */
 export default async function Home() {
-  const nonce = (await headers()).get('x-nonce') ?? undefined;     // + add
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }] = await Promise.all([
     fetchSingleUser(),
@@ -443,10 +364,10 @@ export default async function Home() {
     fetchRecentContentCount(),
     fetchTopScorers()
   ]);
+
   const events = mapMatchesToEvents(rawMatches ?? []);
   const eventsToPass = resolveMatchTournamentLogos(events);
-  console.log('Rendering Home page with events:', eventsToPass.length);
-  console.log('Tournaments for homepage:', tournaments.length);
+
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">
       {/* Hero Carousel Section */}
@@ -458,7 +379,6 @@ export default async function Home() {
           "/carousel1.jpg",
           "/Carousel6.jpg",
           "/carousel0.jpg",
-
         ]}
       />
 
@@ -476,7 +396,6 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto max-w-7xl">
@@ -485,10 +404,10 @@ export default async function Home() {
             {/* Team Dashboard */}
             <TeamDashboard
               allMatches={eventsToPass}
-              userTeams={[]} // TODO: Get from user auth/profile when implemented
+              userTeams={[]}
             />
 
-            {/* Calendar — below matches, above Top Scorers */}
+            {/* Calendar */}
             <div>
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -498,7 +417,7 @@ export default async function Home() {
               </h2>
               <EnhancedMobileCalendar
                 initialEvents={eventsToPass}
-                highlightTeams={[]} // TODO: Match userTeams above
+                highlightTeams={[]}
               />
             </div>
 
@@ -509,52 +428,51 @@ export default async function Home() {
       {/* Top Scorers Section */}
       <TopScorers scorers={topScorers} />
 
-        {/* Features Section */}
-        <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-         <div className="container mx-auto px-4">
-    <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
-      Η ομάδα σε περιμένει
-    </h2>
+      {/* Features Section */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
+            Η ομάδα σε περιμένει
+          </h2>
 
-    <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-      {/* Card */}
-      <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
-          <Users className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
-        </div>
-        <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4 text-white">
-          Φιλόξενη Κοινότητα
-        </h3>
-        <p className="text-white/75 text-sm sm:text-base">
-          Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
-        </p>
-      </div>
+          <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
+            <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+                <Users className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-sans font-semibold mb-3 sm:mb-4 text-white">
+                Φιλόξενη Κοινότητα
+              </h3>
+              <p className="text-white/75 text-sm sm:text-base">
+                Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
+              </p>
+            </div>
 
-      <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
-          <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
-        </div>
-        <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">
-          Ποιοτικοί Αγώνες
-        </h3>
-        <p className="text-white/75 text-sm sm:text-base">
-          Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
-        </p>
-      </div>
+            <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+                <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-white">
+                Ποιοτικοί Αγώνες
+              </h3>
+              <p className="text-white/75 text-sm sm:text-base">
+                Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
+              </p>
+            </div>
 
-      <div className="group p-6 sm:p-8 rounded-xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
-        <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
-          <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+            <div className="group p-6 sm:p-8 rounded-xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+              <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
+                <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-white">
+                Προφίλ & Στατιστικά
+              </h3>
+              <p className="text-white/75 text-sm sm:text-base">
+                Γκολ, ασίστ, συμμετοχές και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
+              </p>
+            </div>
+          </div>
         </div>
-        <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-white">
-          Προφίλ & Στατιστικά
-        </h3>
-        <p className="text-white/75 text-sm sm:text-base">
-          Γκολ, ασίστ, συμμετοχές και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
-        </p>
-      </div>
-    </div>
-  </div>
       </VantaSection>
 
       {/* Call to Action */}
@@ -575,7 +493,6 @@ export default async function Home() {
 
       {/* Testimonials */}
       <section>
-
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας
@@ -598,11 +515,10 @@ export default async function Home() {
             </div>
           </div>
         </div>
-
       </section>
+
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">
-
         <div className="container mx-auto px-4">
           <p>© 2025 Ultra Champ.</p>
           <div className="mt-4">

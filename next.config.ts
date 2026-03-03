@@ -1,3 +1,4 @@
+// next.config.ts
 import type { NextConfig } from "next";
 import type { RemotePattern } from "next/dist/shared/lib/image-config";
 
@@ -125,14 +126,32 @@ const PERMISSIONS_POLICY = [
 ].join(", ");
 
 const nextConfig: NextConfig = {
+  // ──────────────────────────────────────────────────────────────
+  // SECURITY: never ship source maps to the browser in production.
+  // Default is already false, but explicit is safer — a future
+  // Next.js upgrade can't silently flip the default on you.
+  // ──────────────────────────────────────────────────────────────
+  productionBrowserSourceMaps: false,
+
+  // ──────────────────────────────────────────────────────────────
+  // SECURITY: strip console.log/debug/info/trace from production
+  // bundles at compile time via SWC. Zero runtime cost.
+  // console.error and console.warn are preserved so Sentry / error
+  // boundaries / monitoring still work.
+  // ──────────────────────────────────────────────────────────────
+  compiler: {
+    removeConsole: isProd
+      ? { exclude: ["error", "warn"] }
+      : false,
+  },
+
   images: {
     remotePatterns,
     domains,
-    // Add additional configurations if needed
-    // dangerouslyAllowSVG: true,
-    // contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
+
   poweredByHeader: false,
+
   async headers() {
     const baseHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },

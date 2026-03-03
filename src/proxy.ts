@@ -1,4 +1,3 @@
-// /src/middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
@@ -9,10 +8,10 @@ const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 // Resolve origins safely from env
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_ORIGIN || ''
-const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN || 'images.ultrachamp.gr' // ✅ NEW
+const CDN_DOMAIN = process.env.NEXT_PUBLIC_CDN_DOMAIN || 'images.ultrachamp.gr'
 
-const originFrom = (u: string) => { 
-  try { return u ? new URL(u).origin : '' } catch { return '' } 
+const originFrom = (u: string) => {
+  try { return u ? new URL(u).origin : '' } catch { return '' }
 }
 const supabaseOrigin = originFrom(SUPABASE_URL)
 const appOrigin = originFrom(APP_ORIGIN)
@@ -25,7 +24,8 @@ function makeNonce(): string {
   return btoa(s)
 }
 
-export async function middleware(req: NextRequest) {
+// ─── RENAMED: middleware → proxy ───────────────────────────────
+export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname
   const method = req.method.toUpperCase()
 
@@ -46,12 +46,13 @@ export async function middleware(req: NextRequest) {
     | { success: boolean; limit: number; remaining: number; reset: number }
     | null = null
 
-  // Rate limit API write operations only (not page views)
-  // This reduces KV operations from ~600k/day to ~5k/day
+  // ─────────────────────────────────────────────────────────────
+  // RATE LIMITING — API write operations only
+  // ─────────────────────────────────────────────────────────────
   if (isApi && (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE')) {
     const ip = ipFromRequest(req)
-    perPath = await checkLimit(`api:${ip}:${path}`, 30, 60) // 30 writes per minute
-    const daily = await checkLimit(`api-day:${ip}`, 500, 24 * 60 * 60) // 500 writes per day
+    perPath = await checkLimit(`api:${ip}:${path}`, 30, 60)
+    const daily = await checkLimit(`api-day:${ip}`, 500, 24 * 60 * 60)
 
     const failures = [perPath, daily].filter(x => !x.success)
     if (failures.length) {
@@ -65,21 +66,27 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const res = NextResponse.next({ request: req })
+  // ─────────────────────────────────────────────────────────────
+  // FIX 1: Generate nonce and inject into REQUEST headers only.
+  // ─────────────────────────────────────────────────────────────
+  const nonce = makeNonce()
+  const reqHeaders = new Headers(req.headers)
+  reqHeaders.set('x-nonce', nonce)
 
+  const res = NextResponse.next({
+    request: { headers: reqHeaders },
+  })
+
+  // Rate-limit headers on response
   if (perPath) {
     res.headers.set('X-RateLimit-Limit', String(perPath.limit))
     res.headers.set('X-RateLimit-Remaining', String(Math.max(0, perPath.remaining)))
     res.headers.set('X-RateLimit-Reset', String(perPath.reset))
   }
 
-  const nonce = makeNonce()
-  res.headers.set('x-nonce', nonce)
-
-  // API paths that are intentionally public (auth flow + public asset proxy).
-  // Everything else that mutates data (POST/PUT/PATCH/DELETE) must have a
-  // valid Supabase session — this is the last-resort safety net so no future
-  // route can accidentally skip auth on a write operation.
+  // ─────────────────────────────────────────────────────────────
+  // AUTH — dashboard + API mutation protection
+  // ─────────────────────────────────────────────────────────────
   const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/public/']
   const isPublicApi = PUBLIC_API_PREFIXES.some(p => path.startsWith(p))
   const isApiMutation =
@@ -103,7 +110,6 @@ export async function middleware(req: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    // API mutation with no session → 401 (never trust the client)
     if (isApiMutation && !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -130,65 +136,18 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  // X-Frame-Options cannot express domain allowlists; frame-ancestors CSP directive handles it.
-  // DENY/SAMEORIGIN would override CSP for older browsers, so we remove it in favour of frame-ancestors.
+  // ─────────────────────────────────────────────────────────────
+  // Security headers (ones that need proxy, not next.config.ts)
+  // ─────────────────────────────────────────────────────────────
   res.headers.delete('X-Frame-Options')
-  // Permissions-Policy: explicitly deny every browser feature this app does not use.
-  // Only features actively required are allowed at (self); everything else is ().
-  const permissionsPolicy = [
-    // --- Hardware access (none needed) ---
-    'camera=()',
-    'microphone=()',
-    'geolocation=()',
-    'usb=()',
-    'bluetooth=()',
-    'serial=()',
-    'midi=()',
-    'hid=()',
-    'ambient-light-sensor=()',
-    'accelerometer=()',
-    'gyroscope=()',
-    'magnetometer=()',
-    'battery=()',
-    // --- Payments ---
-    'payment=()',
-    // --- Screen / display ---
-    'display-capture=()',
-    'screen-wake-lock=()',
-    'window-management=()',
-    // Allow same-origin fullscreen (e.g. 3D canvas); YouTube iframes use allowfullscreen attribute
-    'fullscreen=(self)',
-    // Allow same-origin PiP; third-party iframes control their own
-    'picture-in-picture=(self)',
-    // --- Media ---
-    'autoplay=(self)',
-    'encrypted-media=(self)',
-    // --- Clipboard (Tiptap rich-text editor needs copy/paste) ---
-    'clipboard-read=(self)',
-    'clipboard-write=(self)',
-    // --- Credentials / identity ---
-    'otp-credentials=()',
-    'publickey-credentials-create=()',
-    'publickey-credentials-get=()',
-    'identity-credentials-get=()',
-    // --- Privacy ---
-    'interest-cohort=()',   // blocks FLoC / Topics API
-    'idle-detection=()',
-    'storage-access=()',
-    // --- Misc ---
-    'document-domain=()',   // prevents domain-relaxation attacks
-    'xr-spatial-tracking=()',
-    'local-fonts=()',
-    'web-share=()',
-  ].join(', ')
-  res.headers.set('Permissions-Policy', permissionsPolicy)
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
   res.headers.set('Origin-Agent-Cluster', '?1')
   res.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
 
-  // ✅ UPDATED: Add CDN domain to image sources
+  // ─────────────────────────────────────────────────────────────
+  // CSP — Content Security Policy (dynamic, needs nonce)
+  // ─────────────────────────────────────────────────────────────
   const imgSrc = [
     "'self'",
     'data:',
@@ -212,9 +171,6 @@ export async function middleware(req: NextRequest) {
   if (process.env.NODE_ENV !== 'production') scriptSrcParts.push("'unsafe-eval'")
   const scriptSrc = scriptSrcParts.join(' ')
 
-  // ✅ FIX: Remove nonce from style-src-elem to allow CSS-in-JS libraries (framer-motion)
-  // When nonce is present, 'unsafe-inline' is ignored per CSP spec
-  // CSS-in-JS libraries inject <style> tags without nonces, causing CSP violations
   const styleSources = [
     "'self'",
     "'unsafe-inline'",
@@ -235,7 +191,7 @@ export async function middleware(req: NextRequest) {
     `style-src-attr 'unsafe-inline'`,
     "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src ${connectSrc}`,
-    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com", // ✅ Allow YouTube embeds
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
     "worker-src 'self' blob:",
     "form-action 'self'",
     "object-src 'none'",
@@ -243,7 +199,7 @@ export async function middleware(req: NextRequest) {
   ].join('; ')
 
   res.headers.set(
-    REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy', 
+    REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
     csp
   )
   return res

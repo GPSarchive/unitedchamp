@@ -52,7 +52,8 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Helper to avoid repeating nonce on every <Script>
+// Helper — reuse whenever you add external/inline scripts in the future.
+// Every <Script> that goes through this gets the CSP nonce automatically.
 function NoncedScript(
   props: Omit<React.ComponentProps<typeof Script>, "nonce"> & { nonce?: string }
 ) {
@@ -63,7 +64,6 @@ function NoncedScript(
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  // In current Next versions, headers() is sync in Server Components
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   const htmlClass = [
@@ -74,7 +74,6 @@ export default async function RootLayout({
     geistMono.variable,
   ].join(" ");
 
-  // Keep createElement style
   return React.createElement(
     "html",
     { lang: "el", className: htmlClass, suppressHydrationWarning: true },
@@ -83,33 +82,25 @@ export default async function RootLayout({
         "head",
         { key: "head" },
         [
-          // Safe inline script (nonced)
-          React.createElement(
-            NoncedScript,
-            {
-              id: "boot",
-              strategy: "beforeInteractive",
-              nonce,
-              key: "boot-script",
-            },
-            `window.__BOOT_TS__ = Date.now();`
-          ),
-
-          // Safe inline style (nonced)
+          // ────────────────────────────────────────────────────────
+          // Nonced inline style — safe, sets CSS custom property.
+          // ────────────────────────────────────────────────────────
           React.createElement(
             "style",
             { key: "nonce-style", nonce },
             `:root { --brand-h: 220 }`
           ),
 
-          // If you later add external styles/scripts, they’ll inherit CSP via headers.
-          // Example (uncomment & adjust if needed):
+          // ────────────────────────────────────────────────────────
+          // Future external scripts go here with NoncedScript:
+          //
           // React.createElement(NoncedScript, {
           //   key: "widget",
           //   src: "https://cdn.jsdelivr.net/npm/some-widget/dist/widget.min.js",
           //   strategy: "afterInteractive",
           //   nonce,
           // }),
+          // ────────────────────────────────────────────────────────
         ]
       ),
 
@@ -122,13 +113,6 @@ export default async function RootLayout({
             "main",
             { key: "main", className: "pt-16 md:pt-32" },
             children
-          ),
-
-          // Example after-hydration script (nonced)
-          React.createElement(
-            NoncedScript,
-            { id: "after-hydrate", strategy: "afterInteractive", nonce, key: "after-hydrate" },
-            `console.debug("hydrated");`
           ),
 
           React.createElement(Analytics, { key: "analytics" }),
