@@ -322,7 +322,7 @@ export async function createTournamentAction(formData: FormData) {
     if (names.length) {
       const { data: gRows, error: gErr } = await supabaseAdmin
         .from('tournament_groups')
-        .insert(names.map((name) => ({ stage_id, name })))
+        .insert(names.map((name, idx) => ({ stage_id, name, ordering: idx })))
         .select('id, stage_id, name');
 
       if (gErr) return { ok: false, error: gErr.message };
@@ -933,7 +933,7 @@ export async function updateTournamentAction(formData: FormData) {
     if (names.length) {
       const { data: gRows, error: gErr } = await supabaseAdmin
         .from('tournament_groups')
-        .insert(names.map((name) => ({ stage_id, name })))
+        .insert(names.map((name, idx) => ({ stage_id, name, ordering: idx })))
         .select('id, stage_id, name');
 
       if (gErr) return { ok: false, error: gErr.message };
