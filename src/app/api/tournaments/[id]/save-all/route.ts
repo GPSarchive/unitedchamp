@@ -275,6 +275,49 @@ if (body.matches?.deleteIds?.length) {
       out.stages = upserted;
     }
 
+    /* 5b) Groups upsert --------------------------------------------------- */
+    if (body.groups?.upsert?.length) {
+      const createRows = body.groups.upsert
+        .filter((r) => r.id == null)
+        .map(({ id: _drop, ...r }) => r);
+      const updateRows = body.groups.upsert.filter((r) => r.id != null);
+
+      let upserted: any[] = [];
+
+      if (createRows.length) {
+        const { data, error } = await supabaseAdmin
+          .from("tournament_groups")
+          .insert(createRows)
+          .select();
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
+      }
+
+      if (updateRows.length) {
+        const { data, error } = await supabaseAdmin
+          .from("tournament_groups")
+          .upsert(updateRows)
+          .select();
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        upserted = upserted.concat(data ?? []);
+      }
+
+      // Also return any groups that weren't touched but belong to tournament stages
+      // so the client gets a complete picture
+      const touchedStageIds = Array.from(
+        new Set(body.groups.upsert.map((r) => r.stage_id))
+      );
+      if (touchedStageIds.length) {
+        const { data: allGroups } = await supabaseAdmin
+          .from("tournament_groups")
+          .select()
+          .in("stage_id", touchedStageIds);
+        out.groups = allGroups ?? upserted;
+      } else {
+        out.groups = upserted;
+      }
+    }
+
     /* 6) Tournament teams upsert ------------------------------------------ */
     if (body.tournamentTeams?.upsert?.length) {
       const createRows = body.tournamentTeams.upsert
