@@ -71,7 +71,9 @@ export default async function Page({
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
-    match.stage_id ? fetchStandingsByStage(match.stage_id) : Promise.resolve([]),
+    match.stage_id
+      ? fetchStandingsByStage(match.stage_id)
+      : Promise.resolve({ standings: [], stageKind: null, stageName: null } as import("./queries").StandingsResult),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -82,8 +84,10 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
-  const standings =
-    standingsRes.status === "fulfilled" ? standingsRes.value : [];
+  const { standings, stageKind, stageName } =
+    standingsRes.status === "fulfilled"
+      ? standingsRes.value
+      : { standings: [] as import("./queries").StandingRow[], stageKind: null, stageName: null };
 
   // ✅ Detect players who appear on both rosters
   const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
@@ -307,7 +311,7 @@ export default async function Page({
         )}
 
         {/* Tournament Standings - After Video - Always shows, displays empty state if no data */}
-        <TournamentStandings standings={standings} />
+        <TournamentStandings standings={standings} stageKind={stageKind} stageName={stageName} />
 
         {isAdmin ? (
           <>

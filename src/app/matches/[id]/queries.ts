@@ -157,6 +157,7 @@ export async function fetchParticipantsMap(matchId: Id) {
 export type StandingRow = {
   stage_id: number;
   group_id: number | null;
+  group_name: string | null;
   team_id: number;
   played: number;
   won: number;
@@ -174,13 +175,19 @@ export type StandingRow = {
   };
 };
 
+export type StandingsResult = {
+  standings: StandingRow[];
+  stageKind: "league" | "groups" | "knockout" | null;
+  stageName: string | null;
+};
+
 /**
  * Fetch all standings for a stage (all groups)
- * Returns teams sorted by rank within each group
+ * Returns teams sorted by rank within each group, plus stage metadata
  */
 export async function fetchStandingsByStage(
   stageId: Id
-): Promise<StandingRow[]> {
+): Promise<StandingsResult> {
   console.log('[fetchStandingsByStage] Querying stage_id:', stageId);
 
   // Fetch standings data
@@ -199,52 +206,71 @@ export async function fetchStandingsByStage(
     dataCount: standingsData?.length ?? 0,
   });
 
-  if (standingsError || !standingsData) return [];
+  if (standingsError || !standingsData) return { standings: [], stageKind: null, stageName: null };
 
-  // Get unique team IDs
+  // Get unique team IDs and real group IDs (> 0; 0 is sentinel for league/no-group)
   const teamIds = [...new Set(standingsData.map((s: any) => s.team_id))];
+  const groupIds = [...new Set(standingsData.map((s: any) => s.group_id).filter((id: any) => id > 0))];
 
-  // Fetch team data separately
-  const { data: teamsData, error: teamsError } = await supabaseAdmin
-    .from("teams")
-    .select("id, name, logo")
-    .in("id", teamIds);
+  // Fetch teams, group names, and stage metadata in parallel
+  const [teamsResult, groupsResult, stageResult] = await Promise.all([
+    supabaseAdmin.from("teams").select("id, name, logo").in("id", teamIds),
+    groupIds.length
+      ? supabaseAdmin.from("tournament_groups").select("id, name").in("id", groupIds)
+      : Promise.resolve({ data: [], error: null }),
+    supabaseAdmin.from("tournament_stages").select("id, name, kind").eq("id", stageId).single(),
+  ]);
+
+  const { data: teamsData, error: teamsError } = teamsResult;
+  const { data: groupsData } = groupsResult;
+  const { data: stageData } = stageResult;
 
   console.log('[fetchStandingsByStage] Teams query result:', {
     error: teamsError?.message,
     dataCount: teamsData?.length ?? 0,
   });
 
-  if (teamsError || !teamsData) return [];
+  if (teamsError || !teamsData) return { standings: [], stageKind: null, stageName: null };
 
-  // Create a map for quick team lookup
+  // Create lookup maps
   const teamsMap = new Map(teamsData.map((t: any) => [t.id, t]));
+  const groupsMap = new Map((groupsData ?? []).map((g: any) => [g.id, g.name as string]));
 
-  // Combine standings with team data
-  const standings: StandingRow[] = standingsData.map((s: any) => ({
-    stage_id: s.stage_id,
-    group_id: s.group_id,
-    team_id: s.team_id,
-    played: s.played,
-    won: s.won,
-    drawn: s.drawn,
-    lost: s.lost,
-    gf: s.gf,
-    ga: s.ga,
-    gd: s.gd,
-    points: s.points,
-    rank: s.rank,
-    team: teamsMap.get(s.team_id) || {
-      id: s.team_id,
-      name: `Team #${s.team_id}`,
-      logo: null,
-    },
-  }));
+  // Combine standings with team and group data
+  // group_id = 0 is a sentinel for "no real group" (league stages); normalise to null
+  const standings: StandingRow[] = standingsData.map((s: any) => {
+    const realGroupId: number | null = s.group_id > 0 ? s.group_id : null;
+    return {
+      stage_id: s.stage_id,
+      group_id: realGroupId,
+      group_name: realGroupId ? (groupsMap.get(realGroupId) ?? null) : null,
+      team_id: s.team_id,
+      played: s.played,
+      won: s.won,
+      drawn: s.drawn,
+      lost: s.lost,
+      gf: s.gf,
+      ga: s.ga,
+      gd: s.gd,
+      points: s.points,
+      rank: s.rank,
+      team: teamsMap.get(s.team_id) || {
+        id: s.team_id,
+        name: `Team #${s.team_id}`,
+        logo: null,
+      },
+    };
+  });
 
   console.log('[fetchStandingsByStage] Final result:', {
     count: standings.length,
+    stageKind: stageData?.kind ?? null,
     data: standings
   });
 
-  return standings;
+  return {
+    standings,
+    stageKind: (stageData?.kind as StandingsResult["stageKind"]) ?? null,
+    stageName: stageData?.name ?? null,
+  };
 }

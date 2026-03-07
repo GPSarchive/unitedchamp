@@ -13,10 +13,12 @@ import type { StandingRow } from "./queries";
  */
 export default function TournamentStandings({
   standings,
-  groupName,
+  stageKind,
+  stageName,
 }: {
   standings: StandingRow[];
-  groupName?: string;
+  stageKind?: "league" | "groups" | "knockout" | null;
+  stageName?: string | null;
 }) {
   return (
     <motion.div
@@ -55,8 +57,8 @@ export default function TournamentStandings({
           <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(240,46,170,0.5)]">
             Βαθμολογία
           </h2>
-          {groupName && (
-            <p className="text-sm text-zinc-400 mt-0.5">{groupName}</p>
+          {stageName && (
+            <p className="text-sm text-zinc-400 mt-0.5">{stageName}</p>
           )}
         </div>
       </div>
@@ -78,51 +80,126 @@ export default function TournamentStandings({
           </p>
         </div>
       ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="relative z-10 hidden overflow-x-auto md:block">
-            <table className="w-full border-separate border-spacing-y-2">
-              <thead>
-                <tr className="text-left text-sm text-zinc-400">
-                  <th className="pb-3 pl-4 font-medium">#</th>
-                  <th className="pb-3 pl-2 font-medium">Ομάδα</th>
-                  <th className="pb-3 px-3 text-center font-medium">Αγ</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ν</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ι</th>
-                  <th className="pb-3 px-3 text-center font-medium">Η</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΥ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΚ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΔΓ</th>
-                  <th className="pb-3 pr-4 text-right font-medium">Βαθ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((standing, index) => (
-                  <StandingRowDesktop
-                    key={standing.team_id}
-                    standing={standing}
-                    index={index}
-                    position={standing.rank ?? index + 1}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="relative z-10 space-y-3 md:hidden">
-            {standings.map((standing, index) => (
-              <StandingCardMobile
-                key={standing.team_id}
-                standing={standing}
-                index={index}
-                position={standing.rank ?? index + 1}
-              />
-            ))}
-          </div>
-        </>
+        <StandingsContent standings={standings} stageKind={stageKind} />
       )}
     </motion.div>
+  );
+}
+
+/**
+ * Groups standings by group_id and renders each group separately.
+ * When a stage has multiple groups, each group's teams are ranked independently,
+ * so we must render them in separate sections to avoid duplicate 1st/2nd/3rd icons.
+ */
+const STAGE_KIND_LABEL: Record<string, string> = {
+  league: "Βαθμολογία Πρωταθλήματος",
+  groups: "Βαθμολογία Ομίλων",
+  knockout: "Νοκ Άουτ",
+};
+
+function StandingsContent({
+  standings,
+  stageKind,
+}: {
+  standings: StandingRow[];
+  stageKind?: "league" | "groups" | "knockout" | null;
+}) {
+  // Collect distinct groups in insertion order (already sorted by group_id from the query)
+  const groupOrder: Array<number | null> = [];
+  const groupMap = new Map<number | null, StandingRow[]>();
+  for (const s of standings) {
+    if (!groupMap.has(s.group_id)) {
+      groupOrder.push(s.group_id);
+      groupMap.set(s.group_id, []);
+    }
+    groupMap.get(s.group_id)!.push(s);
+  }
+
+  const hasMultipleGroups = groupOrder.length > 1;
+
+  // For a league stage (single null group), show the stage kind label as a header
+  const showLeagueHeader = !hasMultipleGroups && stageKind === "league";
+
+  return (
+    <div className="relative z-10 space-y-8">
+      {showLeagueHeader && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+            {STAGE_KIND_LABEL.league}
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+      )}
+      {groupOrder.map((groupId) => {
+        const groupStandings = groupMap.get(groupId)!;
+        const groupLabel = groupStandings[0]?.group_name ?? null;
+
+        // Determine this section's header label
+        let sectionLabel: string;
+        if (groupId === null) {
+          sectionLabel = STAGE_KIND_LABEL[stageKind ?? ""] ?? "Βαθμολογία";
+        } else {
+          sectionLabel = groupLabel ?? `Όμιλος ${String.fromCharCode(0x391 + groupOrder.filter(id => id !== null).indexOf(groupId))}`;
+        }
+
+        return (
+          <div key={groupId ?? "no-group"}>
+            {hasMultipleGroups && (
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+                  {sectionLabel}
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+            )}
+
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full border-separate border-spacing-y-2">
+                <thead>
+                  <tr className="text-left text-sm text-zinc-400">
+                    <th className="pb-3 pl-4 font-medium">#</th>
+                    <th className="pb-3 pl-2 font-medium">Ομάδα</th>
+                    <th className="pb-3 px-3 text-center font-medium">Αγ</th>
+                    <th className="pb-3 px-3 text-center font-medium">Ν</th>
+                    <th className="pb-3 px-3 text-center font-medium">Ι</th>
+                    <th className="pb-3 px-3 text-center font-medium">Η</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΓΥ</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΓΚ</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΔΓ</th>
+                    <th className="pb-3 pr-4 text-right font-medium">Βαθ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupStandings.map((standing, index) => (
+                    <StandingRowDesktop
+                      key={standing.team_id}
+                      standing={standing}
+                      index={index}
+                      position={standing.rank ?? index + 1}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="space-y-3 md:hidden">
+              {groupStandings.map((standing, index) => (
+                <StandingCardMobile
+                  key={standing.team_id}
+                  standing={standing}
+                  index={index}
+                  position={standing.rank ?? index + 1}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
