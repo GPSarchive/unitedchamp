@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { TeamImage } from "@/app/lib/OptimizedImage";
-import { Trophy, Goal } from "lucide-react";
+import { Trophy } from "lucide-react";
+import { GoalIcon, OwnGoalIcon } from "./StatIcons";
 import type { Id } from "@/app/lib/types";
 
 type Team = {
@@ -287,14 +288,13 @@ function TeamDisplay({
                   {isOwnGoal ? <span className="text-white/60"> (αυτογκόλ)</span> : null}
                 </span>
                 <div className="flex items-center gap-0.5">
-                  {Array.from({ length: goalCount }).map((_, i) => (
-                    <Goal
-                      key={i}
-                      className={`h-3 w-3 ${
-                        isOwnGoal ? "text-white/60" : "text-amber-400"
-                      }`}
-                    />
-                  ))}
+                  {Array.from({ length: goalCount }).map((_, i) =>
+                    isOwnGoal ? (
+                      <OwnGoalIcon key={i} className="h-3.5 w-3.5" />
+                    ) : (
+                      <GoalIcon key={i} className="h-3.5 w-3.5" />
+                    )
+                  )}
                 </div>
               </motion.div>
             );

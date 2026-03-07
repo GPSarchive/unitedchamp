@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 
-import VantaBg from "@/app/lib/VantaBg";
+import StadiumBg from "./StadiumBg";
 import ShinyText from "./ShinyText";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 
@@ -24,7 +24,7 @@ import { TournamentImage } from "@/app/lib/OptimizedImage";
 import WelcomeMessage from "./WelcomeMessage";
 import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
-import MatchParticipantsShowcase from "./MatchParticipantsShowcase";
+import MatchEventsTimeline from "./MatchEventsTimeline";
 import TeamRostersDisplay from "./TeamRostersDisplay";
 import TournamentStandings from "./TournamentStandings";
 import MatchAdminActions from "./MatchAdminActions";
@@ -159,14 +159,14 @@ export default async function Page({
       };
     });
 
-  // Prepare participants data
+  // Prepare participants data with full stats for the unified timeline
   const participantsData = Array.from(participants.values())
     .map((part) => {
       const player = [...teamAPlayers, ...teamBPlayers].find(
         (p) => p.player.id === part.player_id
       )?.player;
       if (!player) return null;
-      const stats = existingStats.get(part.player_id);
+      const stats = existingStats.get(part.player_id) ?? null;
       return {
         player: {
           id: player.id,
@@ -176,6 +176,7 @@ export default async function Page({
         },
         teamId: part.team_id,
         played: part.played,
+        stats,
         playerNumber: stats?.player_number ?? null,
       };
     })
@@ -205,8 +206,8 @@ export default async function Page({
 
   return (
     <div className="relative min-h-dvh overflow-x-visible">
-      {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
+      {/* Fixed stadium background that stays in place while content scrolls */}
+      <StadiumBg className="fixed inset-0 -z-10" />
 
       <div className="container mx-auto max-w-6xl px-4 pt-6">
         {match.tournament && (
@@ -258,7 +259,7 @@ export default async function Page({
           scorers={scorers}
         />
 
-        {/* Show full rosters for scheduled matches, participants for finished matches */}
+        {/* Show full rosters for scheduled matches, unified events timeline for finished matches */}
         {isScheduled && rosterData.length > 0 ? (
           <TeamRostersDisplay
             teamAId={match.team_a.id}
@@ -270,7 +271,7 @@ export default async function Page({
             rosterPlayers={rosterData}
           />
         ) : participantsData.length > 0 ? (
-          <MatchParticipantsShowcase
+          <MatchEventsTimeline
             teamAId={match.team_a.id}
             teamBId={match.team_b.id}
             teamAName={match.team_a.name}
