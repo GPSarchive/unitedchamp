@@ -57,8 +57,8 @@ export default function TournamentStandings({
           <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(240,46,170,0.5)]">
             Βαθμολογία
           </h2>
-          {groupName && (
-            <p className="text-sm text-zinc-400 mt-0.5">{groupName}</p>
+          {stageName && (
+            <p className="text-sm text-zinc-400 mt-0.5">{stageName}</p>
           )}
         </div>
       </div>
