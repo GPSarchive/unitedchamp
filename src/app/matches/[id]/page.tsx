@@ -71,7 +71,9 @@ export default async function Page({
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
-    match.stage_id ? fetchStandingsByStage(match.stage_id) : Promise.resolve([]),
+    match.stage_id
+      ? fetchStandingsByStage(match.stage_id)
+      : Promise.resolve({ standings: [], stageKind: null, stageName: null } as import("./queries").StandingsResult),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
