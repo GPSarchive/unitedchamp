@@ -229,10 +229,13 @@ export async function fetchStandingsByStage(
   const groupsMap = new Map((groupsData ?? []).map((g: any) => [g.id, g.name as string]));
 
   // Combine standings with team and group data
-  const standings: StandingRow[] = standingsData.map((s: any) => ({
+  // group_id = 0 is a sentinel for "no real group" (league stages); normalise to null
+  const standings: StandingRow[] = standingsData.map((s: any) => {
+    const realGroupId: number | null = s.group_id > 0 ? s.group_id : null;
+    return {
     stage_id: s.stage_id,
-    group_id: s.group_id,
-    group_name: s.group_id ? (groupsMap.get(s.group_id) ?? null) : null,
+    group_id: realGroupId,
+    group_name: realGroupId ? (groupsMap.get(realGroupId) ?? null) : null,
     team_id: s.team_id,
     played: s.played,
     won: s.won,
@@ -248,7 +251,8 @@ export async function fetchStandingsByStage(
       name: `Team #${s.team_id}`,
       logo: null,
     },
-  }));
+  };
+  });
 
   console.log('[fetchStandingsByStage] Final result:', {
     count: standings.length,
