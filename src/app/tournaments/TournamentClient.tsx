@@ -29,22 +29,55 @@ type TournamentClientProps = {
   };
 };
 
+/* ─── Skeleton ─── */
 const Skeleton: React.FC = () => (
-  <div className="min-h-screen bg-zinc-950">
-    <div className="container mx-auto max-w-7xl px-4 py-8">
-      <div className="h-12 w-2/3 rounded-xl bg-zinc-900 animate-pulse" />
-      <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[...Array(3)].map((_, i) => (
-          <div
-            key={i}
-            className="h-64 rounded-2xl bg-zinc-900 animate-pulse"
-          />
-        ))}
+  <div className="min-h-screen bg-black">
+    <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+      {/* Header skeleton */}
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 sm:p-12 mb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          <div className="space-y-3 flex-1">
+            <div className="h-5 w-28 rounded-full bg-white/[0.06] animate-pulse" />
+            <div className="h-12 w-80 rounded-xl bg-white/[0.06] animate-pulse" />
+            <div className="h-5 w-20 rounded-lg bg-white/[0.06] animate-pulse" />
+          </div>
+          <div className="flex gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="w-28 h-24 rounded-2xl bg-white/[0.06] animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* Stage skeletons */}
+      <div className="h-7 w-48 rounded-lg bg-white/[0.06] animate-pulse mb-6" />
+      {[...Array(2)].map((_, i) => (
+        <div key={i} className="h-64 rounded-2xl bg-white/[0.06] animate-pulse mb-6" />
+      ))}
+
+      {/* Player stats skeleton */}
+      <div className="h-7 w-52 rounded-lg bg-white/[0.06] animate-pulse mt-10 mb-6" />
+      <div className="h-96 rounded-2xl bg-white/[0.06] animate-pulse" />
     </div>
   </div>
 );
 
+/* ─── Status config ─── */
+const statusConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
+  scheduled: { label: "Προγραμματισμένο", color: "text-zinc-400", bg: "bg-zinc-500/10 border-zinc-500/20", dot: "bg-zinc-400" },
+  running: { label: "Σε Εξέλιξη", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/25", dot: "bg-emerald-400" },
+  completed: { label: "Ολοκληρώθηκε", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", dot: "bg-blue-400" },
+  archived: { label: "Αρχειοθετημένο", color: "text-zinc-500", bg: "bg-zinc-800/50 border-zinc-700/30", dot: "bg-zinc-600" },
+};
+
+const stageKindConfig: Record<string, { label: string; emoji: string }> = {
+  league: { label: "Πρωτάθλημα", emoji: "🏆" },
+  groups: { label: "Όμιλοι", emoji: "👥" },
+  knockout: { label: "Νοκ Άουτ", emoji: "⚔️" },
+  mixed: { label: "Μικτό", emoji: "🔀" },
+};
+
+/* ─── Main Component ─── */
 const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   const {
     tournament,
@@ -61,20 +94,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
   const { stages: sortedStages, getRendererForStage } = useStages();
 
   useEffect(() => {
-    // Update store if tournament is not loaded OR if the tournament ID has changed
     if (!tournament || tournament.id !== initialData.tournament.id) {
-      console.log('[TournamentClient] Hydrating store with:', {
-        tournament: initialData.tournament.name,
-        stagesCount: initialData.stages.length,
-        teamsCount: initialData.teams.length,
-        matchesCount: initialData.matches.length,
-        standingsCount: initialData.standings.length,
-        playersCount: initialData.players.length,
-      });
-
-      console.log('[TournamentClient] Players data:', initialData.players);
-      console.log('[TournamentClient] Teams data:', initialData.teams);
-
       setTournamentData(initialData.tournament);
       setTeams(initialData.teams);
       setPlayers(initialData.players);
@@ -95,158 +115,130 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     setGroups,
   ]);
 
-  // Show skeleton if tournament is not loaded OR if the IDs don't match (during navigation)
   if (!tournament || tournament.id !== initialData.tournament.id) return <Skeleton />;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-black to-zinc-950">
-      {/* Background pattern overlay */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/5 via-transparent to-transparent pointer-events-none" />
+  const status = statusConfig[tournament.status] ?? statusConfig.scheduled;
 
-      <div className="relative container mx-auto max-w-7xl px-4 py-8 space-y-8">
-        {/* Tournament Header */}
+  return (
+    <div className="min-h-screen bg-black text-white overflow-hidden">
+      {/* Background radial glow */}
+      <div className="fixed inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_40%_at_50%_-10%,rgba(16,185,129,0.07),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_30%_at_90%_80%,rgba(16,185,129,0.03),transparent_50%)]" />
+      </div>
+
+      <div className="relative container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 space-y-10">
+        {/* ─── Tournament Header ─── */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40 shadow-xl shadow-black/40"
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl"
         >
-          {/* Background pattern */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-zinc-950 to-black opacity-60" />
+          <div className="relative px-6 py-8 sm:px-10 sm:py-12 lg:px-12 lg:py-14">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+              {/* Left: Title + Status */}
+              <div className="space-y-4 min-w-0">
+                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${status.bg} ${status.color}`}>
+                  <span className={`w-2 h-2 rounded-full ${status.dot} ${tournament.status === 'running' ? 'animate-pulse' : ''}`} />
+                  {status.label}
+                </span>
 
-          <div className="relative px-8 py-10 md:px-12 md:py-14">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              {/* Left side - Title */}
-              <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-700/30 border border-emerald-400/40 text-emerald-200 text-sm font-medium">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  {tournament.status === 'running' ? 'Σε Εξέλιξη' :
-                   tournament.status === 'completed' ? 'Ολοκληρωμένο' :
-                   'Προγραμματισμένο'}
-                </div>
-
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-white to-emerald-200/80 bg-clip-text text-transparent leading-tight">
                   {tournament.name}
                 </h1>
 
                 {tournament.season && (
-                  <p className="text-lg text-white/70 font-medium">
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-sm font-medium bg-white/[0.04] text-white/50 border border-white/[0.06]">
                     Σεζόν {tournament.season}
-                  </p>
+                  </span>
                 )}
               </div>
 
-              {/* Right side - Stats */}
-              <div className="flex gap-6">
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
-                    {initialData.teams.length}
-                  </div>
-                  <div className="text-sm text-white/70 font-medium mt-1">
-                    Ομάδες
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
-                    {sortedStages.length}
-                  </div>
-                  <div className="text-sm text-white/70 font-medium mt-1">
-                    Στάδια
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-emerald-400">
-                    {initialData.matches.length}
-                  </div>
-                  <div className="text-sm text-white/70 font-medium mt-1">
-                    Αγώνες
-                  </div>
-                </div>
+              {/* Right: Stats */}
+              <div className="flex gap-3 sm:gap-4">
+                <StatBlock value={initialData.teams.length} label="Ομάδες" />
+                <StatBlock value={sortedStages.length} label="Στάδια" />
+                <StatBlock value={initialData.matches.length} label="Αγώνες" />
               </div>
             </div>
           </div>
         </motion.header>
 
-        {/* Stages Section */}
-        <div className="space-y-6">
+        {/* ─── Stages Section ─── */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="space-y-6"
+        >
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
               Στάδια Τουρνουά
             </h2>
             {sortedStages.length > 0 && (
-              <span className="text-sm text-white/70">
+              <span className="text-sm text-white/40 font-medium">
                 {sortedStages.length} {sortedStages.length === 1 ? 'στάδιο' : 'στάδια'}
               </span>
             )}
           </div>
 
           {sortedStages.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="rounded-2xl border-2 border-dashed border-white/10 backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl p-12 text-center"
-            >
-              <div className="mx-auto w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <div className="rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.01] p-16 text-center">
+              <div className="mx-auto w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
-              <p className="text-lg font-medium text-white mb-2">
+              <p className="text-base font-medium text-white/40 mb-1">
                 Δεν υπάρχουν στάδια ακόμα
               </p>
-              <p className="text-white/70">
+              <p className="text-sm text-white/25">
                 Τα στάδια του τουρνουά θα εμφανιστούν εδώ όταν δημιουργηθούν.
               </p>
-            </motion.div>
+            </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5">
               <AnimatePresence mode="wait">
                 {sortedStages.map((stage, index) => {
                   const Renderer = getRendererForStage(stage);
+                  const kind = stageKindConfig[stage.kind] ?? { label: stage.kind, emoji: "📋" };
 
                   return (
                     <motion.div
                       key={stage.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 24 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <div className="rounded-2xl border border-white/10 backdrop-blur-xl bg-gradient-to-br from-black/40 via-zinc-950/60 to-black/40 shadow-2xl hover:shadow-emerald-900/20 transition-all overflow-hidden">
+                      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl overflow-hidden transition-all duration-300 hover:border-white/[0.1] hover:shadow-[0_8px_40px_-12px_rgba(16,185,129,0.08)]">
                         {/* Stage Header */}
-                        <div className="px-6 py-5 border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
+                        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-white/[0.04] bg-white/[0.01]">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-lg shadow-[0_0_0_1px_rgba(16,185,129,0.3)_inset]">
+                            <div className="flex items-center gap-3 sm:gap-4">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-emerald-500/80 to-emerald-600 flex items-center justify-center text-white font-bold text-base shadow-lg shadow-emerald-500/20">
                                 {index + 1}
                               </div>
                               <div>
-                                <h3 className="text-xl font-bold text-white">
+                                <h3 className="text-lg sm:text-xl font-bold text-white">
                                   {stage.name}
                                 </h3>
-                                <p className="text-sm text-white/70">
-                                  {stage.kind === 'league' && 'Πρωτάθλημα'}
-                                  {stage.kind === 'groups' && 'Όμιλοι'}
-                                  {stage.kind === 'knockout' && 'Νοκ-άουτ'}
-                                  {stage.kind === 'mixed' && 'Μικτό'}
+                                <p className="text-xs sm:text-sm text-white/40 font-medium">
+                                  {kind.label}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-white/15 text-white text-sm font-medium">
-                              {stage.kind === 'league' && '👥'}
-                              {stage.kind === 'groups' && '👥'}
-                              {stage.kind === 'knockout' && '🏆'}
-
-                              <span className="capitalize">{stage.kind}</span>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.06] text-sm text-white/60">
+                              <span>{kind.emoji}</span>
+                              <span className="hidden sm:inline capitalize">{stage.kind}</span>
+                            </span>
                           </div>
                         </div>
 
                         {/* Stage Content */}
-                        <div className="p-6 bg-black/20">
+                        <div className="p-4 sm:p-6">
                           <Renderer stage={stage} />
                         </div>
                       </div>
@@ -256,42 +248,44 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
               </AnimatePresence>
             </div>
           )}
-        </div>
+        </motion.section>
 
-        {/* Player Statistics Section */}
-        {(() => {
-          console.log('[TournamentClient] Rendering PlayerStatistics section:', {
-            hasPlayers: !!players,
-            playersLength: players?.length || 0,
-            hasTeams: !!teams,
-            teamsLength: teams?.length || 0,
-          });
-
-          if (players && teams) {
-            return (
-              <PlayerStatistics
-                players={players}
-                teams={teams}
-              />
-            );
-          }
-
-          return (
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
-              <p>Loading player statistics...</p>
-              <p className="text-xs mt-2">Players: {players?.length || 0}, Teams: {teams?.length || 0}</p>
+        {/* ─── Player Statistics ─── */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          {players && teams ? (
+            <PlayerStatistics players={players} teams={teams} />
+          ) : (
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto mb-3 animate-pulse">
+                <svg className="w-5 h-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <p className="text-white/30 text-sm">Φόρτωση στατιστικών παικτών...</p>
             </div>
-          );
-        })()}
+          )}
+        </motion.section>
       </div>
     </div>
   );
 };
 
+/* ─── Stat Block ─── */
+function StatBlock({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="flex-1 min-w-[90px] rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 text-center transition-colors duration-200 hover:bg-white/[0.04]">
+      <div className="text-3xl sm:text-4xl font-extrabold text-emerald-400 tabular-nums">
+        {value}
+      </div>
+      <div className="text-xs sm:text-sm text-white/40 font-medium mt-1">
+        {label}
+      </div>
+    </div>
+  );
+}
+
 export default TournamentClient;
-
-
-
-
-
-
