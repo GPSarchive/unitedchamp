@@ -82,11 +82,10 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
-  const standingsResult: import("./queries").StandingsResult =
+  const { standings, stageKind, stageName } =
     standingsRes.status === "fulfilled"
       ? standingsRes.value
-      : { standings: [], stageKind: null, stageName: null };
-  const { standings, stageKind, stageName } = standingsResult;
+      : { standings: [] as import("./queries").StandingRow[], stageKind: null, stageName: null };
 
   // ✅ Detect players who appear on both rosters
   const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
