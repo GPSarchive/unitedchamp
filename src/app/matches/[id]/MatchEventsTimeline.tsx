@@ -104,10 +104,9 @@ function EventBadge({ event }: { event: StatEvent }) {
   const meta = EVENT_META[event.type];
   const Icon = meta.icon;
 
-  // For goals/own_goals/assists: show repeated icons (e.g. ⚽⚽ for 2 goals)
+  // For goals/own_goals/assists: always show repeated icons (e.g. ⚽⚽ for 2 goals)
   const showRepeatedIcons =
-    event.count > 1 &&
-    (event.type === "goal" || event.type === "own_goal" || event.type === "assist");
+    event.type === "goal" || event.type === "own_goal" || event.type === "assist";
 
   return (
     <div
@@ -332,20 +331,6 @@ export default function MatchEventsTimeline({
     return null;
   }
 
-  // Count total events for the summary bar
-  const allEvents = participants.flatMap((p) => getPlayerEvents(p.stats));
-  const totalGoals = allEvents
-    .filter((e) => e.type === "goal")
-    .reduce((sum, e) => sum + e.count, 0);
-  const totalAssists = allEvents
-    .filter((e) => e.type === "assist")
-    .reduce((sum, e) => sum + e.count, 0);
-  const totalCards = allEvents
-    .filter((e) =>
-      ["yellow_card", "red_card", "blue_card"].includes(e.type)
-    )
-    .reduce((sum, e) => sum + e.count, 0);
-
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -364,34 +349,6 @@ export default function MatchEventsTimeline({
         >
           Στατιστικά Αγώνα
         </h2>
-
-        {/* Quick summary bar */}
-        <div className="mt-3 flex flex-wrap gap-3">
-          {totalGoals > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1">
-              <GoalIcon className="h-4 w-4" />
-              <span className="text-xs font-semibold text-amber-300">
-                {totalGoals} {totalGoals === 1 ? "γκολ" : "γκολ"}
-              </span>
-            </div>
-          )}
-          {totalAssists > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1">
-              <AssistIcon className="h-4 w-4" />
-              <span className="text-xs font-semibold text-sky-300">
-                {totalAssists} {totalAssists === 1 ? "ασίστ" : "ασίστ"}
-              </span>
-            </div>
-          )}
-          {totalCards > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1">
-              <YellowCardIcon className="h-4 w-4" />
-              <span className="text-xs font-semibold text-yellow-300">
-                {totalCards} {totalCards === 1 ? "κάρτα" : "κάρτες"}
-              </span>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Divider */}
