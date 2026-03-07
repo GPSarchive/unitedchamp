@@ -13,10 +13,12 @@ import type { StandingRow } from "./queries";
  */
 export default function TournamentStandings({
   standings,
-  groupName,
+  stageKind,
+  stageName,
 }: {
   standings: StandingRow[];
-  groupName?: string;
+  stageKind?: "league" | "groups" | "knockout" | null;
+  stageName?: string | null;
 }) {
   return (
     <motion.div
@@ -78,7 +80,7 @@ export default function TournamentStandings({
           </p>
         </div>
       ) : (
-        <StandingsContent standings={standings} />
+        <StandingsContent standings={standings} stageKind={stageKind} />
       )}
     </motion.div>
   );
@@ -89,7 +91,19 @@ export default function TournamentStandings({
  * When a stage has multiple groups, each group's teams are ranked independently,
  * so we must render them in separate sections to avoid duplicate 1st/2nd/3rd icons.
  */
-function StandingsContent({ standings }: { standings: StandingRow[] }) {
+const STAGE_KIND_LABEL: Record<string, string> = {
+  league: "Βαθμολογία Πρωταθλήματος",
+  groups: "Βαθμολογία Ομίλων",
+  knockout: "Νοκ Άουτ",
+};
+
+function StandingsContent({
+  standings,
+  stageKind,
+}: {
+  standings: StandingRow[];
+  stageKind?: "league" | "groups" | "knockout" | null;
+}) {
   // Collect distinct groups in insertion order (already sorted by group_id from the query)
   const groupOrder: Array<number | null> = [];
   const groupMap = new Map<number | null, StandingRow[]>();
@@ -103,11 +117,31 @@ function StandingsContent({ standings }: { standings: StandingRow[] }) {
 
   const hasMultipleGroups = groupOrder.length > 1;
 
+  // For a league stage (single null group), show the stage kind label as a header
+  const showLeagueHeader = !hasMultipleGroups && stageKind === "league";
+
   return (
     <div className="relative z-10 space-y-8">
+      {showLeagueHeader && (
+        <div className="mb-3 flex items-center gap-2">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+            {STAGE_KIND_LABEL.league}
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+      )}
       {groupOrder.map((groupId) => {
         const groupStandings = groupMap.get(groupId)!;
         const groupLabel = groupStandings[0]?.group_name ?? null;
+
+        // Determine this section's header label
+        let sectionLabel: string;
+        if (groupId === null) {
+          sectionLabel = STAGE_KIND_LABEL[stageKind ?? ""] ?? "Βαθμολογία";
+        } else {
+          sectionLabel = groupLabel ?? `Όμιλος ${String.fromCharCode(0x391 + groupOrder.filter(id => id !== null).indexOf(groupId))}`;
+        }
 
         return (
           <div key={groupId ?? "no-group"}>
@@ -115,7 +149,7 @@ function StandingsContent({ standings }: { standings: StandingRow[] }) {
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-px flex-1 bg-white/10" />
                 <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
-                  {groupLabel ?? `Όμιλος ${groupId}`}
+                  {sectionLabel}
                 </span>
                 <div className="h-px flex-1 bg-white/10" />
               </div>

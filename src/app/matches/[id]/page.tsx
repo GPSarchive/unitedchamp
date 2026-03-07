@@ -82,8 +82,9 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
-  const standings =
-    standingsRes.status === "fulfilled" ? standingsRes.value : [];
+  const standingsResult =
+    standingsRes.status === "fulfilled" ? standingsRes.value : { standings: [], stageKind: null, stageName: null };
+  const { standings, stageKind, stageName } = standingsResult;
 
   // ✅ Detect players who appear on both rosters
   const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
@@ -307,7 +308,7 @@ export default async function Page({
         )}
 
         {/* Tournament Standings - After Video - Always shows, displays empty state if no data */}
-        <TournamentStandings standings={standings} />
+        <TournamentStandings standings={standings} stageKind={stageKind} stageName={stageName} />
 
         {isAdmin ? (
           <>
