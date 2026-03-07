@@ -4,19 +4,27 @@
 export function GoalIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" stroke="url(#goalGrad)" strokeWidth="1.5" />
-      <circle cx="12" cy="12" r="6" stroke="url(#goalGrad)" strokeWidth="1" opacity="0.6" />
-      {/* Pentagon pattern */}
-      <path d="M12 6L14.5 9.5L13.5 13H10.5L9.5 9.5L12 6Z" fill="url(#goalGrad)" opacity="0.8" />
-      <line x1="12" y1="2" x2="12" y2="6" stroke="url(#goalGrad)" strokeWidth="0.8" opacity="0.5" />
-      <line x1="22" y1="12" x2="18" y2="12" stroke="url(#goalGrad)" strokeWidth="0.8" opacity="0.5" />
-      <line x1="2" y1="12" x2="6" y2="12" stroke="url(#goalGrad)" strokeWidth="0.8" opacity="0.5" />
-      <line x1="12" y1="22" x2="12" y2="18" stroke="url(#goalGrad)" strokeWidth="0.8" opacity="0.5" />
+      {/* Outer ball */}
+      <circle cx="12" cy="12" r="10.5" fill="url(#ballBase)" stroke="#e5e7eb" strokeWidth="0.6" />
+      {/* Classic pentagon patches */}
+      <path d="M12 5.5L14.4 8.2L13.3 11.5H10.7L9.6 8.2Z" fill="#1a1a2e" />
+      <path d="M5.8 10.5L8.8 9.2L10 12.3L8.2 15H5.2Z" fill="#1a1a2e" />
+      <path d="M18.2 10.5L15.2 9.2L14 12.3L15.8 15H18.8Z" fill="#1a1a2e" />
+      <path d="M8.5 17L10.2 14.5H13.8L15.5 17L12 19.5Z" fill="#1a1a2e" />
+      {/* Seam lines connecting patches */}
+      <line x1="12" y1="1.5" x2="12" y2="5.5" stroke="#d1d5db" strokeWidth="0.4" />
+      <line x1="14.4" y1="8.2" x2="18.2" y2="10.5" stroke="#d1d5db" strokeWidth="0.4" />
+      <line x1="9.6" y1="8.2" x2="5.8" y2="10.5" stroke="#d1d5db" strokeWidth="0.4" />
+      <line x1="8.2" y1="15" x2="8.5" y2="17" stroke="#d1d5db" strokeWidth="0.4" />
+      <line x1="15.8" y1="15" x2="15.5" y2="17" stroke="#d1d5db" strokeWidth="0.4" />
+      {/* Shine highlight */}
+      <ellipse cx="9" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.25" transform="rotate(-20 9 7)" />
       <defs>
-        <linearGradient id="goalGrad" x1="0" y1="0" x2="24" y2="24">
-          <stop stopColor="#fbbf24" />
-          <stop offset="1" stopColor="#f59e0b" />
-        </linearGradient>
+        <radialGradient id="ballBase" cx="40%" cy="35%" r="60%">
+          <stop stopColor="#ffffff" />
+          <stop offset="0.7" stopColor="#e8e8e8" />
+          <stop offset="1" stopColor="#c8c8c8" />
+        </radialGradient>
       </defs>
     </svg>
   );
@@ -25,22 +33,34 @@ export function GoalIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function AssistIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      {/* Boot/shoe shape */}
+      {/* Football boot */}
       <path
-        d="M4 18L6 10C6.5 8 8 7 10 7H14L16 9L20 10V13L18 14L14 13L12 16L8 18H4Z"
-        fill="url(#assistGrad)"
-        stroke="url(#assistGrad)"
-        strokeWidth="0.8"
-        opacity="0.9"
+        d="M3 17.5L5 12C5.5 10.5 6.5 9.5 8 9H11L13 10L15 9.5V12L13.5 13L11 12.5L9.5 15L6.5 17.5H3Z"
+        fill="url(#assistBoot)"
+        stroke="#1e3a5f"
+        strokeWidth="0.5"
       />
-      {/* Speed lines */}
-      <line x1="2" y1="8" x2="5" y2="8" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
-      <line x1="1" y1="11" x2="4" y2="11" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" opacity="0.5" />
-      <line x1="2" y1="14" x2="4.5" y2="14" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" />
+      {/* Boot studs */}
+      <circle cx="4.5" cy="18" r="0.6" fill="#0ea5e9" />
+      <circle cx="6.5" cy="18.2" r="0.6" fill="#0ea5e9" />
+      {/* Curved pass trajectory (dotted arc) */}
+      <path
+        d="M15 10C17 6 20 5 22 6"
+        stroke="#38bdf8"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeDasharray="2 1.5"
+        opacity="0.8"
+      />
+      {/* Small ball at end of trajectory */}
+      <circle cx="22" cy="6" r="2" fill="white" stroke="#d1d5db" strokeWidth="0.4" />
+      <path d="M22 4.5L22.8 5.5L22.3 6.8H21.7L21.2 5.5Z" fill="#1a1a2e" opacity="0.5" />
+      {/* Arrow tip on trajectory */}
+      <path d="M20.5 4.5L22 6L20 6.5" stroke="#38bdf8" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.7" />
       <defs>
-        <linearGradient id="assistGrad" x1="2" y1="7" x2="20" y2="18">
+        <linearGradient id="assistBoot" x1="3" y1="9" x2="15" y2="17">
           <stop stopColor="#7dd3fc" />
-          <stop offset="1" stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#0284c7" />
         </linearGradient>
       </defs>
     </svg>
@@ -50,11 +70,14 @@ export function AssistIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function OwnGoalIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" stroke="#f97316" strokeWidth="1.5" />
-      <circle cx="12" cy="12" r="6" stroke="#f97316" strokeWidth="1" opacity="0.5" />
-      <path d="M12 6L14.5 9.5L13.5 13H10.5L9.5 9.5L12 6Z" fill="#f97316" opacity="0.6" />
-      {/* Arrow pointing wrong way */}
-      <path d="M8 4L4 8M4 8L8 8M4 8L4 4" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Ball with orange/red tint */}
+      <circle cx="13" cy="13" r="9" fill="url(#ownBallBase)" stroke="#f97316" strokeWidth="0.8" />
+      {/* Pentagon patches */}
+      <path d="M13 7.5L15 9.7L14.1 12.3H11.9L11 9.7Z" fill="#7c2d12" opacity="0.7" />
+      <path d="M8.5 11.5L10.6 10.5L11.5 13L10 15H8Z" fill="#7c2d12" opacity="0.7" />
+      <path d="M17.5 11.5L15.4 10.5L14.5 13L16 15H18Z" fill="#7c2d12" opacity="0.7" />
+      {/* Wrong-way arrow overlay */}
+      <path d="M7 3L3 7M3 7L7 7M3 7L3 3" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -141,22 +164,36 @@ export function MvpIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function BestGkIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      {/* Glove shape */}
+      {/* Glove palm */}
       <path
-        d="M6 20V12C6 10 7 8 8 7L9 4C9.5 3 10.5 3 11 4L11.5 6L12.5 3.5C13 2.5 14 2.5 14.5 3.5L15 6L16 4C16.5 3 17.5 3 18 4L18.5 7C19 8 19.5 9 19.5 11V15C19.5 18 17.5 20 15 20H6Z"
-        fill="url(#gkGrad)"
-        stroke="#065f46"
-        strokeWidth="0.6"
+        d="M5 20V14L5.5 11L7 8.5V5C7 4 8 3.5 8.5 4.5L9 7V5C9 3.5 10 3 10.5 4L11 7V4.5C11 3 12 2.5 12.5 3.5L13 7V5C13 3.5 14 3 14.5 4L15 7L16 9C17 10.5 17 12 17 14V17C17 19 15.5 20.5 13 20.5H7C6 20.5 5 20 5 20Z"
+        fill="url(#bestGkGrad)"
+        stroke="#047857"
+        strokeWidth="0.7"
+        strokeLinejoin="round"
       />
-      {/* Grip lines */}
-      <line x1="9" y1="12" x2="9" y2="16" stroke="white" strokeWidth="0.6" opacity="0.3" />
-      <line x1="12" y1="11" x2="12" y2="16" stroke="white" strokeWidth="0.6" opacity="0.3" />
-      <line x1="15" y1="11" x2="15" y2="16" stroke="white" strokeWidth="0.6" opacity="0.3" />
+      {/* Finger segments */}
+      <line x1="8" y1="5" x2="8" y2="8" stroke="#059669" strokeWidth="0.4" opacity="0.5" />
+      <line x1="10" y1="4.5" x2="10" y2="8" stroke="#059669" strokeWidth="0.4" opacity="0.5" />
+      <line x1="12" y1="4" x2="12" y2="8" stroke="#059669" strokeWidth="0.4" opacity="0.5" />
+      <line x1="14" y1="4.5" x2="14" y2="8" stroke="#059669" strokeWidth="0.4" opacity="0.5" />
+      {/* Palm grip texture */}
+      <path d="M7 12H15" stroke="white" strokeWidth="0.3" opacity="0.2" />
+      <path d="M7 14H15" stroke="white" strokeWidth="0.3" opacity="0.2" />
+      <path d="M7 16H14" stroke="white" strokeWidth="0.3" opacity="0.2" />
+      {/* Star badge for "best" */}
+      <circle cx="19" cy="6" r="4.5" fill="url(#bestStarBg)" stroke="#b45309" strokeWidth="0.5" />
+      <path d="M19 2.8L20 5L22.3 5.2L20.5 6.8L21 9L19 7.8L17 9L17.5 6.8L15.7 5.2L18 5Z" fill="#fbbf24" />
       <defs>
-        <linearGradient id="gkGrad" x1="6" y1="3" x2="19" y2="20">
-          <stop stopColor="#34d399" />
+        <linearGradient id="bestGkGrad" x1="5" y1="3" x2="17" y2="20">
+          <stop stopColor="#6ee7b7" />
+          <stop offset="0.5" stopColor="#34d399" />
           <stop offset="1" stopColor="#10b981" />
         </linearGradient>
+        <radialGradient id="bestStarBg" cx="50%" cy="50%" r="50%">
+          <stop stopColor="#fef3c7" />
+          <stop offset="1" stopColor="#f59e0b" />
+        </radialGradient>
       </defs>
     </svg>
   );
@@ -165,22 +202,38 @@ export function BestGkIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function CaptainIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
-      {/* Armband with C */}
-      <rect x="3" y="7" width="18" height="10" rx="5" fill="url(#capGrad)" stroke="#7c2d12" strokeWidth="0.6" />
+      {/* Arm silhouette */}
+      <path
+        d="M7 22V6C7 4.5 8 3 10 3H14C16 3 17 4.5 17 6V22"
+        fill="#374151"
+        stroke="#4b5563"
+        strokeWidth="0.5"
+      />
+      {/* Captain armband wrapped around */}
+      <rect x="5" y="9" width="14" height="6" rx="1" fill="url(#capBand)" />
+      <rect x="5" y="9" width="14" height="6" rx="1" stroke="#92400e" strokeWidth="0.6" />
+      {/* Armband stripe detail */}
+      <rect x="5" y="9" width="14" height="1.5" rx="0.5" fill="white" opacity="0.15" />
+      {/* Bold C letter */}
       <text
         x="12"
-        y="14.5"
+        y="14.2"
         textAnchor="middle"
         fill="white"
-        fontSize="8"
+        fontSize="5.5"
         fontWeight="bold"
         fontFamily="sans-serif"
+        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" } as React.CSSProperties}
       >
         C
       </text>
+      {/* Shine on armband */}
+      <ellipse cx="8" cy="11" rx="1.5" ry="0.8" fill="white" opacity="0.12" />
       <defs>
-        <linearGradient id="capGrad" x1="3" y1="7" x2="21" y2="17">
-          <stop stopColor="#fbbf24" />
+        <linearGradient id="capBand" x1="5" y1="9" x2="19" y2="15">
+          <stop stopColor="#fcd34d" />
+          <stop offset="0.3" stopColor="#fbbf24" />
+          <stop offset="0.7" stopColor="#f59e0b" />
           <stop offset="1" stopColor="#d97706" />
         </linearGradient>
       </defs>

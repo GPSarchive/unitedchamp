@@ -104,15 +104,33 @@ function EventBadge({ event }: { event: StatEvent }) {
   const meta = EVENT_META[event.type];
   const Icon = meta.icon;
 
+  // For goals/own_goals/assists: show repeated icons (e.g. ⚽⚽ for 2 goals)
+  const showRepeatedIcons =
+    event.count > 1 &&
+    (event.type === "goal" || event.type === "own_goal" || event.type === "assist");
+
   return (
     <div
-      className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 backdrop-blur-sm"
-      title={meta.label}
+      className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 backdrop-blur-sm"
+      title={`${meta.label}${event.count > 1 ? ` ×${event.count}` : ""}`}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className={`text-xs font-semibold ${meta.color}`}>
-        {event.count > 1 ? `×${event.count}` : meta.label}
-      </span>
+      {showRepeatedIcons ? (
+        <>
+          {Array.from({ length: Math.min(event.count, 5) }).map((_, i) => (
+            <Icon key={i} className="h-4 w-4 shrink-0" />
+          ))}
+          {event.count > 5 && (
+            <span className={`text-xs font-semibold ${meta.color}`}>+{event.count - 5}</span>
+          )}
+        </>
+      ) : (
+        <>
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className={`text-xs font-semibold ${meta.color}`}>
+            {event.count > 1 ? `×${event.count}` : meta.label}
+          </span>
+        </>
+      )}
     </div>
   );
 }
