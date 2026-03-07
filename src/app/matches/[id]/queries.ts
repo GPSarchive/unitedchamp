@@ -157,6 +157,7 @@ export async function fetchParticipantsMap(matchId: Id) {
 export type StandingRow = {
   stage_id: number;
   group_id: number | null;
+  group_name: string | null;
   team_id: number;
   played: number;
   won: number;
@@ -201,14 +202,20 @@ export async function fetchStandingsByStage(
 
   if (standingsError || !standingsData) return [];
 
-  // Get unique team IDs
+  // Get unique team IDs and group IDs
   const teamIds = [...new Set(standingsData.map((s: any) => s.team_id))];
+  const groupIds = [...new Set(standingsData.map((s: any) => s.group_id).filter(Boolean))];
 
-  // Fetch team data separately
-  const { data: teamsData, error: teamsError } = await supabaseAdmin
-    .from("teams")
-    .select("id, name, logo")
-    .in("id", teamIds);
+  // Fetch team data and group names in parallel
+  const [teamsResult, groupsResult] = await Promise.all([
+    supabaseAdmin.from("teams").select("id, name, logo").in("id", teamIds),
+    groupIds.length
+      ? supabaseAdmin.from("tournament_groups").select("id, name").in("id", groupIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const { data: teamsData, error: teamsError } = teamsResult;
+  const { data: groupsData } = groupsResult;
 
   console.log('[fetchStandingsByStage] Teams query result:', {
     error: teamsError?.message,
@@ -217,13 +224,15 @@ export async function fetchStandingsByStage(
 
   if (teamsError || !teamsData) return [];
 
-  // Create a map for quick team lookup
+  // Create lookup maps
   const teamsMap = new Map(teamsData.map((t: any) => [t.id, t]));
+  const groupsMap = new Map((groupsData ?? []).map((g: any) => [g.id, g.name as string]));
 
-  // Combine standings with team data
+  // Combine standings with team and group data
   const standings: StandingRow[] = standingsData.map((s: any) => ({
     stage_id: s.stage_id,
     group_id: s.group_id,
+    group_name: s.group_id ? (groupsMap.get(s.group_id) ?? null) : null,
     team_id: s.team_id,
     played: s.played,
     won: s.won,

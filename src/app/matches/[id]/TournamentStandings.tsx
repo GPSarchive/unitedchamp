@@ -78,51 +78,94 @@ export default function TournamentStandings({
           </p>
         </div>
       ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="relative z-10 hidden overflow-x-auto md:block">
-            <table className="w-full border-separate border-spacing-y-2">
-              <thead>
-                <tr className="text-left text-sm text-zinc-400">
-                  <th className="pb-3 pl-4 font-medium">#</th>
-                  <th className="pb-3 pl-2 font-medium">Ομάδα</th>
-                  <th className="pb-3 px-3 text-center font-medium">Αγ</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ν</th>
-                  <th className="pb-3 px-3 text-center font-medium">Ι</th>
-                  <th className="pb-3 px-3 text-center font-medium">Η</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΥ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΓΚ</th>
-                  <th className="pb-3 px-3 text-center font-medium">ΔΓ</th>
-                  <th className="pb-3 pr-4 text-right font-medium">Βαθ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((standing, index) => (
-                  <StandingRowDesktop
-                    key={standing.team_id}
-                    standing={standing}
-                    index={index}
-                    position={standing.rank ?? index + 1}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="relative z-10 space-y-3 md:hidden">
-            {standings.map((standing, index) => (
-              <StandingCardMobile
-                key={standing.team_id}
-                standing={standing}
-                index={index}
-                position={standing.rank ?? index + 1}
-              />
-            ))}
-          </div>
-        </>
+        <StandingsContent standings={standings} />
       )}
     </motion.div>
+  );
+}
+
+/**
+ * Groups standings by group_id and renders each group separately.
+ * When a stage has multiple groups, each group's teams are ranked independently,
+ * so we must render them in separate sections to avoid duplicate 1st/2nd/3rd icons.
+ */
+function StandingsContent({ standings }: { standings: StandingRow[] }) {
+  // Collect distinct groups in insertion order (already sorted by group_id from the query)
+  const groupOrder: Array<number | null> = [];
+  const groupMap = new Map<number | null, StandingRow[]>();
+  for (const s of standings) {
+    if (!groupMap.has(s.group_id)) {
+      groupOrder.push(s.group_id);
+      groupMap.set(s.group_id, []);
+    }
+    groupMap.get(s.group_id)!.push(s);
+  }
+
+  const hasMultipleGroups = groupOrder.length > 1;
+
+  return (
+    <div className="relative z-10 space-y-8">
+      {groupOrder.map((groupId) => {
+        const groupStandings = groupMap.get(groupId)!;
+        const groupLabel = groupStandings[0]?.group_name ?? null;
+
+        return (
+          <div key={groupId ?? "no-group"}>
+            {hasMultipleGroups && (
+              <div className="mb-3 flex items-center gap-2">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+                  {groupLabel ?? `Όμιλος ${groupId}`}
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+            )}
+
+            {/* Desktop Table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full border-separate border-spacing-y-2">
+                <thead>
+                  <tr className="text-left text-sm text-zinc-400">
+                    <th className="pb-3 pl-4 font-medium">#</th>
+                    <th className="pb-3 pl-2 font-medium">Ομάδα</th>
+                    <th className="pb-3 px-3 text-center font-medium">Αγ</th>
+                    <th className="pb-3 px-3 text-center font-medium">Ν</th>
+                    <th className="pb-3 px-3 text-center font-medium">Ι</th>
+                    <th className="pb-3 px-3 text-center font-medium">Η</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΓΥ</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΓΚ</th>
+                    <th className="pb-3 px-3 text-center font-medium">ΔΓ</th>
+                    <th className="pb-3 pr-4 text-right font-medium">Βαθ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupStandings.map((standing, index) => (
+                    <StandingRowDesktop
+                      key={standing.team_id}
+                      standing={standing}
+                      index={index}
+                      position={standing.rank ?? index + 1}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="space-y-3 md:hidden">
+              {groupStandings.map((standing, index) => (
+                <StandingCardMobile
+                  key={standing.team_id}
+                  standing={standing}
+                  index={index}
+                  position={standing.rank ?? index + 1}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
