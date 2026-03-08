@@ -224,6 +224,12 @@ body {
 }
 .animate-fade-up { animation: fade-up 700ms ease-out both; }
 
+/* Shimmer effect for premium cards */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* ================== Articles Page Animations ================== */
 @keyframes fade-in {
   0%   { opacity: 0; }
@@ -402,13 +408,13 @@ select option:checked {
 
 .match-carousel .swiper-button-prev,
 .match-carousel .swiper-button-next {
-  color: rgb(249, 115, 22); /* orange-500 */
-  background: rgba(0, 0, 0, 0.8);
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid rgb(249, 115, 22);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+  color: rgb(16, 185, 129); /* emerald-500 */
+  background: rgba(0, 0, 0, 0.85);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
   transition: all 0.3s ease;
 }
 
@@ -423,15 +429,16 @@ select option:checked {
 
 .match-carousel .swiper-button-prev:hover,
 .match-carousel .swiper-button-next:hover {
-  background: rgb(249, 115, 22);
+  background: rgb(16, 185, 129);
   color: rgb(0, 0, 0);
-  transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  border-color: rgb(16, 185, 129);
 }
 
 .match-carousel .swiper-button-prev::after,
 .match-carousel .swiper-button-next::after {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
 }
 
