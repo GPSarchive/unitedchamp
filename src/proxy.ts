@@ -414,7 +414,7 @@ export async function proxy(req: NextRequest) {
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
-    "frame-ancestors 'none'",
+    "frame-ancestors 'self' https://digitalfootprint.gr https://www.digitalfootprint.gr",
     `img-src ${imgSrc}`,
     `script-src ${scriptSrc}`,
     `style-src ${styleSources}`,
