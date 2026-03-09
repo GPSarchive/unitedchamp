@@ -366,7 +366,7 @@ export async function proxy(req: NextRequest) {
   // ─────────────────────────────────────────────────────────────
   // SECURITY HEADERS
   // ─────────────────────────────────────────────────────────────
-  res.headers.delete('X-Frame-Options')
+  res.headers.set('X-Frame-Options', 'DENY')
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
   res.headers.set('Origin-Agent-Cluster', '?1')
@@ -414,7 +414,7 @@ export async function proxy(req: NextRequest) {
   const csp = [
     "default-src 'self'",
     "base-uri 'self'",
-    "frame-ancestors 'self' https://digitalfootprint.gr https://www.digitalfootprint.gr",
+    "frame-ancestors 'none'",
     `img-src ${imgSrc}`,
     `script-src ${scriptSrc}`,
     `style-src ${styleSources}`,
