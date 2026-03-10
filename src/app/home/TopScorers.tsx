@@ -71,10 +71,14 @@ export default function TopScorers({ scorers }: TopScorersProps) {
       ref={sectionRef}
       className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]"
     >
-      {/* Animated background elements */}
+      {/* Edge fades — blend into page bg-zinc-950 */}
+      <div aria-hidden className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-zinc-950 to-transparent z-[1] pointer-events-none" />
+      <div aria-hidden className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent z-[1] pointer-events-none" />
+
+      {/* Ambient warm glow */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-400/8 blur-[140px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-yellow-600/6 blur-[140px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px] animate-pulse" style={{ animationDelay: '1.5s' }} />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">

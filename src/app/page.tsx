@@ -397,9 +397,6 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Bridge: Welcome (black) → Calendar (#1F1B2E) */}
-      <div aria-hidden className="h-20 bg-gradient-to-b from-black to-[#1F1B2E]" />
-
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto max-w-7xl">
@@ -429,14 +426,8 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      {/* Bridge: Calendar (#1F1B2E) → TopScorers (#111111) */}
-      <div aria-hidden className="h-20 bg-gradient-to-b from-[#1F1B2E] to-[#111111]" />
-
       {/* Top Scorers Section */}
       <TopScorers scorers={topScorers} />
-
-      {/* Bridge: TopScorers (#111111) → Features (black) */}
-      <div aria-hidden className="h-20 bg-gradient-to-b from-[#111111] to-black" />
 
       {/* Features Section */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
@@ -485,19 +476,20 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Bridge: Features (black) → Tournaments (#111) */}
-      <div aria-hidden className="h-16 bg-gradient-to-b from-black to-[#111]" />
-
-      {/* Call to Action */}
+      {/* Call to Action — Tournaments */}
       <section
         className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white"
         style={{
           backgroundColor: '#111',
           backgroundImage:
-            'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.025) 3px,rgba(255,255,255,.025) 4px),' +
-            'repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(255,255,255,.025) 3px,rgba(255,255,255,.025) 4px)',
+            'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.04) 2px,rgba(255,255,255,.04) 3px),' +
+            'repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(255,255,255,.04) 2px,rgba(255,255,255,.04) 3px)',
         }}
       >
+        {/* Edge fades */}
+        <div aria-hidden className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-zinc-950 to-transparent z-[1] pointer-events-none" />
+        <div aria-hidden className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent z-[1] pointer-events-none" />
+
         <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
@@ -512,14 +504,8 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Bridge: Tournaments (#111) → Articles (#111111) */}
-      <div aria-hidden className="h-16 bg-gradient-to-b from-[#111] to-[#111111]" />
-
       {/* Articles Section */}
       <HomeArticles />
-
-      {/* Bridge: Articles (#111111) → Testimonials (zinc-950) */}
-      <div aria-hidden className="h-20 bg-gradient-to-b from-[#111111] to-zinc-950" />
 
       {/* Testimonials */}
       <section className="py-16 sm:py-28 bg-zinc-950">
