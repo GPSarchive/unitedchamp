@@ -9,10 +9,50 @@ export default function ContactForm() {
     e.preventDefault();
     setStatus("sending");
 
-    // TODO: Wire up to your backend / Supabase / email service
-    // For now we simulate a short delay then show success
-    await new Promise((r) => setTimeout(r, 1200));
-    setStatus("sent");
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    data.append("access_key", "c1707899-cb72-4d0d-8bbe-e829e16ede5f");
+    data.append("subject", `UltraChamp Επικοινωνία: ${data.get("subject") ?? "Μήνυμα"}`);
+    data.append("from_name", "UltraChamp Contact Form");
+
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        body: data,
+      });
+      const json = await res.json();
+      if (json.success) {
+        setStatus("sent");
+        form.reset();
+      } else {
+        setStatus("error");
+      }
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  if (status === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center animate-fade-up">
+        <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-400/30 flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">Κάτι πήγε στραβά</h3>
+        <p className="text-white/60 text-sm max-w-sm">
+          Δεν ήταν δυνατή η αποστολή του μηνύματός σας. Παρακαλώ δοκιμάστε ξανά ή επικοινωνήστε μαζί μας στο info@ultrachamp.gr.
+        </p>
+        <button
+          type="button"
+          onClick={() => setStatus("idle")}
+          className="mt-6 text-sm text-orange-400 hover:text-orange-300 transition-colors underline underline-offset-4"
+        >
+          Δοκιμάστε ξανά
+        </button>
+      </div>
+    );
   }
 
   if (status === "sent") {
