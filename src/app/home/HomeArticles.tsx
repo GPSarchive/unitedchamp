@@ -52,10 +52,6 @@ export default async function HomeArticles() {
 
   return (
     <section className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]">
-      {/* Edge fades — blend into page bg-zinc-950 */}
-      <div aria-hidden className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-zinc-950 to-transparent z-[1] pointer-events-none" />
-      <div aria-hidden className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent z-[1] pointer-events-none" />
-
       {/* Ambient warm glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />

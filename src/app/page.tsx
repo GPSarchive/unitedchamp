@@ -477,18 +477,13 @@ export default async function Home() {
       </VantaSection>
 
       {/* Call to Action — Tournaments */}
-      <section
-        className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white"
-        style={{
-          backgroundColor: '#111',
-          backgroundImage:
-            'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.04) 2px,rgba(255,255,255,.04) 3px),' +
-            'repeating-linear-gradient(90deg,transparent,transparent 2px,rgba(255,255,255,.04) 2px,rgba(255,255,255,.04) 3px)',
-        }}
-      >
-        {/* Edge fades */}
-        <div aria-hidden className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-zinc-950 to-transparent z-[1] pointer-events-none" />
-        <div aria-hidden className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-zinc-950 to-transparent z-[1] pointer-events-none" />
+      <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white bg-[#0a0a0a]">
+        {/* Stadium floodlight — single warm radial from center-top */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 70%)' }}
+        />
 
         <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
