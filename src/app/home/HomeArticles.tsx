@@ -72,7 +72,7 @@ export default async function HomeArticles() {
         </div>
 
         {/* ── 4-col grid ────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-5 lg:gap-6">
+        <div className="grid grid-cols-2 gap-2 sm:gap-5 lg:gap-6">
           {(articles as Article[]).map((article, index) => {
             const image = extractFirstImage(article.content);
             const publishedDate = new Date(article.published_at).toLocaleDateString('el-GR', {
@@ -90,7 +90,7 @@ export default async function HomeArticles() {
                 <article className="relative h-full flex flex-col bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
 
                   {/* ── Image ───────────────────────────────── */}
-                  <div className="relative overflow-hidden aspect-[3/4] sm:aspect-video flex-shrink-0">
+                  <div className="relative overflow-hidden aspect-video flex-shrink-0">
                     {image ? (
                       <img
                         src={image}
@@ -111,16 +111,10 @@ export default async function HomeArticles() {
                       {String(index + 1).padStart(2, '0')}
                     </div>
 
-                    {/* Mobile: title overlaid on image */}
-                    <div className="absolute bottom-0 left-0 right-0 p-2 sm:hidden">
-                      <h3 className="text-[9px] leading-tight font-semibold text-white line-clamp-3">
-                        {article.title}
-                      </h3>
-                    </div>
                   </div>
 
                   {/* ── Card body — desktop only ─────────────── */}
-                  <div className="hidden sm:flex flex-col flex-1 p-4 lg:p-5">
+                  <div className="flex flex-col flex-1 p-3 sm:p-4 lg:p-5">
                     {/* Date */}
                     <p className="text-[11px] text-gray-500 mb-2 flex items-center gap-1 uppercase tracking-wider">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
