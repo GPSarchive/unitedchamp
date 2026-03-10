@@ -20,7 +20,7 @@ type HomeVideosProps = {
   videos: VideoMatch[];
 };
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 3;
 
 function extractYouTubeId(url: string): string | null {
   try {
@@ -93,7 +93,7 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
         </div>
 
         {/* 2-col grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-5 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
           {visible.map((match) => {
             const videoId = extractYouTubeId(match.video_url);
             if (!videoId) return null;
