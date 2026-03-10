@@ -8,39 +8,39 @@
 export default function StadiumBg({ className = "" }: { className?: string }) {
   return (
     <div className={className} aria-hidden="true">
-      {/* Base gradient - dark navy to near-black */}
+      {/* Base gradient - deep dark near-black */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 120% 80% at 50% 20%, #0c1929 0%, #080f1a 40%, #050a12 70%, #020408 100%)",
+            "radial-gradient(ellipse 120% 80% at 50% 20%, #1a0608 0%, #110304 40%, #0a0202 70%, #050101 100%)",
         }}
       />
 
-      {/* Stadium floodlight glow - top center */}
+      {/* Stadium floodlight glow - top center crimson */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 60% 35% at 50% 0%, rgba(56, 189, 248, 0.06) 0%, transparent 100%)",
+            "radial-gradient(ellipse 60% 35% at 50% 0%, rgba(220, 38, 38, 0.10) 0%, transparent 100%)",
         }}
       />
 
-      {/* Secondary warm glow - top left */}
+      {/* Secondary crimson glow - top left */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 40% 30% at 20% 10%, rgba(251, 191, 36, 0.03) 0%, transparent 100%)",
+            "radial-gradient(ellipse 40% 30% at 20% 10%, rgba(185, 28, 28, 0.07) 0%, transparent 100%)",
         }}
       />
 
-      {/* Secondary warm glow - top right */}
+      {/* Secondary crimson glow - top right */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 40% 30% at 80% 10%, rgba(251, 191, 36, 0.03) 0%, transparent 100%)",
+            "radial-gradient(ellipse 40% 30% at 80% 10%, rgba(185, 28, 28, 0.07) 0%, transparent 100%)",
         }}
       />
 
