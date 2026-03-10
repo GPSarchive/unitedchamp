@@ -103,7 +103,7 @@
                       <div className="flex gap-3">
                         {/* Instagram */}
                         <a
-                          href="https://instagram.com/ultrachamp"
+                          href="https://instagram.com/ultrachamp_minifootball"
                           aria-label="Instagram"
                           className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-orange-500/20 hover:border-orange-400/30 transition-all duration-300"
                         >
