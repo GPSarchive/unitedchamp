@@ -6,7 +6,6 @@ type Article = {
   title: string;
   slug: string;
   excerpt: string | null;
-  featured_image: string | null;
   published_at: string;
   content: any;
 };
@@ -29,12 +28,17 @@ function extractFirstImage(content: any): string | null {
 }
 
 export default async function HomeArticles() {
-  const { data: articles } = await supabaseAdmin
+  const { data: articles, error } = await supabaseAdmin
     .from('articles')
-    .select('id, title, slug, excerpt, featured_image, published_at, content')
+    .select('id, title, slug, content, excerpt, published_at')
     .eq('status', 'published')
     .order('published_at', { ascending: false })
     .limit(4);
+
+  if (error) {
+    console.error('HomeArticles fetch error:', error.message);
+    return null;
+  }
 
   if (!articles || articles.length === 0) return null;
 
@@ -57,8 +61,8 @@ export default async function HomeArticles() {
 
         {/* 4-column grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {articles.map((article: Article) => {
-            const image = article.featured_image || extractFirstImage(article.content);
+          {(articles as Article[]).map((article) => {
+            const image = extractFirstImage(article.content);
             const publishedDate = new Date(article.published_at).toLocaleDateString('el-GR', {
               year: 'numeric',
               month: 'short',
