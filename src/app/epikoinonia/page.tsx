@@ -61,7 +61,8 @@ export default function EpikoinoniaPage() {
                     <div>
                       <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Διεύθυνση</p>
                       <p className="text-white/90 text-sm leading-relaxed">
-                        Αθήνα, Ελλάδα
+                        Γήπεδα Ποδοσφαίρου 5x5, 8x8, 11x11<br />
+                        Ilioupoli 163 42
                       </p>
                     </div>
                   </div>
@@ -75,8 +76,8 @@ export default function EpikoinoniaPage() {
                     </div>
                     <div>
                       <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Τηλέφωνο</p>
-                      <a href="tel:+306900000000" className="text-white/90 text-sm hover:text-orange-400 transition-colors">
-                        +30 690 000 0000
+                      <a href="tel:+306933208697" className="text-white/90 text-sm hover:text-orange-400 transition-colors">
+                        +30 693 320 8697
                       </a>
                     </div>
                   </div>
@@ -93,20 +94,6 @@ export default function EpikoinoniaPage() {
                       <a href="mailto:info@ultrachamp.gr" className="text-white/90 text-sm hover:text-orange-400 transition-colors">
                         info@ultrachamp.gr
                       </a>
-                    </div>
-                  </div>
-
-                  {/* Hours */}
-                  <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-400/20 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Ώρες Λειτουργίας</p>
-                      <p className="text-white/90 text-sm">Δευτέρα – Παρασκευή: 10:00 – 20:00</p>
-                      <p className="text-white/90 text-sm">Σάββατο: 10:00 – 15:00</p>
                     </div>
                   </div>
 
@@ -163,7 +150,7 @@ export default function EpikoinoniaPage() {
                 <div className="aspect-[4/3] w-full">
                   <iframe
                     title="Τοποθεσία UltraChamp"
-                    src="https://www.openstreetmap.org/export/embed.html?bbox=23.7000%2C37.9600%2C23.7600%2C37.9900&layer=mapnik&marker=37.9750%2C23.7300"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=23.7408%2C37.9062%2C23.7548%2C37.9142&layer=mapnik&marker=37.9102%2C23.7478"
                     className="w-full h-full border-0"
                     loading="lazy"
                     allowFullScreen
@@ -171,7 +158,7 @@ export default function EpikoinoniaPage() {
                 </div>
                 <div className="p-3 text-center">
                   <a
-                    href="https://www.openstreetmap.org/?mlat=37.9750&mlon=23.7300#map=14/37.9750/23.7300"
+                    href="https://www.openstreetmap.org/?mlat=37.9102&mlon=23.7478#map=16/37.9102/23.7478"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-white/50 hover:text-orange-400 transition-colors"
