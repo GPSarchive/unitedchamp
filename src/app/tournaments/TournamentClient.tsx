@@ -125,7 +125,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                    'Προγραμματισμένο'}
                 </div>
 
-                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-300">
+                <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-amber-400">
                   {tournament.name}
                 </h1>
 
