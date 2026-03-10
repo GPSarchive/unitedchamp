@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { TeamImage } from "@/app/lib/OptimizedImage";
-import { Trophy } from "lucide-react";
 import { GoalIcon, OwnGoalIcon } from "./StatIcons";
 import type { Id } from "@/app/lib/types";
 
@@ -38,7 +37,6 @@ export default function TeamVersusScore({
   status,
   matchDate,
   referee,
-  winnerTeamId,
   scorers = [],
 }: {
   teamA: Team;
@@ -48,12 +46,9 @@ export default function TeamVersusScore({
   status: string;
   matchDate: string | null;
   referee: string | null;
-  winnerTeamId: Id | null;
   scorers?: Scorer[];
 }) {
   const isFinished = status === "finished";
-  const aIsWinner = winnerTeamId && winnerTeamId === teamA.id;
-  const bIsWinner = winnerTeamId && winnerTeamId === teamB.id;
 
   const dateLabel = matchDate
     ? new Date(matchDate).toLocaleString("el-GR", {
@@ -93,7 +88,6 @@ export default function TeamVersusScore({
         {/* Team A */}
         <TeamDisplay
           team={teamA}
-          isWinner={!!aIsWinner}
           align="right"
           scorers={[...teamAScorers, ...teamAOwnGoals]}
         />
@@ -173,7 +167,6 @@ export default function TeamVersusScore({
         {/* Team B */}
         <TeamDisplay
           team={teamB}
-          isWinner={!!bIsWinner}
           align="left"
           scorers={[...teamBScorers, ...teamBOwnGoals]}
         />
@@ -184,12 +177,10 @@ export default function TeamVersusScore({
 
 function TeamDisplay({
   team,
-  isWinner,
   align,
   scorers = [],
 }: {
   team: Team;
-  isWinner: boolean;
   align: "left" | "right";
   scorers?: Scorer[];
 }) {
@@ -204,13 +195,7 @@ function TeamDisplay({
     >
       {/* Team Logo */}
       <div className="relative pointer-events-none">
-        <div
-          className={`relative h-20 w-20 overflow-hidden rounded-2xl border-2 md:h-28 md:w-28 lg:h-32 lg:w-32 ${
-            isWinner
-              ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.5)]"
-              : "border-white/20"
-          } bg-black p-2`}
-        >
+        <div className="relative h-20 w-20 overflow-hidden rounded-2xl border-2 border-white/20 md:h-28 md:w-28 lg:h-32 lg:w-32 bg-black p-2">
           {team.logo ? (
             <TeamImage
               src={team.logo}
@@ -226,33 +211,13 @@ function TeamDisplay({
             </div>
           )}
         </div>
-
-        {/* Winner Trophy */}
-        {isWinner && (
-          <motion.div
-            initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="absolute -right-2 -top-2 pointer-events-none"
-          >
-            <div className="rounded-full bg-amber-400 p-2 shadow-lg">
-              <Trophy className="h-5 w-5 text-amber-900" />
-            </div>
-          </motion.div>
-        )}
       </div>
 
       {/* Team Name */}
       <div
-        className={`max-w-full px-2 text-center text-lg font-bold md:text-xl ${
-          isWinner
-            ? "text-amber-400"
-            : "text-white"
-        }`}
+        className="max-w-full px-2 text-center text-lg font-bold md:text-xl text-white"
         style={{
-          textShadow: isWinner
-            ? '2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 15px rgba(251,191,36,0.4)'
-            : '1px 1px 3px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
+          textShadow: '1px 1px 3px rgba(0,0,0,0.8), -0.5px -0.5px 0 #000, 0.5px -0.5px 0 #000, -0.5px 0.5px 0 #000, 0.5px 0.5px 0 #000'
         }}
       >
         {team.name}
