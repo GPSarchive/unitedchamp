@@ -18,6 +18,7 @@ import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import TopScorers from './home/TopScorers';
 import HomeArticles from './home/HomeArticles';
+import HomeVideos from './home/HomeVideos';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -203,6 +204,51 @@ async function fetchRecentContentCount() {
   });
 }
 
+async function fetchVideoMatches() {
+  return withConsoleTiming('db:video-matches', async () => {
+    const { data, error } = await supabaseAdmin
+      .from('matches')
+      .select(
+        `
+        id,
+        video_url,
+        match_date,
+        team_a_score,
+        team_b_score,
+        teamA:teams!matches_team_a_id_fkey (name, logo),
+        teamB:teams!matches_team_b_id_fkey (name, logo),
+        tournament:tournament_id (name)
+      `
+      )
+      .not('video_url', 'is', null)
+      .neq('video_url', '')
+      .order('match_date', { ascending: false });
+
+    if (error || !data) {
+      return { videoMatches: [] };
+    }
+
+    const videoMatches = data.map((m: any) => {
+      const a = normalizeTeam(m.teamA);
+      const b = normalizeTeam(m.teamB);
+      return {
+        id: m.id,
+        video_url: m.video_url,
+        team_a_name: a?.name ?? null,
+        team_b_name: b?.name ?? null,
+        team_a_logo: a?.logo ? resolveImageUrl(a.logo, ImageType.TEAM) : null,
+        team_b_logo: b?.logo ? resolveImageUrl(b.logo, ImageType.TEAM) : null,
+        team_a_score: m.team_a_score ?? null,
+        team_b_score: m.team_b_score ?? null,
+        match_date: m.match_date ?? null,
+        tournament_name: m.tournament?.name ?? null,
+      };
+    });
+
+    return { videoMatches };
+  });
+}
+
 async function fetchTopScorers() {
   return withConsoleTiming('db:top-scorers', async () => {
     const { data: statsData, error: statsError } = await supabaseAdmin
@@ -358,12 +404,13 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }, { videoMatches }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
     fetchRecentContentCount(),
-    fetchTopScorers()
+    fetchTopScorers(),
+    fetchVideoMatches()
   ]);
 
   const events = mapMatchesToEvents(rawMatches ?? []);
@@ -501,6 +548,9 @@ export default async function Home() {
 
       {/* Articles Section */}
       <HomeArticles />
+
+      {/* Videos Section */}
+      <HomeVideos videos={videoMatches} />
 
       {/* Testimonials */}
       <section className="py-16 sm:py-28 bg-zinc-950">
