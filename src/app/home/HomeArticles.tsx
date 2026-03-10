@@ -27,6 +27,14 @@ function extractFirstImage(content: any): string | null {
   return null;
 }
 
+const ArticleIcon = () => (
+  <svg className="w-8 h-8 sm:w-12 sm:h-12 text-white/15" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+      d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+    />
+  </svg>
+);
+
 export default async function HomeArticles() {
   const { data: articles, error } = await supabaseAdmin
     .from('articles')
@@ -43,25 +51,29 @@ export default async function HomeArticles() {
   if (!articles || articles.length === 0) return null;
 
   return (
-    <section className="py-12 sm:py-16 bg-zinc-950 text-white">
-      <div className="container mx-auto px-4 max-w-7xl">
-        {/* Section header */}
-        <div className="flex items-center justify-between mb-8 sm:mb-10">
-          <h2 className="text-2xl sm:text-4xl font-bold text-white">Άρθρα</h2>
-          <Link
-            href="/articles"
-            className="hidden sm:flex items-center gap-2 text-orange-400 hover:text-orange-300 font-medium transition-colors duration-200"
-          >
-            Δείτε περισσότερα
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
+    <section className="relative py-20 sm:py-32 overflow-hidden bg-[#0f1115]">
+      {/* Ambient background blobs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-orange-500/10 blur-[120px]" />
+      </div>
+
+      <div className="container mx-auto px-4 relative z-10 max-w-7xl">
+
+        {/* ── Section title ─────────────────────────────────── */}
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="text-4xl sm:text-6xl font-bold text-white mb-4 tracking-tight">
+            ΑΡΘΡΑ
+          </h2>
+          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
+          <p className="mt-5 text-base sm:text-lg text-gray-400 font-light">
+            Τελευταία νέα και αναλύσεις αγώνων
+          </p>
         </div>
 
-        {/* 4-column grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {(articles as Article[]).map((article) => {
+        {/* ── 4-col grid ────────────────────────────────────── */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-5 lg:gap-6">
+          {(articles as Article[]).map((article, index) => {
             const image = extractFirstImage(article.content);
             const publishedDate = new Date(article.published_at).toLocaleDateString('el-GR', {
               year: 'numeric',
@@ -70,79 +82,97 @@ export default async function HomeArticles() {
             });
 
             return (
-              <Link key={article.id} href={`/article/${article.slug}`} className="group block">
-                <article className="h-full flex flex-col bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40 rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_20px_60px_-15px_rgba(249,115,22,0.4)]">
-                  {/* Image */}
-                  {image ? (
-                    <div className="aspect-video w-full overflow-hidden bg-neutral-900">
+              <Link
+                key={article.id}
+                href={`/article/${article.slug}`}
+                className="group block"
+              >
+                <article className="relative h-full flex flex-col bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
+
+                  {/* ── Image ───────────────────────────────── */}
+                  <div className="relative overflow-hidden aspect-[3/4] sm:aspect-video flex-shrink-0">
+                    {image ? (
                       <img
                         src={image}
                         alt={article.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       />
-                    </div>
-                  ) : (
-                    <div className="aspect-video w-full bg-gradient-to-br from-neutral-900 to-black flex items-center justify-center">
-                      <svg
-                        className="w-12 h-12 text-white/20 transition-transform duration-500 group-hover:scale-110"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-black flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
+                        <ArticleIcon />
+                      </div>
+                    )}
 
-                  {/* Content */}
-                  <div className="flex flex-col flex-1 p-4">
-                    <p className="text-xs text-white/50 mb-2 flex items-center gap-1">
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+                    {/* Index counter badge */}
+                    <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 font-mono text-[10px] sm:text-xs font-bold text-orange-400 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 tracking-widest">
+                      {String(index + 1).padStart(2, '0')}
+                    </div>
+
+                    {/* Mobile: title overlaid on image */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 sm:hidden">
+                      <h3 className="text-[9px] leading-tight font-semibold text-white line-clamp-3">
+                        {article.title}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* ── Card body — desktop only ─────────────── */}
+                  <div className="hidden sm:flex flex-col flex-1 p-4 lg:p-5">
+                    {/* Date */}
+                    <p className="text-[11px] text-gray-500 mb-2 flex items-center gap-1 uppercase tracking-wider">
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <time dateTime={article.published_at}>{publishedDate}</time>
                     </p>
 
-                    <h3 className="text-base font-semibold text-white line-clamp-2 group-hover:text-orange-400 transition-colors duration-300 leading-snug mb-2">
+                    {/* Title */}
+                    <h3 className="text-sm lg:text-base font-bold text-white line-clamp-2 group-hover:text-orange-400 transition-colors duration-300 leading-snug mb-2 flex-1">
                       {article.title}
                     </h3>
 
+                    {/* Excerpt */}
                     {article.excerpt && (
-                      <p className="text-sm text-white/60 line-clamp-2 leading-relaxed flex-1">
+                      <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3">
                         {article.excerpt}
                       </p>
                     )}
 
-                    <div className="mt-3 flex items-center gap-1 text-orange-400 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {/* Read more */}
+                    <div className="flex items-center gap-1.5 text-orange-400 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-auto">
                       <span>Διαβάστε περισσότερα</span>
                       <svg className="w-3 h-3 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
                   </div>
+
+                  {/* ── Corner bracket accents (hover) ───────── */}
+                  <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t-2 border-l-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b-2 border-r-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </article>
               </Link>
             );
           })}
         </div>
 
-        {/* Mobile "See more" link */}
-        <div className="mt-8 text-center sm:hidden">
+        {/* ── CTA ───────────────────────────────────────────── */}
+        <div className="mt-10 sm:mt-16 text-center">
           <Link
             href="/articles"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-black/80 ring-1 ring-white/20 text-orange-400 hover:text-orange-300 hover:ring-orange-400/40 font-medium transition-all duration-200"
+            className="inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 border-2 border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-500 transition-all duration-300 font-medium tracking-widest text-sm uppercase"
           >
-            Δείτε περισσότερα
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            Δείτε Περισσότερα
+            <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </Link>
         </div>
+
       </div>
     </section>
   );
