@@ -44,7 +44,7 @@ export default function TeamFilter({
   logosByTeam = {},
   value,
   onChange,
-  placeholder = "Αναζήτηση ομάδας...",
+  placeholder = "Ψάξε την ομάδα σου...",
   className = "",
 }: TeamFilterProps) {
   const [open, setOpen] = useState(false);
@@ -114,7 +114,11 @@ export default function TeamFilter({
         aria-expanded={open}
         aria-controls="team-filter-popover"
         onClick={() => setOpen((v) => !v)}
-        className="w-full inline-flex items-center justify-between gap-2 rounded-2xl border border-orange-400/40 bg-zinc-900/70 px-4 py-3 text-left shadow-inner hover:border-orange-400/40 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+        className={`w-full inline-flex items-center justify-between gap-2 rounded-2xl border bg-zinc-900/70 px-4 py-3 text-left shadow-inner focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-colors ${
+          value
+            ? "border-orange-400/40 hover:border-orange-400/60"
+            : "border-orange-400/50 hover:border-orange-400/70 animate-[border-glow_2.5s_ease-in-out_infinite]"
+        }`}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           {selectedLogo ? (
@@ -122,13 +126,13 @@ export default function TeamFilter({
               <Image src={selectedLogo} alt={value!} fill className="object-contain" sizes="24px" />
             </div>
           ) : (
-            <Search className="h-4 w-4 text-white/50" />
+            <Search className="h-4 w-4 text-orange-400/70" />
           )}
-          <span className={`truncate ${value ? "text-white" : "text-white/50"}`}>
-            {value ?? "Αναζήτηση match ομάδας ..."}
+          <span className={`truncate ${value ? "text-white" : "text-white/60"}`}>
+            {value ?? placeholder}
           </span>
         </div>
-        <ChevronDown className="h-5 w-5 text-white/50" />
+        <ChevronDown className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""} ${value ? "text-white/50" : "text-orange-400/50"}`} />
       </button>
 
       {/* Quick actions */}
@@ -268,6 +272,10 @@ export default function TeamFilter({
       <style jsx>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes border-glow {
+          0%, 100% { border-color: rgba(251, 146, 60, 0.3); }
+          50% { border-color: rgba(251, 146, 60, 0.65); }
+        }
       `}</style>
     </div>
   );
