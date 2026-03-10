@@ -397,6 +397,9 @@ export default async function Home() {
         </div>
       </VantaSection>
 
+      {/* Bridge: Welcome (black) → Calendar (#1F1B2E) */}
+      <div aria-hidden className="h-20 bg-gradient-to-b from-black to-[#1F1B2E]" />
+
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto max-w-7xl">
@@ -426,8 +429,14 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
+      {/* Bridge: Calendar (#1F1B2E) → TopScorers (#111111) */}
+      <div aria-hidden className="h-20 bg-gradient-to-b from-[#1F1B2E] to-[#111111]" />
+
       {/* Top Scorers Section */}
       <TopScorers scorers={topScorers} />
+
+      {/* Bridge: TopScorers (#111111) → Features (black) */}
+      <div aria-hidden className="h-20 bg-gradient-to-b from-[#111111] to-black" />
 
       {/* Features Section */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
@@ -476,9 +485,20 @@ export default async function Home() {
         </div>
       </VantaSection>
 
+      {/* Bridge: Features (black) → Tournaments (#111) */}
+      <div aria-hidden className="h-16 bg-gradient-to-b from-black to-[#111]" />
+
       {/* Call to Action */}
-      <GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
-        <div className="w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
+      <section
+        className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white"
+        style={{
+          backgroundColor: '#111',
+          backgroundImage:
+            'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.025) 3px,rgba(255,255,255,.025) 4px),' +
+            'repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(255,255,255,.025) 3px,rgba(255,255,255,.025) 4px)',
+        }}
+      >
+        <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
           </h2>
@@ -490,13 +510,19 @@ export default async function Home() {
             <TournamentsGrid tournaments={tournaments} />
           </div>
         </div>
-      </GridBgSection>
+      </section>
+
+      {/* Bridge: Tournaments (#111) → Articles (#111111) */}
+      <div aria-hidden className="h-16 bg-gradient-to-b from-[#111] to-[#111111]" />
 
       {/* Articles Section */}
       <HomeArticles />
 
+      {/* Bridge: Articles (#111111) → Testimonials (zinc-950) */}
+      <div aria-hidden className="h-20 bg-gradient-to-b from-[#111111] to-zinc-950" />
+
       {/* Testimonials */}
-      <section>
+      <section className="py-16 sm:py-28 bg-zinc-950">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας

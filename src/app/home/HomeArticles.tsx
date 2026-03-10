@@ -51,11 +51,11 @@ export default async function HomeArticles() {
   if (!articles || articles.length === 0) return null;
 
   return (
-    <section className="relative py-20 sm:py-32 overflow-hidden bg-[#0f1115]">
+    <section className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]">
       {/* Ambient background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-500/10 blur-[120px]" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-orange-500/10 blur-[120px]" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-amber-400/8 blur-[140px]" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-yellow-600/6 blur-[140px]" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10 max-w-7xl">

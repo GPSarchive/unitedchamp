@@ -69,12 +69,12 @@ export default function TopScorers({ scorers }: TopScorersProps) {
   return (
     <section
       ref={sectionRef}
-      className="relative py-20 sm:py-32 overflow-hidden bg-[#0f1115]"
+      className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]"
     >
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/10 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-400/8 blur-[140px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-yellow-600/6 blur-[140px] animate-pulse" style={{ animationDelay: '1.5s' }} />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
