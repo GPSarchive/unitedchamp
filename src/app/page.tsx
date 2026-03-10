@@ -17,6 +17,7 @@ import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import TopScorers from './home/TopScorers';
+import HomeArticles from './home/HomeArticles';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -490,6 +491,9 @@ export default async function Home() {
           </div>
         </div>
       </GridBgSection>
+
+      {/* Articles Section */}
+      <HomeArticles />
 
       {/* Testimonials */}
       <section>
