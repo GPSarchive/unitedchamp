@@ -71,14 +71,19 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
 
   return (
     <section className="relative py-20 sm:py-32 overflow-hidden bg-zinc-950">
-      {/* Ambient glow */}
+      {/* Ambient glow — CSS radial gradients avoid GPU blur banding */}
       <div
-        className="absolute inset-0 overflow-hidden pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         aria-hidden
-      >
-        <div className="absolute top-1/3 left-1/4 w-[500px] h-[500px] bg-orange-500/10 blur-[180px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-500/8 blur-[160px]" />
-      </div>
+        style={{
+          background: [
+            "radial-gradient(ellipse 70% 55% at 20% 30%, rgba(249,115,22,0.08) 0%, transparent 70%)",
+            "radial-gradient(ellipse 55% 45% at 80% 70%, rgba(239,68,68,0.06) 0%, transparent 65%)",
+            "radial-gradient(ellipse 40% 35% at 50% 10%, rgba(251,146,60,0.05) 0%, transparent 60%)",
+            "radial-gradient(ellipse 30% 25% at 70% 90%, rgba(249,115,22,0.04) 0%, transparent 55%)",
+          ].join(", "),
+        }}
+      />
 
       <div className="container mx-auto px-4 relative z-10 max-w-7xl">
         {/* Section title */}
