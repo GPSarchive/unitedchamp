@@ -133,11 +133,6 @@ export default async function Page({
       })
     : "TBD";
 
-  const aIsWinner =
-    match.winner_team_id && match.winner_team_id === match.team_a.id;
-  const bIsWinner =
-    match.winner_team_id && match.winner_team_id === match.team_b.id;
-
   // Prepare data for new components
   const isScheduled = match.status === "scheduled";
   const hasParticipants = participants.size > 0;
@@ -259,7 +254,6 @@ export default async function Page({
           status={match.status}
           matchDate={match.match_date}
           referee={match.referee ?? null}
-          winnerTeamId={match.winner_team_id}
           scorers={scorers}
         />
 

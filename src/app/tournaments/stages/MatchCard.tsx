@@ -91,23 +91,11 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
             <div className="flex flex-col items-center gap-2">
               {isFinished ? (
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`text-4xl font-black ${
-                      match.winner_team_id === match.team_a_id
-                        ? "text-green-400"
-                        : "text-gray-600"
-                    }`}
-                  >
+                  <span className="text-4xl font-black text-white">
                     {match.team_a_score ?? 0}
                   </span>
                   <span className="text-2xl font-bold text-gray-600">-</span>
-                  <span
-                    className={`text-4xl font-black ${
-                      match.winner_team_id === match.team_b_id
-                        ? "text-green-400"
-                        : "text-gray-600"
-                    }`}
-                  >
+                  <span className="text-4xl font-black text-white">
                     {match.team_b_score ?? 0}
                   </span>
                 </div>
