@@ -17,6 +17,7 @@ import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import TopScorers from './home/TopScorers';
+import HomeArticles from './home/HomeArticles';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -475,9 +476,16 @@ export default async function Home() {
         </div>
       </VantaSection>
 
-      {/* Call to Action */}
-      <GridBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
-        <div className="w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
+      {/* Call to Action — Tournaments */}
+      <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white bg-[#0a0a0a]">
+        {/* Stadium floodlight — single warm radial from center-top */}
+        <div
+          aria-hidden
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 70%)' }}
+        />
+
+        <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
           </h2>
@@ -489,10 +497,13 @@ export default async function Home() {
             <TournamentsGrid tournaments={tournaments} />
           </div>
         </div>
-      </GridBgSection>
+      </section>
+
+      {/* Articles Section */}
+      <HomeArticles />
 
       {/* Testimonials */}
-      <section>
+      <section className="py-16 sm:py-28 bg-zinc-950">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας

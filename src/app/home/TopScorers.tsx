@@ -69,12 +69,12 @@ export default function TopScorers({ scorers }: TopScorersProps) {
   return (
     <section
       ref={sectionRef}
-      className="relative py-20 sm:py-32 overflow-hidden bg-[#0f1115]"
+      className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]"
     >
-      {/* Animated background elements */}
+      {/* Ambient warm glow */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-500/10 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-500/10 blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px] animate-pulse" style={{ animationDelay: '1.5s' }} />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
@@ -118,13 +118,13 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                   animate={isVisible ? { scale: 1, rotate: 0 } : {}}
                   transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
                   className={`absolute -top-8 -left-8 z-20 ${podium.bg} ${podium.glow} border-4 ${podium.border} overflow-hidden`}
-                  style={{ width: '90px', height: '90px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                  style={{ width: '68px', height: '68px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
                 >
                   <div className="w-full h-full flex flex-col items-center justify-center">
-                    <span className={`text-xs font-black ${podium.textColor} tracking-wider`}>
+                    <span className={`text-[9px] font-black ${podium.textColor} tracking-wider`}>
                       {podium.label}
                     </span>
-                    <span className={`text-4xl font-black ${podium.textColor} drop-shadow-md leading-none mt-1`}>
+                    <span className={`text-2xl font-black ${podium.textColor} drop-shadow-md leading-none mt-0.5`}>
                       {index + 1}
                     </span>
                   </div>
@@ -134,7 +134,7 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                 <div className="relative h-full bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
 
                   {/* Photo Container with Shimmer */}
-                  <div className="relative h-[400px] sm:h-[500px] overflow-hidden">
+                  <div className="relative h-52 sm:h-64 overflow-hidden">
                     {/* Player Photo */}
                     <Image
                       src={scorer.photo || '/images/default-player.png'}
@@ -165,22 +165,22 @@ export default function TopScorers({ scorers }: TopScorersProps) {
                     />
 
                     {/* Animated Corner Accents */}
-                    <div className="absolute top-0 left-0 w-20 h-20 border-t-4 border-l-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 right-0 w-20 h-20 border-b-4 border-r-4 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                     {/* Goals Count Overlay */}
-                    <div className="absolute top-6 right-6 backdrop-blur-md bg-black/60 border border-orange-500/30 px-6 py-3">
-                      <div className="text-6xl font-black text-orange-500 leading-none">
+                    <div className="absolute top-3 right-3 backdrop-blur-md bg-black/60 border border-orange-500/30 px-3 py-2">
+                      <div className="text-3xl font-black text-orange-500 leading-none">
                         {scorer.goals}
                       </div>
-                      <div className="text-xs text-gray-300 font-light tracking-wider mt-1">
+                      <div className="text-[10px] text-gray-300 font-light tracking-wider mt-0.5">
                         ΓΚΟΛ
                       </div>
                     </div>
 
                     {/* Team Badge (if available) */}
                     {scorer.teamLogo && (
-                      <div className="absolute bottom-6 left-6 w-16 h-16 bg-white/10 backdrop-blur-sm border border-white/20 p-2">
+                      <div className="absolute bottom-3 left-3 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 p-1.5">
                         <Image
                           src={scorer.teamLogo}
                           alt={scorer.teamName || 'Team'}
