@@ -60,7 +60,7 @@ export default function TournamentHeader({
         transition={{ delay: 0.2, duration: 0.5 }}
         className="text-center text-3xl font-extrabold text-white md:text-4xl lg:text-5xl"
       >
-        <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-400 bg-clip-text text-transparent drop-shadow-lg">
+        <span className="bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 bg-clip-text text-transparent drop-shadow-lg">
           {name}
         </span>
       </motion.h1>
