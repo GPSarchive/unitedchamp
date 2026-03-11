@@ -12,7 +12,7 @@ type Props = {
 
 export default function StaticDotGrid({
   className = "",
-  baseColor = "#1F1B2E",
+  baseColor = "#1a1a2e",
   bgColor,
   dotSize = 2,
   gap = 15,

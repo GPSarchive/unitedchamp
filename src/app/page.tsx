@@ -656,7 +656,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Combined Calendar & Dashboard Section */}
-      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#0d1f2d" baseColor="#1a4a5a">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col gap-10 lg:gap-14">
 
@@ -690,7 +690,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Videos Section */}
-      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#0d1f2d" baseColor="#1a4a5a">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <HomeVideos videos={videoMatches} />
       </GridBgSection>
 
@@ -700,7 +700,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Features Section — "Η ομάδα σε περιμένει" */}
-      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#0d1f2d" baseColor="#1a4a5a">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
             Η ομάδα σε περιμένει
@@ -763,7 +763,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Testimonials */}
-      <GridBgSection className="py-16 sm:py-28 text-white" bgColor="#0d1f2d" baseColor="#1a4a5a">
+      <GridBgSection className="py-16 sm:py-28 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας
