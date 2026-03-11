@@ -209,6 +209,89 @@ function PlayerCard({ player, index, heroStat, heroLabel, secondaryStat, seconda
   );
 }
 
+function PlayerCardStack({ players, heroKey, heroLabel, secondaryKey, secondaryLabel, categoryLabel, categoryColor, categoryDividerColor, delayOffset }: {
+  players: TopScorerData[];
+  heroKey: 'goals' | 'assists';
+  heroLabel: string;
+  secondaryKey: 'goals' | 'assists';
+  secondaryLabel: string;
+  categoryLabel: string;
+  categoryColor: string;
+  categoryDividerColor: string;
+  delayOffset: number;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { threshold: 0.1 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="isolate">
+      <motion.h3
+        initial={{ opacity: 0, y: 10 }}
+        animate={isVisible ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.6, delay: delayOffset }}
+        className="text-center mb-8"
+      >
+        <span className={`text-lg sm:text-xl font-bold uppercase tracking-[0.15em] ${categoryColor}`}>
+          {categoryLabel}
+        </span>
+        <div className={`w-16 h-0.5 bg-gradient-to-r from-transparent ${categoryDividerColor} to-transparent mx-auto mt-3`} />
+      </motion.h3>
+
+      <div
+        className="relative mx-auto flex items-center justify-center"
+        style={{ height: '420px' }}
+      >
+        <CardSwap
+          width={700}
+          height={390}
+          cardDistance={60}
+          verticalDistance={0}
+          delay={10000}
+          skewAmount={0}
+          easing="elastic"
+          containerClassName="
+            relative
+            [perspective:1400px]
+            overflow-visible
+            flex items-center justify-center
+            origin-top
+            scale-[0.75]
+            min-[480px]:scale-[0.38]
+            min-[640px]:scale-[0.5]
+            min-[768px]:scale-[0.45]
+            min-[1024px]:scale-[0.5]
+            min-[1280px]:scale-[0.65]
+            min-[1536px]:scale-[0.75]
+          "
+        >
+          {players.map((player, index) => (
+            <PlayerCard
+              key={player.id}
+              player={player}
+              index={index}
+              heroStat={player[heroKey]}
+              heroLabel={heroLabel}
+              secondaryStat={player[secondaryKey]}
+              secondaryLabel={secondaryLabel}
+            />
+          ))}
+        </CardSwap>
+      </div>
+    </div>
+  );
+}
+
 export default function TopScorers({ scorers, assisters }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -241,7 +324,7 @@ export default function TopScorers({ scorers, assisters }: TopScorersProps) {
           initial={{ opacity: 0, y: -20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          className="text-center mb-16"
         >
           <h2 className="text-5xl sm:text-7xl font-black text-white mb-6 tracking-tight uppercase">
             ΤΟΠ{' '}
@@ -253,109 +336,31 @@ export default function TopScorers({ scorers, assisters }: TopScorersProps) {
         </motion.div>
 
         {/* --- Two columns: Scorers & Assisters --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-          {/* Top Scorers Column */}
-          <div>
-            <motion.h3
-              initial={{ opacity: 0, y: 10 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center mb-8"
-            >
-              <span className="text-lg sm:text-xl font-bold uppercase tracking-[0.15em] text-amber-400">
-                Top Scorers
-              </span>
-              <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-amber-400/40 to-transparent mx-auto mt-3" />
-            </motion.h3>
+          <PlayerCardStack
+            players={scorers}
+            heroKey="goals"
+            heroLabel="Goals"
+            secondaryKey="assists"
+            secondaryLabel="Assists"
+            categoryLabel="Top Scorers"
+            categoryColor="text-amber-400"
+            categoryDividerColor="via-amber-400/40"
+            delayOffset={0.2}
+          />
 
-            <div
-              className="relative mx-auto flex items-center justify-center"
-              style={{ height: '420px' }}
-            >
-              <CardSwap
-                width={700}
-                height={390}
-                cardDistance={60}
-                verticalDistance={0}
-                delay={10000}
-                skewAmount={0}
-                easing="elastic"
-                containerClassName="
-                  relative
-                  [perspective:1400px]
-                  overflow-visible
-                  flex items-center justify-center
-                  max-[1024px]:scale-[0.7]
-                  max-[768px]:scale-[0.5]
-                  max-[480px]:scale-[0.38]
-                "
-              >
-                {scorers.map((scorer, index) => (
-                  <PlayerCard
-                    key={scorer.id}
-                    player={scorer}
-                    index={index}
-                    heroStat={scorer.goals}
-                    heroLabel="Goals"
-                    secondaryStat={scorer.assists}
-                    secondaryLabel="Assists"
-                  />
-                ))}
-              </CardSwap>
-            </div>
-          </div>
-
-          {/* Top Assisters Column */}
-          <div>
-            <motion.h3
-              initial={{ opacity: 0, y: 10 }}
-              animate={isVisible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-center mb-8"
-            >
-              <span className="text-lg sm:text-xl font-bold uppercase tracking-[0.15em] text-emerald-400">
-                Top Assists
-              </span>
-              <div className="w-16 h-0.5 bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent mx-auto mt-3" />
-            </motion.h3>
-
-            <div
-              className="relative mx-auto flex items-center justify-center"
-              style={{ height: '420px' }}
-            >
-              <CardSwap
-                width={700}
-                height={390}
-                cardDistance={60}
-                verticalDistance={0}
-                delay={10000}
-                skewAmount={0}
-                easing="elastic"
-                containerClassName="
-                  relative
-                  [perspective:1400px]
-                  overflow-visible
-                  flex items-center justify-center
-                  max-[1024px]:scale-[0.7]
-                  max-[768px]:scale-[0.5]
-                  max-[480px]:scale-[0.38]
-                "
-              >
-                {assisters.map((assister, index) => (
-                  <PlayerCard
-                    key={assister.id}
-                    player={assister}
-                    index={index}
-                    heroStat={assister.assists}
-                    heroLabel="Assists"
-                    secondaryStat={assister.goals}
-                    secondaryLabel="Goals"
-                  />
-                ))}
-              </CardSwap>
-            </div>
-          </div>
+          <PlayerCardStack
+            players={assisters}
+            heroKey="assists"
+            heroLabel="Assists"
+            secondaryKey="goals"
+            secondaryLabel="Goals"
+            categoryLabel="Top Assists"
+            categoryColor="text-emerald-400"
+            categoryDividerColor="via-emerald-400/40"
+            delayOffset={0.4}
+          />
 
         </div>
       </div>
