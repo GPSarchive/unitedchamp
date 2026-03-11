@@ -52,12 +52,6 @@ export default async function HomeArticles() {
 
   return (
     <section className="relative py-20 sm:py-32 overflow-hidden">
-      {/* Ambient warm glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px]" />
-      </div>
-
       <div className="container mx-auto px-4 relative z-10 max-w-7xl">
 
         {/* ── Section title ─────────────────────────────────── */}
