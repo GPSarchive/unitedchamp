@@ -7,13 +7,13 @@ import type { TopPlayerData } from './types';
 
 const rankStyles = [
   {
-    border: 'border-purple-400/40',
-    text: 'text-purple-400',
-    badge: 'bg-gradient-to-br from-purple-400 to-fuchsia-300',
-    divider: 'from-purple-400/50',
-    label: 'MVP KING',
+    border: 'border-amber-400/40',
+    text: 'text-amber-400',
+    badge: 'bg-gradient-to-br from-amber-400 to-yellow-300',
+    divider: 'from-amber-400/50',
+    label: 'LEAGUE LEADER',
     rankColor: 'text-black/80',
-    accent: 'from-purple-500/10 to-transparent',
+    accent: 'from-amber-500/10 to-transparent',
   },
   {
     border: 'border-slate-300/40',
@@ -25,13 +25,13 @@ const rankStyles = [
     accent: 'from-slate-300/5 to-transparent',
   },
   {
-    border: 'border-violet-500/40',
-    text: 'text-violet-400',
-    badge: 'bg-gradient-to-br from-violet-500 to-violet-400',
-    divider: 'from-violet-500/50',
+    border: 'border-orange-500/40',
+    text: 'text-orange-400',
+    badge: 'bg-gradient-to-br from-orange-500 to-orange-400',
+    divider: 'from-orange-500/50',
     label: '3η Θέση',
-    rankColor: 'text-white/90',
-    accent: 'from-violet-500/5 to-transparent',
+    rankColor: 'text-black/80',
+    accent: 'from-orange-500/5 to-transparent',
   },
   {
     border: 'border-white/10',
@@ -43,7 +43,6 @@ const rankStyles = [
     accent: 'from-white/5 to-transparent',
   },
 ];
-
 interface MvpCardProps extends HTMLAttributes<HTMLDivElement> {
   player: TopPlayerData;
   index: number;
@@ -60,10 +59,10 @@ const MvpCard = forwardRef<HTMLDivElement, MvpCardProps>(
         ref={ref}
         style={style}
         onClick={onClick}
-        customClass={`border ${rankStyle.border} bg-[#0d0a14] transition-all duration-500`}
+        customClass={`border ${rankStyle.border} bg-[#0a0c14] transition-all duration-500`}
       >
         {/* Purple ambient glow for MVPs */}
-        <div className="absolute inset-0 bg-[#0d0a14]" />
+        <div className="absolute inset-0 bg-[#0a0c14]" />
         <div className={`absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l ${rankStyle.accent} opacity-40`} />
 
         <div className="relative flex h-full w-full z-10">

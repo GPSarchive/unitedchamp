@@ -7,13 +7,13 @@ import type { TopPlayerData } from './types';
 
 const rankStyles = [
   {
-    border: 'border-cyan-400/40',
-    text: 'text-cyan-400',
-    badge: 'bg-gradient-to-br from-cyan-400 to-sky-300',
-    divider: 'from-cyan-400/50',
-    label: 'PLAYMAKER',
+    border: 'border-amber-400/40',
+    text: 'text-amber-400',
+    badge: 'bg-gradient-to-br from-amber-400 to-yellow-300',
+    divider: 'from-amber-400/50',
+    label: 'LEAGUE LEADER',
     rankColor: 'text-black/80',
-    accent: 'from-cyan-500/10 to-transparent',
+    accent: 'from-amber-500/10 to-transparent',
   },
   {
     border: 'border-slate-300/40',
@@ -25,13 +25,13 @@ const rankStyles = [
     accent: 'from-slate-300/5 to-transparent',
   },
   {
-    border: 'border-blue-500/40',
-    text: 'text-blue-400',
-    badge: 'bg-gradient-to-br from-blue-500 to-blue-400',
-    divider: 'from-blue-500/50',
+    border: 'border-orange-500/40',
+    text: 'text-orange-400',
+    badge: 'bg-gradient-to-br from-orange-500 to-orange-400',
+    divider: 'from-orange-500/50',
     label: '3η Θέση',
-    rankColor: 'text-white/90',
-    accent: 'from-blue-500/5 to-transparent',
+    rankColor: 'text-black/80',
+    accent: 'from-orange-500/5 to-transparent',
   },
   {
     border: 'border-white/10',

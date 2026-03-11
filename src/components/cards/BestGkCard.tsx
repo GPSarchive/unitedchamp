@@ -7,13 +7,13 @@ import type { TopPlayerData } from './types';
 
 const rankStyles = [
   {
-    border: 'border-emerald-400/40',
-    text: 'text-emerald-400',
-    badge: 'bg-gradient-to-br from-emerald-400 to-teal-300',
-    divider: 'from-emerald-400/50',
-    label: 'GK KING',
+    border: 'border-amber-400/40',
+    text: 'text-amber-400',
+    badge: 'bg-gradient-to-br from-amber-400 to-yellow-300',
+    divider: 'from-amber-400/50',
+    label: 'LEAGUE LEADER',
     rankColor: 'text-black/80',
-    accent: 'from-emerald-500/10 to-transparent',
+    accent: 'from-amber-500/10 to-transparent',
   },
   {
     border: 'border-slate-300/40',
@@ -25,13 +25,13 @@ const rankStyles = [
     accent: 'from-slate-300/5 to-transparent',
   },
   {
-    border: 'border-teal-500/40',
-    text: 'text-teal-400',
-    badge: 'bg-gradient-to-br from-teal-500 to-teal-400',
-    divider: 'from-teal-500/50',
+    border: 'border-orange-500/40',
+    text: 'text-orange-400',
+    badge: 'bg-gradient-to-br from-orange-500 to-orange-400',
+    divider: 'from-orange-500/50',
     label: '3η Θέση',
-    rankColor: 'text-white/90',
-    accent: 'from-teal-500/5 to-transparent',
+    rankColor: 'text-black/80',
+    accent: 'from-orange-500/5 to-transparent',
   },
   {
     border: 'border-white/10',
@@ -60,10 +60,10 @@ const BestGkCard = forwardRef<HTMLDivElement, BestGkCardProps>(
         ref={ref}
         style={style}
         onClick={onClick}
-        customClass={`border ${rankStyle.border} bg-[#0a100d] transition-all duration-500`}
+        customClass={`border ${rankStyle.border} bg-[#0a0c14] transition-all duration-500`}
       >
         {/* Emerald ambient glow for Best GK */}
-        <div className="absolute inset-0 bg-[#0a100d]" />
+        <div className="absolute inset-0 bg-[#0a0c14]" />
         <div className={`absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l ${rankStyle.accent} opacity-40`} />
 
         <div className="relative flex h-full w-full z-10">

@@ -59,10 +59,10 @@ const ScorerCard = forwardRef<HTMLDivElement, ScorerCardProps>(
         ref={ref}
         style={style}
         onClick={onClick}
-        customClass={`border ${rankStyle.border} bg-[#0c0d10] transition-all duration-500`}
+        customClass={`border ${rankStyle.border} bg-[#0a0c14] transition-all duration-500`}
       >
         {/* Warm ambient glow for scorers */}
-        <div className="absolute inset-0 bg-[#0c0d10]" />
+        <div className="absolute inset-0 bg-[#0a0c14]" />
         <div className={`absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l ${rankStyle.accent} opacity-40`} />
 
         <div className="relative flex h-full w-full z-10">
