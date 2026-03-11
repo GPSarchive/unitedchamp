@@ -7,6 +7,7 @@ export interface TopPlayerData {
   assists: number;
   matches: number;
   mvpAwards?: number;
+  bestGkAwards?: number;
   teamName?: string;
   teamLogo?: string;
 }

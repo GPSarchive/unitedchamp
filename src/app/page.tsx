@@ -476,6 +476,69 @@ async function fetchTopMvps() {
   });
 }
 
+async function fetchTopBestGk() {
+  return withConsoleTiming('db:top-bestgk', async () => {
+    const { data: statsData, error: statsError } = await supabaseAdmin
+      .from('player_career_stats')
+      .select('player_id, total_goals, total_assists, total_best_gk, total_matches, primary_team_id')
+      .gt('total_best_gk', 0)
+      .order('total_best_gk', { ascending: false })
+      .limit(3);
+
+    if (statsError || !statsData || statsData.length === 0) {
+      return { topBestGks: [] };
+    }
+
+    const playerIds = statsData.map(s => s.player_id);
+
+    const { data: playersData, error: playersError } = await supabaseAdmin
+      .from('player')
+      .select('id, first_name, last_name, photo')
+      .in('id', playerIds);
+
+    if (playersError) {
+      return { topBestGks: [] };
+    }
+
+    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
+    const { data: teamsData } = teamIds.length > 0
+      ? await supabaseAdmin
+          .from('teams')
+          .select('id, name, logo')
+          .in('id', teamIds)
+      : { data: [] };
+
+    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
+
+    const topBestGks = statsData.map(stat => {
+      const player = playersData?.find(p => p.id === stat.player_id);
+      const team = stat.primary_team_id ? teamMap.get(stat.primary_team_id) : null;
+
+      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
+
+      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
+      const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
+
+      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
+
+      return {
+        id: stat.player_id,
+        firstName: player?.first_name ?? '',
+        lastName: player?.last_name ?? '',
+        photo: photoUrl,
+        goals: stat.total_goals ?? 0,
+        assists: stat.total_assists ?? 0,
+        matches: stat.total_matches ?? 0,
+        bestGkAwards: stat.total_best_gk ?? 0,
+        teamName: team?.name ?? undefined,
+        teamLogo: teamLogoUrl ?? undefined,
+      };
+    });
+
+    return { topBestGks };
+  });
+}
+
 /**
  * ------------------------------
  * Mapping functions
@@ -549,7 +612,7 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }, { topAssisters }, { topMvps }, { videoMatches }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }, { topAssisters }, { topMvps }, { topBestGks }, { videoMatches }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
@@ -557,6 +620,7 @@ export default async function Home() {
     fetchTopScorers(),
     fetchTopAssisters(),
     fetchTopMvps(),
+    fetchTopBestGk(),
     fetchVideoMatches()
   ]);
 
@@ -621,7 +685,7 @@ export default async function Home() {
       </GridBgSection>
 
       {/* Top Players Section */}
-      <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} />
+      <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
 
       {/* Features Section */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
