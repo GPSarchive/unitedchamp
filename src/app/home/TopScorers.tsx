@@ -24,22 +24,20 @@ function useCardLayout(
 
     const vw = window.innerWidth;
 
-    // ★ More cardDistance on mobile → forces smaller scale → narrower cards
-    //   but each card still peeks ~30-40px (scaled) → easy to tap
     let cardDistance: number;
     let padding: number;
     let maxScale: number;
 
     if (vw < 480) {
-      // Small phones (320-479px)
-      cardDistance = 110;
-      padding = 6;
-      maxScale = 0.42;
+      // Small phones — tighter stacking → bigger cards
+      cardDistance = 80;
+      padding = 2;
+      maxScale = 0.48;
     } else if (vw < 640) {
-      // Larger phones (480-639px)
-      cardDistance = 100;
-      padding = 8;
-      maxScale = 0.5;
+      // Larger phones
+      cardDistance = 85;
+      padding = 4;
+      maxScale = 0.55;
     } else if (vw < 768) {
       // Small tablets
       cardDistance = 75;
@@ -130,7 +128,7 @@ function CategoryColumn({
         </span>
       </motion.h3>
 
-      {/* ★ Decorative line under category label */}
+      {/* Decorative line under category label */}
       <motion.div
         initial={{ opacity: 0, scaleX: 0 }}
         animate={isVisible ? { opacity: 1, scaleX: 1 } : {}}
@@ -144,10 +142,14 @@ function CategoryColumn({
         "
       />
 
-      {/* Outer wrapper — measures available width */}
+      {/* Outer wrapper — shifted left on mobile, centered on sm+ */}
       <div
         ref={wrapperRef}
-        className="relative w-full flex items-center justify-center"
+        className="
+          relative w-full flex items-center
+          justify-start -translate-x-[3%]
+          sm:justify-center sm:translate-x-0
+        "
         style={{ height: scaledHeight + 20 }}
       >
         <div
@@ -191,7 +193,6 @@ function CategoryColumn({
     </div>
   );
 }
-
 
 /* ─── TopScorers Section ─── */
 interface TopScorersProps {
