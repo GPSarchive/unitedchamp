@@ -700,7 +700,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Features Section — "Η ομάδα σε περιμένει" */}
-      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/30">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
             Η ομάδα σε περιμένει
@@ -744,7 +744,7 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </GridBgSection>
+      </VantaSection>
 
       {/* Call to Action — Tournaments */}
       <VantaSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white" overlayClassName="bg-black/20">
@@ -763,7 +763,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Testimonials */}
-      <GridBgSection className="py-16 sm:py-28 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+      <GridBgSection className="py-16 sm:py-28 text-white" bgColor="#08080f" baseColor="#1a1a2e" muteGlows>
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας
