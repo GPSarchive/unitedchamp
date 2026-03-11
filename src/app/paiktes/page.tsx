@@ -1,6 +1,7 @@
 // src/app/paiktes/page.tsx — reads from pre-computed player_career_stats / player_tournament_stats
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
+import VantaSection from "@/app/home/VantaSection";
 import type { PlayerLite } from "./types";
 import {
   parseSearchQuery,
@@ -453,7 +454,7 @@ export default async function PaiktesPage({
   }
 
   return (
-    <div className="h-screen bg-black overflow-hidden">
+    <VantaSection className="h-screen" overlayClassName="bg-black/60">
       <PlayersClient
         initialPlayers={enriched}
         tournaments={tournaments}
@@ -463,6 +464,6 @@ export default async function PaiktesPage({
         usePagination={true}
         initialSearchQuery={rawSearchTerm}
       />
-    </div>
+    </VantaSection>
   );
 }
