@@ -9,7 +9,6 @@ import type { TopPlayerData } from '@/components/cards/types';
 export type { TopPlayerData };
 
 /* ─── CategoryColumn ─── */
-/* ─── CategoryColumn ─── */
 interface CategoryColumnProps {
   title: string;
   players: TopPlayerData[];
@@ -49,7 +48,7 @@ function CategoryColumn({
         transition={{ duration: 0.6, delay: animateFrom === 'left' ? 0.2 : 0.3 }}
         className="
           relative z-20 text-left 
-          pl-24 /* <-- INCREASED from pl-6 to pl-12 to push the text further right */
+          pl-24
           text-[11px] font-semibold tracking-[0.25em] text-white uppercase
           mb-4
           sm:pl-0 sm:text-center sm:mb-10 sm:text-2xl sm:font-bold sm:tracking-wide
@@ -74,7 +73,8 @@ function CategoryColumn({
         <CardSwap
           width={700}
           height={390}
-          cardDistance={isMobile ? 120 : 60} 
+          /* 1. Reduced mobile distance from 120 to 85 so the total width isn't massive */
+          cardDistance={isMobile ? 85 : 60} 
           verticalDistance={0}
           delay={10000}
           skewAmount={0}
@@ -84,7 +84,11 @@ function CategoryColumn({
             [perspective:1400px]
             overflow-visible
             flex items-center justify-center
-            scale-[0.52] -translate-x-[5%] origin-center
+            
+            /* 2. DYNAMIC MOBILE SCALE: 0.36 for small phones, 0.42 for larger phones (390px+) */
+            scale-[0.36] min-[390px]:scale-[0.42] -translate-x-[5%] origin-center
+            
+            /* 3. PC Scales remain exactly the same */
             sm:scale-[0.6] sm:translate-x-0
             md:scale-[0.75]
             lg:scale-[0.85]
