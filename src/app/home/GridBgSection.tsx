@@ -9,6 +9,7 @@ type Props = React.PropsWithChildren<{
   bgColor?: string;
   dotSize?: number;
   gap?: number;
+  redPurpleGlow?: boolean;
 }>;
 
 export default function GridBgSection({
@@ -17,6 +18,7 @@ export default function GridBgSection({
   bgColor,
   dotSize = 2,
   gap = 15,
+  redPurpleGlow = false,
   children,
 }: Props) {
   return (
@@ -32,6 +34,13 @@ export default function GridBgSection({
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />
         <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px]" />
+        {redPurpleGlow && (
+          <>
+            <div className="absolute top-1/3 left-1/3 w-[600px] h-[600px] bg-red-700/12 blur-[180px]" />
+            <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-800/12 blur-[180px]" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-fuchsia-900/10 blur-[140px]" />
+          </>
+        )}
       </div>
       <div className="relative z-10">{children}</div>
     </section>
