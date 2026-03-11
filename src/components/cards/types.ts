@@ -6,6 +6,7 @@ export interface TopPlayerData {
   goals: number;
   assists: number;
   matches: number;
+  mvpAwards?: number;
   teamName?: string;
   teamLogo?: string;
 }

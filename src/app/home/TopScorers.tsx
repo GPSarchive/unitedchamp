@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import CardSwap from '@/components/CardSwap';
-import { ScorerCard, AssisterCard } from '@/components/cards';
+import { ScorerCard, AssisterCard, MvpCard } from '@/components/cards';
 import type { TopPlayerData } from '@/components/cards/types';
 
 // Re-export for page.tsx compatibility
@@ -67,9 +67,10 @@ function CategoryColumn({ title, players, renderCard, animateFrom = 'left', isVi
 interface TopScorersProps {
   scorers: TopPlayerData[];
   assisters?: TopPlayerData[];
+  mvps?: TopPlayerData[];
 }
 
-export default function TopScorers({ scorers, assisters = [] }: TopScorersProps) {
+export default function TopScorers({ scorers, assisters = [], mvps = [] }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -113,7 +114,7 @@ export default function TopScorers({ scorers, assisters = [] }: TopScorersProps)
         </motion.div>
 
         {/* Category columns — add more by dropping another CategoryColumn */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 xl:gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-16 xl:gap-6">
 
           <CategoryColumn
             title="Top Scorers"
@@ -130,6 +131,16 @@ export default function TopScorers({ scorers, assisters = [] }: TopScorersProps)
             players={assisters}
             renderCard={(player, index) => (
               <AssisterCard key={player.id} player={player} index={index} />
+            )}
+            animateFrom="left"
+            isVisible={isVisible}
+          />
+
+          <CategoryColumn
+            title="Top MVPs"
+            players={mvps}
+            renderCard={(player, index) => (
+              <MvpCard key={player.id} player={player} index={index} />
             )}
             animateFrom="right"
             isVisible={isVisible}
