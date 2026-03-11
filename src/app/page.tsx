@@ -685,7 +685,7 @@ export default async function Home() {
       </GridBgSection>
 
       {/* Articles Section */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/40">
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <HomeArticles />
       </VantaSection>
 
