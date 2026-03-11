@@ -1,14 +1,64 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import CardSwap from '@/components/CardSwap';
 import { ScorerCard, AssisterCard, MvpCard, BestGkCard } from '@/components/cards';
 import type { TopPlayerData } from '@/components/cards/types';
 
 export type { TopPlayerData };
 
-/* ─── CategoryColumn ─── */
+const CARD_WIDTH = 700;
+const CARD_HEIGHT = 390;
+
+/* ─── hook: compute scale & cardDistance so cards always fit ─── */
+function useCardLayout(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  numCards: number
+) {
+  const [layout, setLayout] = useState({ scale: 0.4, cardDistance: 40 });
+
+  const recalc = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const vw = window.innerWidth;
+    const isMobile = vw < 640;
+
+    // Tighter stacking on mobile so total width is smaller
+    const cardDistance = isMobile ? 40 : 60;
+
+    // ★ This is the actual pixel width CardSwap renders
+    const totalWidth = CARD_WIDTH + cardDistance * numCards;
+
+    // Leave small breathing room on each side
+    const padding = isMobile ? 4 : 32;
+    const available = Math.min(el.clientWidth, vw) - padding * 2;
+
+    // Scale that makes the whole card stack exactly fit
+    let scale = available / totalWidth;
+
+    // Clamp to sensible maximums per breakpoint
+    let max = 0.55;
+    if (vw >= 1280) max = 0.9;
+    else if (vw >= 1024) max = 0.85;
+    else if (vw >= 768) max = 0.75;
+    else if (vw >= 640) max = 0.65;
+
+    scale = Math.min(Math.max(scale, 0.2), max);
+
+    setLayout({ scale, cardDistance });
+  }, [containerRef, numCards]);
+
+  useEffect(() => {
+    recalc();
+    window.addEventListener('resize', recalc);
+    return () => window.removeEventListener('resize', recalc);
+  }, [recalc]);
+
+  return layout;
+}
+
 /* ─── CategoryColumn ─── */
 interface CategoryColumnProps {
   title: string;
@@ -25,21 +75,22 @@ function CategoryColumn({
   animateFrom = 'left',
   isVisible,
 }: CategoryColumnProps) {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    handleResize(); 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { scale, cardDistance } = useCardLayout(wrapperRef, players.length);
 
   if (players.length === 0) return null;
 
-  // Split the title into the first word ("Top") and the rest of the string
   const titleParts = title.split(' ');
   const firstWord = titleParts[0];
   const restOfTitle = titleParts.slice(1).join(' ');
+
+  // Native (unscaled) size — must match what CardSwap actually renders
+  const nativeWidth = CARD_WIDTH + cardDistance * players.length;
+  const nativeHeight = CARD_HEIGHT;
+
+  // What the user actually sees after scaling
+  const scaledWidth = nativeWidth * scale;
+  const scaledHeight = nativeHeight * scale;
 
   return (
     <div className="flex flex-col relative w-full mb-4 sm:mb-8 xl:mb-0">
@@ -48,8 +99,8 @@ function CategoryColumn({
         animate={isVisible ? { opacity: 1, x: 0 } : {}}
         transition={{ duration: 0.6, delay: animateFrom === 'left' ? 0.2 : 0.3 }}
         className="
-          relative z-20 text-left 
-          pl-24 /* <-- INCREASED from pl-6 to pl-12 to push the text further right */
+          relative z-20 text-left
+          pl-24
           text-[11px] font-semibold tracking-[0.25em] text-white uppercase
           mb-4
           sm:pl-0 sm:text-center sm:mb-10 sm:text-2xl sm:font-bold sm:tracking-wide
@@ -62,43 +113,55 @@ function CategoryColumn({
         </span>
       </motion.h3>
 
+      {/* ★ Outer wrapper — measures available width */}
       <div
-        className="
-          relative flex items-center
-          justify-start
-          sm:justify-center
-          h-[180px]
-          sm:h-[320px] md:h-[380px] lg:h-[420px]
-        "
+        ref={wrapperRef}
+        className="relative w-full flex items-center justify-center"
+        style={{ height: scaledHeight + 20 }}
       >
-        <CardSwap
-          width={700}
-          height={390}
-          cardDistance={isMobile ? 120 : 60} 
-          verticalDistance={0}
-          delay={10000}
-          skewAmount={0}
-          easing="elastic"
-          containerClassName="
-            relative
-            [perspective:1400px]
-            overflow-visible
-            flex items-center justify-center
-            scale-[0.52] -translate-x-[5%] origin-center
-            sm:scale-[0.6] sm:translate-x-0
-            md:scale-[0.75]
-            lg:scale-[0.85]
-            xl:scale-[0.8]
-            2xl:scale-100
-          "
+        {/* ★ Layout box — takes up exactly the SCALED dimensions */}
+        <div
+          style={{
+            width: scaledWidth,
+            height: scaledHeight,
+            position: 'relative',
+          }}
         >
-          {players.map((player, index) => renderCard(player, index))}
-        </CardSwap>
+          {/* ★ Scaling layer — native size, centered, then scaled down */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: nativeWidth,
+              height: nativeHeight,
+              transform: `translate(-50%, -50%) scale(${scale})`,
+              transformOrigin: 'center center',
+            }}
+          >
+            <CardSwap
+              width={CARD_WIDTH}
+              height={CARD_HEIGHT}
+              cardDistance={cardDistance}
+              verticalDistance={0}
+              delay={10000}
+              skewAmount={0}
+              easing="elastic"
+              containerClassName="
+                relative
+                [perspective:1400px]
+                overflow-visible
+                flex items-center justify-center
+              "
+            >
+              {players.map((player, index) => renderCard(player, index))}
+            </CardSwap>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 
 /* ─── TopScorers Section ─── */
 interface TopScorersProps {
@@ -133,14 +196,12 @@ export default function TopScorers({
       ref={sectionRef}
       className="relative py-8 sm:py-20 lg:py-32 overflow-hidden bg-[#08090c]"
     >
-      {/* Ambient background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-orange-600/[0.04] blur-[200px] rounded-full" />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-amber-500/[0.04] blur-[200px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-0 sm:px-4 relative z-10">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
@@ -156,15 +217,13 @@ export default function TopScorers({
           <div className="w-12 sm:w-24 h-px sm:h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent mx-auto" />
         </motion.div>
 
-            {/* Category columns */}
-    <div
-      className="
-        flex flex-col gap-10 /* <-- INCREASED spacing between categories on mobile */
-        sm:grid sm:grid-cols-1 sm:gap-10
-        xl:grid-cols-2 xl:gap-32 xl:gap-y-48
-      "
-    >
-
+        <div
+          className="
+            flex flex-col gap-10
+            sm:grid sm:grid-cols-1 sm:gap-10
+            xl:grid-cols-2 xl:gap-32 xl:gap-y-48
+          "
+        >
           <CategoryColumn
             title="Τop Σκόρερς"
             players={scorers}
@@ -174,7 +233,6 @@ export default function TopScorers({
             animateFrom="left"
             isVisible={isVisible}
           />
-
           <CategoryColumn
             title="Top Assists"
             players={assisters}
@@ -184,7 +242,6 @@ export default function TopScorers({
             animateFrom="left"
             isVisible={isVisible}
           />
-
           <CategoryColumn
             title="Top MVPs"
             players={mvps}
@@ -194,7 +251,6 @@ export default function TopScorers({
             animateFrom="left"
             isVisible={isVisible}
           />
-
           <CategoryColumn
             title="Top Best GK"
             players={bestGks}
