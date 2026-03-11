@@ -51,7 +51,7 @@ export default async function HomeArticles() {
   if (!articles || articles.length === 0) return null;
 
   return (
-    <section className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]">
+    <section className="relative py-20 sm:py-32 overflow-hidden">
       {/* Ambient warm glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />

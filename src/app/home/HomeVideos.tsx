@@ -70,7 +70,7 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
   };
 
   return (
-    <section className="relative py-20 sm:py-32 overflow-hidden bg-zinc-950">
+    <section className="relative py-20 sm:py-32 overflow-hidden">
       {/* Ambient glow — CSS radial gradients avoid GPU blur banding */}
       <div
         className="absolute inset-0 pointer-events-none"
