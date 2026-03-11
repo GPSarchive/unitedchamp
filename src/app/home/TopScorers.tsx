@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import CardSwap from '@/components/CardSwap';
-import { ScorerCard, AssisterCard, MvpCard } from '@/components/cards';
+import { ScorerCard, AssisterCard, MvpCard, BestGkCard } from '@/components/cards';
 import type { TopPlayerData } from '@/components/cards/types';
 
 // Re-export for page.tsx compatibility
@@ -68,9 +68,10 @@ interface TopScorersProps {
   scorers: TopPlayerData[];
   assisters?: TopPlayerData[];
   mvps?: TopPlayerData[];
+  bestGks?: TopPlayerData[];
 }
 
-export default function TopScorers({ scorers, assisters = [], mvps = [] }: TopScorersProps) {
+export default function TopScorers({ scorers, assisters = [], mvps = [], bestGks = [] }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
@@ -136,19 +137,25 @@ export default function TopScorers({ scorers, assisters = [], mvps = [] }: TopSc
             isVisible={isVisible}
           />
 
-          <div className="xl:col-span-2 flex justify-center">
-            <div className="w-full max-w-[50%]">
-              <CategoryColumn
-                title="Top MVPs"
-                players={mvps}
-                renderCard={(player, index) => (
-                  <MvpCard key={player.id} player={player} index={index} />
-                )}
-                animateFrom="left"
-                isVisible={isVisible}
-              />
-            </div>
-          </div>
+          <CategoryColumn
+            title="Top MVPs"
+            players={mvps}
+            renderCard={(player, index) => (
+              <MvpCard key={player.id} player={player} index={index} />
+            )}
+            animateFrom="left"
+            isVisible={isVisible}
+          />
+
+          <CategoryColumn
+            title="Top Best GK"
+            players={bestGks}
+            renderCard={(player, index) => (
+              <BestGkCard key={player.id} player={player} index={index} />
+            )}
+            animateFrom="right"
+            isVisible={isVisible}
+          />
 
         </div>
       </div>
