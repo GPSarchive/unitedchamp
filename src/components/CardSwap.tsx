@@ -128,7 +128,7 @@ const CardSwap = ({
 
   const order = useRef(Array.from({ length: childArr.length }, (_, i) => i));
   const tlRef = useRef<gsap.core.Timeline | null>(null);
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number>(undefined);
   const container = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(false);
   const isAnimatingRef = useRef(false);
