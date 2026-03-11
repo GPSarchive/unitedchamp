@@ -684,10 +684,16 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
+      {/* Articles Section */}
+      <HomeArticles />
+
+      {/* Videos Section */}
+      <HomeVideos videos={videoMatches} />
+
       {/* Top Players Section */}
       <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
 
-      {/* Features Section */}
+      {/* Features Section — "Η ομάδα σε περιμένει" */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
@@ -756,12 +762,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* Articles Section */}
-      <HomeArticles />
-
-      {/* Videos Section */}
-      <HomeVideos videos={videoMatches} />
 
       {/* Testimonials */}
       <section className="py-16 sm:py-28 bg-zinc-950">
