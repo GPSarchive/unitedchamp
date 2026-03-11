@@ -218,6 +218,10 @@ body {
   }
 }
 
+/* Animation delay utilities for staggered blob animations */
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
 @keyframes fade-up {
   0%   { opacity: 0; transform: translateY(12px) scale(0.98); }
   100% { opacity: 1; transform: translateY(0) scale(1); }

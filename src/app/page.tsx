@@ -10,6 +10,9 @@ import TeamDashboard from '@/app/home/TeamDashboard';
 import ResponsiveCallendar from '@/app/home/ResponsiveCalendar';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
+import AnimatedGradientBg from '@/app/home/AnimatedGradientBg';
+import FloatingDotsBg from '@/app/home/FloatingDotsBg';
+import AuroraBg from '@/app/home/AuroraBg';
 import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
 import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
@@ -628,7 +631,7 @@ export default async function Home() {
   const eventsToPass = resolveMatchTournamentLogos(events);
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-950">
+    <div className="min-h-screen flex flex-col overflow-x-hidden bg-zinc-900">
       {/* Hero Carousel Section */}
       <HomeHero
         images={[
@@ -641,8 +644,8 @@ export default async function Home() {
         ]}
       />
 
-      {/* Welcome Section */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+      {/* Welcome Section — Option A: Animated Gradient Mesh */}
+      <AnimatedGradientBg className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-3xl sm:text-5xl font-semibold font-sans mb-2 drop-shadow">
             UltraChamp
@@ -653,7 +656,7 @@ export default async function Home() {
             σε κλίμα ασφάλειας οργάνωσης και ηθικής!
           </p>
         </div>
-      </VantaSection>
+      </AnimatedGradientBg>
 
       {/* Combined Calendar & Dashboard Section */}
       <GridBgSection className="py-12 sm:py-16 text-white">
@@ -693,15 +696,15 @@ export default async function Home() {
       {/* Top Players Section */}
       <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
 
-      {/* Features Section — "Η ομάδα σε περιμένει" */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+      {/* Features Section — Option B: Floating Dots */}
+      <FloatingDotsBg className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
             Η ομάδα σε περιμένει
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-            <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 sm:p-8 rounded-2xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
                 <Users className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
               </div>
@@ -713,7 +716,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="group p-6 sm:p-8 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 sm:p-8 rounded-2xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
                 <Trophy className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
               </div>
@@ -725,7 +728,7 @@ export default async function Home() {
               </p>
             </div>
 
-            <div className="group p-6 sm:p-8 rounded-xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 sm:p-8 rounded-xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <div className="p-3 w-fit rounded-full bg-black/75 border border-white/15 ring-2 ring-orange-400/60 outline outline-1 -outline-offset-1 outline-black/80 mb-4">
                 <BarChart3 className="w-7 h-7 sm:w-8 sm:h-8 text-white/90" aria-hidden="true" />
               </div>
@@ -738,17 +741,10 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </VantaSection>
+      </FloatingDotsBg>
 
-      {/* Call to Action — Tournaments */}
-      <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white bg-[#0a0a0a]">
-        {/* Stadium floodlight — single warm radial from center-top */}
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 70%)' }}
-        />
-
+      {/* Call to Action — Option C: Aurora Sweep */}
+      <AuroraBg className="relative min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white">
         <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
@@ -761,27 +757,27 @@ export default async function Home() {
             <TournamentsGrid tournaments={tournaments} />
           </div>
         </div>
-      </section>
+      </AuroraBg>
 
       {/* Testimonials */}
-      <section className="py-16 sm:py-28 bg-zinc-950">
+      <section className="py-16 sm:py-28 bg-zinc-900/80">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας
           </h2>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 rounded-2xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <p className="mb-4 text-white/90">«Ενα πρότζεκτ για όλους με αξονα την ποδοσφαιρικη παιδεία.»</p>
               <div className="font-semibold text-white/80">- ΦΙΛΙΠΠΟΣ ΑΣΤΕΡΙΑΔΗΣ- ΑΡΧΗΓΟΣ ΜΕΙΚΤΗΣ ΟΜΑΔΑΣ ULTRACHAMP</div>
             </div>
 
-            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 rounded-2xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <p className="mb-4 text-white/90">«Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.»</p>
               <div className="font-semibold text-white/80">- ΤΟΛΗΣ ΠΑΥΛΟΥ - ΑΡΧΗΓΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΥ</div>
             </div>
 
-            <div className="group p-6 rounded-2xl bg-black/80 ring-1 ring-black hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
+            <div className="group p-6 rounded-2xl bg-zinc-800/60 ring-1 ring-white/10 hover:ring-white/25 backdrop-blur-2xl shadow-xl shadow-black/40">
               <p className="mb-4 text-white/90">«Ποδοσφαιρικό Πάθος . Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση!»</p>
               <div className="font-semibold text-white/80">- ΠΕΤΡΟΣ ΤΣΙΑΒΟ - Αρχηγός Ελληνικής Ομάδας F7</div>
             </div>
@@ -790,7 +786,7 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 bg-zinc-950 text-white text-center">
+      <footer className="py-8 bg-zinc-900 text-white text-center">
         <div className="container mx-auto px-4">
           <p>© 2025 Ultra Champ.</p>
           <div className="mt-4">
