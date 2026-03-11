@@ -59,8 +59,18 @@ export default function VantaSection({
   ]);
 
   useEffect(() => {
-    init(); // in case scripts are cached
+    init(); // in case scripts are already cached
+
+    // Poll until p5 + VANTA are ready (handles deduped Script onLoad not firing for every instance)
+    const interval = setInterval(() => {
+      if (effectRef.current) { clearInterval(interval); return; }
+      init();
+    }, 300);
+    const timeout = setTimeout(() => clearInterval(interval), 15000);
+
     return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
       try { effectRef.current?.destroy?.(); } catch {}
       effectRef.current = null;
     };
