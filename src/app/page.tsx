@@ -656,7 +656,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Combined Calendar & Dashboard Section */}
-      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e" redPurpleGlow>
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col gap-10 lg:gap-14">
 
