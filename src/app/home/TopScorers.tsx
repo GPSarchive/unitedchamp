@@ -11,41 +11,61 @@ export type { TopPlayerData };
 const CARD_WIDTH = 700;
 const CARD_HEIGHT = 390;
 
-/* ─── hook: compute scale & cardDistance so cards always fit ─── */
+/* ─── hook: compute scale & cardDistance so cards fit but stay tappable ─── */
 function useCardLayout(
   containerRef: React.RefObject<HTMLDivElement | null>,
   numCards: number
 ) {
-  const [layout, setLayout] = useState({ scale: 0.4, cardDistance: 40 });
+  const [layout, setLayout] = useState({ scale: 0.35, cardDistance: 100 });
 
   const recalc = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
 
     const vw = window.innerWidth;
-    const isMobile = vw < 640;
 
-    // Tighter stacking on mobile so total width is smaller
-    const cardDistance = isMobile ? 40 : 60;
+    // ★ More cardDistance on mobile → forces smaller scale → narrower cards
+    //   but each card still peeks ~30-40px (scaled) → easy to tap
+    let cardDistance: number;
+    let padding: number;
+    let maxScale: number;
 
-    // ★ This is the actual pixel width CardSwap renders
+    if (vw < 480) {
+      // Small phones (320-479px)
+      cardDistance = 110;
+      padding = 6;
+      maxScale = 0.42;
+    } else if (vw < 640) {
+      // Larger phones (480-639px)
+      cardDistance = 100;
+      padding = 8;
+      maxScale = 0.5;
+    } else if (vw < 768) {
+      // Small tablets
+      cardDistance = 75;
+      padding = 24;
+      maxScale = 0.65;
+    } else if (vw < 1024) {
+      // Tablets
+      cardDistance = 65;
+      padding = 32;
+      maxScale = 0.75;
+    } else if (vw < 1280) {
+      // Small desktop
+      cardDistance = 60;
+      padding = 32;
+      maxScale = 0.85;
+    } else {
+      // Large desktop
+      cardDistance = 60;
+      padding = 32;
+      maxScale = 0.9;
+    }
+
     const totalWidth = CARD_WIDTH + cardDistance * numCards;
-
-    // Leave small breathing room on each side
-    const padding = isMobile ? 4 : 32;
     const available = Math.min(el.clientWidth, vw) - padding * 2;
-
-    // Scale that makes the whole card stack exactly fit
     let scale = available / totalWidth;
-
-    // Clamp to sensible maximums per breakpoint
-    let max = 0.55;
-    if (vw >= 1280) max = 0.9;
-    else if (vw >= 1024) max = 0.85;
-    else if (vw >= 768) max = 0.75;
-    else if (vw >= 640) max = 0.65;
-
-    scale = Math.min(Math.max(scale, 0.2), max);
+    scale = Math.min(Math.max(scale, 0.15), maxScale);
 
     setLayout({ scale, cardDistance });
   }, [containerRef, numCards]);
@@ -84,11 +104,8 @@ function CategoryColumn({
   const firstWord = titleParts[0];
   const restOfTitle = titleParts.slice(1).join(' ');
 
-  // Native (unscaled) size — must match what CardSwap actually renders
   const nativeWidth = CARD_WIDTH + cardDistance * players.length;
   const nativeHeight = CARD_HEIGHT;
-
-  // What the user actually sees after scaling
   const scaledWidth = nativeWidth * scale;
   const scaledHeight = nativeHeight * scale;
 
@@ -100,10 +117,10 @@ function CategoryColumn({
         transition={{ duration: 0.6, delay: animateFrom === 'left' ? 0.2 : 0.3 }}
         className="
           relative z-20 text-left
-          pl-24
+          pl-17
           text-[11px] font-semibold tracking-[0.25em] text-white uppercase
-          mb-4
-          sm:pl-0 sm:text-center sm:mb-10 sm:text-2xl sm:font-bold sm:tracking-wide
+          mb-2
+          sm:pl-0 sm:text-center sm:mb-4 sm:text-2xl sm:font-bold sm:tracking-wide
           md:text-3xl
         "
       >
@@ -113,13 +130,26 @@ function CategoryColumn({
         </span>
       </motion.h3>
 
-      {/* ★ Outer wrapper — measures available width */}
+      {/* ★ Decorative line under category label */}
+      <motion.div
+        initial={{ opacity: 0, scaleX: 0 }}
+        animate={isVisible ? { opacity: 1, scaleX: 1 } : {}}
+        transition={{ duration: 0.6, delay: animateFrom === 'left' ? 0.4 : 0.5 }}
+        className="
+          ml-17 h-px w-8 mb-4
+          bg-gradient-to-r from-orange-400/60 to-amber-300/20
+          origin-left
+          sm:ml-auto sm:mr-auto sm:w-16 sm:h-[2px] sm:mb-8 sm:origin-center
+          sm:from-transparent sm:via-white/20 sm:to-transparent
+        "
+      />
+
+      {/* Outer wrapper — measures available width */}
       <div
         ref={wrapperRef}
         className="relative w-full flex items-center justify-center"
         style={{ height: scaledHeight + 20 }}
       >
-        {/* ★ Layout box — takes up exactly the SCALED dimensions */}
         <div
           style={{
             width: scaledWidth,
@@ -127,7 +157,6 @@ function CategoryColumn({
             position: 'relative',
           }}
         >
-          {/* ★ Scaling layer — native size, centered, then scaled down */}
           <div
             style={{
               position: 'absolute',
@@ -162,6 +191,7 @@ function CategoryColumn({
     </div>
   );
 }
+
 
 /* ─── TopScorers Section ─── */
 interface TopScorersProps {
