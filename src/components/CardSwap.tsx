@@ -76,6 +76,7 @@ interface CardSwapProps {
   cardDistance?: number;
   verticalDistance?: number;
   delay?: number;
+  initialDelay?: number;
   pauseOnHover?: boolean;
   onCardClick?: (index: number) => void;
   skewAmount?: number;
@@ -91,6 +92,7 @@ const CardSwap = ({
   cardDistance = 55,
   verticalDistance = 0,
   delay = 5000,
+  initialDelay,
   pauseOnHover = false,
   onCardClick,
   skewAmount = 0,
@@ -335,7 +337,7 @@ const CardSwap = ({
         );
     });
 
-    timeoutRef.current = window.setTimeout(autoSwap, delay);
+    timeoutRef.current = window.setTimeout(autoSwap, initialDelay ?? delay);
 
     if (pauseOnHover && container.current) {
       const node = container.current;
