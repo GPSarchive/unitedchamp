@@ -137,6 +137,8 @@ const CardSwap = ({
   const container = useRef<HTMLDivElement>(null);
   const isPausedRef = useRef(false);
   const isAnimatingRef = useRef(false);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
 
   /* ── kill running animation & pending timer ── */
   const cancelCurrent = useCallback(() => {
@@ -374,6 +376,41 @@ const CardSwap = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing]);
+
+  /* ── swipe left/right to advance or go back ── */
+  useEffect(() => {
+    const node = container.current;
+    if (!node) return;
+
+    const SWIPE_THRESHOLD = 50;
+
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - touchStartX.current;
+      const dy = e.changedTouches[0].clientY - touchStartY.current;
+      // Ignore if swipe is too short or more vertical than horizontal
+      if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+      if (order.current.length < 2) return;
+      if (dx < 0) {
+        // Swipe left → advance to next card
+        selectCard(order.current[1]);
+      } else {
+        // Swipe right → go back to previous card (last in stack)
+        selectCard(order.current[order.current.length - 1]);
+      }
+    };
+
+    node.addEventListener('touchstart', onTouchStart, { passive: true });
+    node.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      node.removeEventListener('touchstart', onTouchStart);
+      node.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [selectCard]);
 
   /* ── render children with refs + click handlers ── */
   const rendered = childArr.map((child, i) =>
