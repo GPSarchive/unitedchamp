@@ -84,6 +84,7 @@ interface CategoryColumnProps {
   renderCard: (player: TopPlayerData, index: number) => ReactNode;
   animateFrom?: 'left' | 'right';
   isVisible: boolean;
+  swapOffset?: number;
 }
 
 function CategoryColumn({
@@ -92,6 +93,7 @@ function CategoryColumn({
   renderCard,
   animateFrom = 'left',
   isVisible,
+  swapOffset = 0,
 }: CategoryColumnProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { scale, cardDistance } = useCardLayout(wrapperRef, players.length);
@@ -176,6 +178,7 @@ function CategoryColumn({
               cardDistance={cardDistance}
               verticalDistance={0}
               delay={10000}
+              initialDelay={10000 + swapOffset}
               skewAmount={0}
               easing="elastic"
               containerClassName="
@@ -263,6 +266,7 @@ export default function TopScorers({
             )}
             animateFrom="left"
             isVisible={isVisible}
+            swapOffset={0}
           />
           <CategoryColumn
             title="Top Assists"
@@ -272,6 +276,7 @@ export default function TopScorers({
             )}
             animateFrom="left"
             isVisible={isVisible}
+            swapOffset={2500}
           />
           <CategoryColumn
             title="Top MVPs"
@@ -281,6 +286,7 @@ export default function TopScorers({
             )}
             animateFrom="left"
             isVisible={isVisible}
+            swapOffset={5000}
           />
           <CategoryColumn
             title="Top Best GK"
@@ -290,6 +296,7 @@ export default function TopScorers({
             )}
             animateFrom="left"
             isVisible={isVisible}
+            swapOffset={7500}
           />
         </div>
       </div>
