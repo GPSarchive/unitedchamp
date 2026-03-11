@@ -6,13 +6,15 @@ import StaticDotGrid from "./StaticDotGrid";
 type Props = React.PropsWithChildren<{
   className?: string;
   baseColor?: string;
+  bgColor?: string;
   dotSize?: number;
   gap?: number;
 }>;
 
 export default function GridBgSection({
   className = "",
-  baseColor = "#1F1B2E",
+  baseColor = "#1a1a2e",
+  bgColor,
   dotSize = 2,
   gap = 15,
   children,
@@ -22,6 +24,7 @@ export default function GridBgSection({
       <StaticDotGrid
         className="absolute inset-0 z-0 pointer-events-none"
         baseColor={baseColor}
+        bgColor={bgColor}
         dotSize={dotSize}
         gap={gap}
       />

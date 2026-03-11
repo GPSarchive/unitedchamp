@@ -656,7 +656,7 @@ export default async function Home() {
       </VantaSection>
 
       {/* Combined Calendar & Dashboard Section */}
-      <GridBgSection className="py-12 sm:py-16 text-white">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto max-w-7xl">
           <div className="flex flex-col gap-10 lg:gap-14">
 
@@ -685,16 +685,22 @@ export default async function Home() {
       </GridBgSection>
 
       {/* Articles Section */}
-      <HomeArticles />
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+        <HomeArticles />
+      </VantaSection>
 
       {/* Videos Section */}
-      <HomeVideos videos={videoMatches} />
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+        <HomeVideos videos={videoMatches} />
+      </GridBgSection>
 
       {/* Top Players Section */}
-      <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+        <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
+      </VantaSection>
 
       {/* Features Section — "Η ομάδα σε περιμένει" */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+      <GridBgSection className="py-12 sm:py-16 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-ubuntu mb-8 sm:mb-12 text-center text-white">
             Η ομάδα σε περιμένει
@@ -738,18 +744,11 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </VantaSection>
+      </GridBgSection>
 
       {/* Call to Action — Tournaments */}
-      <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white bg-[#0a0a0a]">
-        {/* Stadium floodlight — single warm radial from center-top */}
-        <div
-          aria-hidden
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse 90% 55% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 70%)' }}
-        />
-
-        <div className="relative z-10 w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
+      <VantaSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center text-white" overlayClassName="bg-black/20">
+        <div className="w-full max-w-7xl mt-12 px-4 flex flex-col items-center text-center">
           <h2 className="text-2xl sm:text-4xl font-sans font-bold mb-4 sm:mb-6">
             Έτοιμοι για σέντρα;
           </h2>
@@ -761,10 +760,10 @@ export default async function Home() {
             <TournamentsGrid tournaments={tournaments} />
           </div>
         </div>
-      </section>
+      </VantaSection>
 
       {/* Testimonials */}
-      <section className="py-16 sm:py-28 bg-zinc-950">
+      <GridBgSection className="py-16 sm:py-28 text-white" bgColor="#08080f" baseColor="#1a1a2e">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl sm:text-4xl font-bold mb-8 sm:mb-12 text-center text-white">
             Τι λένε οι παίκτες μας
@@ -787,7 +786,7 @@ export default async function Home() {
             </div>
           </div>
         </div>
-      </section>
+      </GridBgSection>
 
       {/* Footer */}
       <footer className="py-8 bg-zinc-950 text-white text-center">

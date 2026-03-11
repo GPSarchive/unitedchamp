@@ -225,7 +225,7 @@ export default function TopScorers({
   return (
     <section
       ref={sectionRef}
-      className="relative py-8 sm:py-20 lg:py-32 overflow-hidden bg-[#08090c]"
+      className="relative py-8 sm:py-20 lg:py-32 overflow-hidden"
     >
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-orange-600/[0.04] blur-[200px] rounded-full" />

@@ -5,13 +5,15 @@ import React, { useRef, useEffect } from "react";
 type Props = {
   className?: string;
   baseColor?: string;
+  bgColor?: string;
   dotSize?: number;
   gap?: number;
 };
 
 export default function StaticDotGrid({
   className = "",
-  baseColor = "#1F1B2E",
+  baseColor = "#1a1a2e",
+  bgColor,
   dotSize = 2,
   gap = 15,
 }: Props) {
@@ -33,6 +35,11 @@ export default function StaticDotGrid({
 
       ctx.clearRect(0, 0, rect.width, rect.height);
 
+      if (bgColor) {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+      }
+
       const cols = Math.ceil(rect.width / gap) + 1;
       const rows = Math.ceil(rect.height / gap) + 1;
       const radius = dotSize / 2;
@@ -52,7 +59,7 @@ export default function StaticDotGrid({
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [baseColor, dotSize, gap]);
+  }, [baseColor, bgColor, dotSize, gap]);
 
   return (
     <canvas

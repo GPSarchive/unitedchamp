@@ -51,7 +51,7 @@ export default async function HomeArticles() {
   if (!articles || articles.length === 0) return null;
 
   return (
-    <section className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]">
+    <section className="relative py-20 sm:py-32 overflow-hidden">
       {/* Ambient warm glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
         <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />
@@ -66,7 +66,7 @@ export default async function HomeArticles() {
             ΑΡΘΡΑ
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
-          <p className="mt-5 text-base sm:text-lg text-gray-400 font-light">
+          <p className="mt-5 text-base sm:text-lg text-white font-light">
             Τελευταία νέα και αναλύσεις αγώνων
           </p>
         </div>
@@ -158,7 +158,7 @@ export default async function HomeArticles() {
         <div className="mt-10 sm:mt-16 text-center">
           <Link
             href="/articles"
-            className="inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 border-2 border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:border-orange-500 transition-all duration-300 font-medium tracking-widest text-sm uppercase"
+            className="inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white transition-all duration-300 font-medium tracking-widest text-sm uppercase"
           >
             Δείτε Περισσότερα
             <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
