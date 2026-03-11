@@ -113,8 +113,8 @@ export default function TopScorers({ scorers, assisters = [], mvps = [] }: TopSc
           <div className="w-24 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent mx-auto" />
         </motion.div>
 
-        {/* Category columns — add more by dropping another CategoryColumn */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-16 xl:gap-6">
+        {/* Category columns — 2-col grid, 3rd item centered below */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 xl:gap-8">
 
           <CategoryColumn
             title="Top Scorers"
@@ -132,19 +132,23 @@ export default function TopScorers({ scorers, assisters = [], mvps = [] }: TopSc
             renderCard={(player, index) => (
               <AssisterCard key={player.id} player={player} index={index} />
             )}
-            animateFrom="left"
-            isVisible={isVisible}
-          />
-
-          <CategoryColumn
-            title="Top MVPs"
-            players={mvps}
-            renderCard={(player, index) => (
-              <MvpCard key={player.id} player={player} index={index} />
-            )}
             animateFrom="right"
             isVisible={isVisible}
           />
+
+          <div className="xl:col-span-2 flex justify-center">
+            <div className="w-full max-w-[50%]">
+              <CategoryColumn
+                title="Top MVPs"
+                players={mvps}
+                renderCard={(player, index) => (
+                  <MvpCard key={player.id} player={player} index={index} />
+                )}
+                animateFrom="left"
+                isVisible={isVisible}
+              />
+            </div>
+          </div>
 
         </div>
       </div>
