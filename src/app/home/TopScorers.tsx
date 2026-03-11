@@ -1,8 +1,10 @@
+// components/TopScorers.tsx
 'use client';
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import CardSwap, { Card } from '@/components/CardSwap';
 
 interface TopScorerData {
   id: number;
@@ -20,6 +22,46 @@ interface TopScorersProps {
   scorers: TopScorerData[];
 }
 
+// --- Rank Configuration (Clean Gradients, No Glow) ---
+const rankStyles = [
+  {
+    // 1st Place - Gold
+    border: 'border-amber-400/40',
+    text: 'text-amber-400',
+    badge: 'bg-gradient-to-br from-amber-400 to-yellow-300',
+    divider: 'from-amber-400/50',
+    label: 'LEAGUE LEADER',
+    rankColor: 'text-black/80',
+  },
+  {
+    // 2nd Place - Silver
+    border: 'border-slate-300/40',
+    text: 'text-slate-300',
+    badge: 'bg-gradient-to-br from-slate-300 to-gray-200',
+    divider: 'from-slate-300/50',
+    label: '2η Θέση',
+    rankColor: 'text-black/70',
+  },
+  {
+    // 3rd Place - Bronze
+    border: 'border-orange-500/40',
+    text: 'text-orange-400',
+    badge: 'bg-gradient-to-br from-orange-500 to-orange-400',
+    divider: 'from-orange-500/50',
+    label: '3η Θέση',
+    rankColor: 'text-black/80',
+  },
+  {
+    // 4th+ - Neutral
+    border: 'border-white/10',
+    text: 'text-white/40',
+    badge: 'bg-white/10',
+    divider: 'from-white/20',
+    label: 'CONTENDER',
+    rankColor: 'text-white',
+  }
+];
+
 export default function TopScorers({ scorers }: TopScorersProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -27,231 +69,211 @@ export default function TopScorers({ scorers }: TopScorersProps) {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
+        if (entry.isIntersecting) setIsVisible(true);
       },
       { threshold: 0.1 }
     );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
-
-  // Medal colors and labels for 1st, 2nd, 3rd
-  const podiumData = [
-    {
-      bg: 'bg-gradient-to-br from-amber-500 via-yellow-400 to-amber-600',
-      glow: 'shadow-[0_0_60px_rgba(251,191,36,0.6)]',
-      border: 'border-amber-400',
-      label: '1ΟΣ',
-      textColor: 'text-amber-900'
-    }, // Gold
-    {
-      bg: 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400',
-      glow: 'shadow-[0_0_50px_rgba(192,192,192,0.5)]',
-      border: 'border-gray-300',
-      label: '2ΟΣ',
-      textColor: 'text-gray-700'
-    }, // Silver
-    {
-      bg: 'bg-gradient-to-br from-orange-600 via-orange-500 to-orange-700',
-      glow: 'shadow-[0_0_40px_rgba(234,88,12,0.5)]',
-      border: 'border-orange-500',
-      label: '3ΟΣ',
-      textColor: 'text-orange-900'
-    }, // Bronze
-  ];
 
   return (
     <section
       ref={sectionRef}
-      className="relative py-20 sm:py-32 overflow-hidden bg-[#111111]"
+      className="relative py-20 sm:py-32 overflow-hidden bg-[#08090c]"
     >
-      {/* Ambient warm glow */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px] animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+      {/* --- Ambient Background Effects --- */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-orange-600/[0.04] blur-[200px] rounded-full" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-amber-500/[0.04] blur-[200px] rounded-full" />
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        {/* Section Title */}
+        {/* --- Header --- */}
         <motion.div
-          initial={{ opacity: 0, y: -30 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={isVisible ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8 }}
-          className="text-center mb-16"
+          className="text-center mb-20"
         >
-          <h2 className="text-5xl sm:text-7xl font-bold text-white mb-4 tracking-tight">
-            ΚΟΡΥΦΑΙΟΙ ΣΚΟΡΕΡ
+          <h2 className="text-5xl sm:text-7xl font-black text-white mb-6 tracking-tight uppercase">
+            Top{' '}
+            <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+              Scorers
+            </span>
           </h2>
-          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-orange-500 to-transparent mx-auto" />
-          <p className="mt-6 text-lg text-gray-400 font-light">
-            Οι κορυφαίοι γκολ σκορερ όλων των εποχών
-          </p>
+          <div className="w-24 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent mx-auto" />
         </motion.div>
 
-        {/* Scorers Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {scorers.map((scorer, index) => {
-            const podium = podiumData[index] || podiumData[2];
+        {/* --- Cards --- */}
+        <div
+          className="relative mx-auto flex items-center justify-center"
+          style={{ height: '420px' }}
+        >
+          <CardSwap
+            width={700}
+            height={390}
+            cardDistance={60}
+            verticalDistance={0}
+            delay={10000}
+            skewAmount={0}
+            easing="elastic"
+            containerClassName="
+              relative
+              [perspective:1400px]
+              overflow-visible
+              flex items-center justify-center
+              max-[1024px]:scale-[0.7]
+              max-[768px]:scale-[0.5]
+              max-[480px]:scale-[0.38]
+            "
+          >
+            {scorers.map((scorer, index) => {
+              const style = rankStyles[index] || rankStyles[3];
+              const gpm =
+                scorer.matches > 0
+                  ? (scorer.goals / scorer.matches).toFixed(2)
+                  : '0.00';
 
-            return (
-              <motion.div
-                key={scorer.id}
-                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                animate={isVisible ? { opacity: 1, y: 0, scale: 1 } : {}}
-                transition={{
-                  duration: 0.6,
-                  delay: index * 0.2,
-                  type: 'spring',
-                  stiffness: 100
-                }}
-                className="group relative"
-              >
-                {/* Rank Badge - Hexagon Shape */}
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={isVisible ? { scale: 1, rotate: 0 } : {}}
-                  transition={{ duration: 0.8, delay: index * 0.2 + 0.3 }}
-                  className={`absolute -top-8 -left-8 z-20 ${podium.bg} ${podium.glow} border-4 ${podium.border} overflow-hidden`}
-                  style={{ width: '68px', height: '68px', clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+              return (
+                <Card
+                  key={scorer.id}
+                  customClass={`
+                    border ${style.border} 
+                    bg-[#0c0d10] 
+                    transition-all duration-500
+                  `}
                 >
-                  <div className="w-full h-full flex flex-col items-center justify-center">
-                    <span className={`text-[9px] font-black ${podium.textColor} tracking-wider`}>
-                      {podium.label}
-                    </span>
-                    <span className={`text-2xl font-black ${podium.textColor} drop-shadow-md leading-none mt-0.5`}>
-                      {index + 1}
-                    </span>
-                  </div>
-                </motion.div>
+                  {/* Clean Background (No Grid, No Glow) */}
+                  <div className="absolute inset-0 bg-[#0c0d10]" />
 
-                {/* Card Container */}
-                <div className="relative h-full bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
+                  <div className="relative flex h-full w-full z-10">
+                    
+                    {/* ─── Left: Player Image ─── */}
+                    <div className="relative w-[42%] h-full overflow-hidden flex-shrink-0 group border-r border-white/5">
+                      <Image
+                        src={scorer.photo || '/images/default-player.png'}
+                        alt={`${scorer.firstName} ${scorer.lastName}`}
+                        fill
+                        className="object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                      />
+                      
+                      {/* Original Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#0c0d10]/40 to-[#0c0d10]" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0c0d10] via-transparent to-transparent opacity-60" />
 
-                  {/* Photo Container with Shimmer */}
-                  <div className="relative h-52 sm:h-64 overflow-hidden">
-                    {/* Player Photo */}
-                    <Image
-                      src={scorer.photo || '/images/default-player.png'}
-                      alt={`${scorer.firstName} ${scorer.lastName}`}
-                      fill
-                      className="object-cover object-top transition-transform duration-700 group-hover:scale-110"
-                    />
-
-                    {/* Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-
-                    {/* Shimmer/Glare Effect */}
-                    <motion.div
-                      initial={{ x: '-100%', opacity: 0 }}
-                      animate={isVisible ? {
-                        x: ['100%', '200%'],
-                        opacity: [0, 0.7, 0]
-                      } : {}}
-                      transition={{
-                        duration: 2,
-                        delay: index * 0.2 + 0.5,
-                        repeat: Infinity,
-                        repeatDelay: 5,
-                        ease: 'easeInOut'
-                      }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
-                      style={{ width: '50%' }}
-                    />
-
-                    {/* Animated Corner Accents */}
-                    <div className="absolute top-0 left-0 w-10 h-10 border-t-2 border-l-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-2 border-r-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    {/* Goals Count Overlay */}
-                    <div className="absolute top-3 right-3 backdrop-blur-md bg-black/60 border border-orange-500/30 px-3 py-2">
-                      <div className="text-3xl font-black text-orange-500 leading-none">
-                        {scorer.goals}
-                      </div>
-                      <div className="text-[10px] text-gray-300 font-light tracking-wider mt-0.5">
-                        ΓΚΟΛ
-                      </div>
+                      {/* Team Logo (Moved to Bottom Left) */}
+                      {scorer.teamLogo && (
+                        <div className="absolute bottom-5 left-5">
+                           <div className="w-10 h-10 bg-black/40 backdrop-blur-sm border border-white/10 rounded-lg p-1.5 flex items-center justify-center">
+                            <Image
+                              src={scorer.teamLogo}
+                              alt={scorer.teamName || ''}
+                              width={24}
+                              height={24}
+                              className="object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Team Badge (if available) */}
-                    {scorer.teamLogo && (
-                      <div className="absolute bottom-3 left-3 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 p-1.5">
-                        <Image
-                          src={scorer.teamLogo}
-                          alt={scorer.teamName || 'Team'}
-                          width={48}
-                          height={48}
-                          className="object-contain"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Player Info Section */}
-                  <div className="p-6 bg-gradient-to-b from-black to-neutral-950">
-                    {/* Name */}
-                    <h3 className="text-3xl sm:text-4xl font-black text-white mb-1 tracking-tight uppercase">
-                      {scorer.firstName}
-                    </h3>
-                    <h3 className="text-3xl sm:text-4xl font-black text-orange-500 mb-6 tracking-tight uppercase">
-                      {scorer.lastName}
-                    </h3>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 border border-white/10 p-4 transition-all duration-300 hover:bg-orange-500/10 hover:border-orange-500/30">
-                        <div className="text-2xl font-bold text-white">
-                          {scorer.assists}
+                    {/* ─── Right: Stats & Info ─── */}
+                    <div className="flex-1 flex flex-col justify-between py-8 pr-8 pl-6">
+                      
+                      {/* 1. Header: Name & Rank Badge */}
+                      <div className="flex items-start justify-between w-full">
+                        <div className="flex flex-col">
+                          <p className="text-sm font-semibold text-white/40 tracking-[0.2em] mb-1 uppercase">
+                             {scorer.firstName}
+                          </p>
+                          <h3 className="text-4xl lg:text-5xl font-black text-white uppercase tracking-tight leading-[0.9]">
+                            {scorer.lastName}
+                          </h3>
                         </div>
-                        <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Ασίστ
+
+                        {/* Rank Badge (Skewed but Clean - Crown Removed) */}
+                        <div className="relative mt-1">
+                            <div className={`
+                                relative w-12 h-14 transform skew-x-[-12deg]
+                                flex flex-col items-center justify-center
+                                ${style.badge}
+                                shadow-sm
+                            `}>
+                                <span className={`text-2xl font-black ${style.rankColor} leading-none skew-x-[12deg]`}>
+                                    {index + 1}
+                                </span>
+                            </div>
                         </div>
                       </div>
 
-                      <div className="bg-white/5 border border-white/10 p-4 transition-all duration-300 hover:bg-orange-500/10 hover:border-orange-500/30">
-                        <div className="text-2xl font-bold text-white">
-                          {scorer.matches}
-                        </div>
-                        <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
-                          Αγώνες
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Goals per Match Ratio */}
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-400 uppercase tracking-wider">
-                          Γκολ/Αγώνα
-                        </span>
-                        <span className="text-xl font-bold text-orange-500">
-                          {(scorer.goals / scorer.matches).toFixed(2)}
+                      {/* 2. Divider & Position Label */}
+                      <div className="w-full flex items-center gap-4 my-2">
+                        <div className={`h-[2px] w-12 bg-gradient-to-r ${style.divider} to-transparent`} />
+                        <span className={`text-[10px] font-bold tracking-[0.2em] uppercase ${style.text}`}>
+                            {style.label}
                         </span>
                       </div>
+
+                      {/* 3. Hero Stat (Goals) */}
+                      <div className="relative mt-2">
+                        <div className="flex items-end gap-3">
+                          <span className={`
+                            text-7xl font-black leading-none tracking-tighter
+                            ${style.text}
+                          `}>
+                            {scorer.goals}
+                          </span>
+                          <span className="text-sm font-bold text-white/30 uppercase tracking-[0.15em] mb-2">
+                             Goals
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 4. Secondary Stats Grid */}
+                      <div className="flex items-center justify-between border-t border-white/[0.08] pt-5 mt-4">
+                        
+                        {/* Assists */}
+                        <div>
+                          <div className="text-2xl font-bold text-white tabular-nums">
+                            {scorer.assists}
+                          </div>
+                          <div className="text-[10px] text-white/30 uppercase tracking-[0.1em] font-medium mt-1">
+                            Assists
+                          </div>
+                        </div>
+
+                        <div className="w-px h-8 bg-white/[0.08]" />
+
+                        {/* Matches */}
+                        <div>
+                          <div className="text-2xl font-bold text-white tabular-nums">
+                            {scorer.matches}
+                          </div>
+                          <div className="text-[10px] text-white/30 uppercase tracking-[0.1em] font-medium mt-1">
+                            Matches
+                          </div>
+                        </div>
+
+                        <div className="w-px h-8 bg-white/[0.08]" />
+
+                        {/* Ratio */}
+                        <div>
+                          <div className={`text-2xl font-bold tabular-nums ${style.text}`}>
+                            {gpm}
+                          </div>
+                          <div className="text-[10px] text-white/30 uppercase tracking-[0.1em] font-medium mt-1">
+                            Per Game
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
                   </div>
-
-                  {/* Animated Border Pulse */}
-                  <motion.div
-                    animate={{
-                      opacity: [0.3, 0.6, 0.3],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: 'easeInOut',
-                    }}
-                    className="absolute inset-0 border-2 border-orange-500/0 group-hover:border-orange-500/50 pointer-events-none"
-                  />
-                </div>
-              </motion.div>
-            );
-          })}
+                </Card>
+              );
+            })}
+          </CardSwap>
         </div>
       </div>
     </section>
