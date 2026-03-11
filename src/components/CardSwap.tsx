@@ -205,7 +205,7 @@ const CardSwap = ({
     );
     tl.addLabel('return', `promote+=${autoConfig.durMove * autoConfig.returnDelay}`);
     tl.call(
-      () => gsap.set(elFront, { zIndex: backSlot.zIndex }),
+      () => { gsap.set(elFront, { zIndex: backSlot.zIndex }); },
       undefined,
       'return'
     );
