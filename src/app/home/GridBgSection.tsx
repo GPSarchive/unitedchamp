@@ -28,6 +28,11 @@ export default function GridBgSection({
         dotSize={dotSize}
         gap={gap}
       />
+      {/* Ambient warm glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-400/15 blur-[160px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-yellow-500/10 blur-[160px]" />
+      </div>
       <div className="relative z-10">{children}</div>
     </section>
   );
