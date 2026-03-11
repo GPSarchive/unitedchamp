@@ -128,7 +128,7 @@ export default function TeamFilter({
           ) : (
             <Search className="h-4 w-4 text-orange-400/70" />
           )}
-          <span className={`truncate ${value ? "text-white" : "text-white/60"}`}>
+          <span className={`truncate ${value ? "text-white" : "text-white/60 animate-[text-pulse_2.5s_ease-in-out_infinite]"}`}>
             {value ?? placeholder}
           </span>
         </div>
@@ -275,6 +275,10 @@ export default function TeamFilter({
         @keyframes border-glow {
           0%, 100% { border-color: rgba(251, 146, 60, 0.3); }
           50% { border-color: rgba(251, 146, 60, 0.65); }
+        }
+        @keyframes text-pulse {
+          0%, 100% { color: rgba(255, 255, 255, 0.4); }
+          50% { color: rgba(255, 255, 255, 0.85); }
         }
       `}</style>
     </div>
