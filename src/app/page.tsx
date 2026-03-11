@@ -416,8 +416,9 @@ async function fetchTopAssisters() {
 async function fetchTopMvps() {
   return withConsoleTiming('db:top-mvps', async () => {
     const { data: statsData, error: statsError } = await supabaseAdmin
-      .from('player_statistics')
-      .select('player_id, total_goals, total_assists, total_mvp')
+      .from('player_career_stats')
+      .select('player_id, total_goals, total_assists, total_mvp, total_matches, primary_team_id')
+      .gt('total_mvp', 0)
       .order('total_mvp', { ascending: false })
       .limit(3);
 
@@ -436,25 +437,7 @@ async function fetchTopMvps() {
       return { topMvps: [] };
     }
 
-    const { data: mpsData } = await supabaseAdmin
-      .from('match_player_stats')
-      .select('player_id, match_id')
-      .in('player_id', playerIds);
-
-    const matchesByPlayer = new Map<number, Set<number>>();
-    for (const row of (mpsData ?? [])) {
-      if (!matchesByPlayer.has(row.player_id)) {
-        matchesByPlayer.set(row.player_id, new Set());
-      }
-      matchesByPlayer.get(row.player_id)!.add(row.match_id);
-    }
-
-    const { data: playerTeamsData } = await supabaseAdmin
-      .from('player_teams')
-      .select('player_id, team_id')
-      .in('player_id', playerIds);
-
-    const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
+    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
     const { data: teamsData } = teamIds.length > 0
       ? await supabaseAdmin
           .from('teams')
@@ -463,13 +446,10 @@ async function fetchTopMvps() {
       : { data: [] };
 
     const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
-    const playerTeamMap = new Map((playerTeamsData ?? []).map(pt => [pt.player_id, pt.team_id]));
 
     const topMvps = statsData.map(stat => {
       const player = playersData?.find(p => p.id === stat.player_id);
-      const teamId = playerTeamMap.get(stat.player_id);
-      const team = teamId ? teamMap.get(teamId) : null;
-      const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
+      const team = stat.primary_team_id ? teamMap.get(stat.primary_team_id) : null;
 
       const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
 
@@ -485,7 +465,7 @@ async function fetchTopMvps() {
         photo: photoUrl,
         goals: stat.total_goals ?? 0,
         assists: stat.total_assists ?? 0,
-        matches,
+        matches: stat.total_matches ?? 0,
         mvpAwards: stat.total_mvp ?? 0,
         teamName: team?.name ?? undefined,
         teamLogo: teamLogoUrl ?? undefined,
