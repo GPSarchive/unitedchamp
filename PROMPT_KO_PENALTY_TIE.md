@@ -115,13 +115,60 @@ if (stageKind === "knockout") {
 }
 ```
 
-### 5. Progression Logic: `src/app/dashboard/tournaments/TournamentCURD/progression.ts`
+### 5. Stats Editor Save Action: `src/app/matches/[id]/actions.ts`
+
+This file has a **separate code path** that finalizes matches from the stats editor (the `/matches/[id]` page). Around line 400-416, it checks `is_ko` and rejects ties:
+
+```ts
+if (matchData?.is_ko && isTie) {
+  throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
+}
+```
+
+And around line 419-428, it saves scores + winner:
+
+```ts
+const { error: upErr } = await supabase
+  .from('matches')
+  .update({
+    team_a_score: aGoals,
+    team_b_score: bGoals,
+    winner_team_id,
+    status: 'finished',
+  })
+  .eq('id', match_id);
+```
+
+**Change needed:** When `is_penalty_result` is true on the match row, allow the tie and use the already-set `winner_team_id` instead of calculating it from scores. Modify the logic to:
+
+```ts
+// Load match including penalty flag
+const { data: matchData, error: matchErr } = await supabase
+  .from('matches')
+  .select('is_ko, is_penalty_result, winner_team_id')
+  .eq('id', match_id)
+  .single();
+
+if (matchErr) throw matchErr;
+
+if (matchData?.is_ko && isTie) {
+  if (!matchData.is_penalty_result || !matchData.winner_team_id) {
+    throw new Error('Knockout matches cannot end in a tie. Use the penalty option to select a winner first.');
+  }
+  // Penalty result: keep the tie score but use the pre-set winner
+  winner_team_id = matchData.winner_team_id;
+}
+```
+
+NOTE: In this flow, the admin would first set `is_penalty_result=true` and `winner_team_id` via the RowEditor/admin UI, then finalize via the stats editor. The stats editor recalculates scores from player stats — but the winner comes from the penalty selection.
+
+### 6. Progression Logic: `src/app/dashboard/tournaments/TournamentCURD/progression.ts`
 
 **NO changes needed** — progression already uses `winner_team_id` from the match row to propagate to the next KO round. Since we're still setting `winner_team_id`, the winner will correctly advance.
 
 Verify that the `finishMatchAndProgress` function (around line 249-269) and `progressAfterMatch` (line 274+) both rely on `m.winner_team_id` — they do.
 
-### 6. UI: Admin Match Editor — `src/app/dashboard/matches/RowEditor.tsx`
+### 7. UI: Admin Match Editor — `src/app/dashboard/matches/RowEditor.tsx`
 
 This is the main admin editor opened from `/dashboard/matches`. Changes:
 
@@ -217,7 +264,7 @@ const payload = {
 )}
 ```
 
-### 7. UI: Tournament Planner Editor — `src/app/dashboard/tournaments/TournamentCURD/preview/ExpandedRowEditor.tsx`
+### 8. UI: Tournament Planner Editor — `src/app/dashboard/tournaments/TournamentCURD/preview/ExpandedRowEditor.tsx`
 
 Apply the same pattern:
 
@@ -246,7 +293,7 @@ await updateMatch({
 
 **d)** Add the same checkbox + radio UI in the form grid, visible when `isFinished && !allowDraws && scoresEqual`.
 
-### 8. Auto-clear logic
+### 9. Auto-clear logic
 
 When the checkbox is **unchecked**, clear `winner_team_id` back to null (since equal scores without penalty = invalid for KO).
 
@@ -259,6 +306,7 @@ When scores become **unequal**, auto-uncheck `is_penalty_result` and auto-set wi
 | `migrations/add-penalty-result.sql` | NEW — add `is_penalty_result` column |
 | `src/app/lib/types.ts` | Add `is_penalty_result` to `MatchRow` |
 | `src/app/api/matches/[id]/route.ts` | Allow KO draws when penalty flag is set; add to UPDATABLE_FIELDS |
+| `src/app/matches/[id]/actions.ts` | Allow KO tie when `is_penalty_result` is true; use pre-set winner |
 | `src/app/dashboard/tournaments/TournamentCURD/preview/updateMatchAction.ts` | Allow KO draws when penalty flag set; add to payload type |
 | `src/app/dashboard/matches/RowEditor.tsx` | Add penalty checkbox + winner radio buttons UI |
 | `src/app/dashboard/tournaments/TournamentCURD/preview/ExpandedRowEditor.tsx` | Same penalty UI additions |
