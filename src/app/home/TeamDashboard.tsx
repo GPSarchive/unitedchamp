@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Calendar, Clock, MapPin, ChevronRight, Trophy, Search } from "lucide-react";
+import { Calendar, Clock, MapPin, ChevronRight, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import TeamFilter from "@/components/TeamFilter";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -324,8 +324,7 @@ export default function TeamDashboard({ allMatches = [], userTeams = [], classNa
     <div className={className}>
       {/* Section heading */}
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Search className="h-5 w-5 text-orange-400" />
+        <h2 className="text-xl font-bold text-white">
           Βρες τον επόμενο αγώνα σου
         </h2>
         <p className="mt-1 text-sm text-white/50">
