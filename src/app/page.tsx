@@ -14,6 +14,7 @@ import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
 import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
+import MatchDayStrip from './home/MatchDayStrip';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
 import TopScorers from './home/TopScorers';
@@ -665,6 +666,14 @@ export default async function Home() {
               allMatches={eventsToPass}
               userTeams={[]}
             />
+
+            {/* Match Day Strip - compact view of only days with matches */}
+            <div>
+              <h2 className="text-xl font-bold text-white mb-4">
+                Ημέρες Αγώνων
+              </h2>
+              <MatchDayStrip events={eventsToPass} />
+            </div>
 
             {/* Calendar */}
             <div>
