@@ -16,15 +16,16 @@ function ensureSameOrigin(req: Request) {
   const m = req.method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
 
-  const whitelist = new Set(allowedOrigins);
-  try {
-    whitelist.add(new URL(req.url).origin);
-  } catch {}
+  // Do NOT add req.url origin to the whitelist — the Host header can be spoofed,
+  // which would let an attacker self-whitelist their own origin.
+  if (allowedOrigins.size === 0) {
+    throw new Error("bad-origin");
+  }
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
   const ok = [origin, referer].some((val) => {
     try {
-      return !!val && whitelist.has(new URL(val).origin);
+      return !!val && allowedOrigins.has(new URL(val).origin);
     } catch {
       return false;
     }
@@ -119,7 +120,13 @@ export async function POST(
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return jsonError(400, "Invalid JSON");
 
-    const { new_match_date, postponement_reason } = body;
+    const { new_match_date, postponement_reason: rawReason } = body;
+
+    // Sanitize postponement_reason: strip markdown/HTML injection characters
+    const postponement_reason =
+      typeof rawReason === "string"
+        ? rawReason.replace(/[<>[\](){}*_~`#|!\\]/g, "").trim().slice(0, 500) || null
+        : null;
 
     // Parse and validate new_match_date if provided
     let newDateISO: string | null = null;

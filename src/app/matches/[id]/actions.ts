@@ -584,7 +584,22 @@ export async function updateMatchVideoAction(formData: FormData) {
   if (!Number.isFinite(matchId)) throw new Error('Bad match id');
 
   const raw = (formData.get('video_url') as string | null) ?? null;
-  const value = raw && raw.trim().length ? raw.trim() : null; // empty => NULL (delete)
+  const trimmed = raw?.trim() || null;
+
+  // Validate: must be a YouTube URL or a bare 11-char video ID, or null to clear
+  let value: string | null = null;
+  if (trimmed) {
+    const isYouTubeId = /^[a-zA-Z0-9_-]{11}$/.test(trimmed);
+    let isYouTubeUrl = false;
+    try {
+      const url = new URL(trimmed);
+      isYouTubeUrl = /^(www\.)?(youtube\.com|youtu\.be)$/.test(url.hostname);
+    } catch {}
+    if (!isYouTubeId && !isYouTubeUrl) {
+      throw new Error('Invalid video URL: must be a YouTube URL or video ID');
+    }
+    value = trimmed;
+  }
 
   const { error } = await supabase
     .from('matches')

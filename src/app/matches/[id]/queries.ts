@@ -188,8 +188,6 @@ export type StandingsResult = {
 export async function fetchStandingsByStage(
   stageId: Id
 ): Promise<StandingsResult> {
-  console.log('[fetchStandingsByStage] Querying stage_id:', stageId);
-
   // Fetch standings data
   const { data: standingsData, error: standingsError } = await supabaseAdmin
     .from("stage_standings")
@@ -200,11 +198,6 @@ export async function fetchStandingsByStage(
     .order("group_id", { ascending: true, nullsFirst: true })
     .order("rank", { ascending: true, nullsFirst: false })
     .order("points", { ascending: false });
-
-  console.log('[fetchStandingsByStage] Standings query result:', {
-    error: standingsError?.message,
-    dataCount: standingsData?.length ?? 0,
-  });
 
   if (standingsError || !standingsData) return { standings: [], stageKind: null, stageName: null };
 
@@ -224,11 +217,6 @@ export async function fetchStandingsByStage(
   const { data: teamsData, error: teamsError } = teamsResult;
   const { data: groupsData } = groupsResult;
   const { data: stageData } = stageResult;
-
-  console.log('[fetchStandingsByStage] Teams query result:', {
-    error: teamsError?.message,
-    dataCount: teamsData?.length ?? 0,
-  });
 
   if (teamsError || !teamsData) return { standings: [], stageKind: null, stageName: null };
 
@@ -260,12 +248,6 @@ export async function fetchStandingsByStage(
         logo: null,
       },
     };
-  });
-
-  console.log('[fetchStandingsByStage] Final result:', {
-    count: standings.length,
-    stageKind: stageData?.kind ?? null,
-    data: standings
   });
 
   return {

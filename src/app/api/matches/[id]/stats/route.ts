@@ -1,13 +1,12 @@
 // src/app/api/matches/[id]/stats/route.ts
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: Request, ctx: Ctx) {
   try {
-    // Auth check
+    // Auth check — use cookie-bound client so RLS is enforced
     const supa = await createSupabaseRouteClient();
     const { data: { user } } = await supa.auth.getUser();
     if (!user) {
@@ -17,12 +16,12 @@ export async function GET(req: Request, ctx: Ctx) {
     const { id: matchIdParam } = await ctx.params;
     const matchId = Number(matchIdParam);
 
-    if (!matchId || matchId <= 0) {
+    if (!Number.isInteger(matchId) || matchId <= 0) {
       return NextResponse.json({ error: "Invalid match ID" }, { status: 400 });
     }
 
-    // Fetch match to verify it exists and get team IDs
-    const { data: match, error: matchError } = await supabaseAdmin
+    // Use the cookie-bound client (respects RLS) instead of supabaseAdmin
+    const { data: match, error: matchError } = await supa
       .from("matches")
       .select("id, team_a_id, team_b_id")
       .eq("id", matchId)
@@ -32,8 +31,8 @@ export async function GET(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    // Fetch match_player_stats
-    const { data: stats, error: statsError } = await supabaseAdmin
+    // Fetch match_player_stats (RLS-aware)
+    const { data: stats, error: statsError } = await supa
       .from("match_player_stats")
       .select(`
         id,
@@ -58,8 +57,8 @@ export async function GET(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
     }
 
-    // Fetch match_participants
-    const { data: participants, error: participantsError } = await supabaseAdmin
+    // Fetch match_participants (RLS-aware)
+    const { data: participants, error: participantsError } = await supa
       .from("match_participants")
       .select("id, player_id, team_id, played")
       .eq("match_id", matchId);
