@@ -63,9 +63,6 @@ export default async function Page({
   // NO SIGNING - Keep raw path
   const tournamentLogo = match.tournament?.logo ?? null;
 
-  // Debug: log match stage_id
-  console.log("[Match Page] Match ID:", match.id, "Stage ID:", match.stage_id, "Group ID:", match.group_id);
-
   const [aRes, bRes, statsRes, partsRes, standingsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
@@ -98,13 +95,6 @@ export default async function Page({
       duplicatePlayerIds.add(playerId);
     }
   }
-
-  // Debug: log standings data
-  console.log("[Match Page] Standings result:", {
-    status: standingsRes.status,
-    count: standings.length,
-    data: standings,
-  });
 
   const dataLoadErrors: string[] = [];
   if (aRes.status === "rejected")
