@@ -111,8 +111,7 @@ const isProd = process.env.NODE_ENV === "production";
 const PERMISSIONS_POLICY = [
   "camera=()", "microphone=()", "geolocation=()",
   "usb=()", "bluetooth=()", "serial=()", "midi=()", "hid=()",
-  "ambient-light-sensor=()", "accelerometer=()", "gyroscope=()",
-  "magnetometer=()", "battery=()",
+  "accelerometer=(self)", "gyroscope=(self)", "magnetometer=()",
   "payment=()",
   "display-capture=()", "screen-wake-lock=()", "window-management=()",
   "fullscreen=(self)", "picture-in-picture=(self)",
@@ -121,7 +120,7 @@ const PERMISSIONS_POLICY = [
   "otp-credentials=()", "publickey-credentials-create=()",
   "publickey-credentials-get=()", "identity-credentials-get=()",
   "interest-cohort=()", "idle-detection=()", "storage-access=()",
-  "document-domain=()", "xr-spatial-tracking=()",
+  "xr-spatial-tracking=()",
   "local-fonts=()", "web-share=()",
 ].join(", ");
 
