@@ -244,7 +244,7 @@ function PlayersFilterHeaderComponent({
 
       {/* ── Expandable Filters Panel ── */}
       {filtersExpanded && (
-        <div className="px-3 md:px-6 pb-3 border-t border-white/5 pt-3">
+        <div className="px-3 md:px-6 pb-3 border-t border-white/5 pt-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* Tournament Filter */}
             <div>
@@ -310,24 +310,19 @@ function PlayersFilterHeaderComponent({
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ── Sort Buttons Row ── */}
-      <div className="border-t border-white/5">
-        {/* Mobile: Horizontal scroll pills */}
-        <div className="md:hidden">
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex min-w-max gap-2 px-3 py-2.5">
-              <span className="flex-shrink-0 self-center text-[10px] font-semibold uppercase tracking-widest text-white/30 mr-1">
-                Ταξινόμηση
-              </span>
+          {/* Sort by stat buttons */}
+          <div>
+            <label className="block text-[11px] text-white/50 font-medium mb-1.5 uppercase tracking-wider">
+              Ταξινόμηση κατά
+            </label>
+            <div className="flex flex-wrap gap-2">
               {SORT_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => onSortChange(opt.value)}
                   className={`
-                    flex-shrink-0 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider
+                    px-3 py-1.5 text-xs font-semibold uppercase tracking-wider
                     transition-all duration-200 rounded-full border
                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
                     ${
@@ -343,48 +338,18 @@ function PlayersFilterHeaderComponent({
                   )}
                 </button>
               ))}
+              {selectedSort !== "alpha" && (
+                <button
+                  onClick={() => onSortChange("alpha")}
+                  className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider rounded-full border text-white/40 border-white/10 bg-white/5 hover:text-white/60 hover:border-white/20 transition-all"
+                >
+                  Αλφαβητικά
+                </button>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Desktop: Grid aligned with table columns */}
-        <div className="hidden md:block px-6 py-2.5">
-          <div className="grid grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px] gap-4">
-            {/* Photo column - empty */}
-            <div></div>
-
-            {/* Player name column - sort label */}
-            <div className="flex items-center">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">
-                Ταξινόμηση κατά
-              </span>
-            </div>
-
-            {/* Sortable columns */}
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => onSortChange(opt.value)}
-                className={`
-                  px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em]
-                  transition-all duration-200 rounded-md border text-center
-                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400/80
-                  ${
-                    selectedSort === opt.value
-                      ? "text-orange-200 border-orange-400/60 bg-orange-500/15 shadow-sm shadow-orange-500/20"
-                      : "text-white/50 border-transparent hover:text-white hover:border-orange-400/50 hover:bg-orange-500/10"
-                  }
-                `}
-              >
-                {opt.label}
-                {selectedSort === opt.value && (
-                  <span className="ml-1 text-orange-300">▼</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
