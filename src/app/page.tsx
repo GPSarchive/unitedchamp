@@ -794,6 +794,17 @@ export default async function Home() {
             <a href="/terms" className="mx-2 hover:underline">Όροι Χρήσης</a>
             <a href="/contact" className="mx-2 hover:underline">Επικοινωνία</a>
           </div>
+          <div className="mt-4 text-zinc-400 text-sm">
+            Κατασκευή ιστοσελίδας από{" "}
+            <a
+              href="https://www.digitalfootprint.gr"
+              target="_blank"
+              rel="noopener"
+              className="hover:underline text-zinc-300"
+            >
+              Digital Footprint
+            </a>
+          </div>
         </div>
       </footer>
 
