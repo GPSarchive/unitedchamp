@@ -371,6 +371,17 @@ export async function proxy(req: NextRequest) {
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
   res.headers.set('Origin-Agent-Cluster', '?1')
   res.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.headers.set('X-DNS-Prefetch-Control', 'off')
+  res.headers.set(
+    'Strict-Transport-Security',
+    'max-age=63072000; includeSubDomains; preload'
+  )
+  res.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+  )
 
   // ─────────────────────────────────────────────────────────────
   // CSP — Content Security Policy
