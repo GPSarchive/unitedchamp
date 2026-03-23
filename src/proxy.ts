@@ -366,7 +366,7 @@ export async function proxy(req: NextRequest) {
   // ─────────────────────────────────────────────────────────────
   // SECURITY HEADERS
   // ─────────────────────────────────────────────────────────────
-  res.headers.delete('X-Frame-Options')
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN')
   res.headers.set('Cross-Origin-Opener-Policy', 'same-origin')
   res.headers.set('Cross-Origin-Resource-Policy', 'same-origin')
   res.headers.set('Origin-Agent-Cluster', '?1')
