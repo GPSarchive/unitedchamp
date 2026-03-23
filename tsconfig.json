@@ -1,37 +1,48 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
-
     "allowJs": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
     "incremental": true,
-
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-
-    "types": ["node"],
-
-    "jsx": "preserve",
-    "plugins": [{ "name": "next" }]
+    "types": [
+      "node"
+    ],
+    "jsx": "react-jsx",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "tailwind.config.js"
-, "src/app/api/teams/trim-logo"  ],
-  "exclude": ["node_modules"]
+    "tailwind.config.js",
+    "src/app/api/teams/trim-logo",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
