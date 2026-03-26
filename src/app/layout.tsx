@@ -42,6 +42,7 @@ const notoSans = Noto_Sans({
 
 // --- Metadata ---
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ultrachamp.gr"),
   title: "UltraChamp.gr",
   description: "Το απόλυτο ελληνικό site για πρωταθλήματα mini football!",
 };

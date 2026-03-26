@@ -26,6 +26,15 @@ const originFrom = (u: string) => {
 const supabaseOrigin = originFrom(SUPABASE_URL)
 const appOrigin = originFrom(APP_ORIGIN)
 
+// Known search engine crawlers — exempt from rate limiting
+const SEARCH_ENGINE_BOT_RE =
+  /googlebot|bingbot|yandexbot|baiduspider|duckduckbot|slurp|msnbot|apis-google|mediapartners-google|adsbot-google/i
+
+function isSearchEngineBot(req: NextRequest): boolean {
+  const ua = req.headers.get('user-agent') || ''
+  return SEARCH_ENGINE_BOT_RE.test(ua)
+}
+
 function makeNonce(): string {
   const bytes = new Uint8Array(16)
   crypto.getRandomValues(bytes)
@@ -244,6 +253,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
+  const isCrawler = isSearchEngineBot(req)
   const ip = ipFromRequest(req)
   const isApi = path.startsWith('/api')
   const isWrite = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
@@ -251,21 +261,25 @@ export async function proxy(req: NextRequest) {
 
   // ─────────────────────────────────────────────────────────────
   // RATE LIMITING — Multi-layer protection
+  // Search engine crawlers bypass rate limiting to avoid 429s
+  // that kill indexation. They still get security headers + CSP.
   // ─────────────────────────────────────────────────────────────
 
   // Layer 1: Global + IP + Endpoint limits
-  const baseCheck = await checkRateLimits({
-    global: true,
-    ip: ip,
-    endpoint: isApi ? path : undefined,
-  })
+  if (!isCrawler) {
+    const baseCheck = await checkRateLimits({
+      global: true,
+      ip: ip,
+      endpoint: isApi ? path : undefined,
+    })
 
-  if (!baseCheck.success) {
-    return createRateLimitResponse(req, baseCheck.result!, baseCheck.failedCheck!)
+    if (!baseCheck.success) {
+      return createRateLimitResponse(req, baseCheck.result!, baseCheck.failedCheck!)
+    }
   }
 
   // Layer 2: Auth endpoint protection (stricter)
-  if (isAuthEndpoint) {
+  if (!isCrawler && isAuthEndpoint) {
     const authCheck = await checkRateLimits({ auth: ip })
     if (!authCheck.success) {
       return createRateLimitResponse(req, authCheck.result!, 'auth')
@@ -378,6 +392,11 @@ export async function proxy(req: NextRequest) {
     'Strict-Transport-Security',
     'max-age=63072000; includeSubDomains; preload'
   )
+  // Signal indexability for public pages
+  if (!path.startsWith('/dashboard') && !path.startsWith('/api') && !path.startsWith('/login')) {
+    res.headers.set('X-Robots-Tag', 'index, follow')
+  }
+
   res.headers.set(
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
