@@ -276,19 +276,28 @@ async function fetchTopScorers() {
 
     const playerIds = statsData.map(s => s.player_id);
 
-    const { data: playersData, error: playersError } = await supabaseAdmin
-      .from('player')
-      .select('id, first_name, last_name, photo')
-      .in('id', playerIds);
+    const [
+      { data: playersData, error: playersError },
+      { data: mpsData },
+      { data: playerTeamsData },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('player')
+        .select('id, first_name, last_name, photo')
+        .in('id', playerIds),
+      supabaseAdmin
+        .from('match_player_stats')
+        .select('player_id, match_id')
+        .in('player_id', playerIds),
+      supabaseAdmin
+        .from('player_teams')
+        .select('player_id, team_id')
+        .in('player_id', playerIds),
+    ]);
 
     if (playersError) {
       return { topScorers: [] };
     }
-
-    const { data: mpsData } = await supabaseAdmin
-      .from('match_player_stats')
-      .select('player_id, match_id')
-      .in('player_id', playerIds);
 
     const matchesByPlayer = new Map<number, Set<number>>();
     for (const row of (mpsData ?? [])) {
@@ -297,11 +306,6 @@ async function fetchTopScorers() {
       }
       matchesByPlayer.get(row.player_id)!.add(row.match_id);
     }
-
-    const { data: playerTeamsData } = await supabaseAdmin
-      .from('player_teams')
-      .select('player_id, team_id')
-      .in('player_id', playerIds);
 
     const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
     const { data: teamsData } = teamIds.length > 0
@@ -358,19 +362,28 @@ async function fetchTopAssisters() {
 
     const playerIds = statsData.map(s => s.player_id);
 
-    const { data: playersData, error: playersError } = await supabaseAdmin
-      .from('player')
-      .select('id, first_name, last_name, photo')
-      .in('id', playerIds);
+    const [
+      { data: playersData, error: playersError },
+      { data: mpsData },
+      { data: playerTeamsData },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('player')
+        .select('id, first_name, last_name, photo')
+        .in('id', playerIds),
+      supabaseAdmin
+        .from('match_player_stats')
+        .select('player_id, match_id')
+        .in('player_id', playerIds),
+      supabaseAdmin
+        .from('player_teams')
+        .select('player_id, team_id')
+        .in('player_id', playerIds),
+    ]);
 
     if (playersError) {
       return { topAssisters: [] };
     }
-
-    const { data: mpsData } = await supabaseAdmin
-      .from('match_player_stats')
-      .select('player_id, match_id')
-      .in('player_id', playerIds);
 
     const matchesByPlayer = new Map<number, Set<number>>();
     for (const row of (mpsData ?? [])) {
@@ -379,11 +392,6 @@ async function fetchTopAssisters() {
       }
       matchesByPlayer.get(row.player_id)!.add(row.match_id);
     }
-
-    const { data: playerTeamsData } = await supabaseAdmin
-      .from('player_teams')
-      .select('player_id, team_id')
-      .in('player_id', playerIds);
 
     const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
     const { data: teamsData } = teamIds.length > 0
@@ -441,22 +449,27 @@ async function fetchTopMvps() {
 
     const playerIds = statsData.map(s => s.player_id);
 
-    const { data: playersData, error: playersError } = await supabaseAdmin
-      .from('player')
-      .select('id, first_name, last_name, photo')
-      .in('id', playerIds);
+    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
+
+    const [
+      { data: playersData, error: playersError },
+      { data: teamsData },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('player')
+        .select('id, first_name, last_name, photo')
+        .in('id', playerIds),
+      teamIds.length > 0
+        ? supabaseAdmin
+            .from('teams')
+            .select('id, name, logo')
+            .in('id', teamIds)
+        : Promise.resolve({ data: [] } as { data: any[] }),
+    ]);
 
     if (playersError) {
       return { topMvps: [] };
     }
-
-    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
-    const { data: teamsData } = teamIds.length > 0
-      ? await supabaseAdmin
-          .from('teams')
-          .select('id, name, logo')
-          .in('id', teamIds)
-      : { data: [] };
 
     const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
 
@@ -504,22 +517,27 @@ async function fetchTopBestGk() {
 
     const playerIds = statsData.map(s => s.player_id);
 
-    const { data: playersData, error: playersError } = await supabaseAdmin
-      .from('player')
-      .select('id, first_name, last_name, photo')
-      .in('id', playerIds);
+    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
+
+    const [
+      { data: playersData, error: playersError },
+      { data: teamsData },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('player')
+        .select('id, first_name, last_name, photo')
+        .in('id', playerIds),
+      teamIds.length > 0
+        ? supabaseAdmin
+            .from('teams')
+            .select('id, name, logo')
+            .in('id', teamIds)
+        : Promise.resolve({ data: [] } as { data: any[] }),
+    ]);
 
     if (playersError) {
       return { topBestGks: [] };
     }
-
-    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
-    const { data: teamsData } = teamIds.length > 0
-      ? await supabaseAdmin
-          .from('teams')
-          .select('id, name, logo')
-          .in('id', teamIds)
-      : { data: [] };
 
     const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
 
