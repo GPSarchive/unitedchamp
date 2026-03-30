@@ -157,7 +157,9 @@ async function fetchTournaments() {
   return withConsoleTiming('db:tournaments', async () => {
     const { data, error } = await supabaseAdmin
       .from('tournaments')
-      .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .select(`id, name, slug, format, season, logo, status, winner_team_id,
+        tournament_teams(count),
+        matches(count)`)
       .order('id', { ascending: false })
       .limit(6);
 
@@ -165,28 +167,12 @@ async function fetchTournaments() {
       return { tournaments: [], tournamentsError: error };
     }
 
-    const ids = (data ?? []).map((t: any) => t.id);
-
-    const [{ data: teamRows }, { data: matchRows }] = await Promise.all([
-      supabaseAdmin.from('tournament_teams').select('tournament_id, team_id').in('tournament_id', ids),
-      supabaseAdmin.from('matches').select('id, tournament_id').in('tournament_id', ids),
-    ]);
-
-    const teamsByTournament = new Map<number, Set<number>>();
-    for (const row of (teamRows ?? [])) {
-      if (!teamsByTournament.has(row.tournament_id)) teamsByTournament.set(row.tournament_id, new Set());
-      teamsByTournament.get(row.tournament_id)!.add(row.team_id);
-    }
-
-    const matchCountByTournament = new Map<number, number>();
-    for (const row of (matchRows ?? [])) {
-      matchCountByTournament.set(row.tournament_id, (matchCountByTournament.get(row.tournament_id) ?? 0) + 1);
-    }
-
     const tournamentsWithCounts = (data ?? []).map((tournament: any) => ({
       ...tournament,
-      teams_count: String(teamsByTournament.get(tournament.id)?.size ?? 0),
-      matches_count: String(matchCountByTournament.get(tournament.id) ?? 0),
+      teams_count: String(tournament.tournament_teams?.[0]?.count ?? 0),
+      matches_count: String(tournament.matches?.[0]?.count ?? 0),
+      tournament_teams: undefined,
+      matches: undefined,
     }));
 
     const signedTournaments = await signTournamentLogos(tournamentsWithCounts as Tournament[]);
@@ -406,7 +392,13 @@ export default async function Home() {
 
       {/* Articles Section */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-        <HomeArticles />
+        <Suspense fallback={
+          <div className="py-20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 border-t-orange-400 animate-spin" />
+          </div>
+        }>
+          <HomeArticles />
+        </Suspense>
       </VantaSection>
 
       {/* Videos Section */}
