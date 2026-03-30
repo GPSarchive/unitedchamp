@@ -18,12 +18,13 @@ import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
-import TopScorers from './home/TopScorers';
 import HomeArticles from './home/HomeArticles';
 import HomeVideos from './home/HomeVideos';
+import TopPlayersSection from './home/TopPlayersSection';
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
+import { Suspense } from 'react';
 
 /**
  * ------------------------------
@@ -262,314 +263,6 @@ async function fetchVideoMatches() {
   });
 }
 
-async function fetchTopScorers() {
-  return withConsoleTiming('db:top-scorers', async () => {
-    const { data: statsData, error: statsError } = await supabaseAdmin
-      .from('player_statistics')
-      .select('player_id, total_goals, total_assists')
-      .order('total_goals', { ascending: false })
-      .limit(3);
-
-    if (statsError || !statsData || statsData.length === 0) {
-      return { topScorers: [] };
-    }
-
-    const playerIds = statsData.map(s => s.player_id);
-
-    const [
-      { data: playersData, error: playersError },
-      { data: mpsData },
-      { data: playerTeamsData },
-    ] = await Promise.all([
-      supabaseAdmin
-        .from('player')
-        .select('id, first_name, last_name, photo')
-        .in('id', playerIds),
-      supabaseAdmin
-        .from('match_player_stats')
-        .select('player_id, match_id')
-        .in('player_id', playerIds),
-      supabaseAdmin
-        .from('player_teams')
-        .select('player_id, team_id')
-        .in('player_id', playerIds),
-    ]);
-
-    if (playersError) {
-      return { topScorers: [] };
-    }
-
-    const matchesByPlayer = new Map<number, Set<number>>();
-    for (const row of (mpsData ?? [])) {
-      if (!matchesByPlayer.has(row.player_id)) {
-        matchesByPlayer.set(row.player_id, new Set());
-      }
-      matchesByPlayer.get(row.player_id)!.add(row.match_id);
-    }
-
-    const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
-    const { data: teamsData } = teamIds.length > 0
-      ? await supabaseAdmin
-          .from('teams')
-          .select('id, name, logo')
-          .in('id', teamIds)
-      : { data: [] };
-
-    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
-    const playerTeamMap = new Map((playerTeamsData ?? []).map(pt => [pt.player_id, pt.team_id]));
-
-    const topScorers = statsData.map(stat => {
-      const player = playersData?.find(p => p.id === stat.player_id);
-      const teamId = playerTeamMap.get(stat.player_id);
-      const team = teamId ? teamMap.get(teamId) : null;
-      const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
-
-      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-
-      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
-      const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
-
-      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
-
-      return {
-        id: stat.player_id,
-        firstName: player?.first_name ?? '',
-        lastName: player?.last_name ?? '',
-        photo: photoUrl,
-        goals: stat.total_goals ?? 0,
-        assists: stat.total_assists ?? 0,
-        matches,
-        teamName: team?.name ?? undefined,
-        teamLogo: teamLogoUrl ?? undefined,
-      };
-    });
-
-    return { topScorers };
-  });
-}
-
-async function fetchTopAssisters() {
-  return withConsoleTiming('db:top-assisters', async () => {
-    const { data: statsData, error: statsError } = await supabaseAdmin
-      .from('player_statistics')
-      .select('player_id, total_goals, total_assists')
-      .order('total_assists', { ascending: false })
-      .limit(3);
-
-    if (statsError || !statsData || statsData.length === 0) {
-      return { topAssisters: [] };
-    }
-
-    const playerIds = statsData.map(s => s.player_id);
-
-    const [
-      { data: playersData, error: playersError },
-      { data: mpsData },
-      { data: playerTeamsData },
-    ] = await Promise.all([
-      supabaseAdmin
-        .from('player')
-        .select('id, first_name, last_name, photo')
-        .in('id', playerIds),
-      supabaseAdmin
-        .from('match_player_stats')
-        .select('player_id, match_id')
-        .in('player_id', playerIds),
-      supabaseAdmin
-        .from('player_teams')
-        .select('player_id, team_id')
-        .in('player_id', playerIds),
-    ]);
-
-    if (playersError) {
-      return { topAssisters: [] };
-    }
-
-    const matchesByPlayer = new Map<number, Set<number>>();
-    for (const row of (mpsData ?? [])) {
-      if (!matchesByPlayer.has(row.player_id)) {
-        matchesByPlayer.set(row.player_id, new Set());
-      }
-      matchesByPlayer.get(row.player_id)!.add(row.match_id);
-    }
-
-    const teamIds = Array.from(new Set((playerTeamsData ?? []).map(pt => pt.team_id).filter(Boolean)));
-    const { data: teamsData } = teamIds.length > 0
-      ? await supabaseAdmin
-          .from('teams')
-          .select('id, name, logo')
-          .in('id', teamIds)
-      : { data: [] };
-
-    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
-    const playerTeamMap = new Map((playerTeamsData ?? []).map(pt => [pt.player_id, pt.team_id]));
-
-    const topAssisters = statsData.map(stat => {
-      const player = playersData?.find(p => p.id === stat.player_id);
-      const teamId = playerTeamMap.get(stat.player_id);
-      const team = teamId ? teamMap.get(teamId) : null;
-      const matches = matchesByPlayer.get(stat.player_id)?.size ?? 0;
-
-      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-
-      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
-      const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
-
-      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
-
-      return {
-        id: stat.player_id,
-        firstName: player?.first_name ?? '',
-        lastName: player?.last_name ?? '',
-        photo: photoUrl,
-        goals: stat.total_goals ?? 0,
-        assists: stat.total_assists ?? 0,
-        matches,
-        teamName: team?.name ?? undefined,
-        teamLogo: teamLogoUrl ?? undefined,
-      };
-    });
-
-    return { topAssisters };
-  });
-}
-
-async function fetchTopMvps() {
-  return withConsoleTiming('db:top-mvps', async () => {
-    const { data: statsData, error: statsError } = await supabaseAdmin
-      .from('player_career_stats')
-      .select('player_id, total_goals, total_assists, total_mvp, total_matches, primary_team_id')
-      .gt('total_mvp', 0)
-      .order('total_mvp', { ascending: false })
-      .limit(3);
-
-    if (statsError || !statsData || statsData.length === 0) {
-      return { topMvps: [] };
-    }
-
-    const playerIds = statsData.map(s => s.player_id);
-
-    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
-
-    const [
-      { data: playersData, error: playersError },
-      { data: teamsData },
-    ] = await Promise.all([
-      supabaseAdmin
-        .from('player')
-        .select('id, first_name, last_name, photo')
-        .in('id', playerIds),
-      teamIds.length > 0
-        ? supabaseAdmin
-            .from('teams')
-            .select('id, name, logo')
-            .in('id', teamIds)
-        : Promise.resolve({ data: [] } as { data: any[] }),
-    ]);
-
-    if (playersError) {
-      return { topMvps: [] };
-    }
-
-    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
-
-    const topMvps = statsData.map(stat => {
-      const player = playersData?.find(p => p.id === stat.player_id);
-      const team = stat.primary_team_id ? teamMap.get(stat.primary_team_id) : null;
-
-      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-
-      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
-      const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
-
-      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
-
-      return {
-        id: stat.player_id,
-        firstName: player?.first_name ?? '',
-        lastName: player?.last_name ?? '',
-        photo: photoUrl,
-        goals: stat.total_goals ?? 0,
-        assists: stat.total_assists ?? 0,
-        matches: stat.total_matches ?? 0,
-        mvpAwards: stat.total_mvp ?? 0,
-        teamName: team?.name ?? undefined,
-        teamLogo: teamLogoUrl ?? undefined,
-      };
-    });
-
-    return { topMvps };
-  });
-}
-
-async function fetchTopBestGk() {
-  return withConsoleTiming('db:top-bestgk', async () => {
-    const { data: statsData, error: statsError } = await supabaseAdmin
-      .from('player_career_stats')
-      .select('player_id, total_goals, total_assists, total_best_gk, total_matches, primary_team_id')
-      .gt('total_best_gk', 0)
-      .order('total_best_gk', { ascending: false })
-      .limit(3);
-
-    if (statsError || !statsData || statsData.length === 0) {
-      return { topBestGks: [] };
-    }
-
-    const playerIds = statsData.map(s => s.player_id);
-
-    const teamIds = Array.from(new Set(statsData.map(s => s.primary_team_id).filter(Boolean)));
-
-    const [
-      { data: playersData, error: playersError },
-      { data: teamsData },
-    ] = await Promise.all([
-      supabaseAdmin
-        .from('player')
-        .select('id, first_name, last_name, photo')
-        .in('id', playerIds),
-      teamIds.length > 0
-        ? supabaseAdmin
-            .from('teams')
-            .select('id, name, logo')
-            .in('id', teamIds)
-        : Promise.resolve({ data: [] } as { data: any[] }),
-    ]);
-
-    if (playersError) {
-      return { topBestGks: [] };
-    }
-
-    const teamMap = new Map((teamsData ?? []).map(t => [t.id, t]));
-
-    const topBestGks = statsData.map(stat => {
-      const player = playersData?.find(p => p.id === stat.player_id);
-      const team = stat.primary_team_id ? teamMap.get(stat.primary_team_id) : null;
-
-      const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-
-      const hasRealPhoto = player?.photo && player.photo !== '/player-placeholder.jpg';
-      const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(player.photo, ImageType.PLAYER) : null;
-
-      const photoUrl = playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg';
-
-      return {
-        id: stat.player_id,
-        firstName: player?.first_name ?? '',
-        lastName: player?.last_name ?? '',
-        photo: photoUrl,
-        goals: stat.total_goals ?? 0,
-        assists: stat.total_assists ?? 0,
-        matches: stat.total_matches ?? 0,
-        bestGkAwards: stat.total_best_gk ?? 0,
-        teamName: team?.name ?? undefined,
-        teamLogo: teamLogoUrl ?? undefined,
-      };
-    });
-
-    return { topBestGks };
-  });
-}
-
 /**
  * ------------------------------
  * Mapping functions
@@ -643,15 +336,11 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { topScorers }, { topAssisters }, { topMvps }, { topBestGks }, { videoMatches }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { videoMatches }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
     fetchRecentContentCount(),
-    fetchTopScorers(),
-    fetchTopAssisters(),
-    fetchTopMvps(),
-    fetchTopBestGk(),
     fetchVideoMatches()
   ]);
 
@@ -722,9 +411,15 @@ export default async function Home() {
         <HomeVideos videos={videoMatches} />
       </GridBgSection>
 
-      {/* Top Players Section */}
+      {/* Top Players Section — lazy loaded via Suspense */}
       <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
-        <TopScorers scorers={topScorers} assisters={topAssisters} mvps={topMvps} bestGks={topBestGks} />
+        <Suspense fallback={
+          <div className="py-20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full border-2 border-orange-400/40 border-t-orange-400 animate-spin" />
+          </div>
+        }>
+          <TopPlayersSection />
+        </Suspense>
       </VantaSection>
 
       {/* Features Section — "Η ομάδα σε περιμένει" */}
