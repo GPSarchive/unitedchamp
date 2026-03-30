@@ -1,4 +1,6 @@
 // app/page.tsx
+export const revalidate = 300; // ISR – regenerate every 5 minutes
+
 import Image from 'next/image';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { headers } from 'next/headers';
@@ -233,7 +235,7 @@ async function fetchVideoMatches() {
       .neq('video_url', '')
       .order('match_date', { ascending: false })
       .order('id',         { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (error || !data) {
       return { videoMatches: [] };

@@ -52,5 +52,12 @@ export async function GET(req: NextRequest) {
       ? { cursorDate: last.match_date, cursorId: last.id }
       : null;
 
-  return NextResponse.json({ videos: items, nextCursor });
+  return NextResponse.json(
+    { videos: items, nextCursor },
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      },
+    }
+  );
 }

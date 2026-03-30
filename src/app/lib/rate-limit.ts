@@ -23,6 +23,15 @@ export async function checkLimit(
   limit: number,
   windowSec: number
 ): Promise<LimitResult> {
+  if (!process.env.KV_REST_API_URL || process.env.NODE_ENV === 'development') {
+    return {
+      success: true,
+      limit,
+      remaining: limit,
+      reset: Date.now() + windowSec * 1000,
+    }
+  }
+
   const nowSec = Math.floor(Date.now() / 1000)
   const bucket = Math.floor(nowSec / windowSec)
   const kvKey = `rl:v1:${key}:${bucket}`

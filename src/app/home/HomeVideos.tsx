@@ -55,13 +55,14 @@ function getEmbedUrl(videoId: string): string {
 export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
   const [videos, setVideos] = useState<VideoMatch[]>(initialVideos);
   const [nextCursor, setNextCursor] = useState<Cursor>(
-    // The server sends exactly 10 items when there may be more; assume there can be
-    // more if we received a full page of 10.
-    initialVideos.length === 10
-      ? { cursorDate: initialVideos[9].match_date ?? '', cursorId: initialVideos[9].id }
+    // The server sends exactly 20 items when there may be more; assume there can be
+    // more if we received a full page of 20.
+    initialVideos.length === 20
+      ? { cursorDate: initialVideos[19].match_date ?? '', cursorId: initialVideos[19].id }
       : null
   );
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [page, setPage] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
@@ -98,10 +99,18 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
     setPage(nextPage);
     setPlayingId(null);
 
-    // Auto-fetch more when reaching the last page of loaded videos
-    const nextStart = (nextPage + 1) * ITEMS_PER_PAGE;
-    if (nextCursor && !loadingMore && nextStart >= videos.length) {
+    if (!nextCursor || loadingMore) return;
+
+    if (!hasFetchedOnce) {
+      // First time the user hits next — kick off the first background fetch
+      setHasFetchedOnce(true);
       loadMore();
+    } else {
+      // After first fetch, prefetch when 4 pages from the end of loaded videos
+      const remainingPages = totalPages - 1 - nextPage;
+      if (remainingPages <= 4) {
+        loadMore();
+      }
     }
   };
 
@@ -292,12 +301,6 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
           </div>
         )}
 
-        {/* Loading indicator for seamless fetching */}
-        {loadingMore && (
-          <div className="mt-6 flex justify-center">
-            <span className="text-sm text-gray-500 tracking-widest uppercase">Φόρτωση…</span>
-          </div>
-        )}
       </div>
     </section>
   );
