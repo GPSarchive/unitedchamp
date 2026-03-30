@@ -67,6 +67,15 @@ const MvpCard = forwardRef<HTMLDivElement, MvpCardProps>(
 
         <div className="relative flex h-full w-full z-10">
 
+          {/* ─── Rank Badge: top-right corner ─── */}
+          <div className="absolute top-5 right-0 z-20">
+            <div className={`relative w-12 h-14 transform skew-x-[-12deg] flex flex-col items-center justify-center ${rankStyle.badge} shadow-sm`}>
+              <span className={`text-2xl font-black ${rankStyle.rankColor} leading-none skew-x-[12deg]`}>
+                {index + 1}
+              </span>
+            </div>
+          </div>
+
           {/* ─── Left: Player Image ─── */}
           <div className="relative w-[42%] h-full overflow-hidden flex-shrink-0 group border-r border-white/5">
             <Image
@@ -96,23 +105,14 @@ const MvpCard = forwardRef<HTMLDivElement, MvpCardProps>(
           {/* ─── Right: Stats ─── */}
           <div className="flex-1 flex flex-col justify-between py-8 pr-8 pl-6">
 
-            {/* Name & Rank */}
-            <div className="flex items-start justify-between w-full">
-              <div className="flex flex-col">
-                <p className="text-sm font-semibold text-white/40 tracking-[0.2em] mb-1 uppercase">
-                  {player.firstName}
-                </p>
-                <h3 className="text-4xl lg:text-5xl font-black text-white uppercase tracking-tight leading-[0.9]">
-                  {player.lastName}
-                </h3>
-              </div>
-              <div className="relative mt-1">
-                <div className={`relative w-12 h-14 transform skew-x-[-12deg] flex flex-col items-center justify-center ${rankStyle.badge} shadow-sm`}>
-                  <span className={`text-2xl font-black ${rankStyle.rankColor} leading-none skew-x-[12deg]`}>
-                    {index + 1}
-                  </span>
-                </div>
-              </div>
+            {/* Name */}
+            <div className="flex flex-col">
+              <p className="text-sm font-semibold text-white/40 tracking-[0.2em] mb-1 uppercase">
+                {player.firstName}
+              </p>
+              <h3 className="text-4xl lg:text-5xl font-black text-white uppercase tracking-tight leading-[0.9]">
+                {player.lastName}
+              </h3>
             </div>
 
             {/* Divider */}
