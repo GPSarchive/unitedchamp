@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 type VideoMatch = {
@@ -20,7 +20,9 @@ type HomeVideosProps = {
   videos: VideoMatch[];
 };
 
-const ITEMS_PER_PAGE = 3;
+type Cursor = { cursorDate: string; cursorId: number } | null;
+
+const ITEMS_PER_PAGE = 2;
 
 function extractYouTubeId(url: string): string | null {
   try {
@@ -50,9 +52,36 @@ function getEmbedUrl(videoId: string): string {
   return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
 }
 
-export default function HomeVideos({ videos }: HomeVideosProps) {
+export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
+  const [videos, setVideos] = useState<VideoMatch[]>(initialVideos);
+  const [nextCursor, setNextCursor] = useState<Cursor>(
+    // The server sends exactly 10 items when there may be more; assume there can be
+    // more if we received a full page of 10.
+    initialVideos.length === 10
+      ? { cursorDate: initialVideos[9].match_date ?? '', cursorId: initialVideos[9].id }
+      : null
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({
+        cursorDate: nextCursor.cursorDate,
+        cursorId: String(nextCursor.cursorId),
+      });
+      const res = await fetch(`/api/matches/videos?${params}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setVideos((prev) => [...prev, ...(json.videos ?? [])]);
+      setNextCursor(json.nextCursor ?? null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextCursor, loadingMore]);
 
   if (videos.length === 0) return null;
 
@@ -65,8 +94,15 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
     setPlayingId(null);
   };
   const next = () => {
-    setPage((p) => Math.min(totalPages - 1, p + 1));
+    const nextPage = Math.min(totalPages - 1, page + 1);
+    setPage(nextPage);
     setPlayingId(null);
+
+    // Auto-fetch more when reaching the last page of loaded videos
+    const nextStart = (nextPage + 1) * ITEMS_PER_PAGE;
+    if (nextCursor && !loadingMore && nextStart >= videos.length) {
+      loadMore();
+    }
   };
 
   return (
@@ -98,7 +134,7 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
         </div>
 
         {/* 2-col grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {visible.map((match) => {
             const videoId = extractYouTubeId(match.video_url);
             if (!videoId) return null;
@@ -247,12 +283,19 @@ export default function HomeVideos({ videos }: HomeVideosProps) {
 
             <button
               onClick={next}
-              disabled={page === totalPages - 1}
+              disabled={page === totalPages - 1 && !nextCursor}
               aria-label="Next page"
               className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
+          </div>
+        )}
+
+        {/* Loading indicator for seamless fetching */}
+        {loadingMore && (
+          <div className="mt-6 flex justify-center">
+            <span className="text-sm text-gray-500 tracking-widest uppercase">Φόρτωση…</span>
           </div>
         )}
       </div>

@@ -9,7 +9,6 @@
    import type { CalendarApi, EventInput, EventContentArg } from '@fullcalendar/core';
    import timeGridPlugin from '@fullcalendar/timegrid';
    import interactionPlugin from '@fullcalendar/interaction';
-   import { supabase } from '@/app/lib/supabase/supabaseClient';
    import { ChevronLeft, ChevronRight, RotateCw, CalendarDays as LCDays } from 'lucide-react';
    import EventPillShrimp, { ClusterItem as ShrimpItem } from './EventPillShrimp';
    import '@/styles/fullcalendar-overrides.css';
@@ -354,39 +353,41 @@
        };
      }, []);
    
-     const fetchFromMatches = useCallback(async () => {
-       if (!fetchFromDb) return;
+     // Tracks the date window already loaded so we avoid redundant fetches.
+     const loadedRangeRef = useRef<{ after: string; before: string } | null>(null);
+
+     const fetchWindowFromApi = useCallback(async (after: string, before: string) => {
        setLoading(true);
        setError(null);
-   
-       const { data, error } = await supabase
-         .from('matches')
-         .select(
-           `id, match_date, status, team_a_score, team_b_score,
-             teamA:teams!matches_team_a_id_fkey (name, logo),
-             teamB:teams!matches_team_b_id_fkey (name, logo)`
-         )
-         .order('match_date', { ascending: true });
-   
-       if (error) {
-         setError(error.message);
-         setEvents([]);
+
+       let res: Response;
+       try {
+         res = await fetch(`/api/matches/calendar?after=${encodeURIComponent(after)}&before=${encodeURIComponent(before)}`);
+       } catch {
+         setError('Network error loading matches');
          setLoading(false);
          return;
        }
-   
+
+       if (!res.ok) {
+         setError(`Failed to load matches (${res.status})`);
+         setLoading(false);
+         return;
+       }
+
+       const json = await res.json();
        const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? v[0] ?? null : v);
-   
-       const built: EventInput[] = (data ?? []).map((m: any) => {
+
+       const built: EventInput[] = (json.matches ?? []).map((m: any) => {
          const a = one(m.teamA) as TeamLiteLocal | null;
          const b = one(m.teamB) as TeamLiteLocal | null;
-   
+
          const start = toNaiveIsoClient(m.match_date);
          const end = endIsoPlusMinutes(m.match_date, 50);
-   
+
          const home = normNum(m.team_a_score);
          const away = normNum(m.team_b_score);
-   
+
          return {
            id: String(m.id),
            title: `${a?.name ?? 'Unknown'} vs ${b?.name ?? 'Unknown'}`,
@@ -404,14 +405,21 @@
            },
          };
        });
-   
+
+       loadedRangeRef.current = { after, before };
        setEvents(collapseOverlapsToCompositeEvents(built));
        setLoading(false);
-     }, [fetchFromDb]);
-   
+     }, []);
+
      useEffect(() => {
-       if (fetchFromDb) fetchFromMatches();
-     }, [fetchFromDb, fetchFromMatches]);
+       if (!fetchFromDb) return;
+       const now = new Date();
+       const start = new Date(now);
+       start.setDate(now.getDate() - 60);
+       const end = new Date(now);
+       end.setDate(now.getDate() + 90);
+       fetchWindowFromApi(start.toISOString(), end.toISOString());
+     }, [fetchFromDb, fetchWindowFromApi]);
    
      const getApi = () => calendarRef.current?.getApi() as CalendarApi | undefined;
      const goPrev = () => getApi()?.prev();
@@ -610,14 +618,34 @@
                    slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
                    datesSet={(arg) => {
                      setTitle(arg.view.title);
-   
+
                      const todayStartOfWeek = new Date(startOfCurrentWeek);
                      todayStartOfWeek.setHours(0, 0, 0, 0);
-   
+
                      const viewStart = new Date(arg.start);
                      viewStart.setHours(0, 0, 0, 0);
-   
+
                      setCanGoPrev(viewStart > todayStartOfWeek);
+
+                     // When fetchFromDb is true, load a new window if the view
+                     // falls outside what's already been fetched.
+                     if (fetchFromDb) {
+                       const range = loadedRangeRef.current;
+                       const viewEnd = new Date(arg.end);
+                       if (
+                         !range ||
+                         viewStart < new Date(range.after) ||
+                         viewEnd > new Date(range.before)
+                       ) {
+                         // Expand to ±60/90 days from the centre of the new view
+                         const centre = new Date((viewStart.getTime() + viewEnd.getTime()) / 2);
+                         const after  = new Date(centre);
+                         after.setDate(centre.getDate() - 60);
+                         const before = new Date(centre);
+                         before.setDate(centre.getDate() + 90);
+                         fetchWindowFromApi(after.toISOString(), before.toISOString());
+                       }
+                     }
                    }}
                  />
                </div>

@@ -116,6 +116,12 @@ async function fetchSingleUser() {
 async function fetchMatchesWithTeams() {
   type SupaResp = { data: MatchRowRaw[] | null; error: { message: string } | null };
   return withConsoleTiming('db:matches', async () => {
+    const now = new Date();
+    const windowStart = new Date(now);
+    windowStart.setDate(now.getDate() - 60); // 2 months back
+    const windowEnd = new Date(now);
+    windowEnd.setDate(now.getDate() + 90);   // 3 months forward
+
     const { data, error } = (await supabaseAdmin
       .from('matches')
       .select(
@@ -136,7 +142,10 @@ async function fetchMatchesWithTeams() {
         tournament:tournament_id (id, name, logo)
       `
       )
-      .order('match_date', { ascending: true })) as unknown as SupaResp;
+      .gte('match_date', windowStart.toISOString())
+      .lte('match_date', windowEnd.toISOString())
+      .order('match_date', { ascending: true })
+      .order('id',         { ascending: true })) as unknown as SupaResp;
     return { rawMatches: data ?? [], matchesError: error };
   });
 }
@@ -222,7 +231,9 @@ async function fetchVideoMatches() {
       )
       .not('video_url', 'is', null)
       .neq('video_url', '')
-      .order('match_date', { ascending: false });
+      .order('match_date', { ascending: false })
+      .order('id',         { ascending: false })
+      .limit(10);
 
     if (error || !data) {
       return { videoMatches: [] };
