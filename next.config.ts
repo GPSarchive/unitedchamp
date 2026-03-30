@@ -87,6 +87,13 @@ remotePatterns.push(
   { protocol: "https", hostname: "avatars.githubusercontent.com", pathname: "/**" },
 );
 
+/**
+ * 5) YouTube thumbnails
+ */
+remotePatterns.push(
+  { protocol: "https", hostname: "img.youtube.com", pathname: "/vi/**" },
+);
+
 // Domains allowlist (kept for compatibility with older Next behavior)
 const domains = Array.from(
   new Set(

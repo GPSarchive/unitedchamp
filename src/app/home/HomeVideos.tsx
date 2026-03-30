@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 
 type VideoMatch = {
@@ -174,10 +175,12 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                     />
                   ) : (
                     <>
-                      <img
+                      <Image
                         src={getThumbnailUrl(videoId)}
                         alt={`${match.team_a_name ?? ""} vs ${match.team_b_name ?? ""}`}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
                       />
                       {/* Dark overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
@@ -224,10 +227,12 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {match.team_a_logo && (
-                        <img
+                        <Image
                           src={match.team_a_logo}
                           alt=""
-                          className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover ring-1 ring-white/20 flex-shrink-0"
+                          width={24}
+                          height={24}
+                          className="rounded-full object-cover ring-1 ring-white/20 flex-shrink-0"
                         />
                       )}
                       <span className="text-sm sm:text-base font-semibold text-white truncate">
@@ -242,10 +247,12 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                         {match.team_b_name ?? "TBD"}
                       </span>
                       {match.team_b_logo && (
-                        <img
+                        <Image
                           src={match.team_b_logo}
                           alt=""
-                          className="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover ring-1 ring-white/20 flex-shrink-0"
+                          width={24}
+                          height={24}
+                          className="rounded-full object-cover ring-1 ring-white/20 flex-shrink-0"
                         />
                       )}
                     </div>

@@ -165,26 +165,29 @@ async function fetchTournaments() {
       return { tournaments: [], tournamentsError: error };
     }
 
-    const tournamentsWithCounts = await Promise.all(
-      (data ?? []).map(async (tournament) => {
-        const { data: teamRows } = await supabaseAdmin
-          .from('tournament_teams')
-          .select('team_id')
-          .eq('tournament_id', tournament.id);
-        const teamsCount = new Set((teamRows ?? []).map((r: any) => r.team_id)).size;
+    const ids = (data ?? []).map((t: any) => t.id);
 
-        const { count: matchesCount } = await supabaseAdmin
-          .from('matches')
-          .select('*', { count: 'exact', head: true })
-          .eq('tournament_id', tournament.id);
+    const [{ data: teamRows }, { data: matchRows }] = await Promise.all([
+      supabaseAdmin.from('tournament_teams').select('tournament_id, team_id').in('tournament_id', ids),
+      supabaseAdmin.from('matches').select('id, tournament_id').in('tournament_id', ids),
+    ]);
 
-        return {
-          ...tournament,
-          teams_count: String(teamsCount ?? 0),
-          matches_count: String(matchesCount ?? 0),
-        };
-      })
-    );
+    const teamsByTournament = new Map<number, Set<number>>();
+    for (const row of (teamRows ?? [])) {
+      if (!teamsByTournament.has(row.tournament_id)) teamsByTournament.set(row.tournament_id, new Set());
+      teamsByTournament.get(row.tournament_id)!.add(row.team_id);
+    }
+
+    const matchCountByTournament = new Map<number, number>();
+    for (const row of (matchRows ?? [])) {
+      matchCountByTournament.set(row.tournament_id, (matchCountByTournament.get(row.tournament_id) ?? 0) + 1);
+    }
+
+    const tournamentsWithCounts = (data ?? []).map((tournament: any) => ({
+      ...tournament,
+      teams_count: String(teamsByTournament.get(tournament.id)?.size ?? 0),
+      matches_count: String(matchCountByTournament.get(tournament.id) ?? 0),
+    }));
 
     const signedTournaments = await signTournamentLogos(tournamentsWithCounts as Tournament[]);
 
