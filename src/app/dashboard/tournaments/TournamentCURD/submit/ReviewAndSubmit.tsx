@@ -373,18 +373,19 @@ export default function ReviewAndSubmit({
   };
 
   return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-4">
-      <h3 className="text-xl font-semibold text-cyan-200">Review</h3>
-      <ul className="list-disc pl-5 text-sm text-white/85">
-        <li>Name: {payload.tournament.name}</li>
-        <li>Format: {payload.tournament.format}</li>
-        <li>Stages: {payload.stages.length}</li>
-        <li>Teams: {teams.length}</li>
-        <li>Preview/Live matches in state: {draftMatches.length}</li>
-      </ul>
+    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 space-y-5 shadow-xl">
+      <h3 className="text-lg font-bold text-white tracking-tight">Review</h3>
+      <div className="h-px bg-gradient-to-r from-indigo-500/30 via-white/5 to-transparent" />
+      <div className="space-y-1 text-sm text-zinc-300">
+        <div className="flex gap-2"><span className="text-zinc-500 w-24">Name:</span><span className="text-white font-medium">{payload.tournament.name}</span></div>
+        <div className="flex gap-2"><span className="text-zinc-500 w-24">Format:</span><span className="text-white font-medium">{payload.tournament.format}</span></div>
+        <div className="flex gap-2"><span className="text-zinc-500 w-24">Stages:</span><span className="text-white font-medium">{payload.stages.length}</span></div>
+        <div className="flex gap-2"><span className="text-zinc-500 w-24">Teams:</span><span className="text-white font-medium">{teams.length}</span></div>
+        <div className="flex gap-2"><span className="text-zinc-500 w-24">Matches:</span><span className="text-white font-medium">{draftMatches.length}</span></div>
+      </div>
 
       {warningsUi.length > 0 && (
-        <pre className="whitespace-pre-wrap text-amber-300/90 text-sm bg-amber-500/10 border border-amber-400/20 rounded-md p-2">
+        <pre className="whitespace-pre-wrap text-amber-300 text-sm bg-amber-500/10 border border-amber-400/20 rounded-lg p-3">
           ⚠ Warnings:
           {"\n"}
           {warningsUi.join("\n")}
@@ -392,7 +393,7 @@ export default function ReviewAndSubmit({
       )}
 
       {error && (
-        <pre className="whitespace-pre-wrap text-rose-300 text-sm bg-rose-500/10 border border-rose-400/20 rounded-md p-2">
+        <pre className="whitespace-pre-wrap text-rose-300 text-sm bg-rose-500/10 border border-rose-500/20 rounded-lg p-3">
           ⚠ {error}
         </pre>
       )}
@@ -400,7 +401,7 @@ export default function ReviewAndSubmit({
       <div className="flex gap-2">
         <button
           onClick={onBack}
-          className="px-3 py-2 rounded-md border border-white/10 bg-slate-900/40 text-white/90 hover:bg-cyan-500/5 hover:border-cyan-400/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         >
           Back
         </button>
@@ -409,7 +410,7 @@ export default function ReviewAndSubmit({
           onClick={submit}
           disabled={pending || busy}
           aria-busy={pending || busy}
-          className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60"
+          className="px-5 py-2 rounded-lg text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
           title={!anyDirty && mode === "edit" ? "No changes to save" : undefined}
         >
           {pending || busy

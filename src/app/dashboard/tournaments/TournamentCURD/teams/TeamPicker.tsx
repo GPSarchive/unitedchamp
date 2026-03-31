@@ -185,11 +185,11 @@ export default function TeamPicker({
 
   // ---- UI (aurora theme, consistent with your palette) ----
   return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-4">
+    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 space-y-5 shadow-xl">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-cyan-200">Teams</h3>
+        <h3 className="text-lg font-bold text-white tracking-tight">Teams</h3>
         <div className="flex items-center gap-2">
-          <label className="inline-flex items-center gap-2 px-2 py-1 rounded-md border border-white/10 bg-slate-900/40 text-white/90">
+          <label className="inline-flex items-center gap-2 px-2 py-1 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-300 text-sm">
             <input
               type="checkbox"
               checked={showArchived}
@@ -199,31 +199,32 @@ export default function TeamPicker({
           </label>
           <button
             onClick={load}
-            className="px-2.5 py-1.5 rounded-md border border-white/10 bg-slate-900/40 text-white/90 hover:bg-cyan-500/5 hover:border-cyan-400/30 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-200 hover:bg-zinc-800 hover:border-zinc-500 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
           >
             Refresh
           </button>
         </div>
       </div>
+      <div className="h-px bg-gradient-to-r from-indigo-500/30 via-white/5 to-transparent" />
 
       {/* Search + bulk add */}
       <div className="grid gap-3 md:grid-cols-3">
         <input
-          className="md:col-span-2 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="md:col-span-2 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors"
           placeholder="Search by name or #id…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
         <div className="flex gap-2">
           <input
-            className="flex-1 bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors"
             placeholder="Bulk IDs (comma/space)"
             value={bulk}
             onChange={(e) => setBulk(e.target.value)}
           />
           <button
             onClick={bulkAdd}
-            className="px-3 py-2 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 transition-colors"
           >
             Add
           </button>
@@ -234,19 +235,19 @@ export default function TeamPicker({
       <div className="flex items-center gap-2">
         <button
           onClick={addAllFiltered}
-          className="px-3 py-1.5 rounded-md border border-emerald-400/40 text-emerald-200 bg-emerald-600/20 hover:bg-emerald-600/30 transition-colors"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 transition-colors"
         >
           Select all (filtered)
         </button>
         <button
           onClick={clearAll}
-          className="px-3 py-1.5 rounded-md border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 transition-colors"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 transition-colors"
         >
           Clear selected
         </button>
-        <div className="ml-auto text-sm text-white/70">
-          Selected: <span className="text-white">{teams.length}</span> / Available:{" "}
-          <span className="text-white">
+        <div className="ml-auto text-sm text-zinc-400">
+          Selected: <span className="text-white font-medium">{teams.length}</span> / Available:{" "}
+          <span className="text-white font-medium">
             {filtered.length}
             {loading ? "…" : ""}
           </span>
@@ -254,9 +255,9 @@ export default function TeamPicker({
       </div>
 
       {/* Two columns: available list (left) and selected list (right) */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-cyan-400/15 bg-black/30">
-          <div className="px-3 py-2 text-cyan-200/90 border-b border-cyan-400/10">Available</div>
+      <div className="grid gap-4 lg:grid-cols-2 mt-1">
+        <div className="rounded-xl border border-white/8 bg-zinc-900/50 overflow-hidden">
+          <div className="px-3 py-2.5 text-xs font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/8 bg-zinc-900">Available</div>
           {loading ? (
             <div className="p-3 text-white/70">Loading…</div>
           ) : error ? (
@@ -269,11 +270,11 @@ export default function TeamPicker({
                 const selected = isSelected(teams, t.id);
                 const archived = !!t.deleted_at;
                 return (
-                  <li key={t.id} className="px-3 py-2 flex items-center gap-3">
+                  <li key={t.id} className="px-3 py-2.5 flex items-center gap-3 hover:bg-white/4 transition-colors">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={t.logo ?? ""} alt={t.name}
-                      className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 bg-white/5"
+                      className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10 bg-zinc-800"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-white/90">
@@ -283,7 +284,7 @@ export default function TeamPicker({
                         <div className="text-xs text-amber-300/80">Archived</div>
                       )}
                     </div>
-                    <label className="inline-flex items-center gap-2 text-sm">
+                    <label className="inline-flex items-center gap-2 text-xs text-zinc-300">
                       <input
                         type="checkbox"
                         checked={selected}
@@ -298,8 +299,8 @@ export default function TeamPicker({
           )}
         </div>
 
-        <div className="rounded-lg border border-cyan-400/15 bg-black/30">
-          <div className="px-3 py-2 text-cyan-200/90 border-b border-cyan-400/10">Selected</div>
+        <div className="rounded-xl border border-white/8 bg-zinc-900/50 overflow-hidden">
+          <div className="px-3 py-2.5 text-xs font-semibold text-zinc-400 uppercase tracking-wider border-b border-white/8 bg-zinc-900">Selected</div>
           {teams.length === 0 ? (
             <div className="p-3 text-white/70">Nothing selected yet.</div>
           ) : (
@@ -309,11 +310,11 @@ export default function TeamPicker({
                 const name = (t as any).name ?? byId.get(t.id)?.name ?? `#${t.id}`;
                 const logo = (t as any).logo ?? byId.get(t.id)?.logo ?? "";
                 return (
-                  <li key={t.id} className="px-3 py-2 flex items-center gap-3">
+                  <li key={t.id} className="px-3 py-2.5 flex items-center gap-3 hover:bg-white/4 transition-colors">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={logo} alt={name}
-                      className="h-7 w-7 rounded-full object-contain ring-1 ring-white/10 bg-white/5"
+                      className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10 bg-zinc-800"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-white/90">
@@ -322,7 +323,7 @@ export default function TeamPicker({
                     </div>
                     <button
                       onClick={() => removeOne(t.id)}
-                      className="px-2 py-1 rounded-md border border-rose-400/30 text-rose-200 hover:bg-rose-500/10 text-xs"
+                      className="px-2 py-1 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 transition-colors text-xs"
                     >
                       Remove
                     </button>

@@ -51,7 +51,7 @@ export default function HeaderBar({
               setStageIdx(v);
               setGroupIdx(null);
             }}
-            className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white"
+            className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-colors"
           >
             {(payload.stages as any).map((s: any, i: number) => (
               <option key={i} value={i}>
@@ -65,7 +65,7 @@ export default function HeaderBar({
           <select
             value={groupIdx ?? 0}
             onChange={(e) => setGroupIdx(Number(e.target.value))}
-            className="bg-slate-950 border border-cyan-400/20 rounded-md px-2 py-1 text-white"
+            className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/60 transition-colors"
           >
             {groups.map((g: any, i: number) => (
               <option key={g.name + i} value={i}>
@@ -79,7 +79,7 @@ export default function HeaderBar({
       <div className="flex flex-wrap gap-2">
         {!isKOFromPrevious && (
           <button
-            className="px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-200 hover:bg-zinc-700 transition-colors disabled:opacity-50 focus:outline-none"
             onClick={onRegenerateHere}
             disabled={busy}
             title="Επαναδημιουργία αυτού του σταδίου (ή ομίλου) κρατώντας τους κλειδωμένους αγώνες"
@@ -90,7 +90,7 @@ export default function HeaderBar({
 
         {isKOFromPrevious && (
           <button
-            className="px-3 py-1.5 rounded-md border border-amber-400/40 text-amber-200 hover:bg-amber-500/10 disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 transition-colors disabled:opacity-50 focus:outline-none"
             onClick={onReseedKO}
             disabled={busy || !hasKOStageDbId || !hasSrcStageDbId}
             title={
@@ -107,7 +107,7 @@ export default function HeaderBar({
 
         {isGroups && (
           <button
-            className="px-3 py-1.5 rounded-md border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10"
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 transition-colors focus:outline-none"
             onClick={onAutoAssignRR}
             title="Αυτόματη ανάθεση ομάδων στους αγώνες του ομίλου (round-robin) – τοποθετεί αλλαγές ως εκκρεμείς"
           >
@@ -115,7 +115,7 @@ export default function HeaderBar({
           </button>
         )}
 
-        <button className="px-3 py-1.5 rounded-md border border-white/15 text-white hover:bg-white/10" onClick={onAddRow} disabled={busy}>
+        <button className="px-3 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-200 hover:bg-zinc-700 transition-colors focus:outline-none" onClick={onAddRow} disabled={busy}>
           + Προσθήκη Αγώνα
         </button>
       </div>

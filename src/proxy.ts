@@ -30,9 +30,18 @@ const appOrigin = originFrom(APP_ORIGIN)
 const SEARCH_ENGINE_BOT_RE =
   /googlebot|bingbot|yandexbot|baiduspider|duckduckbot|slurp|msnbot|apis-google|mediapartners-google|adsbot-google/i
 
+// Social / preview crawlers that follow redirects aggressively
+const SOCIAL_BOT_RE =
+  /facebookexternalhit|meta-externalagent|meta-webindexer|Twitterbot|LinkedInBot|WhatsApp|Pinterestbot|Slackbot|Discordbot|TelegramBot/i
+
 function isSearchEngineBot(req: NextRequest): boolean {
   const ua = req.headers.get('user-agent') || ''
   return SEARCH_ENGINE_BOT_RE.test(ua)
+}
+
+function isSocialBot(req: NextRequest): boolean {
+  const ua = req.headers.get('user-agent') || ''
+  return SOCIAL_BOT_RE.test(ua)
 }
 
 function makeNonce(): string {
@@ -251,6 +260,13 @@ export async function proxy(req: NextRequest) {
 
   if (isStatic || method === 'OPTIONS') {
     return NextResponse.next()
+  }
+
+  // Social crawlers (Facebook, Twitter, etc.) hitting protected routes
+  // get a 403 immediately — no Supabase call, no redirect to /login,
+  // no invocation waste. They have no session and would just loop.
+  if (isSocialBot(req) && path.startsWith('/dashboard')) {
+    return new NextResponse('Forbidden', { status: 403 })
   }
 
   const isCrawler = isSearchEngineBot(req)

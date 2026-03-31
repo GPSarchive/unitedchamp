@@ -43,16 +43,16 @@ type CatalogRow = { id: number; name: string; logo?: string | null };
 
 // ----------------- Local style helpers (black & white only) -----------------
 const fieldBase =
-  "w-full rounded-lg bg-black border border-gray-700 px-3 py-2 text-white placeholder-gray-400 " +
-  "focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40";
+  "w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-white placeholder-zinc-500 " +
+  "focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors";
 
 const selectBase = fieldBase;
 
 const btnGhost =
-  "px-2.5 py-1.5 rounded-lg text-sm text-white/90 hover:text-white hover:bg-white/10 " +
-  "border border-gray-700 focus:outline-none focus:ring-2 focus:ring-white/30";
+  "px-2.5 py-1.5 rounded-lg text-sm font-medium text-zinc-200 hover:text-white hover:bg-zinc-700 " +
+  "border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors";
 
-const helperText = "mt-1 text-xs text-gray-400";
+const helperText = "mt-1 text-xs text-zinc-500";
 
 export default function StageCard({
   value,
@@ -319,22 +319,22 @@ export default function StageCard({
   const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-gradient-to-br from-black to-neutral-900 p-4 sm:p-5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] backdrop-blur">
+    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 sm:p-6 shadow-xl space-y-5">
       {/* Actions */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-xs uppercase tracking-wide text-gray-400">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">
           Στάδιο <span className="text-white">#{effectiveStageIdx + 1}</span>
         </div>
         <div className="flex gap-2">
-          <button onClick={onMoveUp} className={btnGhost} title="Move up" aria-label="Move up">↑</button>
-          <button onClick={onMoveDown} className={btnGhost} title="Move down" aria-label="Move down">↓</button>
+          <button onClick={onMoveUp} className="px-2 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors" title="Move up" aria-label="Move up">↑</button>
+          <button onClick={onMoveDown} className="px-2 py-1.5 rounded-lg text-sm font-medium border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors" title="Move down" aria-label="Move down">↓</button>
           <button
             onClick={() => {
               if (confirm("Διαγραφή αυτού του σταδίου; Αυτό δεν μπορεί να αναιρεθεί.")) {
                 onRemove();
               }
             }}
-            className="px-2.5 py-1.5 rounded-lg text-sm border border-gray-700 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="px-2.5 py-1.5 rounded-lg text-sm font-medium border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500/40"
             title="Delete stage"
             aria-label="Delete stage"
           >
@@ -342,6 +342,8 @@ export default function StageCard({
           </button>
         </div>
       </div>
+
+      <div className="h-px bg-white/6" />
 
       {/* Basics */}
       <div className="grid sm:grid-cols-3 gap-4">
@@ -394,7 +396,7 @@ export default function StageCard({
       {isGroups && (
         <>
           {intakeEnabled ? (
-            <div className="mt-2 text-xs text-white/80 bg-white/5 border border-gray-700 rounded-md px-2 py-1">
+            <div className="mt-2 text-xs text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-lg px-3 py-2">
               Οι όμιλοι θα γεμίσουν δυναμικά από το Knockout (δεν επιτρέπονται χειροκίνητες αναθέσεις).
             </div>
           ) : null}
@@ -423,11 +425,11 @@ export default function StageCard({
           </div>
 
           {/* Groups setting: Allow draws */}
-          <div className="mt-3 rounded-md border border-gray-800 bg-black p-3">
-            <label className="inline-flex items-center gap-2 text-white text-sm">
+          <div className="mt-2 rounded-lg border border-white/8 bg-zinc-900/60 px-4 py-3">
+            <label className="inline-flex items-center gap-2 text-sm text-zinc-200 font-medium">
               <input
                 type="checkbox"
-                className="accent-white"
+                className="accent-indigo-500"
                 checked={(cfg as any).allow_draws ?? true}
                 onChange={(e) => setCfg({ allow_draws: e.target.checked })}
               />
@@ -439,12 +441,12 @@ export default function StageCard({
 
       {(isLeague || isGroups) && (
         
-        <div className="mt-4">
-          
-    
+        <div className="rounded-lg border border-white/8 bg-zinc-900/40 p-4 space-y-4 mt-2">
+
+
 
     <div>
-      <label className="block w-32 text-white text-sm mb-1">Αγώνες ανά αντίπαλο</label>
+      <label className="block w-32 text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Αγώνες ανά αντίπαλο</label>
       <input
         type="number"
         min={1}
@@ -456,7 +458,7 @@ export default function StageCard({
     </div>
 
     <div>
-      <label className="w-32 text-white text-sm mb-1">Μέγιστες αγωνιστικές</label>
+      <label className="w-32 text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Μέγιστες αγωνιστικές</label>
       <input
         type="number"
         min={0}
@@ -475,31 +477,31 @@ export default function StageCard({
       )}
 
       {isKnockout && (
-        <div className="mt-3 rounded-lg border border-gray-800 bg-black p-3">
+        <div className="mt-2 rounded-xl border border-white/8 bg-zinc-950 p-4">
           <KnockoutBoard stageIdx={effectiveStageIdx} teamsMap={teamsMap} />
         </div>
       )}
 
       {/* Per-stage team picker */}
-      <div className="mt-4 rounded-xl border border-gray-800 bg-black">
+      <div className="rounded-xl border border-white/8 bg-zinc-900/40">
         <button
           type="button"
           onClick={() => setTeamPickerOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-zinc-200 hover:bg-white/4 transition-colors rounded-xl"
         >
           <span>
             Ομάδες σταδίου{" "}
-            <span className="text-gray-400">
+            <span className="text-zinc-500 font-normal">
               ({hasStageFilter ? stageTeamIds.length : teams.length}/{teams.length})
             </span>
           </span>
-          <span className="text-gray-400 text-xs">
+          <span className="text-zinc-500 text-xs">
             {teamPickerOpen ? "▲" : "▼"}
           </span>
         </button>
 
         {teamPickerOpen && (
-          <div className="border-t border-gray-800 p-3 space-y-3">
+          <div className="border-t border-white/8 p-4 space-y-3">
             {/* Search + actions */}
             <div className="flex gap-2">
               <input
@@ -517,16 +519,16 @@ export default function StageCard({
             </div>
 
             {/* Team list */}
-            <ul className="max-h-56 overflow-auto divide-y divide-gray-800/50 rounded-lg border border-gray-800">
+            <ul className="max-h-56 overflow-auto divide-y divide-white/6 rounded-lg border border-white/8">
               {searchedPickerTeams.map((t) => {
                 const name = (t as any).name ?? catalog[t.id]?.name ?? `Team #${t.id}`;
                 const logo = (t as any).logo ?? catalog[t.id]?.logo ?? null;
                 const checked = stageTeamSet.has(t.id);
                 return (
-                  <li key={t.id} className="flex items-center gap-3 px-3 py-2 hover:bg-white/5">
+                  <li key={t.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/4 transition-colors">
                     <input
                       type="checkbox"
-                      className="accent-white"
+                      className="accent-indigo-500"
                       checked={checked}
                       onChange={() => toggleStageTeam(t.id)}
                     />
@@ -534,19 +536,19 @@ export default function StageCard({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={logo} alt="" className="h-6 w-6 rounded-full object-cover ring-1 ring-white/10" />
                     )}
-                    <span className="text-sm text-white/90 truncate flex-1">{name}</span>
-                    <span className="text-xs text-gray-500">#{t.id}</span>
+                    <span className="text-sm text-zinc-100 truncate flex-1">{name}</span>
+                    <span className="text-xs text-zinc-600">#{t.id}</span>
                   </li>
                 );
               })}
               {searchedPickerTeams.length === 0 && (
-                <li className="px-3 py-4 text-center text-sm text-gray-500">
+                <li className="px-3 py-4 text-center text-sm text-zinc-500">
                   Δεν βρέθηκαν ομάδες.
                 </li>
               )}
             </ul>
 
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-zinc-500">
               Επιλέξτε ποιες ομάδες θα συμμετέχουν σε αυτό το στάδιο. Πατήστε «Regenerate» στο match planner για να ανανεώσετε τα ματς.
             </p>
           </div>
@@ -554,7 +556,7 @@ export default function StageCard({
       </div>
 
       {/* Inline match planner */}
-      <div className="mt-4 rounded-xl border border-gray-800 bg-black p-3">
+      <div className="rounded-xl border border-white/8 bg-zinc-950/80 p-4">
         <InlineMatchPlanner
           miniPayload={miniPayload}
           teams={stageFilteredTeams}

@@ -189,12 +189,13 @@ export default function TournamentBasicsForm({
   }
 
   return (
-    <div className="rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900/60 to-indigo-950/50 p-4 space-y-3">
-      <h2 className="text-xl font-semibold text-cyan-200">Tournament</h2>
+    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 space-y-5 shadow-xl">
+      <h2 className="text-lg font-bold text-white tracking-tight">Tournament</h2>
+      <div className="h-px bg-gradient-to-r from-indigo-500/30 via-white/5 to-transparent" />
 
       {/* Logo preview + uploader */}
       <div className="flex items-center gap-3">
-        <div className="w-16 h-16 rounded-md overflow-hidden bg-slate-900/60 border border-white/10 flex items-center justify-center">
+        <div className="w-20 h-20 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 shadow-inner flex items-center justify-center">
           {logoPreview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
@@ -204,7 +205,7 @@ export default function TournamentBasicsForm({
         </div>
         <div className="flex flex-col gap-2 flex-1">
           <div className="flex items-center gap-2">
-            <label className="relative inline-flex items-center px-3 py-1.5 rounded-md border border-cyan-400/30 text-cyan-100 hover:bg-cyan-500/10 cursor-pointer">
+            <label className="relative inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border border-zinc-600 text-zinc-200 bg-zinc-800/60 hover:bg-zinc-700 transition-colors cursor-pointer">
               <input
                 type="file"
                 accept="image/*"
@@ -216,7 +217,7 @@ export default function TournamentBasicsForm({
             </label>
             {value.logo ? (
               <button
-                className="text-xs px-2 py-1 rounded-md border border-white/10 text-white/80 hover:bg-white/5"
+                className="text-xs px-2 py-1 rounded-lg border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 transition-colors"
                 onClick={() => {
                   onChange({ ...value, logo: null });
                   setLogoPreview(DEFAULT_TOURNAMENT_LOGO);
@@ -231,22 +232,22 @@ export default function TournamentBasicsForm({
           </div>
           {/* Debug info display */}
           {debugInfo && (
-            <div className="text-xs text-white/60 font-mono">
+            <div className="text-xs text-zinc-500 font-mono">
               {debugInfo}
             </div>
           )}
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-2 gap-4">
         <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           placeholder="Name"
           value={value.name ?? ""}
           onChange={(e) => onChange({ ...value, name: e.target.value })}
         />
         <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           placeholder="Slug"
           value={value.slug ?? ""}
           onChange={(e) => {
@@ -255,13 +256,13 @@ export default function TournamentBasicsForm({
           }}
         />
         <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           placeholder="Season (e.g. 2025)"
           value={value.season ?? ""}
           onChange={(e) => onChange({ ...value, season: e.target.value || null })}
         />
         <select
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           value={value.status ?? "scheduled"}
           onChange={(e) => onChange({ ...value, status: e.target.value as any })}
         >
@@ -272,7 +273,7 @@ export default function TournamentBasicsForm({
           ))}
         </select>
         <select
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           value={value.format ?? "league"}
           onChange={(e) => onChange({ ...value, format: e.target.value as any })}
         >
@@ -283,7 +284,7 @@ export default function TournamentBasicsForm({
           ))}
         </select>
         <input
-          className="bg-slate-950 border border-cyan-400/20 rounded-md px-3 py-2 text-white placeholder-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           placeholder='Logo URL (http… or "/leagues/…/file.jpg")'
           value={value.logo ?? ""}
           onChange={(e) => {

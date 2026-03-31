@@ -241,7 +241,7 @@ export default function TournamentWizard({
 
   // --- UI -------------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Advisory validation panel */}
       {errors.length > 0 && <ValidationSummary errors={errors} />}
 
@@ -283,7 +283,7 @@ export default function TournamentWizard({
       {/* 4) Save */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-cyan-200 font-semibold">Fixtures</h3>
+          <h3 className="text-white font-bold tracking-tight">Fixtures</h3>
           {/* Removed the Regenerate Fixtures Button */}
         </div>
       </div>

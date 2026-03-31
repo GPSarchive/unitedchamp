@@ -39,29 +39,29 @@ export default function MatchesTable({
   busy: boolean;
 }) {
   if (!rows.length) {
-    return <p className="text-white/70">Δεν υπάρχουν αγώνες σε αυτή την επιλογή.</p>;
+    return <p className="text-zinc-400">Δεν υπάρχουν αγώνες σε αυτή την επιλογή.</p>;
   }
 
   return (
-    <div className="overflow-auto rounded-lg border border-white/10">
+    <div className="overflow-auto rounded-xl border border-white/8 shadow-inner">
       <table className="min-w-full text-sm">
-        <thead className="bg-zinc-900/70 text-white">
+        <thead className="bg-zinc-900 text-zinc-400">
           <tr>
-            <th className="px-2 py-1 text-left">Στάδιο / Όμιλος</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Στάδιο / Όμιλος</th>
             {isKO ? (
               <>
-                <th className="px-2 py-1 text-left">Γύρος</th>
-                <th className="px-2 py-1 text-left">Θέση Δέντρου</th>
+                <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Γύρος</th>
+                <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Θέση Δέντρου</th>
               </>
             ) : (
-              <th className="px-2 py-1 text-left">Αγωνιστική</th>
+              <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Αγωνιστική</th>
             )}
-            <th className="px-2 py-1 text-left">Ομάδα Α</th>
-            <th className="px-2 py-1 text-left">Ομάδα Β</th>
-            <th className="px-2 py-1 text-left">Σκορ</th>
-            <th className="px-2 py-1 text-left">Κατάσταση</th>
-            <th className="px-2 py-1 text-left">Ημ/νία & Ώρα (UTC)</th>
-            <th className="px-2 py-1 text-right">Ενέργειες</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Ομάδα Α</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Ομάδα Β</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Σκορ</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Κατάσταση</th>
+            <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wider">Ημ/νία & Ώρα (UTC)</th>
+            <th className="px-2 py-1 text-right text-xs font-semibold uppercase tracking-wider">Ενέργειες</th>
           </tr>
         </thead>
         <tbody>

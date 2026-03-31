@@ -4,9 +4,9 @@
 export default function ValidationSummary({ errors }: { errors: string[] }) {
   if (!errors.length) return null;
   return (
-    <div className="rounded-md border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-      <div className="font-semibold mb-1">Fix the following:</div>
-      <ul className="list-disc pl-5 space-y-0.5">
+    <div className="border border-rose-500/25 bg-rose-500/8 text-rose-300 rounded-xl p-4">
+      <div className="text-xs text-rose-400 font-semibold uppercase tracking-wider mb-2">⚠ Fix the following:</div>
+      <ul className="list-disc pl-5 space-y-0.5 text-sm">
         {errors.map((e, i) => (
           <li key={i}>{e}</li>
         ))}

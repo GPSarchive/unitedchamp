@@ -114,18 +114,18 @@ export default function StageList({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-cyan-200">Stages</h2>
+        <h2 className="text-lg font-bold text-white tracking-tight">Stages</h2>
         <button
           onClick={add}
-          className="text-sm px-3 py-1 rounded-md border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+          className="text-sm px-3 py-1.5 rounded-lg font-medium border border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         >
           + Add Stage
         </button>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {stages.map((s, i) => (
           <StageCard
             key={s?.id ?? `tmp-${i}`}
