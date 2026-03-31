@@ -7,6 +7,10 @@ Disallow: /_next/
 Disallow: /login
 Disallow: /403
 
+# Block Meta AI training crawler
+User-agent: meta-externalagent
+Disallow: /
+
 # Block aggressive SEO scrapers
 User-agent: AhrefsBot
 Disallow: /
