@@ -263,10 +263,10 @@ export async function proxy(req: NextRequest) {
   }
 
   // Block Facebook's crawler
-  const userAgent = req.headers.get('user-agent') || ''
-  if (userAgent.includes('meta-externalagent')) {
-    return new NextResponse('Blocked', { status: 403 })
-  }
+  //const userAgent = req.headers.get('user-agent') || ''
+  //if (userAgent.includes('meta-externalagent')) {
+  //  return new NextResponse('Blocked', { status: 403 })
+  //}
 
   // Social crawlers (Facebook, Twitter, etc.) hitting protected routes
   // get a 403 immediately — no Supabase call, no redirect to /login,
