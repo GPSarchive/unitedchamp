@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
@@ -30,6 +30,11 @@ function LoginContent() {
   const error = searchParams.get('error');
   const next = searchParams.get('next') ?? '';
   const nextQS = next ? `&next=${encodeURIComponent(next)}` : '';
+
+  const [csrfToken, setCsrfToken] = useState('');
+  useEffect(() => {
+    fetch('/api/auth/csrf').then(r => r.json()).then(d => setCsrfToken(d.token)).catch(() => {});
+  }, []);
 
   // --- Sports backgrounds (switchable via ?bg=track|court|stadium|soccer|cycling|tennis) ---
   const bgParam = (searchParams.get('bg') || 'track').toLowerCase();
@@ -83,6 +88,7 @@ function LoginContent() {
 
           {/* carry forward the intended destination */}
           <input type="hidden" name="next" value={next} />
+          <input type="hidden" name="_csrf" value={csrfToken} />
 
           <button type="submit" className="btn primary">Sign in</button>
         </form>

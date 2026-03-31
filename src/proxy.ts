@@ -266,7 +266,8 @@ export async function proxy(req: NextRequest) {
   // ─────────────────────────────────────────────────────────────
 
   // Layer 1: Global + IP + Endpoint limits
-  if (!isCrawler) {
+  // Auth endpoints are NEVER exempt — no crawler needs to POST to /api/auth/*
+  if (!isCrawler || isAuthEndpoint) {
     const baseCheck = await checkRateLimits({
       global: true,
       ip: ip,
@@ -279,7 +280,7 @@ export async function proxy(req: NextRequest) {
   }
 
   // Layer 2: Auth endpoint protection (stricter)
-  if (!isCrawler && isAuthEndpoint) {
+  if (isAuthEndpoint) {
     const authCheck = await checkRateLimits({ auth: ip })
     if (!authCheck.success) {
       return createRateLimitResponse(req, authCheck.result!, 'auth')

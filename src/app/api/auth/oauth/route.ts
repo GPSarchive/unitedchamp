@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   if (!provider || !ENABLED_PROVIDERS.has(provider)) {
     const back = new URL('/login', BASE_URL);
-    back.searchParams.set('error', 'Unsupported provider');
+    back.searchParams.set('error', 'Authentication failed');
     if (nextRaw) back.searchParams.set('next', nextRaw);
     return NextResponse.redirect(back);
   }
@@ -32,8 +32,9 @@ export async function GET(req: Request) {
   });
 
   if (error) {
+    console.error('Auth OAuth error:', error.message);
     const back = new URL('/login', BASE_URL);
-    back.searchParams.set('error', error.message);
+    back.searchParams.set('error', 'Authentication failed');
     if (nextRaw) back.searchParams.set('next', nextRaw);
     return NextResponse.redirect(back);
   }

@@ -1,6 +1,7 @@
 // src/app/api/auth/confirm/route.ts
 import { NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
+import { safeNextUrl } from '@/app/lib/safe-redirect';
 
 type EmailFlow =
   | 'signup'
@@ -16,8 +17,7 @@ export async function GET(req: Request) {
   const type = (url.searchParams.get('type') || 'signup') as EmailFlow;
 
   const nextRaw = url.searchParams.get('next') || '';
-  const safeNext =
-    nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
+  const safeNext = safeNextUrl(nextRaw, '/dashboard');
 
   const supabase = await createSupabaseRouteClient();
 
@@ -31,13 +31,14 @@ export async function GET(req: Request) {
     } else {
       // Neither present — nothing to exchange/verify
       const back = new URL('/login', url);
-      back.searchParams.set('error', 'Missing verification token');
+      back.searchParams.set('error', 'Verification failed');
       if (nextRaw) back.searchParams.set('next', nextRaw);
       return NextResponse.redirect(back);
     }
   } catch (e: any) {
+    console.error('Auth confirm error:', e?.message);
     const back = new URL('/login', url);
-    back.searchParams.set('error', e?.message || 'Verification failed');
+    back.searchParams.set('error', 'Verification failed');
     if (nextRaw) back.searchParams.set('next', nextRaw);
     return NextResponse.redirect(back);
   }

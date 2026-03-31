@@ -113,8 +113,8 @@ const domains = Array.from(
 
 const isProd = process.env.NODE_ENV === "production";
 
-// Keep in sync with the Permissions-Policy set in src/middleware.ts.
-// This copy covers static assets that bypass the middleware matcher.
+
+
 const PERMISSIONS_POLICY = [
   "camera=()", "microphone=()", "geolocation=()",
   "usb=()", "bluetooth=()", "serial=()", "midi=()", "hid=()",
