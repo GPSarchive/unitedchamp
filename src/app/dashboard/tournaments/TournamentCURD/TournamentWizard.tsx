@@ -241,7 +241,7 @@ export default function TournamentWizard({
 
   // --- UI -------------------------------------------------------------------
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6">
       {/* Advisory validation panel */}
       {errors.length > 0 && <ValidationSummary errors={errors} />}
 
