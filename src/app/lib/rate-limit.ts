@@ -77,12 +77,12 @@ export async function checkGlobalLimit(): Promise<LimitResult> {
 /** Per-endpoint limit: protects individual API routes (1k req/min) */
 export async function checkEndpointLimit(path: string): Promise<LimitResult> {
   const normalized = normalizePath(path)
-  return checkLimit(`endpoint:${normalized}`, 800, 60)
+  return checkLimit(`endpoint:${normalized}`, 1800, 60)
 }
 
 /** Per-IP general limit (200 req/min) */
 export async function checkIpLimit(ip: string): Promise<LimitResult> {
-  return checkLimit(`ip:${ip}`, 200, 60)
+  return checkLimit(`ip:${ip}`, 2000, 60)
 }
 
 /** API write operations: per IP per path (30 req/min) */
@@ -93,7 +93,7 @@ export async function checkApiWriteLimit(ip: string, path: string): Promise<Limi
 
 /** Daily limit per IP (500 req/day) */
 export async function checkDailyLimit(ip: string): Promise<LimitResult> {
-  return checkLimit(`daily:${ip}`, 500, 86400)
+  return checkLimit(`daily:${ip}`, 5000, 86400)
 }
 
 /** Auth endpoints: stricter limit for brute-force protection (10 req/min) */
