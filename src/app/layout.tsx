@@ -1,5 +1,5 @@
 // /src/app/layout.tsx
-import React from "react";
+import React, { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import Script from "next/script";
@@ -109,7 +109,7 @@ export default async function RootLayout({
         "body",
         { key: "body", className: "antialiased font-sans", suppressHydrationWarning: true },
         [
-          React.createElement(Navbar, { key: "nav" }),
+          React.createElement(Suspense, { key: "nav", fallback: React.createElement("div", { className: "h-16 md:h-32" }) }, React.createElement(Navbar)),
           React.createElement(
             "main",
             { key: "main", className: "pt-16 md:pt-32" },
