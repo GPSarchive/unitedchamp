@@ -71,18 +71,18 @@ export async function checkLimit(
 
 /** Global limit: protects entire app from DDoS (10k req/min) */
 export async function checkGlobalLimit(): Promise<LimitResult> {
-  return checkLimit('global', 10000, 60)
+  return checkLimit('global', 100000, 60)
 }
 
 /** Per-endpoint limit: protects individual API routes (1k req/min) */
 export async function checkEndpointLimit(path: string): Promise<LimitResult> {
   const normalized = normalizePath(path)
-  return checkLimit(`endpoint:${normalized}`, 1800, 60)
+  return checkLimit(`endpoint:${normalized}`, 18000, 60)
 }
 
 /** Per-IP general limit (200 req/min) */
 export async function checkIpLimit(ip: string): Promise<LimitResult> {
-  return checkLimit(`ip:${ip}`, 2000, 60)
+  return checkLimit(`ip:${ip}`, 20000, 60)
 }
 
 /** API write operations: per IP per path (30 req/min) */
