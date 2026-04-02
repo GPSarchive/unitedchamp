@@ -359,8 +359,8 @@ export async function proxy(req: NextRequest) {
       {
         cookies: {
           getAll: () => req.cookies.getAll(),
-          setAll: (cookies) => {
-            cookies.forEach(({ name, value, options }) =>
+          setAll: (cookies: any) => {
+            cookies.forEach(({ name, value, options }: any) =>
               res.cookies.set(name, value, options)
             )
           },
@@ -425,7 +425,7 @@ export async function proxy(req: NextRequest) {
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   )
 
-  // ─────────────────────────────────────────────────────────────
+  // ──────────────────────���──────────────────────────────────────
   // CSP — Content Security Policy
   // ─────────────────────────────────────────────────────────────
   const imgSrc = [
