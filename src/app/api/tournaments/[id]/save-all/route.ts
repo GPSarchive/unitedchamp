@@ -447,8 +447,11 @@ if (body.matches?.upsert?.length) {
   // Updates (respect optimistic updated_at unless forced)
   const toUpdate = rows.filter(r => r.id != null);
   const updated: any[] = [];
-  for (const r of toUpdate) {
-    let q = supabaseAdmin.from("matches").update({
+
+  if (forceMatches && toUpdate.length) {
+    // Batch upsert when forced (no optimistic locking needed)
+    const upsertRows = toUpdate.map(r => ({
+      id: r.id as number,
       stage_id: r.stage_id,
       tournament_id: tournamentId,
       group_id: r.group_id ?? null,
@@ -466,24 +469,54 @@ if (body.matches?.upsert?.length) {
       home_source_bracket_pos: r.home_source_bracket_pos ?? null,
       away_source_round: r.away_source_round ?? null,
       away_source_bracket_pos: r.away_source_bracket_pos ?? null,
-      is_ko: r.is_ko ?? false,  // Update the is_ko flag during the update
-    }).eq("id", r.id as number);
-
-    if (!forceMatches && r.updated_at) q = q.eq("updated_at", r.updated_at);
-
-    const { data, error } = await q.select("*");
+      is_ko: r.is_ko ?? false,
+    }));
+    const { data, error } = await supabaseAdmin
+      .from("matches")
+      .upsert(upsertRows, { onConflict: "id" })
+      .select("*");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    if (!forceMatches && r.updated_at && (!data || data.length === 0)) {
-      const { data: cur } = await supabaseAdmin
-        .from("matches").select("id,updated_at").eq("id", r.id as number).single();
-      return NextResponse.json(
-        { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
-          sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
-        { status: 409 }
-      );
-    }
     updated.push(...(data ?? []));
+  } else {
+    // Per-row updates with optimistic locking
+    for (const r of toUpdate) {
+      let q = supabaseAdmin.from("matches").update({
+        stage_id: r.stage_id,
+        tournament_id: tournamentId,
+        group_id: r.group_id ?? null,
+        team_a_id: r.team_a_id ?? null,
+        team_b_id: r.team_b_id ?? null,
+        team_a_score: r.team_a_score ?? null,
+        team_b_score: r.team_b_score ?? null,
+        winner_team_id: r.winner_team_id ?? null,
+        status: r.status ?? "scheduled",
+        match_date: r.match_date ?? null,
+        matchday: r.matchday ?? null,
+        round: r.round ?? null,
+        bracket_pos: r.bracket_pos ?? null,
+        home_source_round: r.home_source_round ?? null,
+        home_source_bracket_pos: r.home_source_bracket_pos ?? null,
+        away_source_round: r.away_source_round ?? null,
+        away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+        is_ko: r.is_ko ?? false,
+      }).eq("id", r.id as number);
+
+      if (r.updated_at) q = q.eq("updated_at", r.updated_at);
+
+      const { data, error } = await q.select("*");
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+      if (r.updated_at && (!data || data.length === 0)) {
+        const { data: cur } = await supabaseAdmin
+          .from("matches").select("id,updated_at").eq("id", r.id as number).single();
+        return NextResponse.json(
+          { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
+            sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
+          { status: 409 }
+        );
+      }
+      updated.push(...(data ?? []));
+    }
   }
 
   // Creates via upsert on natural keys to avoid duplicates
@@ -505,26 +538,24 @@ if (body.matches?.upsert?.length) {
   if (lgRowsAll.some(r => r.id == null)) {
     const toCreateLG = lgRowsAll.filter(r => r.id == null).map(strip);
 
-    // Check for existing matches to avoid duplicates
-    for (const match of toCreateLG) {
-      const { data: existing } = await supabaseAdmin
-        .from("matches")
-        .select("id")
-        .eq("stage_id", match.stage_id)
-        .eq("matchday", match.matchday ?? null)
-        .eq("team_a_id", match.team_a_id ?? null)
-        .eq("team_b_id", match.team_b_id ?? null)
-        .is("round", null)
-        .maybeSingle();
+    // Batch duplicate check: fetch all existing non-KO matches for affected stages in one query
+    const lgStageIds = Array.from(new Set(toCreateLG.map(m => m.stage_id).filter(Boolean)));
+    const { data: existingMatches } = await supabaseAdmin
+      .from("matches")
+      .select("stage_id, group_id, matchday, round, bracket_pos")
+      .in("stage_id", lgStageIds)
+      .is("round", null);
 
-      if (!existing) {
-        const { data, error } = await supabaseAdmin
-          .from("matches")
-          .insert([match])
-          .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        created.push(...(data ?? []));
-      }
+    const existingKeys = new Set((existingMatches ?? []).map(matchNaturalKey));
+    const deduped = toCreateLG.filter(m => !existingKeys.has(matchNaturalKey(m)));
+
+    if (deduped.length) {
+      const { data, error } = await supabaseAdmin
+        .from("matches")
+        .insert(deduped)
+        .select();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      created.push(...(data ?? []));
     }
   }
 

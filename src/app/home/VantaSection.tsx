@@ -69,8 +69,8 @@ export default function VantaSection({
   return (
     <section className={`relative overflow-hidden ${className}`}>
       {/* Load p5 then Vanta (Next.js dedupes these if used multiple times) */}
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js" strategy="afterInteractive" onLoad={init} />
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.topology.min.js" strategy="afterInteractive" onLoad={init} />
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js" strategy="lazyOnload" onLoad={init} />
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.topology.min.js" strategy="lazyOnload" onLoad={init} />
 
       {/* Vanta canvas target */}
       <div

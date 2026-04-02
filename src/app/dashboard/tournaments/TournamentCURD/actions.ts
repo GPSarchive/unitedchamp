@@ -253,6 +253,7 @@ export async function createTournamentAction(formData: FormData) {
 
   if (tErr || !tRow) return { ok: false, error: tErr?.message || 'Failed to create tournament' };
 
+  try {
   // 2) Stages
   const stagesInsert = payload.stages.map((s, i) => ({
     tournament_id: tRow.id,
@@ -267,16 +268,13 @@ export async function createTournamentAction(formData: FormData) {
     .insert(stagesInsert)
     .select('id, name, kind, ordering');
 
-  if (sErr || !stageRows) return { ok: false, error: sErr?.message || 'Failed to create stages' };
+  if (sErr || !stageRows) throw new Error(sErr?.message || 'Failed to create stages');
 
-  // Map stageIdx -> stage_id using ordering + name/kind
-  const stageIdByIndex: number[] = [];
-  payload.stages.forEach((s, i) => {
-    const found = stageRows.find(r => (r.ordering ?? i + 1) === (s.ordering ?? i + 1) && r.name === s.name && r.kind === s.kind);
-    stageIdByIndex[i] = found!.id;
-  });
+  // Map stageIdx -> stage_id using positional indexing (insert returns rows in insertion order)
+  const stageIdByIndex = (stageRows ?? []).map(r => r.id);
 
   // NEW: normalize KO configs -> persist from_stage_id AND advancers_total (for League→KO)
+  const koConfigUpdates: { id: number; config: any }[] = [];
   for (let i = 0; i < payload.stages.length; i++) {
     const st = payload.stages[i];
     if (st.kind !== 'knockout') continue;
@@ -304,10 +302,15 @@ export async function createTournamentAction(formData: FormData) {
       }
     }
 
+    koConfigUpdates.push({ id: stageIdByIndex[i], config: cfg });
+  }
+
+  if (koConfigUpdates.length) {
+    // Batch update all KO stage configs in a single upsert
     await supabaseAdmin
       .from('tournament_stages')
-      .update({ config: cfg })
-      .eq('id', stageIdByIndex[i]);
+      .upsert(koConfigUpdates, { onConflict: 'id' })
+      .throwOnError();
   }
 
   // 3) Groups per groups-stage
@@ -325,7 +328,7 @@ export async function createTournamentAction(formData: FormData) {
         .insert(names.map((name, idx) => ({ stage_id, name, ordering: idx })))
         .select('id, stage_id, name');
 
-      if (gErr) return { ok: false, error: gErr.message };
+      if (gErr) throw new Error(gErr.message);
       allGroups.push(...(gRows ?? []));
     }
   }
@@ -397,7 +400,7 @@ export async function createTournamentAction(formData: FormData) {
       .from('tournament_teams')
       .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
 
-    if (pErr) return { ok: false, error: pErr.message };
+    if (pErr) throw new Error(pErr.message);
   }
 
   // 5) Matches (from draft) — insert, then link sources by id (with live fields)
@@ -438,7 +441,7 @@ export async function createTournamentAction(formData: FormData) {
       .insert(matchRows)
       .select('id');
 
-    if (mErr) return { ok: false, error: mErr.message };
+    if (mErr) throw new Error(mErr.message);
 
     const idByIdx = (inserted ?? []).map((r) => r.id as number); // index in draftMatches → DB id
 
@@ -501,21 +504,11 @@ export async function createTournamentAction(formData: FormData) {
         away_source_bracket_pos?: number | null;
       }>;
 
-    for (const u of linkUpdates) {
+    if (linkUpdates.length) {
       const { error } = await supabaseAdmin
         .from('matches')
-        .update({
-          home_source_match_id: u.home_source_match_id ?? null,
-          home_source_outcome: u.home_source_outcome ?? null,
-          away_source_match_id: u.away_source_match_id ?? null,
-          away_source_outcome: u.away_source_outcome ?? null,
-          home_source_round: u.home_source_round ?? null,
-          home_source_bracket_pos: u.home_source_bracket_pos ?? null,
-          away_source_round: u.away_source_round ?? null,
-          away_source_bracket_pos: u.away_source_bracket_pos ?? null,
-        })
-        .eq('id', u.id);
-      if (error) return { ok: false, error: error.message };
+        .upsert(linkUpdates, { onConflict: 'id' });
+      if (error) throw new Error(error.message);
     }
   }
 
@@ -543,6 +536,12 @@ export async function createTournamentAction(formData: FormData) {
         }
       }
     }
+  }
+
+  } catch (e: any) {
+    // Cleanup: delete the tournament row (foreign keys CASCADE deletes children)
+    await supabaseAdmin.from('tournaments').delete().eq('id', tRow.id);
+    return { ok: false, error: e?.message || 'Tournament creation failed, rolled back.' };
   }
 
   revalidatePath('/tournoua');
@@ -891,6 +890,7 @@ export async function updateTournamentAction(formData: FormData) {
   });
 
   // NEW: normalize KO configs -> persist from_stage_id AND advancers_total (for League→KO)
+  const koConfigUpdatesEdit: { id: number; config: any }[] = [];
   for (let i = 0; i < payload.stages.length; i++) {
     const st = payload.stages[i];
     if (st.kind !== 'knockout') continue;
@@ -915,10 +915,14 @@ export async function updateTournamentAction(formData: FormData) {
       }
     }
 
+    koConfigUpdatesEdit.push({ id: stageIdByIndex[i], config: cfg });
+  }
+
+  if (koConfigUpdatesEdit.length) {
     await supabaseAdmin
       .from('tournament_stages')
-      .update({ config: cfg })
-      .eq('id', stageIdByIndex[i]);
+      .upsert(koConfigUpdatesEdit, { onConflict: 'id' })
+      .throwOnError();
   }
 
   type GroupRecord = { id: number; stage_id: number; name: string };
@@ -1108,20 +1112,10 @@ export async function updateTournamentAction(formData: FormData) {
         away_source_bracket_pos?: number | null;
       }>;
 
-    for (const u of linkUpdates) {
+    if (linkUpdates.length) {
       const { error } = await supabaseAdmin
         .from('matches')
-        .update({
-          home_source_match_id: u.home_source_match_id ?? null,
-          home_source_outcome: u.home_source_outcome ?? null,
-          away_source_match_id: u.away_source_match_id ?? null,
-          away_source_outcome: u.away_source_outcome ?? null,
-          home_source_round: u.home_source_round ?? null,
-          home_source_bracket_pos: u.home_source_bracket_pos ?? null,
-          away_source_round: u.away_source_round ?? null,
-          away_source_bracket_pos: u.away_source_bracket_pos ?? null,
-        })
-        .eq('id', u.id);
+        .upsert(linkUpdates, { onConflict: 'id' });
       if (error) return { ok: false, error: error.message };
     }
   }

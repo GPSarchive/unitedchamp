@@ -26,8 +26,10 @@ async function fetchNewsCount(): Promise<number> {
 
 export default async function Navbar() {
   const supabase = await createSupabaseRSCClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const newsCount = await fetchNewsCount();
+  const [{ data: { user } }, newsCount] = await Promise.all([
+    supabase.auth.getUser(),
+    fetchNewsCount(),
+  ]);
 
   return <NavbarClient initialUser={user ?? null} newsCount={newsCount} />;
 }

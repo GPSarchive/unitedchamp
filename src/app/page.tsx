@@ -9,12 +9,10 @@ import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/
 import HomeHero from '@/app/home/HomeHero';
 import EventCalendar from '@/app/home/Calendar';
 import TeamDashboard from '@/app/home/TeamDashboard';
-import ResponsiveCallendar from '@/app/home/ResponsiveCalendar';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
 import MiniAnnouncements from './home/MiniAnnouncements';
 import RecentMatchesTabs from './home/RecentMatchesTabs';
-import ResponsiveCalendar from '@/app/home/ResponsiveCalendar';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
@@ -148,7 +146,8 @@ async function fetchMatchesWithTeams() {
       .gte('match_date', windowStart.toISOString())
       .lte('match_date', windowEnd.toISOString())
       .order('match_date', { ascending: true })
-      .order('id',         { ascending: true })) as unknown as SupaResp;
+      .order('id',         { ascending: true })
+      .limit(200)) as unknown as SupaResp;
     return { rawMatches: data ?? [], matchesError: error };
   });
 }
@@ -187,17 +186,18 @@ async function fetchRecentContentCount() {
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
     const twoDaysAgoISO = twoDaysAgo.toISOString();
 
-    const { count: announcementsCount } = await supabaseAdmin
-      .from('announcements')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('created_at', twoDaysAgoISO);
-
-    const { count: articlesCount } = await supabaseAdmin
-      .from('articles')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('published_at', twoDaysAgoISO);
+    const [{ count: announcementsCount }, { count: articlesCount }] = await Promise.all([
+      supabaseAdmin
+        .from('announcements')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published')
+        .gte('created_at', twoDaysAgoISO),
+      supabaseAdmin
+        .from('articles')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'published')
+        .gte('published_at', twoDaysAgoISO),
+    ]);
 
     const totalCount = (announcementsCount ?? 0) + (articlesCount ?? 0);
 
