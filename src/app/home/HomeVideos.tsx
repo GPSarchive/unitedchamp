@@ -54,7 +54,10 @@ function getEmbedUrl(videoId: string): string {
 }
 
 export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
-  const [videos, setVideos] = useState<VideoMatch[]>(initialVideos);
+  // Filter to only videos with valid YouTube IDs so pagination never shows empty pages
+  const [videos, setVideos] = useState<VideoMatch[]>(() =>
+    initialVideos.filter((v) => extractYouTubeId(v.video_url) !== null)
+  );
   const [nextCursor, setNextCursor] = useState<Cursor>(
     // The server sends exactly 20 items when there may be more; assume there can be
     // more if we received a full page of 20.
@@ -78,7 +81,10 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
       const res = await fetch(`/api/matches/videos?${params}`);
       if (!res.ok) return;
       const json = await res.json();
-      setVideos((prev) => [...prev, ...(json.videos ?? [])]);
+      const validNew = (json.videos ?? []).filter(
+        (v: VideoMatch) => extractYouTubeId(v.video_url) !== null
+      );
+      setVideos((prev) => [...prev, ...validNew]);
       setNextCursor(json.nextCursor ?? null);
     } finally {
       setLoadingMore(false);

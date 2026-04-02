@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { headers } from 'next/headers';
 import { Trophy, Users, BarChart3 } from 'lucide-react';
 import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
+import { fetchRecentNewsCount } from '@/app/lib/fetchRecentNewsCount';
 import HomeHero from '@/app/home/HomeHero';
 import EventCalendar from '@/app/home/Calendar';
 import TeamDashboard from '@/app/home/TeamDashboard';
@@ -180,30 +181,6 @@ async function fetchTournaments() {
   });
 }
 
-async function fetchRecentContentCount() {
-  return withConsoleTiming('db:recent-content', async () => {
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    const twoDaysAgoISO = twoDaysAgo.toISOString();
-
-    const [{ count: announcementsCount }, { count: articlesCount }] = await Promise.all([
-      supabaseAdmin
-        .from('announcements')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .gte('created_at', twoDaysAgoISO),
-      supabaseAdmin
-        .from('articles')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'published')
-        .gte('published_at', twoDaysAgoISO),
-    ]);
-
-    const totalCount = (announcementsCount ?? 0) + (articlesCount ?? 0);
-
-    return { recentContentCount: totalCount };
-  });
-}
 
 async function fetchVideoMatches() {
   return withConsoleTiming('db:video-matches', async () => {
@@ -325,11 +302,11 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 
-  const [{ user }, { rawMatches }, { tournaments }, { recentContentCount }, { videoMatches }] = await Promise.all([
+  const [{ user }, { rawMatches }, { tournaments }, recentContentCount, { videoMatches }] = await Promise.all([
     fetchSingleUser(),
     fetchMatchesWithTeams(),
     fetchTournaments(),
-    fetchRecentContentCount(),
+    fetchRecentNewsCount(),
     fetchVideoMatches()
   ]);
 
