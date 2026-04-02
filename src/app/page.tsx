@@ -147,7 +147,7 @@ async function fetchMatchesWithTeams() {
       .lte('match_date', windowEnd.toISOString())
       .order('match_date', { ascending: true })
       .order('id',         { ascending: true })
-      .limit(200)) as unknown as SupaResp;
+      .limit(50)) as unknown as SupaResp;
     return { rawMatches: data ?? [], matchesError: error };
   });
 }
