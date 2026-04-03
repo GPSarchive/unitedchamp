@@ -13,7 +13,6 @@ import TeamDashboard from '@/app/home/TeamDashboard';
 import GridBgSection from '@/app/home/GridBgSection';
 import VantaSection from '@/app/home/VantaSection';
 import MiniAnnouncements from './home/MiniAnnouncements';
-import RecentMatchesTabs from './home/RecentMatchesTabs';
 import EnhancedMobileCalendar from './home/EnhancedMobileCalendar';
 import TournamentsGrid from './home/TournamentsGrid';
 import RecentAnnouncementsBubble from './home/RecentAnnouncementsBubble';
@@ -147,8 +146,7 @@ async function fetchMatchesWithTeams() {
       .gte('match_date', windowStart.toISOString())
       .lte('match_date', windowEnd.toISOString())
       .order('match_date', { ascending: true })
-      .order('id',         { ascending: true })
-      .limit(50)) as unknown as SupaResp;
+      .order('id',         { ascending: true })) as unknown as SupaResp;
     return { rawMatches: data ?? [], matchesError: error };
   });
 }
