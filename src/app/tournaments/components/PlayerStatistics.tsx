@@ -7,6 +7,7 @@ import { FaFutbol, FaHandsHelping, FaExclamationTriangle, FaTimesCircle } from "
 import { MdSportsSoccer } from "react-icons/md";
 import type { Player, Team } from "../useTournamentData";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import { FormerPlayerBadge } from "@/components/FormerPlayerBadge";
 
 type PlayerStatisticsProps = {
   players: Player[];
@@ -31,18 +32,9 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
   const [sortKey, setSortKey] = useState<SortKey>('goals');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  console.log('[PlayerStatistics] Component rendered with:', {
-    playersCount: players?.length || 0,
-    teamsCount: teams?.length || 0,
-    players: players,
-    teams: teams,
-  });
-
   // Create a map for quick team lookup
   const teamMap = useMemo(() => {
-    const map = new Map(teams.map((team) => [team.id, team]));
-    console.log('[PlayerStatistics] Team map created:', map);
-    return map;
+    return new Map(teams.map((team) => [team.id, team]));
   }, [teams]);
 
   // Enrich players with team info and sort by selected column
@@ -50,16 +42,6 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
     const enriched = players
       .map((player) => {
         const team = teamMap.get(player.teamId);
-        console.log('[PlayerStatistics] Mapping player:', {
-          playerId: player.id,
-          playerName: player.name,
-          teamId: player.teamId,
-          team: team,
-          goals: player.goals,
-          assists: player.assists,
-          mvp: player.mvp,
-          matchesPlayed: player.matchesPlayed,
-        });
         return {
           ...player,
           teamName: team?.name || "Unknown Team",
@@ -85,7 +67,6 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         }
       });
 
-    console.log('[PlayerStatistics] Enriched players:', enriched);
     return enriched;
   }, [players, teamMap, sortKey, sortDirection]);
 
@@ -168,10 +149,10 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         <div className="overflow-x-auto">
           {/* Table Header */}
           <div className="border-b border-white/10 bg-gradient-to-r from-black/60 via-zinc-900/60 to-black/60 backdrop-blur-sm">
-            <div className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider min-w-[900px]">
+            <div className="grid grid-cols-[40px_1fr_60px_60px_60px] md:grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-2 md:gap-4 px-4 md:px-6 py-4 text-xs font-bold text-white/80 uppercase tracking-wider">
             <div className="text-center">#</div>
             <div>Παίκτης</div>
-            <div className="text-center">Ομάδα</div>
+            <div className="hidden md:block text-center">Ομάδα</div>
 
             {/* Sortable Goals Column */}
             <button
@@ -202,7 +183,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             {/* Sortable MVP Column */}
             <button
               onClick={() => handleSort('mvp')}
-              className="text-center hover:text-yellow-400 transition-colors flex items-center justify-center gap-1 group"
+              className="text-center hover:text-yellow-400 transition-colors hidden md:flex items-center justify-center gap-1 group"
               title="MVP (Κλικ για ταξινόμηση)"
             >
               <Trophy className="w-3 h-3 text-yellow-400" />
@@ -215,7 +196,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             {/* Sortable Yellow Cards Column */}
             <button
               onClick={() => handleSort('yellowCards')}
-              className="text-center hover:text-yellow-500 transition-colors flex items-center justify-center gap-1 group"
+              className="text-center hover:text-yellow-500 transition-colors hidden md:flex items-center justify-center gap-1 group"
               title="Κίτρινες Κάρτες (Κλικ για ταξινόμηση)"
             >
               <FaExclamationTriangle className="w-3 h-3 text-yellow-500" />
@@ -228,7 +209,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             {/* Sortable Red Cards Column */}
             <button
               onClick={() => handleSort('redCards')}
-              className="text-center hover:text-red-500 transition-colors flex items-center justify-center gap-1 group"
+              className="text-center hover:text-red-500 transition-colors hidden md:flex items-center justify-center gap-1 group"
               title="Κόκκινες Κάρτες (Κλικ για ταξινόμηση)"
             >
               <FaTimesCircle className="w-3 h-3 text-red-500" />
@@ -241,7 +222,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
             {/* Sortable Matches Column */}
             <button
               onClick={() => handleSort('matchesPlayed')}
-              className="text-center hover:text-white transition-colors flex items-center justify-center gap-1 group"
+              className="text-center hover:text-white transition-colors hidden md:flex items-center justify-center gap-1 group"
               title="Αγώνες (Κλικ για ταξινόμηση)"
             >
               <MdSportsSoccer className="w-3 h-3" />
@@ -265,12 +246,12 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.3, delay: index * 0.02 }}
-                    className="grid grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-4 px-6 py-4 hover:bg-white/5 transition-all duration-200 group min-w-[900px]"
+                    className="grid grid-cols-[40px_1fr_60px_60px_60px] md:grid-cols-[60px_1fr_100px_80px_80px_80px_80px_80px_80px] gap-2 md:gap-4 px-4 md:px-6 py-4 hover:bg-white/5 transition-all duration-200 group"
                   >
                   {/* Rank */}
                   <div className="flex items-center justify-center">
                     <div className={`
-                      w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm
+                      w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center font-bold text-xs md:text-sm
                       ${globalIndex === 0 ? 'bg-gradient-to-br from-yellow-500 to-yellow-600 text-white shadow-lg shadow-yellow-500/30' : ''}
                       ${globalIndex === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-400/30' : ''}
                       ${globalIndex === 2 ? 'bg-gradient-to-br from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-600/30' : ''}
@@ -282,7 +263,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
 
               {/* Player Info */}
               <div className="flex items-center gap-3 min-w-0">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors">
+                <div className="flex-shrink-0 w-8 h-8 md:w-12 md:h-12 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10 group-hover:border-emerald-500/30 transition-colors">
                   <img
                     src={resolvePlayerPhotoUrl(player.photo)}
                     alt={player.name}
@@ -293,8 +274,11 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
-                    {player.name}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="font-bold text-white truncate group-hover:text-emerald-400 transition-colors">
+                      {player.name}
+                    </div>
+                    <FormerPlayerBadge show={player.isDeleted} size="xs" />
                   </div>
                   {player.position && (
                     <div className="text-xs text-white/50 truncate">
@@ -305,7 +289,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               </div>
 
               {/* Team Logo */}
-              <div className="flex items-center justify-center">
+              <div className="hidden md:flex items-center justify-center">
                 <div className="relative group/team">
                   <img
                     src={player.teamLogo}
@@ -342,7 +326,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               </div>
 
               {/* MVP */}
-              <div className="flex items-center justify-center">
+              <div className="hidden md:flex items-center justify-center">
                 <div className={`
                   font-bold text-lg
                   ${player.mvp > 0 ? 'text-yellow-400' : 'text-white/30'}
@@ -352,7 +336,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               </div>
 
               {/* Yellow Cards */}
-              <div className="flex items-center justify-center">
+              <div className="hidden md:flex items-center justify-center">
                 <div className={`
                   font-bold text-lg
                   ${player.yellowCards > 0 ? 'text-yellow-500' : 'text-white/30'}
@@ -362,7 +346,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               </div>
 
               {/* Red Cards */}
-              <div className="flex items-center justify-center">
+              <div className="hidden md:flex items-center justify-center">
                 <div className={`
                   font-bold text-lg
                   ${player.redCards > 0 ? 'text-red-500' : 'text-white/30'}
@@ -372,7 +356,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
               </div>
 
               {/* Matches Played */}
-              <div className="flex items-center justify-center">
+              <div className="hidden md:flex items-center justify-center">
                 <div className="font-bold text-lg text-white/70">
                   {player.matchesPlayed}
                 </div>

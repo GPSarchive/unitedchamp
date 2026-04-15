@@ -22,7 +22,7 @@ const TournamentsGrid: React.FC<TournamentsGridProps> = ({ tournaments }) => {
         </header>
 
         {tournaments.length === 0 ? (
-          <p className="text-center text-neutral-400">No tournaments available</p>
+          <p className="text-center text-neutral-400">Δεν υπάρχουν διοργανώσεις</p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {tournaments.map((tournament) => (
@@ -61,11 +61,11 @@ const TournamentsGrid: React.FC<TournamentsGridProps> = ({ tournaments }) => {
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-300">
                         {tournament.season ? (
                           <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">
-                            Season {tournament.season}
+                            Σεζόν {tournament.season}
                           </span>
                         ) : (
                           <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">
-                            Season N/A
+                            Σεζόν -
                           </span>
                         )}
                         {tournament.format ? (
@@ -83,10 +83,10 @@ const TournamentsGrid: React.FC<TournamentsGridProps> = ({ tournaments }) => {
                   {/* Footer row */}
                   <div className="mt-6 flex items-center justify-between text-sm text-neutral-300">
                     <div className="flex items-center gap-3">
-                      <Meta label="Teams" value={String(tournament.teams_count ?? "-")} />
-                      <Meta label="Matches" value={String(tournament.matches_count ?? "-")} />
+                      <Meta label="Ομάδες" value={String(tournament.teams_count ?? "-")} />
+                      <Meta label="Αγώνες" value={String(tournament.matches_count ?? "-")} />
                     </div>
-                    <span className="opacity-70">View →</span>
+                    <span className="opacity-70">Προβολή →</span>
                   </div>
 
                   {/* Card shine */}

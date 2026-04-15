@@ -9,13 +9,20 @@ type Props = {
   players: PlayerWithStats[];
   onEdit: (p: PlayerWithStats) => void;
   onDelete: (id: number) => void;
+  onRestore?: (id: number) => void;
 };
 
-export default function PlayersGrid({ players, onEdit, onDelete }: Props) {
+export default function PlayersGrid({ players, onEdit, onDelete, onRestore }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {players.map((p) => (
-        <PlayerCard key={p.id} player={p} onEdit={() => onEdit(p)} onDelete={() => onDelete(p.id)} />
+        <PlayerCard
+          key={p.id}
+          player={p}
+          onEdit={() => onEdit(p)}
+          onDelete={() => onDelete(p.id)}
+          onRestore={onRestore ? () => onRestore(p.id) : undefined}
+        />
       ))}
     </div>
   );

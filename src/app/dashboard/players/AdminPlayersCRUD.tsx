@@ -15,6 +15,9 @@ export default function AdminPlayersCRUD() {
   // search
   const [q, setQ] = useState("");
 
+  // archive toggle
+  const [showArchived, setShowArchived] = useState(false);
+
   // editor
   const [showEditor, setShowEditor] = useState(false);
   const [editing, setEditing] = useState<PlayerWithStats | null>(null);
@@ -110,6 +113,9 @@ export default function AdminPlayersCRUD() {
       let url = q.trim()
         ? `/api/players?q=${encodeURIComponent(q)}`
         : `/api/players`;
+      if (showArchived) {
+        url += url.includes("?") ? "&include=archived" : "?include=archived";
+      }
       if (debugParam === "1") {
         url += url.includes("?") ? "&debug=1" : "?debug=1";
       }
@@ -205,7 +211,7 @@ export default function AdminPlayersCRUD() {
   useEffect(() => {
     fetchPlayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showArchived]);
 
   // Log whenever state changes (what the UI will actually render)
   useEffect(() => {
@@ -311,16 +317,16 @@ export default function AdminPlayersCRUD() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Permanently delete this player? This also removes their stats and team links."))
+    if (!confirm("Αρχειοθέτηση παίκτη; Θα αποκρυφτεί από τα ρόστερ και τους νέους αγώνες, αλλά τα ιστορικά στατιστικά του διατηρούνται."))
       return;
     try {
-      if (DEBUG) console.log("[AdminPlayersCRUD] handleDelete id:", id);
+      if (DEBUG) console.log("[AdminPlayersCRUD] handleDelete (archive) id:", id);
       const res = await fetch(`/api/players/${id}${DEBUG ? "?debug=1" : ""}`, {
         method: "DELETE",
         credentials: "include",
       });
       const body = await safeJson(res);
-      if (DEBUG) console.log("[AdminPlayersCRUD] DELETE response:", body);
+      if (DEBUG) console.log("[AdminPlayersCRUD] DELETE (archive) response:", body);
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       setPlayers((prev) => prev.filter((p) => p.id !== id));
     } catch (e: any) {
@@ -329,9 +335,34 @@ export default function AdminPlayersCRUD() {
     }
   }
 
+  async function handleRestore(id: number) {
+    try {
+      if (DEBUG) console.log("[AdminPlayersCRUD] handleRestore id:", id);
+      const res = await fetch(`/api/players/${id}/restore`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await safeJson(res);
+      if (DEBUG) console.log("[AdminPlayersCRUD] RESTORE response:", body);
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      // Remove from the archived list (they're now active)
+      setPlayers((prev) => prev.filter((p) => p.id !== id));
+    } catch (e: any) {
+      if (DEBUG) console.error("[AdminPlayersCRUD] handleRestore error:", e);
+      alert(e?.message ?? String(e));
+    }
+  }
+
   return (
     <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-      <PlayersToolbar q={q} onChangeQ={setQ} onSearch={fetchPlayers} onNew={openCreate} />
+      <PlayersToolbar
+        q={q}
+        onChangeQ={setQ}
+        onSearch={fetchPlayers}
+        onNew={openCreate}
+        showArchived={showArchived}
+        onToggleArchived={setShowArchived}
+      />
 
       {loading ? (
         <p className="text-white/70">Loading…</p>
@@ -340,7 +371,12 @@ export default function AdminPlayersCRUD() {
       ) : players.length === 0 ? (
         <p className="text-white/60">No players found.</p>
       ) : (
-        <PlayersGrid players={players} onEdit={openEdit} onDelete={handleDelete} />
+        <PlayersGrid
+          players={players}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+          onRestore={showArchived ? handleRestore : undefined}
+        />
       )}
 
       <PlayerEditorDrawer

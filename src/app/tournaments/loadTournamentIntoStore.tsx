@@ -36,6 +36,7 @@ type PlayerDetail = {
   last_name: string | null;
   photo: string | null;
   position: string | null;
+  deleted_at: string | null;
 };
 
 type TournamentTeamData = {
@@ -77,18 +78,14 @@ export const loadTournamentIntoStore = async (
   awards: Awards | null;
   groups: Group[]; // Added for completeness, even if not in store yet
 }> => {
-  console.log(`[loadTournamentIntoStore] Fetching data for tournamentId: ${tournamentId}`);
-
   // Fetch tournament
   const { data: tournamentData, error: tournamentError } = await supabaseInstance
     .from('tournaments')
     .select('*')
     .eq('id', tournamentId)
     .single();
-  console.log(`[loadTournamentIntoStore] Tournament fetch result:`, { data: tournamentData, error: tournamentError });
 
   if (tournamentError || !tournamentData) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch tournament: ${tournamentError?.message || 'No data'}`);
     throw new Error(`Failed to fetch tournament: ${tournamentError?.message || 'No data'}`);
   }
   const tournament: Tournament = {
@@ -110,10 +107,8 @@ export const loadTournamentIntoStore = async (
     .select('*')
     .eq('tournament_id', tournamentId)
     .order('ordering');
-  console.log(`[loadTournamentIntoStore] Stages fetch result:`, { data: stagesData, error: stagesError });
 
   if (stagesError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch stages: ${stagesError.message}`);
     throw new Error(`Failed to fetch stages: ${stagesError.message}`);
   }
   const stages: Stage[] = stagesData || [];
@@ -125,10 +120,8 @@ export const loadTournamentIntoStore = async (
     .select('*')
     .in('stage_id', stageIds)
     .order('ordering');
-  console.log(`[loadTournamentIntoStore] Groups fetch result:`, { data: groupsData, error: groupsError });
 
   if (groupsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch groups: ${groupsError.message}`);
     throw new Error(`Failed to fetch groups: ${groupsError.message}`);
   }
   const groups: Group[] = groupsData || [];
@@ -139,10 +132,8 @@ export const loadTournamentIntoStore = async (
     .select('*')
     .eq('tournament_id', tournamentId)
     .order('match_date');
-  console.log(`[loadTournamentIntoStore] Matches fetch result:`, { data: matchesData, error: matchesError });
 
   if (matchesError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch matches: ${matchesError.message}`);
     throw new Error(`Failed to fetch matches: ${matchesError.message}`);
   }
   const matches: DraftMatch[] = (matchesData || []).map((match: any) => ({
@@ -177,10 +168,8 @@ export const loadTournamentIntoStore = async (
   .order("stage_id", { ascending: true })
   .order("group_id", { ascending: true, nullsFirst: true })
   .order("rank", { ascending: true, nullsFirst: true });
-  console.log(`[loadTournamentIntoStore] Standings fetch result:`, { data: standingsData, error: standingsError });
 
   if (standingsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch standings: ${standingsError.message}`);
     throw new Error(`Failed to fetch standings: ${standingsError.message}`);
   }
   const standings: Standing[] = standingsData || [];
@@ -190,10 +179,8 @@ export const loadTournamentIntoStore = async (
     .from('tournament_teams')
     .select('*, team:teams(id, name, logo, season_score), stage_id, group_id, seed')
     .eq('tournament_id', tournamentId);
-  console.log(`[loadTournamentIntoStore] Teams fetch result:`, { data: tournamentTeamsData, error: teamsError });
 
   if (teamsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch teams: ${teamsError.message}`);
     throw new Error(`Failed to fetch teams: ${teamsError.message}`);
   }
 
@@ -204,14 +191,6 @@ export const loadTournamentIntoStore = async (
 
   // Fetch match IDs for tournament-specific filtering
   const matchIds = matches.map((m: DraftMatch) => m.db_id).filter((id): id is number => id !== null && id !== undefined);
-
-  console.log(`[loadTournamentIntoStore] Query params:`, {
-    tournamentId,
-    matchIds: matchIds,
-    matchIdsLength: matchIds.length,
-    teamIds: teamIds,
-    teamIdsLength: teamIds.length,
-  });
 
   // Fetch raw match player stats DIRECTLY (primary source of truth)
   const { data: rawStats, error: statsError } = await supabaseInstance
@@ -232,14 +211,7 @@ export const loadTournamentIntoStore = async (
     .in('match_id', matchIds)
     .in('team_id', teamIds) as { data: MatchPlayerStat[] | null; error: any };
 
-  console.log(`[loadTournamentIntoStore] Raw player stats fetch result:`, {
-    data: rawStats,
-    error: statsError,
-    statsCount: rawStats?.length || 0,
-  });
-
   if (statsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch raw player stats: ${statsError.message}`);
     throw new Error(`Failed to fetch raw player stats: ${statsError.message}`);
   }
 
@@ -250,11 +222,6 @@ export const loadTournamentIntoStore = async (
     .in('match_id', matchIds)
     .in('team_id', teamIds)
     .eq('played', true);
-
-  console.log(`[loadTournamentIntoStore] Participants fetch result:`, {
-    participantsCount: participantsData?.length || 0,
-    error: participantsError,
-  });
 
   // Build participant map for accurate match counts
   const participantMap = new Map<string, Set<number>>();
@@ -320,18 +287,8 @@ export const loadTournamentIntoStore = async (
 
   const aggStats: AggPlayerStat[] = Array.from(aggStatsMap.values());
 
-  console.log(`[loadTournamentIntoStore] Aggregated stats:`, {
-    aggStatsCount: aggStats.length,
-    sampleStats: aggStats.slice(0, 3),
-  });
-
   // Extract unique player IDs from aggregated stats
   const playerIds = [...new Set(aggStats.map(s => s.player_id))];
-
-  console.log(`[loadTournamentIntoStore] Player IDs to fetch:`, {
-    playerIdsCount: playerIds.length,
-    playerIds: playerIds,
-  });
 
   // Fetch player details with fallback
   let playersDetails: PlayerDetail[] | null = null;
@@ -339,25 +296,15 @@ export const loadTournamentIntoStore = async (
   try {
     const { data, error } = await supabaseInstance
       .from('player') // Fixed: schema uses 'player', not 'players'
-      .select('id, first_name, last_name, photo, position')
+      .select('id, first_name, last_name, photo, position, deleted_at')
       .in('id', playerIds);
     playersDetails = data;
     detailsError = error;
-    console.log(`[loadTournamentIntoStore] Player details fetch result:`, {
-      data: playersDetails,
-      error: detailsError,
-      detailsCount: playersDetails?.length || 0,
-    });
   } catch (e) {
-    console.error(`[loadTournamentIntoStore] Exception while fetching player details: ${e}`);
     detailsError = e;
   }
 
-  if (detailsError) {
-    console.error(`[loadTournamentIntoStore] Failed to fetch player details: ${detailsError.message}`);
-    // Instead of throwing, proceed with default player details
-    console.warn(`[loadTournamentIntoStore] Using default player details for playerIds: ${playerIds.join(', ')}`);
-  }
+  // If details fetch failed, proceed with default player details
 
   // Create a map for quick lookup of player details, with fallback for missing data
   const playersMap = new Map<number, PlayerDetail>(
@@ -370,6 +317,7 @@ export const loadTournamentIntoStore = async (
           last_name: null,
           photo: null,
           position: null,
+          deleted_at: null,
         },
       ])
   );
@@ -382,6 +330,7 @@ export const loadTournamentIntoStore = async (
       last_name: null,
       photo: null,
       position: null,
+      deleted_at: null,
     };
     return {
       id: stat.player_id,
@@ -398,13 +347,8 @@ export const loadTournamentIntoStore = async (
       teamId: stat.team_id,
       photo: detail.photo || '/player-placeholder.jpg',
       isCaptain: stat.is_captain || false,
+      isDeleted: !!detail.deleted_at,
     };
-  });
-
-  console.log(`[loadTournamentIntoStore] Built players array:`, {
-    playersCount: players.length,
-    samplePlayers: players.slice(0, 3),
-    allPlayers: players,
   });
 
   // Build teams
@@ -481,14 +425,11 @@ export const loadTournamentIntoStore = async (
     .select('*')
     .eq('tournament_id', tournamentId)
     .single();
-  console.log(`[loadTournamentIntoStore] Awards fetch result:`, { data: awardsData, error: awardsError });
 
   if (awardsError && awardsError.code !== 'PGRST116') {
-    console.error(`[loadTournamentIntoStore] Failed to fetch awards: ${awardsError.message}`);
     throw new Error(`Failed to fetch awards: ${awardsError.message}`);
   }
   const awards: Awards | null = awardsData || null;
 
-  console.log(`[loadTournamentIntoStore] Successfully loaded data for tournamentId: ${tournamentId}`);
   return { tournament, teams, players, matches, stages, standings, awards, groups };
 };

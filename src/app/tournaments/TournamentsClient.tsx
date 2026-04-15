@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 
@@ -7,7 +8,27 @@ type TournamentsClientProps = {
   initialTournaments: Tournament[];
 };
 
+type StatusFilter = "all" | "running" | "completed" | "scheduled";
+
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "Όλα" },
+  { value: "running", label: "Σε Εξέλιξη" },
+  { value: "completed", label: "Ολοκληρωμένα" },
+  { value: "scheduled", label: "Προγραμματισμένα" },
+];
+
 const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournaments }) => {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const filtered = useMemo(() => {
+    return initialTournaments.filter((t) => {
+      const matchesSearch = !search || t.name.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [initialTournaments, search, statusFilter]);
+
   return (
     <section className="relative min-h-screen bg-black text-white">
       {/* Decorative BG: soft radial glow + subtle gridlines */}
@@ -16,7 +37,6 @@ const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournament
         className="pointer-events-none absolute inset-0 -z-10
                    [mask-image:radial-gradient(ellipse_120%_80%_at_50%_30%,#000_20%,transparent_70%)]
                    bg-[repeating-linear-gradient(135deg,rgba(255,255,255,0.06)_0_2px,transparent_2px_12px)]"
-
       />
       <div
         aria-hidden
@@ -24,15 +44,45 @@ const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournament
       />
 
       <div className="container mx-auto px-4 py-12">
-        <header className="mb-10 flex items-end justify-between">
+        <header className="mb-8">
           <h1 className="text-4xl font-semibold tracking-tight">Διοργάνωσεις</h1>
         </header>
 
-        {initialTournaments.length === 0 ? (
-          <p className="text-center text-neutral-400">No tournaments available</p>
+        {/* Search & Filters */}
+        <div className="mb-8 space-y-4">
+          <input
+            type="text"
+            placeholder="Αναζήτηση διοργάνωσης..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full max-w-md rounded-xl border border-white/10 bg-neutral-900/80 px-4 py-2.5 text-sm text-white placeholder:text-neutral-500 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
+          />
+          <div className="flex flex-wrap gap-2">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all ${
+                  statusFilter === f.value
+                    ? "bg-white text-black"
+                    : "border border-white/10 bg-neutral-900 text-neutral-300 hover:border-white/20 hover:text-white"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <p className="text-center text-neutral-400 py-12">
+            {initialTournaments.length === 0
+              ? "Δεν υπάρχουν διοργανώσεις"
+              : "Δεν βρέθηκαν αποτελέσματα"}
+          </p>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {initialTournaments.map((tournament) => (
+            {filtered.map((tournament) => (
               <Link
                 key={tournament.id}
                 href={`/tournaments/${tournament.id}`}
@@ -67,9 +117,9 @@ const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournament
                       </h2>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-300">
                         {tournament.season ? (
-                          <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">Season {tournament.season}</span>
+                          <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">Σεζόν {tournament.season}</span>
                         ) : (
-                          <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">Season N/A</span>
+                          <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">Σεζόν -</span>
                         )}
                         {tournament.format ? (
                           <span className="rounded-full border border-white/10 bg-neutral-900 px-2 py-0.5">{tournament.format}</span>
@@ -81,13 +131,23 @@ const TournamentsClient: React.FC<TournamentsClientProps> = ({ initialTournament
                     </div>
                   </div>
 
+                  {/* Winner row */}
+                  {tournament.status === 'completed' && tournament.winner_team_name && (
+                    <div className="mt-4 flex items-center gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 px-3 py-2">
+                      <span className="text-yellow-400 text-sm">🏆</span>
+                      <span className="text-xs text-yellow-300 font-medium truncate">
+                        {tournament.winner_team_name}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Footer row */}
                   <div className="mt-6 flex items-center justify-between text-sm text-neutral-300">
                     <div className="flex items-center gap-3">
-                      <Meta label="Teams" value={String(tournament.teams_count ?? "-")} />
-                      <Meta label="Matches" value={String(tournament.matches_count ?? "-")} />
+                      <Meta label="Ομάδες" value={String(tournament.teams_count ?? "-")} />
+                      <Meta label="Αγώνες" value={String(tournament.matches_count ?? "-")} />
                     </div>
-                    <span className="opacity-70">View →</span>
+                    <span className="opacity-70">Προβολή →</span>
                   </div>
 
                   {/* Card shine */}

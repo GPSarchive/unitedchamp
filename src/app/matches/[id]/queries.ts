@@ -70,6 +70,7 @@ export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation
         first_name,
         last_name,
         photo,
+        deleted_at,
         player_statistics(
           id,
           age,

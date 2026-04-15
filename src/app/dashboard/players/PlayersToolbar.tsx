@@ -7,9 +7,11 @@ type Props = {
   onChangeQ: (v: string) => void;
   onSearch: () => void;
   onNew: () => void;
+  showArchived: boolean;
+  onToggleArchived: (v: boolean) => void;
 };
 
-export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew }: Props) {
+export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew, showArchived, onToggleArchived }: Props) {
   return (
     <div className="flex items-center gap-2 mb-4">
       <input
@@ -26,6 +28,17 @@ export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew }: Props)
       >
         Αναζητηση
       </button>
+
+      <label className="flex items-center gap-1.5 text-sm text-white/70 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={showArchived}
+          onChange={(e) => onToggleArchived(e.target.checked)}
+          className="accent-amber-500"
+        />
+        Αρχειοθετημένοι
+      </label>
+
       <div className="flex-1" />
       <button
         type="button"

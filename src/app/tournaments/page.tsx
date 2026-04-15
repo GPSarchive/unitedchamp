@@ -9,17 +9,24 @@ export default async function TournamentsPage() {
     // 1) Fetch all tournaments
     const { data: tournamentsData, error: tournamentsError } = await supabaseAdmin
       .from('tournaments')
-      .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .select('id, name, slug, format, season, logo, status, winner_team_id, winner_team:teams!winner_team_id(name)')
       .order('id', { ascending: true });
 
     if (tournamentsError || !tournamentsData) {
       throw new Error(`Failed to fetch tournaments: ${tournamentsError?.message || 'No data'}`);
     }
 
-    // 2) ✅ Sign tournament logos (one line!)
-    const tournaments = await signTournamentLogos(tournamentsData as Tournament[]);
+    // 2) Map winner team name from join
+    const mapped = tournamentsData.map((t: any) => ({
+      ...t,
+      winner_team_name: t.winner_team?.name ?? null,
+      winner_team: undefined,
+    })) as Tournament[];
 
-    // 3) Pass to client component with signed URLs
+    // 3) Sign tournament logos
+    const tournaments = await signTournamentLogos(mapped);
+
+    // 4) Pass to client component with signed URLs
     return <TournamentsClients initialTournaments={tournaments} />;
   } catch (error) {
     console.error("Error loading tournaments:", error);

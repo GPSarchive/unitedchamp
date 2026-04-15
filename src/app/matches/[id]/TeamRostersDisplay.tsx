@@ -4,12 +4,14 @@ import { motion } from "framer-motion";
 import { Users, Star } from "lucide-react";
 import { PlayerImage, TeamImage } from "@/app/lib/OptimizedImage";
 import type { Id } from "@/app/lib/types";
+import { FormerPlayerBadge, isFormerPlayer } from "@/components/FormerPlayerBadge";
 
 type Player = {
   id: Id;
   first_name: string | null;
   last_name: string | null;
   photo: string | null;
+  deleted_at?: string | null;
 };
 
 type RosterPlayer = {
@@ -237,6 +239,11 @@ function RosterPlayerCard({
               {player.last_name}
             </div>
           )}
+          <FormerPlayerBadge
+            show={isFormerPlayer(player)}
+            size="xs"
+            className="mt-1"
+          />
         </div>
 
         {/* Decorative star on hover (still optional) */}

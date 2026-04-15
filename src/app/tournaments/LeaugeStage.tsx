@@ -11,18 +11,6 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   const getTeamName = useTournamentData((s) => s.getTeamName);
   const getTeamLogo = useTournamentData((s) => s.getTeamLogo);
 
-  // Debug logging
-  React.useEffect(() => {
-    console.log('[LeagueStage] Data check:', {
-      stageId: stage.id,
-      stageIdx,
-      standingsCount: standings?.length,
-      matchesCount: matches?.length,
-      stageStandings: standings?.filter(s => s.stage_id === stage.id),
-      stageMatches: matches?.filter(m => m.stageIdx === stageIdx)
-    });
-  }, [stage.id, stageIdx, standings, matches]);
-
   if (stageIdx === undefined) {
     return (
       <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">

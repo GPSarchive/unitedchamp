@@ -36,6 +36,7 @@ export async function GET(req: Request) {
   const q = (url.searchParams.get("q") || "").trim();
   const excludeTeamId = Number(url.searchParams.get("excludeTeamId") || "");
   const limit = Math.min(Number(url.searchParams.get("limit") || 25), 100);
+  const include = (url.searchParams.get("include") || "").trim();
 
   // Read with service role so RLS on child tables can't hide stats
   let query = supabaseAdmin
@@ -49,6 +50,7 @@ export async function GET(req: Request) {
       position,
       birth_date,
       player_number,
+      deleted_at,
       player_statistics (
         id,
         age,
@@ -64,6 +66,15 @@ export async function GET(req: Request) {
     .limit(limit)
     .order("id", { foreignTable: "player_statistics", ascending: false })
     .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
+
+  // Soft-delete filtering (same pattern as teams)
+  if (include === "archived") {
+    query = query.not("deleted_at", "is", null);   // archived only
+  } else if (include === "all") {
+    // no filter — return both active and archived
+  } else {
+    query = query.is("deleted_at", null);           // active only (default)
+  }
 
   if (q) {
     query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);

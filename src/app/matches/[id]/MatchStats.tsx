@@ -4,6 +4,7 @@ import type { Id, PlayerAssociation } from "@/app/lib/types";
 import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
 import GlossOverlay from "@/app/paiktes/GlossOverlay";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
+import { FormerPlayerBadge, isFormerPlayer } from "@/components/FormerPlayerBadge";
 
 /* ──────────────────────────────────────────────────────────
    Glass UI tokens
@@ -148,6 +149,7 @@ function TeamPanel({
                     {isGK && <Badge>GK</Badge>}
                     {isMvp && <Badge>🏅 MVP</Badge>}
                     {isBestGk && <Badge>🧤 Best GK</Badge>}
+                    <FormerPlayerBadge show={isFormerPlayer(player)} size="sm" />
                   </div>
                 </div>
               </div>

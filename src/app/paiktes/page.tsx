@@ -183,7 +183,8 @@ export default async function PaiktesPage({
     .from("player")
     .select("id, first_name, last_name, photo, position, height_cm, birth_date", {
       count: "exact",
-    });
+    })
+    .is("deleted_at", null); // exclude soft-deleted players
 
   if (combinedPlayerIds !== null) {
     if (combinedPlayerIds.length === 0) {

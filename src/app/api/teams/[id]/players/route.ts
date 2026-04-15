@@ -126,7 +126,7 @@ export async function GET(req: Request, ctx: Ctx) {
     .select(`
       id,
       player:player_id(
-        id, first_name, last_name,
+        id, first_name, last_name, deleted_at,
         player_statistics(
           id,
           age,
@@ -156,7 +156,9 @@ export async function GET(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: error.message, requestId }, { status: 400, headers });
   }
 
-  const playerAssociations = normalizeTeamPlayers((data ?? []) as TeamPlayersRowRaw[]);
+  // Filter out soft-deleted players from team roster
+  const playerAssociations = normalizeTeamPlayers((data ?? []) as TeamPlayersRowRaw[])
+    .filter((a) => !(a.player as any).deleted_at);
 
   const hasStats = playerAssociations.some(a => (a.player.player_statistics?.length ?? 0) > 0);
   headers.set("X-Debug-TeamId", String(teamId));
@@ -280,6 +282,21 @@ export async function POST(req: Request, ctx: Ctx) {
 
     // A) link an existing player
     let playerId = parseId((reqBody as any).player_id);
+
+    // Guard: prevent linking a soft-deleted (archived) player
+    if (playerId) {
+      const { data: playerCheck } = await supabaseAdmin
+        .from("player")
+        .select("deleted_at")
+        .eq("id", playerId)
+        .maybeSingle();
+      if (playerCheck?.deleted_at) {
+        return NextResponse.json(
+          { error: "Cannot add an archived player to a team. Restore them first.", requestId },
+          { status: 400, headers },
+        );
+      }
+    }
 
     // B) create new player (+ optional stats) then link
     if (!playerId) {

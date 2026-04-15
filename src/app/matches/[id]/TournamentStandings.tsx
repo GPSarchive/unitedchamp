@@ -1,16 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Award, Medal, Crown } from "lucide-react";
+import { Trophy, Award, Medal, Crown } from "lucide-react";
 import Link from "next/link";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import type { StandingRow } from "./queries";
 
-/**
- * TournamentStandings - Neon Triumph Edition
- * Displays tournament standings with deep navy + neon magenta/cyan aesthetic
- * Features: Animated entrance, floating orbs, trophy icons, gradient highlights
- */
 export default function TournamentStandings({
   standings,
   stageKind,
@@ -25,46 +20,47 @@ export default function TournamentStandings({
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2, type: "spring", stiffness: 100 }}
-      className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] p-6 md:p-8 shadow-[0_10px_50px_-10px_rgba(0,0,0,0.8)] backdrop-blur-sm"
+      className="relative isolate overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-6 md:p-8 shadow-2xl backdrop-blur-md"
     >
-      {/* Animated floating orbs - magenta & cyan */}
-      <motion.div
+      {/* Subtle warm ambient glow */}
+      <div
         aria-hidden
-        className="pointer-events-none absolute -right-20 -top-32 h-64 w-64 rounded-full blur-3xl opacity-30"
-        style={{ background: "radial-gradient(closest-side, rgba(240,46,170,0.4), transparent)" }}
-        animate={{ x: [0, -20, 10, 0], y: [0, 15, -10, 0] }}
-        transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}
+        className="pointer-events-none absolute -right-20 -top-32 h-64 w-64 rounded-full blur-3xl opacity-15"
+        style={{ background: "radial-gradient(closest-side, rgba(251,191,36,0.3), transparent)" }}
       />
-      <motion.div
+      <div
         aria-hidden
-        className="pointer-events-none absolute -left-24 -bottom-32 h-72 w-72 rounded-full blur-3xl opacity-25"
-        style={{ background: "radial-gradient(closest-side, rgba(0,212,255,0.35), transparent)" }}
-        animate={{ x: [0, 15, -12, 0], y: [0, -20, 12, 0] }}
-        transition={{ repeat: Infinity, duration: 14, ease: "easeInOut" }}
+        className="pointer-events-none absolute -left-24 -bottom-32 h-72 w-72 rounded-full blur-3xl opacity-10"
+        style={{ background: "radial-gradient(closest-side, rgba(180,40,40,0.25), transparent)" }}
       />
 
-      {/* Header with gradient text */}
+      {/* Header */}
       <div className="relative z-10 mb-8 flex items-center gap-3">
         <motion.div
           initial={{ rotate: -15, scale: 0.8 }}
           animate={{ rotate: 0, scale: 1 }}
           transition={{ duration: 0.5, type: "spring" }}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500/20 to-cyan-500/20 border border-fuchsia-400/30 shadow-[0_0_24px_rgba(240,46,170,0.3)]"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-700/20 border border-amber-400/30 shadow-[0_0_24px_rgba(251,191,36,0.2)]"
         >
-          <Trophy className="h-6 w-6 text-fuchsia-300" />
+          <Trophy className="h-6 w-6 text-amber-400" />
         </motion.div>
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-fuchsia-300 via-pink-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(240,46,170,0.5)]">
+          <h2
+            className="text-2xl md:text-3xl font-bold text-white"
+            style={{
+              textShadow:
+                "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000",
+            }}
+          >
             Βαθμολογία
           </h2>
           {stageName && (
-            <p className="text-sm text-zinc-400 mt-0.5">{stageName}</p>
+            <p className="text-sm text-white/50 mt-0.5">{stageName}</p>
           )}
         </div>
       </div>
 
       {standings.length === 0 ? (
-        /* Empty State */
         <div className="relative z-10 flex flex-col items-center justify-center py-12 text-center">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -125,7 +121,7 @@ function StandingsContent({
       {showLeagueHeader && (
         <div className="mb-3 flex items-center gap-2">
           <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+          <span className="text-xs font-semibold uppercase tracking-widest text-amber-400/70">
             {STAGE_KIND_LABEL.league}
           </span>
           <div className="h-px flex-1 bg-white/10" />
@@ -148,7 +144,7 @@ function StandingsContent({
             {hasMultipleGroups && (
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-px flex-1 bg-white/10" />
-                <span className="text-xs font-semibold uppercase tracking-widest text-fuchsia-300/70">
+                <span className="text-xs font-semibold uppercase tracking-widest text-amber-400/70">
                   {sectionLabel}
                 </span>
                 <div className="h-px flex-1 bg-white/10" />
@@ -159,7 +155,7 @@ function StandingsContent({
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full border-separate border-spacing-y-2">
                 <thead>
-                  <tr className="text-left text-sm text-zinc-400">
+                  <tr className="text-left text-sm text-white/40">
                     <th className="pb-3 pl-4 font-medium">#</th>
                     <th className="pb-3 pl-2 font-medium">Ομάδα</th>
                     <th className="pb-3 px-3 text-center font-medium">Αγ</th>
@@ -228,7 +224,7 @@ function StandingRowDesktop({
       case 3:
         return "bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100 shadow-[0_0_16px_rgba(217,119,6,0.5)]";
       default:
-        return "bg-white/5 text-zinc-400 border border-white/10";
+        return "bg-white/5 text-white/40 border border-white/10";
     }
   };
 
@@ -241,7 +237,7 @@ function StandingRowDesktop({
       transition={{ delay: index * 0.06, duration: 0.4, type: "spring", stiffness: 120 }}
       className={`group transition-all ${
         isTopThree
-          ? "bg-gradient-to-r from-fuchsia-500/5 via-purple-500/5 to-cyan-500/5"
+          ? "bg-gradient-to-r from-amber-500/5 via-amber-400/5 to-amber-500/5"
           : "hover:bg-white/5"
       }`}
     >
@@ -269,7 +265,7 @@ function StandingRowDesktop({
                   sizes="40px"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-fuchsia-300">
+                <div className="flex h-full w-full items-center justify-center text-xs font-bold text-amber-400">
                   {standing.team.name.charAt(0)}
                 </div>
               )}
@@ -282,25 +278,25 @@ function StandingRowDesktop({
                 />
               )}
             </div>
-            <span className={`font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
+            <span className={`font-semibold ${isFirst ? "text-amber-200" : "text-white"}`}>
               {standing.team.name}
             </span>
           </div>
         </Link>
       </td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.played}</td>
-      <td className="px-3 py-4 text-center text-emerald-400 font-semibold">{standing.won}</td>
-      <td className="px-3 py-4 text-center text-cyan-400 font-semibold">{standing.drawn}</td>
-      <td className="px-3 py-4 text-center text-rose-400 font-semibold">{standing.lost}</td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.gf}</td>
-      <td className="px-3 py-4 text-center text-zinc-300 font-medium">{standing.ga}</td>
+      <td className="px-3 py-4 text-center text-white/70 font-medium">{standing.played}</td>
+      <td className="px-3 py-4 text-center text-amber-400 font-semibold">{standing.won}</td>
+      <td className="px-3 py-4 text-center text-white/60 font-semibold">{standing.drawn}</td>
+      <td className="px-3 py-4 text-center text-red-400 font-semibold">{standing.lost}</td>
+      <td className="px-3 py-4 text-center text-white/70 font-medium">{standing.gf}</td>
+      <td className="px-3 py-4 text-center text-white/70 font-medium">{standing.ga}</td>
       <td
         className={`px-3 py-4 text-center font-bold ${
           standing.gd > 0
-            ? "text-emerald-400"
+            ? "text-amber-400"
             : standing.gd < 0
-            ? "text-rose-400"
-            : "text-zinc-500"
+            ? "text-red-400"
+            : "text-white/40"
         }`}
       >
         {standing.gd > 0 ? "+" : ""}
@@ -311,7 +307,7 @@ function StandingRowDesktop({
           className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-lg font-bold ${
             isFirst
               ? "bg-gradient-to-r from-amber-400/20 to-yellow-500/20 text-amber-200 ring-1 ring-amber-400/40"
-              : "text-zinc-100"
+              : "text-white"
           }`}
         >
           {standing.points}
@@ -345,7 +341,7 @@ function StandingCardMobile({
       case 3:
         return "bg-gradient-to-br from-amber-600 to-amber-700 text-amber-100 shadow-[0_0_16px_rgba(217,119,6,0.5)]";
       default:
-        return "bg-white/5 text-zinc-400 border border-white/10";
+        return "bg-white/5 text-white/40 border border-white/10";
     }
   };
 
@@ -358,7 +354,7 @@ function StandingCardMobile({
       transition={{ delay: index * 0.06, duration: 0.4, type: "spring" }}
       className={`rounded-2xl border p-4 backdrop-blur-sm transition-all ${
         isTopThree
-          ? "border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/5 to-cyan-500/10 shadow-[0_0_24px_rgba(240,46,170,0.2)]"
+          ? "border-amber-400/20 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-amber-600/10 shadow-[0_0_24px_rgba(251,191,36,0.1)]"
           : "border-white/10 bg-white/5 hover:bg-white/10"
       }`}
     >
@@ -383,23 +379,23 @@ function StandingCardMobile({
                 sizes="48px"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-sm font-bold text-fuchsia-300">
+              <div className="flex h-full w-full items-center justify-center text-sm font-bold text-amber-400">
                 {standing.team.name.charAt(0)}
               </div>
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className={`truncate font-semibold ${isFirst ? "text-amber-200" : "text-zinc-100"}`}>
+            <div className={`truncate font-semibold ${isFirst ? "text-amber-200" : "text-white"}`}>
               {standing.team.name}
             </div>
-            <div className="text-xs text-zinc-500">{standing.played} αγώνες</div>
+            <div className="text-xs text-white/40">{standing.played} αγώνες</div>
           </div>
         </Link>
         <div
           className={`text-2xl font-bold ${
             isFirst
               ? "bg-gradient-to-br from-amber-200 to-yellow-300 bg-clip-text text-transparent"
-              : "text-zinc-100"
+              : "text-white"
           }`}
         >
           {standing.points}
@@ -408,35 +404,27 @@ function StandingCardMobile({
 
       {/* Stats grid */}
       <div className="grid grid-cols-4 gap-3 text-center">
-        <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 py-2">
-          <div className="text-xs text-zinc-400">Ν</div>
-          <div className="font-bold text-emerald-400">{standing.won}</div>
+        <div className="rounded-lg bg-white/5 border border-white/10 py-2">
+          <div className="text-xs text-white/40">Ν</div>
+          <div className="font-bold text-amber-400">{standing.won}</div>
         </div>
-        <div className="rounded-lg bg-cyan-500/10 border border-cyan-500/20 py-2">
-          <div className="text-xs text-zinc-400">Ι</div>
-          <div className="font-bold text-cyan-400">{standing.drawn}</div>
+        <div className="rounded-lg bg-white/5 border border-white/10 py-2">
+          <div className="text-xs text-white/40">Ι</div>
+          <div className="font-bold text-white/70">{standing.drawn}</div>
         </div>
-        <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 py-2">
-          <div className="text-xs text-zinc-400">Η</div>
-          <div className="font-bold text-rose-400">{standing.lost}</div>
+        <div className="rounded-lg bg-white/5 border border-white/10 py-2">
+          <div className="text-xs text-white/40">Η</div>
+          <div className="font-bold text-red-400">{standing.lost}</div>
         </div>
-        <div
-          className={`rounded-lg border py-2 ${
-            standing.gd > 0
-              ? "bg-emerald-500/10 border-emerald-500/20"
-              : standing.gd < 0
-              ? "bg-rose-500/10 border-rose-500/20"
-              : "bg-white/5 border-white/10"
-          }`}
-        >
-          <div className="text-xs text-zinc-400">ΔΓ</div>
+        <div className="rounded-lg bg-white/5 border border-white/10 py-2">
+          <div className="text-xs text-white/40">ΔΓ</div>
           <div
             className={`font-bold ${
               standing.gd > 0
-                ? "text-emerald-400"
+                ? "text-amber-400"
                 : standing.gd < 0
-                ? "text-rose-400"
-                : "text-zinc-500"
+                ? "text-red-400"
+                : "text-white/40"
             }`}
           >
             {standing.gd > 0 ? "+" : ""}

@@ -60,6 +60,7 @@ export async function GET(_req: Request, ctx: Ctx) {
       position,
       birth_date,
       player_number,
+      deleted_at,
       player_statistics (
         id,
         age,
@@ -206,6 +207,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
         position,
         birth_date,
         player_number,
+        deleted_at,
         player_statistics (
           id,
           age,
@@ -232,7 +234,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
 }
 
-/* ------------------------------  DELETE /api/players/:id (admin)  ------------------------------ */
+/* ------------------------------  DELETE /api/players/:id (admin — soft-delete)  ------------------------------ */
 export async function DELETE(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);
@@ -250,21 +252,19 @@ export async function DELETE(req: Request, ctx: Ctx) {
     const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
     if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    // If you don't have FKs with ON DELETE CASCADE, remove children first:
-    await supa.from("player_statistics").delete().eq("player_id", pid);
-    await supa.from("player_teams").delete().eq("player_id", pid);
-
+    // Soft-delete: set deleted_at timestamp (preserves all historical data)
     const { data, error } = await supa
       .from("player")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", pid)
+      .is("deleted_at", null) // only archive if not already archived
       .select("id")
       .maybeSingle();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    if (!data)  return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!data)  return NextResponse.json({ error: "Not found or already archived" }, { status: 404 });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, soft_deleted: true });
   } catch (e: any) {
     if (String(e?.message) === "bad-origin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     return NextResponse.json({ error: "Server error" }, { status: 500 });

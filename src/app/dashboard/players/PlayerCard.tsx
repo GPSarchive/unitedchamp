@@ -9,6 +9,7 @@ type Props = {
   player: PlayerWithStats;
   onEdit: () => void;
   onDelete: () => void;
+  onRestore?: () => void;
 };
 
 function num(v: unknown, fallback = 0) {
@@ -16,8 +17,9 @@ function num(v: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-export default function PlayerCard({ player, onEdit, onDelete }: Props) {
+export default function PlayerCard({ player, onEdit, onDelete, onRestore }: Props) {
   const raw: any | undefined = player.player_statistics?.[0];
+  const isArchived = !!(player as any).deleted_at;
 
   const stats = {
     age: raw?.age ?? null,
@@ -32,11 +34,16 @@ export default function PlayerCard({ player, onEdit, onDelete }: Props) {
   const fullName = `${player.first_name} ${player.last_name}`;
 
   return (
-    <div className="p-3 rounded-lg border border-white/10 bg-zinc-950/60">
+    <div className={`p-3 rounded-lg border ${isArchived ? "border-amber-500/30 opacity-70" : "border-white/10"} bg-zinc-950/60`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-white font-semibold truncate">
+          <p className={`font-semibold truncate ${isArchived ? "text-white/50 line-through" : "text-white"}`}>
             {fullName} <span className="text-white/40 text-xs">#{player.id}</span>
+            {isArchived && (
+              <span className="ml-2 no-underline text-[10px] uppercase font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                Αρχειοθετημένος
+              </span>
+            )}
           </p>
           <p className="text-white/70 text-sm mt-1">Age: {stats.age ?? "N/A"}</p>
 
@@ -76,20 +83,32 @@ export default function PlayerCard({ player, onEdit, onDelete }: Props) {
           ) : null}
 
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onEdit}
-              className="px-2 py-1 text-xs rounded border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="px-2 py-1 text-xs rounded border border-red-400/40 text-red-200 bg-red-900/30 hover:bg-red-900/50"
-            >
-              Delete
-            </button>
+            {!isArchived && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="px-2 py-1 text-xs rounded border border-white/15 text-white bg-zinc-900 hover:bg-zinc-800"
+              >
+                Edit
+              </button>
+            )}
+            {isArchived && onRestore ? (
+              <button
+                type="button"
+                onClick={onRestore}
+                className="px-2 py-1 text-xs rounded border border-emerald-400/40 text-emerald-200 bg-emerald-900/30 hover:bg-emerald-900/50"
+              >
+                Επαναφορα
+              </button>
+            ) : !isArchived ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="px-2 py-1 text-xs rounded border border-red-400/40 text-red-200 bg-red-900/30 hover:bg-red-900/50"
+              >
+                Αρχειοθετηση
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

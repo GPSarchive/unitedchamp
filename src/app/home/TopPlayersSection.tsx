@@ -17,40 +17,48 @@ async function fetchStatRows() {
     supabaseAdmin
       .from('player_statistics')
       .select(`player_id, total_goals, total_assists,
-        player:player_id(id, first_name, last_name, photo,
+        player:player_id(id, first_name, last_name, photo, deleted_at,
           player_teams(team_id, team:team_id(id, name, logo)))`)
       .order('total_goals', { ascending: false })
-      .limit(3),
+      .limit(6),
 
     supabaseAdmin
       .from('player_statistics')
       .select(`player_id, total_goals, total_assists,
-        player:player_id(id, first_name, last_name, photo,
+        player:player_id(id, first_name, last_name, photo, deleted_at,
           player_teams(team_id, team:team_id(id, name, logo)))`)
       .order('total_assists', { ascending: false })
-      .limit(3),
+      .limit(6),
 
     supabaseAdmin
       .from('player_career_stats')
       .select(`player_id, total_goals, total_assists, total_mvp, total_matches, primary_team_id,
-        player:player_id(id, first_name, last_name, photo),
+        player:player_id(id, first_name, last_name, photo, deleted_at),
         team:primary_team_id(id, name, logo)`)
       .gt('total_mvp', 0)
       .order('total_mvp', { ascending: false })
-      .limit(3),
+      .limit(6),
 
     supabaseAdmin
       .from('player_career_stats')
       .select(`player_id, total_goals, total_assists, total_best_gk, total_matches, primary_team_id,
-        player:player_id(id, first_name, last_name, photo),
+        player:player_id(id, first_name, last_name, photo, deleted_at),
         team:primary_team_id(id, name, logo)`)
       .gt('total_best_gk', 0)
       .order('total_best_gk', { ascending: false })
-      .limit(3),
+      .limit(6),
   ]);
 
-  return { scorerRows, assisterRows, mvpRows, gkRows,
-           scorersError, assistersError, mvpsError, gksError };
+  // Filter out soft-deleted players, then trim back to 3
+  const isActive = (row: any) => !(row?.player as any)?.deleted_at;
+
+  return {
+    scorerRows:   (scorerRows  ?? []).filter(isActive).slice(0, 3),
+    assisterRows: (assisterRows ?? []).filter(isActive).slice(0, 3),
+    mvpRows:      (mvpRows     ?? []).filter(isActive).slice(0, 3),
+    gkRows:       (gkRows      ?? []).filter(isActive).slice(0, 3),
+    scorersError, assistersError, mvpsError, gksError,
+  };
 }
 
 /** Build entry for player_statistics rows (scorers/assisters) — team via player_teams embed */

@@ -53,6 +53,9 @@ export interface PlayerRow {
   // optional timestamps (exist in table but not always selected)
   created_at?: string | null;
   updated_at?: string | null;
+
+  /** Soft-delete timestamp (null = active) */
+  deleted_at?: string | null;
 }
 
 export interface PlayerStatisticsRow {
@@ -304,6 +307,7 @@ export function normalizeTeamPlayers(
       player_number: base.player_number,
       created_at: base.created_at ?? null,
       updated_at: base.updated_at ?? null,
+      deleted_at: base.deleted_at ?? null,
 
       player_statistics: stats,
     };

@@ -15,7 +15,8 @@ export type Tournament = {
   season: string | null; 
   logo: string | null; 
   status: "scheduled" | "running" | "completed" | "archived";
-  winner_team_id: number | null; 
+  winner_team_id: number | null;
+  winner_team_name?: string | null;
 };
 
 export type Team = {
@@ -50,8 +51,9 @@ export type Player = {
   bestGoalkeeper: number;
   matchesPlayed: number;
   teamId: number;
-  photo: string; 
-  isCaptain: boolean; 
+  photo: string;
+  isCaptain: boolean;
+  isDeleted?: boolean;
 };
 
 export type DraftMatch = {

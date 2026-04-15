@@ -12,9 +12,12 @@ import type {
   Team,
   Tournament,
 } from "./useTournamentData";
+import Link from "next/link";
 import { useTournamentData } from "./useTournamentData";
 import { useStages } from "./useStages";
 import { PlayerStatistics } from "./components/PlayerStatistics";
+import { Trophy, Star, Shield, ChevronRight } from "lucide-react";
+import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 
 type TournamentClientProps = {
   initialData: {
@@ -50,6 +53,10 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     tournament,
     teams,
     players,
+    matches,
+    awards,
+    getTeamName,
+    getTeamLogo,
     setTournamentData,
     setTeams,
     setPlayers,
@@ -57,24 +64,13 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     setStages,
     setStandings,
     setGroups,
+    setAwards,
   } = useTournamentData();
   const { stages: sortedStages, getRendererForStage } = useStages();
 
   useEffect(() => {
     // Update store if tournament is not loaded OR if the tournament ID has changed
     if (!tournament || tournament.id !== initialData.tournament.id) {
-      console.log('[TournamentClient] Hydrating store with:', {
-        tournament: initialData.tournament.name,
-        stagesCount: initialData.stages.length,
-        teamsCount: initialData.teams.length,
-        matchesCount: initialData.matches.length,
-        standingsCount: initialData.standings.length,
-        playersCount: initialData.players.length,
-      });
-
-      console.log('[TournamentClient] Players data:', initialData.players);
-      console.log('[TournamentClient] Teams data:', initialData.teams);
-
       setTournamentData(initialData.tournament);
       setTeams(initialData.teams);
       setPlayers(initialData.players);
@@ -82,6 +78,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       setStages(initialData.stages);
       setStandings(initialData.standings);
       setGroups(initialData.groups);
+      if (initialData.awards) setAwards(initialData.awards);
     }
   }, [
     initialData,
@@ -93,6 +90,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
     setStages,
     setStandings,
     setGroups,
+    setAwards,
   ]);
 
   // Show skeleton if tournament is not loaded OR if the IDs don't match (during navigation)
@@ -104,6 +102,15 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative container mx-auto max-w-7xl px-4 py-8 space-y-8">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1 text-sm text-white/50">
+          <Link href="/" className="hover:text-white transition-colors">Αρχική</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <Link href="/tournaments" className="hover:text-white transition-colors">Διοργανώσεις</Link>
+          <ChevronRight className="w-3.5 h-3.5" />
+          <span className="text-white/80 truncate max-w-[200px]">{tournament.name}</span>
+        </nav>
+
         {/* Tournament Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
@@ -135,6 +142,27 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                   </p>
                 )}
               </div>
+
+              {/* Winner Banner */}
+              {tournament.status === 'completed' && tournament.winner_team_id && (() => {
+                const winnerTeam = teams?.find(t => t.id === tournament.winner_team_id);
+                if (!winnerTeam) return null;
+                return (
+                  <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-yellow-500/15 border border-yellow-500/30">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <img
+                      src={winnerTeam.logo}
+                      alt={winnerTeam.name}
+                      className="w-8 h-8 rounded-full object-cover border border-yellow-500/40"
+                      onError={(e) => { e.currentTarget.src = "/team-placeholder.png"; }}
+                    />
+                    <div>
+                      <p className="text-xs text-yellow-400/70">Νικητής</p>
+                      <p className="font-bold text-yellow-300">{winnerTeam.name}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Right side - Stats */}
               <div className="flex gap-6">
@@ -168,6 +196,95 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
             </div>
           </div>
         </motion.header>
+
+        {/* Latest Results & Upcoming Matches */}
+        {matches && matches.length > 0 && (() => {
+          const finished = matches
+            .filter(m => m.status === 'finished')
+            .sort((a, b) => (b.match_date ?? '').localeCompare(a.match_date ?? ''))
+            .slice(0, 3);
+          const upcoming = matches
+            .filter(m => m.status === 'scheduled')
+            .sort((a, b) => (a.match_date ?? '').localeCompare(b.match_date ?? ''))
+            .slice(0, 3);
+
+          if (finished.length === 0 && upcoming.length === 0) return null;
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Recent Results */}
+              {finished.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-black/60 to-zinc-900/60">
+                    <h3 className="text-lg font-bold text-white">Πρόσφατα Αποτελέσματα</h3>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {finished.map((m) => (
+                      <div key={m.db_id} className="px-6 py-3 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {getTeamLogo(m.team_a_id ?? 0) && (
+                            <img src={getTeamLogo(m.team_a_id ?? 0)!} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          )}
+                          <span className="text-sm text-white truncate">{getTeamName(m.team_a_id ?? 0)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-lg font-bold ${m.winner_team_id === m.team_a_id ? 'text-emerald-400' : 'text-white/50'}`}>
+                            {m.team_a_score ?? 0}
+                          </span>
+                          <span className="text-white/30">-</span>
+                          <span className={`text-lg font-bold ${m.winner_team_id === m.team_b_id ? 'text-emerald-400' : 'text-white/50'}`}>
+                            {m.team_b_score ?? 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                          <span className="text-sm text-white truncate">{getTeamName(m.team_b_id ?? 0)}</span>
+                          {getTeamLogo(m.team_b_id ?? 0) && (
+                            <img src={getTeamLogo(m.team_b_id ?? 0)!} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming Matches */}
+              {upcoming.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden">
+                  <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-black/60 to-zinc-900/60">
+                    <h3 className="text-lg font-bold text-white">Επόμενοι Αγώνες</h3>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {upcoming.map((m) => (
+                      <div key={m.db_id} className="px-6 py-3 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {getTeamLogo(m.team_a_id ?? 0) && (
+                            <img src={getTeamLogo(m.team_a_id ?? 0)!} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          )}
+                          <span className="text-sm text-white truncate">{getTeamName(m.team_a_id ?? 0)}</span>
+                        </div>
+                        <div className="text-center shrink-0">
+                          <span className="text-sm font-medium text-emerald-400">VS</span>
+                          {m.match_date && (
+                            <p className="text-[10px] text-white/40 mt-0.5">
+                              {new Date(m.match_date).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                          <span className="text-sm text-white truncate">{getTeamName(m.team_b_id ?? 0)}</span>
+                          {getTeamLogo(m.team_b_id ?? 0) && (
+                            <img src={getTeamLogo(m.team_b_id ?? 0)!} alt="" className="w-6 h-6 rounded-full object-cover" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Stages Section */}
         <div className="space-y-6">
@@ -258,15 +375,170 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
           )}
         </div>
 
+        {/* Awards Section */}
+        {awards && players && teams && (awards.top_scorer_id || awards.mvp_player_id || awards.best_gk_player_id) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="space-y-6"
+          >
+            <h2 className="text-2xl font-bold text-white">
+              Βραβεία
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Top Scorer */}
+              {awards.top_scorer_id && (() => {
+                const player = players.find(p => p.id === awards.top_scorer_id);
+                const team = player ? teams.find(t => t.id === player.teamId) : null;
+                if (!player) return null;
+                return (
+                  <div className="rounded-2xl border border-yellow-500/30 bg-gradient-to-br from-yellow-500/10 via-black/40 to-black/40 p-6 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                        <Trophy className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-yellow-400 font-semibold">Πρώτος Σκόρερ</p>
+                        <p className="text-xs text-white/50">{awards.top_scorer_goals} γκολ</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={resolvePlayerPhotoUrl(player.photo)}
+                        alt={player.name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-yellow-500/40"
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{player.name}</p>
+                        {team && <p className="text-xs text-white/50">{team.name}</p>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* MVP */}
+              {awards.mvp_player_id && (() => {
+                const player = players.find(p => p.id === awards.mvp_player_id);
+                const team = player ? teams.find(t => t.id === player.teamId) : null;
+                if (!player) return null;
+                return (
+                  <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-black/40 to-black/40 p-6 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <Star className="w-5 h-5 text-white" />
+                      </div>
+                      <p className="text-sm text-emerald-400 font-semibold">MVP</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={resolvePlayerPhotoUrl(player.photo)}
+                        alt={player.name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500/40"
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{player.name}</p>
+                        {team && <p className="text-xs text-white/50">{team.name}</p>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Best Goalkeeper */}
+              {awards.best_gk_player_id && (() => {
+                const player = players.find(p => p.id === awards.best_gk_player_id);
+                const team = player ? teams.find(t => t.id === player.teamId) : null;
+                if (!player) return null;
+                return (
+                  <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-black/40 to-black/40 p-6 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-white" />
+                      </div>
+                      <p className="text-sm text-blue-400 font-semibold">Καλύτερος Τερματοφύλακας</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={resolvePlayerPhotoUrl(player.photo)}
+                        alt={player.name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/40"
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                      />
+                      <div>
+                        <p className="font-bold text-white">{player.name}</p>
+                        {team && <p className="text-xs text-white/50">{team.name}</p>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Teams Section */}
+        {teams && teams.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Ομάδες</h2>
+              <span className="text-sm text-white/70">{teams.length} ομάδες</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teams.map((team) => {
+                const teamPlayers = players?.filter(p => p.teamId === team.id) ?? [];
+                return (
+                  <div
+                    key={team.id}
+                    className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl overflow-hidden"
+                  >
+                    <div className="px-5 py-4 flex items-center gap-3">
+                      <img
+                        src={team.logo}
+                        alt={team.name}
+                        className="w-10 h-10 rounded-full object-cover border border-white/10"
+                        onError={(e) => { e.currentTarget.src = "/team-placeholder.png"; }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-white truncate">{team.name}</p>
+                        <p className="text-xs text-white/50">
+                          {team.wins}Ν - {team.draws}Ι - {team.losses}Η &middot; {team.points} βαθμοί
+                        </p>
+                      </div>
+                    </div>
+                    {teamPlayers.length > 0 && (
+                      <div className="border-t border-white/5 px-5 py-3">
+                        <p className="text-[10px] uppercase tracking-wider text-white/40 mb-2">Ρόστερ ({teamPlayers.length})</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {teamPlayers.map((p) => (
+                            <span
+                              key={p.id}
+                              className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs text-white/70"
+                            >
+                              {p.isCaptain && <span className="text-yellow-400 text-[10px]">C</span>}
+                              {p.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         {/* Player Statistics Section */}
         {(() => {
-          console.log('[TournamentClient] Rendering PlayerStatistics section:', {
-            hasPlayers: !!players,
-            playersLength: players?.length || 0,
-            hasTeams: !!teams,
-            teamsLength: teams?.length || 0,
-          });
-
           if (players && teams) {
             return (
               <PlayerStatistics
@@ -278,8 +550,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
 
           return (
             <div className="rounded-2xl border border-white/10 bg-black/40 p-8 text-center text-white/70">
-              <p>Loading player statistics...</p>
-              <p className="text-xs mt-2">Players: {players?.length || 0}, Teams: {teams?.length || 0}</p>
+              <p>Φόρτωση στατιστικών παικτών...</p>
             </div>
           );
         })()}

@@ -83,6 +83,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
           height_cm,
           position,
           birth_date,
+          deleted_at,
           player_statistics (
             id,
             age,
@@ -108,7 +109,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const playerAssociations: PlayerAssociation[] =
     playersError || !playerAssociationsData
       ? []
-      : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]);
+      : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[])
+          .filter((a) => !(a.player as any).deleted_at); // exclude archived players
 
   // ── Aggregate player stats from match_player_stats ────────────────────────────
   // Get all matches for this team
