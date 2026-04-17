@@ -333,7 +333,7 @@ export default async function Home() {
           </h1>
           <p className="text-lg sm:text-xl max-w-3xl mx-auto text-white/90 leading-relaxed">
             Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κοσμο!
-            Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνει εσύ ο Ultrachamp! Αγωνισου
+            Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνεις εσύ ο Ultrachamp! Αγωνισου
             σε κλίμα ασφάλειας οργάνωσης και ηθικής!
           </p>
         </div>
