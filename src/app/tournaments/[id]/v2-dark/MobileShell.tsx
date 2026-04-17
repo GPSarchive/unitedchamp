@@ -26,6 +26,7 @@ import type {
   Tournament,
 } from "@/app/tournaments/useTournamentData";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import KOBracketV2Dark from "./KOBracketV2Dark";
 
 // ───────────────────────────────────────────────────────────────────────
 // Shared types
@@ -1034,8 +1035,17 @@ const MobileStageSection: React.FC<{
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
               transition={{ duration: 0.2 }}
+              /*
+               * Reuse the desktop KO bracket verbatim.
+               * Negative margins break out of the stage card's 16px padding
+               * so the bracket viewport spans the full screen width — the
+               * bracket's own pan/zoom + Fit button handle readability.
+               */
+              className="-mx-4"
             >
-              <MobileKOStack
+              <KOBracketV2Dark
+                stage={stage}
+                stageIdx={index}
                 matches={stageMatches}
                 teamById={teamById}
                 championTeamId={championTeamId ?? null}
