@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useConsent } from "@/app/lib/consent/use-consent";
 
 type VideoMatch = {
   id: number;
@@ -69,6 +70,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [page, setPage] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const { state: consent, setAnalytics, reopen } = useConsent();
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -171,7 +173,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
               >
                 {/* Video area */}
                 <div className="relative aspect-video overflow-hidden">
-                  {isPlaying ? (
+                  {isPlaying && consent.analytics ? (
                     <iframe
                       src={getEmbedUrl(videoId)}
                       title={`${match.team_a_name ?? "Team A"} vs ${match.team_b_name ?? "Team B"}`}
@@ -179,6 +181,46 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                       allowFullScreen
                       className="absolute inset-0 w-full h-full"
                     />
+                  ) : isPlaying && !consent.analytics ? (
+                    <>
+                      <Image
+                        src={getThumbnailUrl(videoId)}
+                        alt={`${match.team_a_name ?? ""} vs ${match.team_b_name ?? ""}`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                      />
+                      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center px-4">
+                        <p className="text-sm sm:text-base font-semibold text-white max-w-sm">
+                          Η αναπαραγωγή απαιτεί συγκατάθεση cookies
+                        </p>
+                        <p className="mt-1 text-xs text-white/60 max-w-sm">
+                          Το YouTube θέτει cookies παρακολούθησης όταν ξεκινά το
+                          βίντεο.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAnalytics(true);
+                            }}
+                            className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-xs font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-orange-500/20"
+                          >
+                            Αποδοχή και αναπαραγωγή
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPlayingId(null);
+                              reopen();
+                            }}
+                            className="inline-flex items-center rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors"
+                          >
+                            Ρυθμίσεις cookies
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <Image
@@ -275,39 +317,81 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
 
         {/* Pagination controls */}
         {totalPages > 1 && (
-          <div className="mt-8 sm:mt-12 flex items-center justify-center gap-4">
+          <div className="mt-8 sm:mt-12 flex items-center justify-center gap-4 max-w-full overflow-hidden px-2">
             <button
               onClick={prev}
               disabled={page === 0}
               aria-label="Previous page"
-              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
+              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2">
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setPage(i);
-                    setPlayingId(null);
-                  }}
-                  aria-label={`Page ${i + 1}`}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                    i === page
-                      ? "bg-orange-500 scale-125"
-                      : "bg-white/20 hover:bg-white/40"
-                  }`}
-                />
-              ))}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+              {(() => {
+                const maxDots = 9;
+                if (totalPages <= maxDots) {
+                  return Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setPage(i); setPlayingId(null); }}
+                      aria-label={`Page ${i + 1}`}
+                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 flex-shrink-0 ${
+                        i === page ? "bg-orange-500 scale-125" : "bg-white/20 hover:bg-white/40"
+                      }`}
+                    />
+                  ));
+                }
+                // Show a sliding window of dots around the current page
+                const half = Math.floor(maxDots / 2);
+                let startDot = Math.max(0, page - half);
+                let endDot = startDot + maxDots;
+                if (endDot > totalPages) {
+                  endDot = totalPages;
+                  startDot = Math.max(0, endDot - maxDots);
+                }
+                const dots = [];
+                if (startDot > 0) {
+                  dots.push(
+                    <button key={0} onClick={() => { setPage(0); setPlayingId(null); }} aria-label="Page 1"
+                      className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-white/40 transition-all duration-300 flex-shrink-0" />
+                  );
+                  if (startDot > 1) {
+                    dots.push(<span key="start-ellipsis" className="text-white/30 text-xs flex-shrink-0">…</span>);
+                  }
+                }
+                for (let i = startDot; i < endDot; i++) {
+                  if (i === 0 && startDot > 0) continue; // already added
+                  if (i === totalPages - 1 && endDot < totalPages) continue; // will add below
+                  dots.push(
+                    <button
+                      key={i}
+                      onClick={() => { setPage(i); setPlayingId(null); }}
+                      aria-label={`Page ${i + 1}`}
+                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 flex-shrink-0 ${
+                        i === page ? "bg-orange-500 scale-125" : "bg-white/20 hover:bg-white/40"
+                      }`}
+                    />
+                  );
+                }
+                if (endDot < totalPages) {
+                  if (endDot < totalPages - 1) {
+                    dots.push(<span key="end-ellipsis" className="text-white/30 text-xs flex-shrink-0">…</span>);
+                  }
+                  dots.push(
+                    <button key={totalPages - 1} onClick={() => { setPage(totalPages - 1); setPlayingId(null); }} aria-label={`Page ${totalPages}`}
+                      className="w-2.5 h-2.5 rounded-full bg-white/20 hover:bg-white/40 transition-all duration-300 flex-shrink-0" />
+                  );
+                }
+                return dots;
+              })()}
             </div>
 
             <button
               onClick={next}
               disabled={page === totalPages - 1 && !nextCursor}
               aria-label="Next page"
-              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
+              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
             >
               <ChevronRight className="w-5 h-5" />
             </button>

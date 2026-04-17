@@ -45,7 +45,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
         return {
           ...player,
           teamName: team?.name || "Unknown Team",
-          teamLogo: team?.logo || "/team-placeholder.png",
+          teamLogo: team?.logo || "/team-placeholder.svg",
         };
       })
       .sort((a, b) => {
@@ -269,7 +269,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                     alt={player.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.src = "/player-placeholder.jpg";
+                      e.currentTarget.src = "/player-placeholder.svg";
                     }}
                   />
                 </div>
@@ -296,7 +296,7 @@ const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({
                     alt={player.teamName}
                     className="w-10 h-10 object-contain transition-transform group-hover/team:scale-110"
                     onError={(e) => {
-                      e.currentTarget.src = "/team-placeholder.png";
+                      e.currentTarget.src = "/team-placeholder.svg";
                     }}
                   />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/90 text-white text-xs rounded opacity-0 group-hover/team:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">

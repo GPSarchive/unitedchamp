@@ -98,7 +98,7 @@ export type ProfileCardProps = {
 };
 
 function ProfileCardComponent({
-  avatarUrl = "/player-placeholder.jpg",
+  avatarUrl = "/player-placeholder.svg",
   iconUrl = null,
   grainUrl = null,
   behindGradient,
@@ -131,7 +131,7 @@ function ProfileCardComponent({
 
   // âœ… Use team logo as fallback if no player image
   const displayImage = useMemo(() => {
-    if (avatarUrl && avatarUrl !== "/player-placeholder.jpg") {
+    if (avatarUrl && avatarUrl !== "/player-placeholder.svg") {
       return avatarUrl;
     }
     // Fallback to first team logo if available

@@ -1,16 +1,53 @@
-// src/app/paiktes/PlayersClient.tsx (OPTIMIZED with Pagination + Rerender fixes)
+// src/app/paiktes/PlayersClient.tsx
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Fraunces,
+  Archivo_Black,
+  JetBrains_Mono,
+  Figtree,
+} from "next/font/google";
 import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
 import PlayersList from "./PlayersList";
 import PlayersFilterHeader from "./PlayersFilterHeader";
 
+// ───────────────────────────────────────────────────────────────────────
+// Typography
+// ───────────────────────────────────────────────────────────────────────
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "600", "700", "900"],
+  style: ["normal", "italic"],
+  variable: "--f-display",
+  display: "swap",
+});
+const archivoBlack = Archivo_Black({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400"],
+  variable: "--f-brutal",
+  display: "swap",
+});
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin", "greek"],
+  weight: ["400", "500", "700"],
+  variable: "--f-mono",
+  display: "swap",
+});
+const figtree = Figtree({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--f-body",
+  display: "swap",
+});
+
 type PLWithTGoals = PlayerLite & { tournament_goals?: number };
 
-/** Hook: is viewport >= xl (Tailwind 1280px)? */
+const pad2 = (n: number | string) => String(n).padStart(2, "0");
+
 function useIsXL() {
   const query = "(min-width: 1280px)";
   const [isXL, setIsXL] = useState<boolean>(() =>
@@ -31,25 +68,112 @@ function useIsXL() {
   return isXL;
 }
 
-/** Hook: Debounce a value */
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
   }, [value, delay]);
-
   return debouncedValue;
 }
 
 type TournamentOpt = { id: number; name: string; season: string | null };
 
+// ───────────────────────────────────────────────────────────────────────
+// Atmospheric background
+// ───────────────────────────────────────────────────────────────────────
+const PaperBackground: React.FC<{ fixed?: boolean }> = ({ fixed = true }) => (
+  <div
+    aria-hidden
+    className={`pointer-events-none ${
+      fixed ? "fixed inset-0 -z-10" : "absolute inset-0 -z-10"
+    }`}
+  >
+    <div
+      className="absolute inset-0"
+      style={{
+        background:
+          "radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, #0a0a14 45%, #08080f 100%)",
+      }}
+    />
+    <div
+      className="absolute -top-40 -left-40 h-[60rem] w-[60rem] rounded-full opacity-[0.18] blur-3xl"
+      style={{
+        background:
+          "radial-gradient(closest-side, #fb923c 0%, rgba(251,146,60,0) 70%)",
+      }}
+    />
+    <div
+      className="absolute -bottom-60 -right-40 h-[55rem] w-[55rem] rounded-full opacity-[0.14] blur-3xl"
+      style={{
+        background:
+          "radial-gradient(closest-side, #a855f7 0%, rgba(168,85,247,0) 70%)",
+      }}
+    />
+    <svg
+      className="absolute inset-0 h-full w-full opacity-[0.04]"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <pattern id="pgrid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F3EFE6" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#pgrid)" />
+    </svg>
+  </div>
+);
+
+// ───────────────────────────────────────────────────────────────────────
+// Page header
+// ───────────────────────────────────────────────────────────────────────
+const PageHeader: React.FC<{
+  totalCount: number;
+  shownCount: number;
+  isTournamentScoped: boolean;
+}> = ({ totalCount, shownCount, isTournamentScoped }) => (
+  <header className="relative border-b-2 border-[#F3EFE6]/20 shrink-0">
+    <div className="mx-auto max-w-[1800px] px-4 md:px-6 pt-6 pb-4 md:pt-8 md:pb-6">
+      <nav className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
+        <Link href="/" className="hover:text-[#fb923c] transition-colors">
+          Αρχική
+        </Link>
+        <span>/</span>
+        <span className="text-[#F3EFE6]">Παίκτες</span>
+      </nav>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+            <span className="h-[2px] w-8 bg-[#fb923c]" />
+            Μητρώο
+          </div>
+          <h1
+            className="mt-2 font-[var(--f-display)] font-black italic leading-[0.9] tracking-[-0.02em] text-[#F3EFE6]"
+            style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)" }}
+          >
+            Οι Παίκτες
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+          {isTournamentScoped && (
+            <span className="inline-flex items-center gap-2 border border-[#fb923c]/60 bg-[#fb923c]/10 px-2.5 py-1 text-[#fb923c]">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#fb923c]" />
+              Εμβέλεια Τουρνουά
+            </span>
+          )}
+          <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
+            Εμφ. {pad2(shownCount)} / {pad2(totalCount)}
+          </span>
+        </div>
+      </div>
+    </div>
+  </header>
+);
+
+// ───────────────────────────────────────────────────────────────────────
+// MAIN
+// ───────────────────────────────────────────────────────────────────────
 export default function PlayersClient({
   initialPlayers = [],
   tournaments = [],
@@ -70,21 +194,16 @@ export default function PlayersClient({
   const base: PLWithTGoals[] = Array.isArray(initialPlayers) ? initialPlayers : [];
 
   const [q, setQ] = useState(initialSearchQuery ?? "");
-  // ✅ Debounce search query to reduce server requests while typing
-  // Increased to 1000ms to allow comfortable typing without interruption
-  const debouncedQ = useDebounce(q, 1000);
+  const debouncedQ = useDebounce(q, 600);
 
   const [activeId, setActiveId] = useState<number | null>(
     base.length ? base[0].id : null
   );
-
-  // ✅ Loading state for when data is being fetched
   const [isLoading, setIsLoading] = useState(false);
 
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Router + URL sync helpers
   const router = useRouter();
   const sp = useSearchParams();
   const selectedSort = (sp?.get("sort") ?? "alpha").toLowerCase();
@@ -98,7 +217,6 @@ export default function PlayersClient({
   const rawSearchParam = sp?.get("q") ?? "";
   const normalizedSearchParam = rawSearchParam.trim();
 
-  // ✅ Client-side sort mode state for instant responsiveness
   const [clientSort, setClientSort] = useState(selectedSort);
   const [clientTournamentId, setClientTournamentId] = useState(selectedTournamentId);
   const [clientTopInput, setClientTopInput] = useState(
@@ -119,13 +237,8 @@ export default function PlayersClient({
 
   const onSortChange = useCallback(
     (v: string) => {
-      // ✅ Update client state immediately for instant UI response
       setClientSort(v);
-      // ✅ Show loading state since this triggers server fetch
       setIsLoading(true);
-
-      // ✅ Preserve tournament filter across all sort modes
-      // Only fetch from server if switching to tournament_goals (needs additional data)
       if (v === "tournament_goals") {
         updateQuery({
           sort: v,
@@ -133,7 +246,6 @@ export default function PlayersClient({
           page: 1,
         });
       } else {
-        // For other sorts, keep tournament filter if one is selected
         updateQuery({
           sort: v,
           tournament_id: clientTournamentId ?? undefined,
@@ -146,18 +258,14 @@ export default function PlayersClient({
 
   const onTournamentChange = useCallback(
     (idStr: string) => {
-      // ✅ Handle empty string (clearing tournament filter)
       const trimmed = idStr.trim();
       const id = trimmed !== "" ? Number(trimmed) : NaN;
       const hasTournament = Number.isFinite(id);
 
-      // ✅ Update client state immediately
       setClientTournamentId(hasTournament ? id : null);
-      // ✅ When clearing tournament, reset to alphabetical sort
       setClientSort(hasTournament ? "tournament_goals" : "alpha");
       setIsLoading(true);
 
-      // Fetch from server with new tournament filter
       updateQuery({
         sort: hasTournament ? "tournament_goals" : "alpha",
         tournament_id: hasTournament ? id : null,
@@ -187,30 +295,25 @@ export default function PlayersClient({
     (newPage: number) => {
       setIsLoading(true);
       updateQuery({ page: newPage });
-      // Scroll to top when changing pages
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
     [updateQuery]
   );
 
-  // When we grow to desktop, ensure list+card layout is visible
   useEffect(() => {
     if (isXL) setDetailOpen(false);
   }, [isXL]);
 
-  // ✅ Sync client state with URL params (e.g., on mount or browser back/forward)
   useEffect(() => {
     setClientSort(selectedSort);
     setClientTournamentId(selectedTournamentId);
     setClientTopInput(topLimit != null ? String(topLimit) : "");
   }, [selectedSort, selectedTournamentId, topLimit]);
 
-  // ✅ Keep the search input in sync with server-rendered search term
   useEffect(() => {
     setQ(initialSearchQuery ?? "");
   }, [initialSearchQuery]);
 
-  // ✅ Mirror debounced search term to the URL so the server fetch knows about it
   useEffect(() => {
     const normalized = debouncedQ.trim();
     if (normalized === normalizedSearchParam) return;
@@ -218,18 +321,14 @@ export default function PlayersClient({
     updateQuery({ q: normalized === "" ? null : normalized, page: 1 });
   }, [debouncedQ, normalizedSearchParam, updateQuery]);
 
-  // ✅ Clear loading state when new data arrives
   useEffect(() => {
     setIsLoading(false);
   }, [initialPlayers]);
 
-  // Players are already filtered and sorted server-side
-  // Just apply topN limit if needed (client-side for instant feedback)
   const players = useMemo(() => {
     return topLimit != null ? base.slice(0, topLimit) : base;
   }, [base, topLimit]);
 
-  // Quick lookup for card
   const byId = useMemo(
     () => Object.fromEntries(players.map((p) => [p.id, p] as const)),
     [players]
@@ -255,7 +354,6 @@ export default function PlayersClient({
   }, []);
 
   const handleReset = useCallback(() => {
-    // ✅ Reset client state immediately for instant UI feedback
     setClientSort("alpha");
     setClientTournamentId(null);
     setQ("");
@@ -271,26 +369,25 @@ export default function PlayersClient({
     [isXL]
   );
 
-  // ✅ Use client sort state for UI to be instantly responsive
   const isAlphaSort = clientSort === "alpha";
   const showTournamentGoals = clientSort === "tournament_goals";
   const isTournamentScoped = !!clientTournamentId;
 
-  // Calculate pagination info
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const showPagination = usePagination && totalPages > 1;
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-black overflow-hidden">
-      {/* ===== MOBILE DETAIL VIEW (full-screen) ===== */}
-      {!isXL && detailOpen && active && (
-        <div className="fixed inset-0 z-50 flex flex-col relative overflow-hidden">
-          {/* Premium background layers (same as desktop) */}
-          <div className="absolute inset-0 z-0">
-            {/* Base gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
+    <div
+      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} flex h-screen w-screen flex-col overflow-hidden text-[#F3EFE6] font-[var(--f-body)] selection:bg-[#fb923c] selection:text-[#0a0a14]`}
+    >
+      <PaperBackground />
 
-            {/* Topographic contour lines pattern */}
+      {/* ===== MOBILE DETAIL VIEW ===== */}
+      {!isXL && detailOpen && active && (
+        <div className="fixed inset-0 z-50 flex flex-col overflow-hidden">
+          {/* Original gold topographic backdrop (matches desktop right panel) */}
+          <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
             <div
               className="absolute inset-0 opacity-20"
               style={{
@@ -301,11 +398,9 @@ export default function PlayersClient({
                   repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
                   repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
                 `,
-                backgroundSize: '100% 100%',
+                backgroundSize: "100% 100%",
               }}
             />
-
-            {/* Subtle animated glow overlay */}
             <div
               className="absolute inset-0 opacity-30"
               style={{
@@ -313,72 +408,50 @@ export default function PlayersClient({
                   radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
                   radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
                 `,
-                animation: 'meshGradient 20s ease-in-out infinite',
-                backgroundSize: '200% 200%',
+                animation: "meshGradient 20s ease-in-out infinite",
+                backgroundSize: "200% 200%",
               }}
             />
-
-            {/* Spotlight from top */}
             <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
-
-            {/* Vignette effect */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
-
-            {/* Subtle noise texture for depth */}
-            <div
-              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-              }}
-            />
           </div>
 
-          {/* Header with back button */}
-          <div className="sticky top-0 z-10 bg-zinc-950/80 backdrop-blur-sm border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex-shrink-0">
+          <div className="sticky top-0 z-10 border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/85 backdrop-blur-sm px-4 py-2.5 shrink-0">
             <button
               type="button"
               onClick={closeDetailOnMobile}
-              className="inline-flex items-center gap-2 text-white/90 hover:text-white transition-colors"
-              aria-label="Back to list"
+              className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/75 hover:text-[#fb923c] transition-colors"
+              aria-label="Επιστροφή στη λίστα"
             >
-              <svg
-                aria-hidden
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="shrink-0 sm:w-5 sm:h-5"
-              >
-                <path
-                  d="M15 18l-6-6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="font-medium text-sm sm:text-base">Πίσω στη λίστα</span>
+              ← Πίσω στη Λίστα
             </button>
           </div>
-
-          {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto overscroll-contain relative z-10">
-            <div className="p-3 sm:p-4 pb-6 sm:pb-8 min-h-0 max-w-2xl mx-auto">
-              <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
+          <div className="relative z-10 flex-1 overflow-y-auto overscroll-contain">
+            <div className="mx-auto max-w-2xl p-4 pb-8">
+              <PlayerProfileCard
+                player={active}
+                isTournamentScoped={isTournamentScoped}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* ===== DESKTOP SPLIT LAYOUT ===== */}
+      {/* Page header */}
+      <PageHeader
+        totalCount={totalCount}
+        shownCount={players.length}
+        isTournamentScoped={isTournamentScoped}
+      />
+
+      {/* ===== Split layout ===== */}
       <div
-        className={`flex-1 flex overflow-hidden ${
+        className={`relative z-10 flex flex-1 overflow-hidden ${
           !isXL && detailOpen ? "hidden" : ""
         }`}
       >
-        {/* LEFT PANEL - Players List with Filters */}
-        <div className="flex-1 xl:flex-none xl:basis-[70%] flex flex-col border-r border-white/10 overflow-hidden">
-          {/* Filter Header - outside scrollable area to prevent blocking */}
+        {/* LEFT — Filters + List */}
+        <div className="flex flex-1 flex-col overflow-hidden xl:flex-none xl:basis-[70%] border-r-2 border-[#F3EFE6]/15">
           <PlayersFilterHeader
             selectedSort={clientSort}
             selectedTournamentId={clientTournamentId}
@@ -394,14 +467,14 @@ export default function PlayersClient({
             onReset={handleReset}
           />
 
-          {/* Players List */}
-          <div className="flex-1 overflow-hidden flex flex-col relative">
-            {/* ✅ Loading Overlay - only covers the list, not the header */}
+          <div className="relative flex flex-1 flex-col overflow-hidden">
             {isLoading && (
-              <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-                  <div className="text-white/70 text-sm font-medium">Φόρτωση παικτών...</div>
+              <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#0a0a14]/70 backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#fb923c]/30 border-t-[#fb923c]" />
+                  <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]/70">
+                    Φόρτωση παικτών...
+                  </div>
                 </div>
               </div>
             )}
@@ -418,106 +491,25 @@ export default function PlayersClient({
               />
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination */}
             {showPagination && (
-              <div className="sticky bottom-0 z-10 bg-zinc-950 border-t border-white/10 px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
-                {/* Mobile Pagination - Compact */}
-                <div className="flex sm:hidden items-center justify-between gap-2">
-                  <button
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
-                    aria-label="Previous page"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-white text-sm font-medium">{currentPage}</span>
-                    <span className="text-white/30 text-xs">/</span>
-                    <span className="text-white/50 text-sm">{totalPages}</span>
-                  </div>
-                  
-                  <button
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="p-2 text-white bg-white/5 border border-white/10 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors active:bg-white/10"
-                    aria-label="Next page"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Desktop Pagination - Full */}
-                <div className="hidden sm:flex items-center justify-between">
-                  <div className="text-xs md:text-sm text-white/50">
-                    Page {currentPage} of {totalPages} • {totalCount} total players
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => onPageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                    >
-                      Previous
-                    </button>
-                    
-                    {/* Page numbers */}
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i + 1;
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1;
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i;
-                        } else {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => onPageChange(pageNum)}
-                            className={`w-8 h-8 md:w-10 md:h-10 text-xs md:text-sm font-medium rounded transition-all ${
-                              currentPage === pageNum
-                                ? "bg-cyan-500 text-white"
-                                : "text-white/70 hover:bg-white/10"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    
-                    <button
-                      onClick={() => onPageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium text-white bg-white/5 border border-white/10 rounded hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
+              <div className="sticky bottom-0 z-10 border-t-2 border-[#F3EFE6]/15 bg-[#0a0a14]/95 backdrop-blur-sm px-4 md:px-6 py-3">
+                <PaginationBar
+                  page={currentPage}
+                  totalPages={totalPages}
+                  totalCount={totalCount}
+                  onChange={onPageChange}
+                />
               </div>
             )}
           </div>
         </div>
 
-        {/* RIGHT PANEL - Player Card (Desktop Only) */}
-        <aside className="hidden xl:flex xl:flex-none xl:basis-[30%] flex-col relative overflow-hidden">
-          {/* Premium background layers */}
+        {/* RIGHT — 3D card (desktop). Original gold topographic backdrop. */}
+        <aside className="relative hidden xl:flex xl:flex-none xl:basis-[30%] flex-col overflow-hidden">
           <div className="absolute inset-0 z-0">
             {/* Base gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
-
             {/* Topographic contour lines pattern */}
             <div
               className="absolute inset-0 opacity-20"
@@ -529,10 +521,9 @@ export default function PlayersClient({
                   repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
                   repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
                 `,
-                backgroundSize: '100% 100%',
+                backgroundSize: "100% 100%",
               }}
             />
-
             {/* Subtle animated glow overlay */}
             <div
               className="absolute inset-0 opacity-30"
@@ -541,17 +532,14 @@ export default function PlayersClient({
                   radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
                   radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
                 `,
-                animation: 'meshGradient 20s ease-in-out infinite',
-                backgroundSize: '200% 200%',
+                animation: "meshGradient 20s ease-in-out infinite",
+                backgroundSize: "200% 200%",
               }}
             />
-
             {/* Spotlight from top */}
             <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
-
             {/* Vignette effect */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
-
             {/* Subtle noise texture for depth */}
             <div
               className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
@@ -561,18 +549,26 @@ export default function PlayersClient({
             />
           </div>
 
-          {/* Content on top of background */}
-          <div className="flex-1 overflow-y-auto p-4 xl:p-6 relative z-10">
+          <div className="relative z-10 flex-1 overflow-y-auto p-6">
             {active ? (
-              <div className="sticky top-0 max-w-xl mx-auto">
-                <PlayerProfileCard player={active} isTournamentScoped={isTournamentScoped} />
+              <div className="sticky top-0 mx-auto max-w-xl">
+                <PlayerProfileCard
+                  player={active}
+                  isTournamentScoped={isTournamentScoped}
+                />
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center text-white/40 px-8">
-                  <div className="text-6xl mb-4">👤</div>
-                  <p className="text-lg">
-                    Πέρασε τον κέρσορα από έναν παίκτη για να δεις τα στοιχεία του
+              <div className="flex h-full items-center justify-center">
+                <div className="max-w-sm border-2 border-dashed border-[#F3EFE6]/25 bg-[#0a0a14]/70 backdrop-blur-sm p-8 text-center">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+                    / 00 · Προφίλ
+                  </span>
+                  <p className="mt-3 font-[var(--f-display)] text-xl font-black italic leading-tight text-[#F3EFE6]">
+                    Επιλέξτε έναν παίκτη
+                  </p>
+                  <p className="mt-2 font-[var(--f-body)] text-sm text-[#F3EFE6]/60">
+                    Περάστε τον κέρσορα ή κάντε κλικ σε έναν παίκτη για να δείτε
+                    το προφίλ.
                   </p>
                 </div>
               </div>
@@ -580,6 +576,101 @@ export default function PlayersClient({
           </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Pagination
+// ───────────────────────────────────────────────────────────────────────
+function PaginationBar({
+  page,
+  totalPages,
+  totalCount,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  onChange: (p: number) => void;
+}) {
+  const window = 2;
+  const pages: (number | "…")[] = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (
+      p === 1 ||
+      p === totalPages ||
+      (p >= page - window && p <= page + window)
+    ) {
+      pages.push(p);
+    } else if (pages[pages.length - 1] !== "…") {
+      pages.push("…");
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <button
+        disabled={page <= 1}
+        onClick={() => onChange(Math.max(1, page - 1))}
+        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+          page <= 1
+            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 cursor-not-allowed"
+            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+        }`}
+      >
+        ← Προηγ.
+      </button>
+
+      <div className="hidden md:flex items-center gap-1.5">
+        {pages.map((p, i) =>
+          p === "…" ? (
+            <span
+              key={`dot-${i}`}
+              className="font-mono text-[10px] tracking-[0.2em] text-[#F3EFE6]/35"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              aria-current={p === page ? "page" : undefined}
+              className={`border-2 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tabular-nums transition-colors ${
+                p === page
+                  ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
+                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+              }`}
+            >
+              {String(p).padStart(2, "0")}
+            </button>
+          )
+        )}
+      </div>
+
+      <div className="flex md:hidden items-center gap-1.5 font-mono text-xs text-[#F3EFE6]/70">
+        <span className="font-[var(--f-brutal)] text-sm text-[#F3EFE6]">
+          {String(page).padStart(2, "0")}
+        </span>
+        <span className="text-[#F3EFE6]/30">/</span>
+        <span>{String(totalPages).padStart(2, "0")}</span>
+      </div>
+
+      <div className="hidden lg:block font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/50">
+        Σύνολο · {totalCount}
+      </div>
+
+      <button
+        disabled={page >= totalPages}
+        onClick={() => onChange(Math.min(totalPages, page + 1))}
+        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+          page >= totalPages
+            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 cursor-not-allowed"
+            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+        }`}
+      >
+        Επόμ. →
+      </button>
     </div>
   );
 }

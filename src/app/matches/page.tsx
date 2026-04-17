@@ -1,43 +1,26 @@
-
 // app/matches/page.tsx
-
-import GridBgSection from "@/app/home/GridBgSection";
-import RecentMatchesTabs from "../home/RecentMatchesTabs";
-
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import MatchesExplorer, {
+  type TournamentOption,
+} from "./MatchesExplorer";
 
 export const revalidate = 60;
 
-
 export const metadata = {
-title: "Αγώνες | Ultra Champ",
-description: "Φίλτραρε αγώνες ανά ομάδα, διοργάνωση και ημερομηνία.",
+  title: "Αγώνες | Ultra Champ",
+  description: "Φιλτράρισμα αγώνων ανά τουρνουά, προσεχείς και τελειωμένοι.",
 };
 
-
 export default async function MatchesPage() {
-// Data is fetched server-side inside MatchesExplorerServer using supabaseAdmin
-return (
-<div className="min-h-screen bg-zinc-950 text-white">
-<header className="mx-auto w-full max-w-7xl px-4 pt-10 pb-6">
-<h1 className="text-3xl sm:text-4xl font-bold">Αγώνες</h1>
+  // Fetch a compact list of tournaments for the filter dropdown
+  const { data } = await supabaseAdmin
+    .from("tournaments")
+    .select("id, name")
+    .order("id", { ascending: false });
 
-</header>
+  const tournaments: TournamentOption[] = (data ?? [])
+    .filter((t): t is { id: number; name: string } => !!t && !!t.name)
+    .map((t) => ({ id: t.id, name: t.name }));
 
-
-<GridBgSection className="py-4">
-<div className="mx-auto w-full max-w-7xl px-4">
-<div className="w-full sm:max-w-[440px] md:max-w-[440px] lg:max-w-[880px] pointer-events-auto">
-              <RecentMatchesTabs
-                className="mt-10 lg:mt-0"
-                pageSize={12}
-                variant="transparent"
-                maxWClass="max-w-none"
-              />
-            </div>
-          </div>
-          </GridBgSection>
-        </div>
-      
-
-);
+  return <MatchesExplorer tournaments={tournaments} />;
 }

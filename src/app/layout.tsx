@@ -3,11 +3,13 @@ import React, { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 import Navbar from "./lib/Navbar/Navbar";
+import ConsentProvider from "./lib/consent/ConsentProvider";
+import ConsentGatedAnalytics from "./lib/consent/ConsentGatedAnalytics";
+import CookieBanner from "./lib/consent/CookieBanner";
+import Footer from "./lib/Footer/Footer";
 import {
   Geist,
   Geist_Mono,
@@ -109,17 +111,27 @@ export default async function RootLayout({
       React.createElement(
         "body",
         { key: "body", className: "antialiased font-sans", suppressHydrationWarning: true },
-        [
-          React.createElement(Suspense, { key: "nav", fallback: React.createElement("div", { className: "h-16 md:h-32" }) }, React.createElement(Navbar)),
-          React.createElement(
-            "main",
-            { key: "main", className: "pt-16 md:pt-32" },
-            children
-          ),
-
-          React.createElement(Analytics, { key: "analytics" }),
-          React.createElement(SpeedInsights, { key: "speed-insights" }),
-        ]
+        React.createElement(ConsentProvider, {
+          key: "consent-provider",
+          children: [
+            React.createElement(
+              Suspense,
+              {
+                key: "nav",
+                fallback: React.createElement("div", { className: "h-16 md:h-32" }),
+              },
+              React.createElement(Navbar)
+            ),
+            React.createElement(
+              "main",
+              { key: "main", className: "pt-16 md:pt-32" },
+              children
+            ),
+            React.createElement(Footer, { key: "footer" }),
+            React.createElement(ConsentGatedAnalytics, { key: "gated-analytics" }),
+            React.createElement(CookieBanner, { key: "cookie-banner" }),
+          ],
+        })
       ),
     ]
   );

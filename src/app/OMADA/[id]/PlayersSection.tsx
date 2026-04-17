@@ -58,7 +58,7 @@ export default function PlayersSection({
                   {/* Photo (round) */}
                   <div className="h-16 w-16 overflow-hidden rounded-full ring-2 ring-orange-500/40 bg-orange-900/30">
                     <Image
-                      src={p.photo || "/player-placeholder.jpg"}
+                      src={p.photo || "/player-placeholder.svg"}
                       alt={`${p.first_name} ${p.last_name}`}
                       width={64}
                       height={64}

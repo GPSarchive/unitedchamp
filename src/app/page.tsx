@@ -481,28 +481,7 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      {/* Footer */}
-      <footer className="py-8 bg-zinc-950 text-white text-center">
-        <div className="container mx-auto px-4">
-          <p>© 2025 Ultra Champ.</p>
-          <div className="mt-4">
-            <a href="/privacy" className="mx-2 hover:underline">Πολιτική Απορρήτου</a>
-            <a href="/terms" className="mx-2 hover:underline">Όροι Χρήσης</a>
-            <a href="/contact" className="mx-2 hover:underline">Επικοινωνία</a>
-          </div>
-          <div className="mt-4 text-zinc-400 text-sm">
-            Κατασκευή ιστοσελίδας από{" "}
-            <a
-              href="https://www.digitalfootprint.gr"
-              target="_blank"
-              rel="noopener"
-              className="hover:underline text-zinc-300"
-            >
-              Digital Footprint
-            </a>
-          </div>
-        </div>
-      </footer>
+      {/* Footer is rendered globally from src/app/layout.tsx */}
 
       {/* Recent Content Bubble */}
       <RecentAnnouncementsBubble count={recentContentCount} />

@@ -13,25 +13,39 @@ type Props = {
 function StatPill({
   label,
   value,
+  accent = "#F3EFE6",
   highlight = false,
 }: {
   label: string;
   value: number;
+  accent?: string;
   highlight?: boolean;
 }) {
+  const active = highlight && value > 0;
   return (
     <div
-      className={[
-        "flex flex-col items-center justify-center rounded-xl sm:rounded-2xl px-1.5 sm:px-2.5 py-1.5 sm:py-2 bg-white/5 backdrop-blur-sm border transition-all",
-        highlight
-          ? "border-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.35)] bg-amber-500/10"
-          : "border-white/20",
-      ].join(" ")}
+      className="flex flex-col items-center justify-center border-2 px-1.5 py-2 transition-colors"
+      style={{
+        borderColor: active ? accent : "rgba(243,239,230,0.2)",
+        background: active ? `${accent}12` : "#0a0a14",
+      }}
     >
-      <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.12em] sm:tracking-[0.16em] text-white/70 leading-tight font-bold">
+      <span
+        className="font-mono text-[9px] uppercase tracking-[0.22em] leading-tight"
+        style={{ color: active ? accent : "rgba(243,239,230,0.6)" }}
+      >
         {label}
       </span>
-      <span className="mt-0.5 text-sm sm:text-lg font-semibold text-white tabular-nums">
+      <span
+        className="mt-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums"
+        style={{
+          color: active
+            ? accent
+            : value === 0
+            ? "rgba(243,239,230,0.45)"
+            : "#F3EFE6",
+        }}
+      >
         {value}
       </span>
     </div>
@@ -152,64 +166,73 @@ function PlayerProfileCardComponent({
         mobileTiltSensitivity={5}
       />
 
-      {/* Stats "modal" under the card - GLASSMORPHISM */}
+      {/* Stats panel under the 3D card — editorial Midnight */}
       <div className="relative -mt-2">
         <div className="mx-auto w-full max-w-md px-1 sm:px-0">
-          <div className="relative rounded-[20px] sm:rounded-[30px] border border-white/20 bg-black/20 backdrop-blur-xl shadow-[0_18px_45px_rgba(0,0,0,0.4)] overflow-hidden">
-            {/* Glow that follows the card theme (gold / sporty) */}
-            <div className="pointer-events-none absolute inset-x-10 -top-10 h-20 bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.4),_transparent_60%)] opacity-70" />
-
-            {/* Inner glow for depth */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.05] via-transparent to-black/20" />
-
-            <div className="relative px-3 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
-              {/* Header row */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-amber-500/10 backdrop-blur-md border border-amber-400/60 px-2 sm:px-3 py-0.5 sm:py-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-                  <span className="text-[9px] sm:text-[11px] font-semibold tracking-[0.12em] uppercase text-amber-50 flex items-center gap-1">
-                    Στατιστικά παίκτη
-                    <span aria-hidden>🔥</span>
-                  </span>
-                </div>
-
-                <div className="text-[10px] sm:text-[11px] font-medium text-white/60">
-                  {isTournamentScoped ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 backdrop-blur-sm border border-amber-400/70 px-2 py-0.5 text-[9px] sm:text-[10px] text-amber-50">
-                      <span className="w-1 h-1 rounded-full bg-amber-300 shadow-[0_0_6px_rgba(252,211,77,0.6)]" />
-                      Τουρνουά
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/25 px-2 py-0.5 text-[9px] sm:text-[10px] text-white/75">
-                      All-time
-                    </span>
-                  )}
-                </div>
+          <div
+            className="relative border-2 border-[#F3EFE6]/20 bg-[#0a0a14]/90 backdrop-blur-sm"
+            style={{ boxShadow: "6px 6px 0 0 #fb923c" }}
+          >
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-2 border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.25em]">
+              <div className="flex items-center gap-2 text-[#fb923c]">
+                <span className="h-[2px] w-6 bg-[#fb923c]" />
+                <span className="font-bold">Στατιστικά</span>
               </div>
-
-              {/* Stats grid - responsive columns */}
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
-              <StatPill label="Matches" value={matchesPlayed} />
-                <StatPill label="Goals" value={totalGoals} highlight />
-                <StatPill label="Assists" value={totalAssists} />
-                <StatPill label="MVP" value={mvpAwards} highlight={bestGkAwards > 0}/>
-                <StatPill
-                  label="GK"
-                  value={bestGkAwards}
-
-                />
-
-              </div>
-
-              {/* Optional subtle footer line */}
-              {player.team?.name && (
-                <div className="flex items-center justify-end pt-1 text-[9px] sm:text-[10px] text-white/35">
-                  <span className="truncate max-w-full text-right">
-                    {player.team.name}
-                  </span>
-                </div>
-              )}
+              <span
+                className="inline-flex items-center gap-1.5 border px-2 py-0.5"
+                style={{
+                  borderColor: isTournamentScoped
+                    ? "#fb923c"
+                    : "rgba(243,239,230,0.2)",
+                  color: isTournamentScoped
+                    ? "#fb923c"
+                    : "rgba(243,239,230,0.7)",
+                  background: isTournamentScoped
+                    ? "rgba(251,146,60,0.1)"
+                    : "transparent",
+                }}
+              >
+                {isTournamentScoped && (
+                  <span className="h-1 w-1 rounded-full bg-[#fb923c]" />
+                )}
+                {isTournamentScoped ? "Τουρνουά" : "Καριέρα"}
+              </span>
             </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 p-3">
+              <StatPill label="Αγώνες" value={matchesPlayed} />
+              <StatPill
+                label="Γκολ"
+                value={totalGoals}
+                accent="#fb923c"
+                highlight
+              />
+              <StatPill label="Ασίστ" value={totalAssists} />
+              <StatPill
+                label="MVP"
+                value={mvpAwards}
+                accent="#E8B931"
+                highlight
+              />
+              <StatPill
+                label="Τερμ."
+                value={bestGkAwards}
+                accent="#60a5fa"
+                highlight
+              />
+            </div>
+
+            {/* Footer team line */}
+            {player.team?.name && (
+              <div className="flex items-center justify-between gap-2 border-t border-[#F3EFE6]/10 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/45">
+                <span>Κύρια Ομάδα</span>
+                <span className="truncate max-w-[70%] text-right text-[#F3EFE6]/65">
+                  {player.team.name}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@ import Image, { ImageProps } from "next/image";
 
 type Props = Omit<ImageProps, "src"> & { src: string; fallbackSrc?: string };
 
-export default function AvatarImage({ src, fallbackSrc = "/player-placeholder.jpg", alt, ...rest }: Props) {
+export default function AvatarImage({ src, fallbackSrc = "/player-placeholder.svg", alt, ...rest }: Props) {
   const [imgSrc, setImgSrc] = useState(src);
 
   return (

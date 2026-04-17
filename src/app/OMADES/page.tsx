@@ -1,15 +1,48 @@
-// app/OMADES/teams/page.tsx 
-import DotGrid from "@/app/OMADES/DotGrid";
-import TeamsGrid from "@/app/OMADES/TeamsGrid";
+// app/OMADES/page.tsx
+import Link from "next/link";
 import SearchBar from "@/app/OMADES/SearchBar";
 import Pagination from "@/app/OMADES/Pagination";
+import TeamCard from "@/app/OMADES/TeamCard";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import { Team } from "@/app/lib/types";
-import React from "react";
-import ColorBends from "./ColorBends";
+import type { Team } from "@/app/lib/types";
+import {
+  Fraunces,
+  Archivo_Black,
+  JetBrains_Mono,
+  Figtree,
+} from "next/font/google";
+
+// ───────────────────────────────────────────────────────────────────────
+// Typography
+// ───────────────────────────────────────────────────────────────────────
+const fraunces = Fraunces({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "600", "700", "900"],
+  style: ["normal", "italic"],
+  variable: "--f-display",
+  display: "swap",
+});
+const archivoBlack = Archivo_Black({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400"],
+  variable: "--f-brutal",
+  display: "swap",
+});
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin", "greek"],
+  weight: ["400", "500", "700"],
+  variable: "--f-mono",
+  display: "swap",
+});
+const figtree = Figtree({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--f-body",
+  display: "swap",
+});
+
 type SearchMap = { [key: string]: string | string[] | undefined };
 
-// RPC row shape returned by search_teams_fuzzy
 type TeamWithCountRPC = {
   id: number;
   name: string;
@@ -18,49 +51,179 @@ type TeamWithCountRPC = {
   total_count: number;
 };
 
-// TeamsGrid expects logo: string (non-null) and no created_at
-type GridTeam = { id: number; name: string; logo: string };
+const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
-// ---- Background shell (DotGrid behind, content above) ----
-function Background() {
+// ───────────────────────────────────────────────────────────────────────
+// Atmosphere
+// ───────────────────────────────────────────────────────────────────────
+function PaperBackground() {
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
-      <ColorBends
-        colors={["#FFD700", "#E6BE00", "#B38600"]}
-        rotation={0.5}
-        speed={0.2}
-        scale={3}
-        frequency={1.5}
-        warpStrength={1}
-        mouseInfluence={0}
-        parallax={0}
-        noise={0.1}
-        transparent
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, #0a0a14 45%, #08080f 100%)",
+        }}
       />
+      <div
+        className="absolute -top-40 -left-40 h-[60rem] w-[60rem] rounded-full opacity-[0.18] blur-3xl"
+        style={{
+          background:
+            "radial-gradient(closest-side, #fb923c 0%, rgba(251,146,60,0) 70%)",
+        }}
+      />
+      <div
+        className="absolute -bottom-60 -right-40 h-[55rem] w-[55rem] rounded-full opacity-[0.14] blur-3xl"
+        style={{
+          background:
+            "radial-gradient(closest-side, #a855f7 0%, rgba(168,85,247,0) 70%)",
+        }}
+      />
+      <svg
+        className="absolute inset-0 h-full w-full opacity-[0.04]"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern
+            id="omadesgrid"
+            width="48"
+            height="48"
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d="M 48 0 L 0 0 0 48"
+              fill="none"
+              stroke="#F3EFE6"
+              strokeWidth="1"
+            />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#omadesgrid)" />
+      </svg>
     </div>
   );
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Page shell
+// ───────────────────────────────────────────────────────────────────────
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="relative min-h-dvh bg-black overflow-hidden">
-      <Background />
-      <div className="relative z-10">{children}</div>
-    </main>
+    <div
+      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} relative min-h-screen text-[#F3EFE6] font-[var(--f-body)] selection:bg-[#fb923c] selection:text-[#0a0a14]`}
+    >
+      <PaperBackground />
+      {children}
+    </div>
   );
 }
 
+// ───────────────────────────────────────────────────────────────────────
+// Page header
+// ───────────────────────────────────────────────────────────────────────
+function PageHeader({ total }: { total: number }) {
+  return (
+    <header className="relative border-b-2 border-[#F3EFE6]/20">
+      <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-6 md:pt-10 md:pb-8">
+        <nav className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
+          <Link href="/" className="hover:text-[#fb923c] transition-colors">
+            Αρχική
+          </Link>
+          <span>/</span>
+          <span className="text-[#F3EFE6]">Ομάδες</span>
+        </nav>
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+              <span className="h-[2px] w-8 bg-[#fb923c]" />
+              Μητρώο
+            </div>
+            <h1
+              className="mt-2 font-[var(--f-display)] font-black italic leading-[0.9] tracking-[-0.02em] text-[#F3EFE6]"
+              style={{ fontSize: "clamp(2.25rem, 5.5vw, 4rem)" }}
+            >
+              Οι Ομάδες
+            </h1>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+            <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
+              Σύνολο · {pad2(total)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Empty / error states
+// ───────────────────────────────────────────────────────────────────────
+function StateBlock({
+  kicker,
+  title,
+  body,
+}: {
+  kicker: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div
+      className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center"
+      style={{ background: "rgba(19,19,29,0.4)" }}
+    >
+      <div className="mx-auto max-w-md">
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+          / 00 · {kicker}
+        </span>
+        <p className="mt-4 font-[var(--f-display)] text-3xl font-black italic leading-tight text-[#F3EFE6]">
+          {title}
+        </p>
+        <p className="mt-3 font-[var(--f-body)] text-sm text-[#F3EFE6]/60">
+          {body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Colophon
+// ───────────────────────────────────────────────────────────────────────
+function Colophon({ total }: { total: number }) {
+  return (
+    <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+      <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-6 py-6 md:flex-row md:items-center">
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
+          Σύνολο ομάδων · {pad2(total)}
+        </p>
+        <Link
+          href="/"
+          className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
+        >
+          ← Επιστροφή στην Αρχική
+        </Link>
+      </div>
+    </footer>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Page
+// ───────────────────────────────────────────────────────────────────────
 export default async function TeamsPage({
   searchParams,
 }: {
-  // Next.js 15: searchParams is a Promise
   searchParams: Promise<SearchMap>;
 }) {
   const sp = await searchParams;
 
-  const pageParam = Array.isArray(sp.page) ? sp.page[0] : sp.page ?? "1";
-  const page =
-    Number.parseInt(pageParam, 10) > 0 ? Number.parseInt(pageParam, 16) : 1;
+  const pageParamRaw = Array.isArray(sp.page) ? sp.page[0] : sp.page ?? "1";
+  const parsedPage = Number.parseInt(pageParamRaw, 10);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
   const search = Array.isArray(sp.search) ? sp.search[0] : sp.search ?? "";
 
@@ -70,14 +233,14 @@ export default async function TeamsPage({
 
   let teams: Team[] = [];
   let count = 0;
-  let error: any = null;
+  let error: { message?: string } | null = null;
 
   if (search) {
     const { data: teamsData, error: rpcError } = await supabaseAdmin.rpc(
       "search_teams_fuzzy",
       { search_term: search, page_limit: limit, page_offset: from }
     );
-    error = rpcError;
+    error = rpcError as any;
     if (!error && teamsData) {
       const rows = teamsData as TeamWithCountRPC[];
       teams = rows.map((row) => ({
@@ -92,151 +255,83 @@ export default async function TeamsPage({
       count = rows.length > 0 ? rows[0].total_count : 0;
     }
   } else {
-    const query = supabaseAdmin
+    const { data, error: queryError, count: queryCount } = await supabaseAdmin
       .from("teams")
-      .select("id, name, logo, colour, created_at, am, season_score", { count: "exact" })
+      .select("id, name, logo, colour, created_at, am, season_score", {
+        count: "exact",
+      })
       .is("deleted_at", null)
-      .order("name", { ascending: true });
-
-    const { data, error: queryError, count: queryCount } = await query.range(
-      from,
-      to
-    );
-    error = queryError;
+      .order("name", { ascending: true })
+      .range(from, to);
+    error = queryError as any;
     if (!error && data) {
       teams = data as Team[];
       count = queryCount || 0;
     }
   }
 
-  // ---- Error state ----
-  if (error || !teams) {
-    return (
-      <Shell>
-        <div className="container mx-auto px-6 pt-6">
-          <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
-            Football Teams
-          </h1>
-          <SearchBar initialSearch={search} />
-        </div>
-        <div className="container mx-auto px-6 pb-10">
-          <p className="text-center text-red-400">
-            Error loading teams: {error?.message}
-          </p>
-        </div>
-      </Shell>
-    );
-  }
+  const totalPages = Math.max(1, Math.ceil(count / limit));
 
-  // ---- Empty state ----
-  if (teams.length === 0) {
-    return (
-      <Shell>
-        <div className="container mx-auto px-6 pt-6">
-          <h1 className="text-4xl font-extrabold mb-8 text-center text-white/90 tracking-tight">
-            Football Teams
-          </h1>
-          <SearchBar initialSearch={search} />
-        </div>
-        <div className="container mx-auto px-6 pb-10">
-          <p className="text-center text-gray-400 mt-6">
-            No teams found matching your search.
-          </p>
-        </div>
-      </Shell>
-    );
-  }
-
-  const totalPages = Math.ceil(count / limit);
-
-  // ✅ Adapt to TeamsGrid's stricter shape (logo must be a string)
-  const teamsForGrid: GridTeam[] = teams.map((t) => ({
-    id: t.id,
-    name: t.name,
-    logo: t.logo ?? "",
-  }));
-
-  // ---- Success ----
   return (
     <Shell>
-      <div className="container mx-auto px-6 pt-6">
-        <h1 className="text-5xl font-extrabold mb-4 text-center text-white tracking-tight">
-          Ο Μ Α Δ Ε Σ
-        </h1>
-        <p className="text-center text-white/60 mb-8 text-sm tracking-wide">
-          {count} {count === 1 ? 'Team' : 'Teams'} Available
-        </p>
-        <SearchBar initialSearch={search} />
-      </div>
+      <PageHeader total={count} />
 
-      <section className="mx-[calc(50%-50vw)] w-screen py-8">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {teamsForGrid.map((team) => (
-              <a
-                key={team.id}
-                href={`/OMADA/${team.id}`}
-                className="group relative aspect-square
-                         bg-black rounded-lg
-                         border border-white/5
-                         shadow-[inset_0_1px_1px_rgba(255,255,255,0.03),0_8px_16px_rgba(0,0,0,0.6)]
-                         hover:bg-gradient-to-br hover:from-[#FFD700]/10 hover:to-[#B38600]/5
-                         hover:border-[#FFD700]/30
-                         hover:shadow-[inset_0_1px_1px_rgba(255,215,0,0.1),0_12px_24px_rgba(255,215,0,0.15)]
-                         active:scale-[0.97]
-                         transition-all duration-200 ease-out
-                         cursor-pointer overflow-hidden"
-              >
-                {/* Content wrapper */}
-                <div className="relative w-full h-full flex flex-col items-center justify-between p-4 sm:p-5">
-                  
-                  {/* Logo - centered and larger */}
-                  <div className="flex-1 flex items-center justify-center w-full">
-                    {team.logo ? (
-                      <img
-                        src={team.logo}
-                        alt={`${team.name} logo`}
-                        className="w-full h-full max-w-[80%] max-h-[80%] object-contain 
-                                 transition-transform duration-200 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full 
-                                    bg-gradient-to-br from-[#FFD700] to-[#B38600] 
-                                    flex items-center justify-center text-white font-bold text-3xl sm:text-4xl
-                                    transition-transform duration-200 group-hover:scale-105">
-                        {team.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Bottom section: Name and Arrow */}
-                  <div className="w-full flex items-end justify-between gap-2">
-                    {/* Team name - bottom center */}
-                    <h3 className="flex-1 text-center text-xs sm:text-sm font-medium text-white/80 
-                                 group-hover:text-white
-                                 transition-colors duration-200 
-                                 line-clamp-2 leading-tight">
-                      {team.name}
-                    </h3>
-                    
-                    {/* Arrow - bottom right */}
-                    <div className="flex-shrink-0 text-white/30 group-hover:text-[#FFD700] 
-                                  transition-all duration-200 group-hover:translate-x-0.5 group-hover:translate-y-0.5">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="w-3 h-3 sm:w-4 sm:h-4">
-                        <path d="M3 13L13 3M13 3H5M13 3V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            ))}
+      <section className="relative">
+        <div className="mx-auto max-w-[1400px] px-6 py-10 md:py-14">
+          {/* Controls */}
+          <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <SearchBar initialSearch={search} />
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
+              <span>
+                {pad2(teams.length)} / {pad2(count)} ομάδες
+              </span>
+              {search && (
+                <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2 py-0.5 text-[#F3EFE6]/70">
+                  « {search} »
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Results */}
+          {error ? (
+            <StateBlock
+              kicker="Σφάλμα"
+              title="Η φόρτωση απέτυχε"
+              body={`Σφάλμα φόρτωσης ομάδων: ${error.message ?? "άγνωστο"}`}
+            />
+          ) : teams.length === 0 ? (
+            <StateBlock
+              kicker={search ? "Φίλτρα" : "Κατάλογος"}
+              title={
+                search
+                  ? "Κανένα αποτέλεσμα"
+                  : "Δεν υπάρχουν ομάδες"
+              }
+              body={
+                search
+                  ? "Δοκιμάστε άλλους όρους αναζήτησης."
+                  : "Αναμείνατε — το μητρώο ενημερώνεται."
+              }
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {teams.map((team, i) => (
+                <TeamCard key={team.id} team={team} index={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            search={search}
+          />
         </div>
       </section>
 
-      <div className="container mx-auto px-6 pb-10">
-        <Pagination currentPage={page} totalPages={totalPages} search={search} />
-      </div>
+      <Colophon total={count} />
     </Shell>
   );
 }

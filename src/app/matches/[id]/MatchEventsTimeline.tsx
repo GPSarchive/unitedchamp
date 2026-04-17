@@ -148,7 +148,7 @@ function PlayerEventCard({
   const playerName =
     `${player.first_name ?? ""} ${player.last_name ?? ""}`.trim() || "Άγνωστος";
   const isPlaceholderPhoto =
-    !player.photo || player.photo === "/player-placeholder.jpg";
+    !player.photo || player.photo === "/player-placeholder.svg";
 
   const hasEvents = events.length > 0;
   const position = stats?.position ?? null;

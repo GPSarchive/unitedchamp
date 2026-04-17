@@ -44,7 +44,7 @@ export interface PlayerRow {
   is_dummy?: boolean;
 
   // NEW fields from public.player
-  photo: string; // NOT NULL in DB (default '/player-placeholder.jpg')
+  photo: string; // NOT NULL in DB (default '/player-placeholder.svg')
   height_cm: number | null;
   position: string | null;
   birth_date: string | null; // 'YYYY-MM-DD'
@@ -281,7 +281,7 @@ export function normalizeTeamPlayers(
         first_name: "",
         last_name: "",
         // NEW defaults mirroring DB
-        photo: "/player-placeholder.jpg",
+        photo: "/player-placeholder.svg",
         height_cm: null,
         position: null,
         birth_date: null,

@@ -74,8 +74,8 @@ export function resolveImageUrl(
  * Placeholders for each image type
  */
 export const IMAGE_PLACEHOLDERS = {
-  [ImageType.PLAYER]: "/player-placeholder.jpg",
-  [ImageType.TEAM]: "/team-placeholder.png",
+  [ImageType.PLAYER]: "/player-placeholder.svg",
+  [ImageType.TEAM]: "/team-placeholder.svg",
   [ImageType.TOURNAMENT]: "/tournament-placeholder.png",
 } as const;
 

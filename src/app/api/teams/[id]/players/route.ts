@@ -313,7 +313,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
       // Extended player profile fields
       const photoInput = typeof (reqBody as any).photo === "string" ? (reqBody as any).photo.trim() : "";
-      const photo = photoInput || "/player-placeholder.jpg";
+      const photo = photoInput || "/player-placeholder.svg";
       const height_cm = (reqBody as any).height_cm == null || (reqBody as any).height_cm === "" ? null : Number((reqBody as any).height_cm);
       const position = (reqBody as any).position == null || (reqBody as any).position === "" ? null : String((reqBody as any).position).trim();
       const birth_date = (reqBody as any).birth_date == null || (reqBody as any).birth_date === "" ? null : String((reqBody as any).birth_date);

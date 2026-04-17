@@ -6,5 +6,5 @@ import { imageConfig, ImageType } from './image-config';
  * This is kept for backward compatibility
  */
 export function resolvePlayerPhotoUrl(input?: string | null): string {
-  return imageConfig.resolve(input, ImageType.PLAYER) || "/player-placeholder.jpg";
+  return imageConfig.resolve(input, ImageType.PLAYER) || "/player-placeholder.svg";
 }

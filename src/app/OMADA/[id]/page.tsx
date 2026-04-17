@@ -1,7 +1,4 @@
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // Server-side Supabase client
-import TeamSidebar from "./TeamSidebar";
-import TeamMatchesTimeline from "./TeamMatchesTimeline"; // Use the new client-side component
-import VantaBg from "../../lib/VantaBg";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   type Team,
   type PlayerAssociation,
@@ -9,7 +6,7 @@ import {
   normalizeTeamPlayers,
   type TeamPlayersRowRaw,
 } from "@/app/lib/types";
-import TeamRosterShowcase from "./TeamRosterShowcase";
+import TeamClient from "./TeamClient";
 
 type TeamPageProps = {
   params: Promise<{ id: string }>;
@@ -21,10 +18,14 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const teamId = Number.parseInt(id, 10);
 
   if (Number.isNaN(teamId)) {
-    return <div className="text-red-400">Invalid team ID</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] font-mono text-sm">
+        Μη έγκυρος κωδικός ομάδας
+      </div>
+    );
   }
 
-  // ── Team details ────────────────────────────────────────────────────────────────
+  // Team details
   const { data: team, error: teamError } = await supabaseAdmin
     .from("teams")
     .select("*")
@@ -33,47 +34,43 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
   if (teamError || !team) {
     return (
-      <div className="text-red-400">
-        Error loading team: {teamError?.message || "Team not found"}
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
+        Σφάλμα φόρτωσης ομάδας: {teamError?.message || "Η ομάδα δεν βρέθηκε"}
       </div>
     );
   }
 
-  // ── Tournament membership (this team in tournaments) ───────────────────────────
-  const { data: tournamentMembership, error: membershipErr } =
-    await supabaseAdmin
-      .from("tournament_teams")
-      .select(
-        `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
-      )
-      .eq("team_id", teamId)
-      .order("tournament_id", { ascending: false });
+  // Tournament memberships (dedup per tournament — a team can be linked via multiple groups)
+  const { data: tournamentMembership } = await supabaseAdmin
+    .from("tournament_teams")
+    .select(
+      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
+    )
+    .eq("team_id", teamId)
+    .order("tournament_id", { ascending: false });
 
-  // Deduplicate: a team can have multiple rows per tournament (one per group stage)
   const seen = new Set<number>();
-  const tournaments =
-    (tournamentMembership ?? [])
-      .map((r: any) => r.tournament)
-      .filter((t: any) => {
-        if (!t || seen.has(t.id)) return false;
-        seen.add(t.id);
-        return true;
-      });
+  const tournaments = (tournamentMembership ?? [])
+    .map((r: any) => r.tournament)
+    .filter((t: any) => {
+      if (!t || seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
 
-  // ── Tournament wins (championships) ────────────────────────────────────────────
-  const { data: winsList, error: winsErr } = await supabaseAdmin
+  // Championships
+  const { data: winsList } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, season")
     .eq("winner_team_id", teamId);
 
   const wins = winsList ?? [];
 
-  // ── Players: include master data + 1 latest statistics row ─────────────────────
-  const { data: playerAssociationsData, error: playersError } =
-    await supabaseAdmin
-      .from("player_teams")
-      .select(
-        `
+  // Players + latest stats snapshot
+  const { data: playerAssociationsData } = await supabaseAdmin
+    .from("player_teams")
+    .select(
+      `
         id,
         player:player_id (
           id,
@@ -97,23 +94,22 @@ export default async function TeamPage({ params }: TeamPageProps) {
           )
         )
       `
-      )
-      .eq("team_id", teamId)
-      .order("player_id", { ascending: true })
-      .order("id", {
-        foreignTable: "player.player_statistics",
-        ascending: false,
-      })
-      .limit(1, { foreignTable: "player.player_statistics" });
+    )
+    .eq("team_id", teamId)
+    .order("player_id", { ascending: true })
+    .order("id", {
+      foreignTable: "player.player_statistics",
+      ascending: false,
+    })
+    .limit(1, { foreignTable: "player.player_statistics" });
 
-  const playerAssociations: PlayerAssociation[] =
-    playersError || !playerAssociationsData
-      ? []
-      : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[])
-          .filter((a) => !(a.player as any).deleted_at); // exclude archived players
+  const playerAssociations: PlayerAssociation[] = !playerAssociationsData
+    ? []
+    : normalizeTeamPlayers(playerAssociationsData as TeamPlayersRowRaw[]).filter(
+        (a) => !(a.player as any).deleted_at
+      );
 
-  // ── Aggregate player stats from match_player_stats ────────────────────────────
-  // Get all matches for this team
+  // Aggregate player stats from match_player_stats for this team's finished matches
   const { data: teamMatches } = await supabaseAdmin
     .from("matches")
     .select("id")
@@ -122,8 +118,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
   const matchIds = (teamMatches ?? []).map((m) => m.id);
 
-  // Get all player stats for those matches, filtered by team_id
-  const { data: matchPlayerStats, error: pssErr } = await supabaseAdmin
+  const { data: matchPlayerStats } = await supabaseAdmin
     .from("match_player_stats")
     .select(
       `
@@ -140,7 +135,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
     .in("match_id", matchIds.length > 0 ? matchIds : [0])
     .eq("team_id", teamId);
 
-  // Aggregate stats by player
   const seasonStatsByPlayer: Record<
     number,
     {
@@ -168,20 +162,19 @@ export default async function TeamPage({ params }: TeamPageProps) {
         best_gk: 0,
       };
     }
-
-    const playerStats = seasonStatsByPlayer[stat.player_id];
-    playerStats.matches += 1;
-    playerStats.goals += stat.goals || 0;
-    playerStats.assists += stat.assists || 0;
-    playerStats.yellow_cards += stat.yellow_cards || 0;
-    playerStats.red_cards += stat.red_cards || 0;
-    playerStats.blue_cards += stat.blue_cards || 0;
-    playerStats.mvp += stat.mvp ? 1 : 0;
-    playerStats.best_gk += stat.best_goalkeeper ? 1 : 0;
+    const ps = seasonStatsByPlayer[stat.player_id];
+    ps.matches += 1;
+    ps.goals += stat.goals || 0;
+    ps.assists += stat.assists || 0;
+    ps.yellow_cards += stat.yellow_cards || 0;
+    ps.red_cards += stat.red_cards || 0;
+    ps.blue_cards += stat.blue_cards || 0;
+    ps.mvp += stat.mvp ? 1 : 0;
+    ps.best_gk += stat.best_goalkeeper ? 1 : 0;
   }
 
-  // ── Matches ─────────────────────────
-  const { data: matchesData, error: matchesError } = await supabaseAdmin
+  // Matches
+  const { data: matchesData } = await supabaseAdmin
     .from("matches")
     .select(
       `
@@ -206,39 +199,14 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 
   return (
-    <section className="relative min-h-screen text-slate-50 overflow-x-hidden">
-      {/* Fixed Vanta background that stays in place while content scrolls */}
-      <VantaBg className="fixed inset-0 -z-10" mode="eco" />
-
-      {/* Page content scrolling over the fixed background */}
-      <div className="relative z-10">
-        <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
-          {/* Top: team hero */}
-          <TeamSidebar
-            team={team as Team}
-            tournaments={tournaments}
-            wins={wins}
-            errors={{
-              membership: membershipErr?.message,
-              wins: winsErr?.message,
-            }}
-          />
-
-          {/* Middle: roster */}
-          <TeamRosterShowcase
-            playerAssociations={playerAssociations}
-            seasonStatsByPlayer={seasonStatsByPlayer}
-            errorMessage={playersError?.message || pssErr?.message}
-          />
-
-          {/* Bottom: matches timeline */}
-          <TeamMatchesTimeline
-            matches={matches}
-            teamId={teamId}
-            errorMessage={matchesError?.message}
-          />
-        </div>
-      </div>
-    </section>
+    <TeamClient
+      team={team as Team}
+      teamId={teamId}
+      tournaments={tournaments}
+      wins={wins}
+      playerAssociations={playerAssociations}
+      seasonStatsByPlayer={seasonStatsByPlayer}
+      matches={matches}
+    />
   );
 }

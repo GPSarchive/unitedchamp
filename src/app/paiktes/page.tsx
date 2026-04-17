@@ -336,7 +336,7 @@ export default async function PaiktesPage({
       id: pl.id,
       first_name: pl.first_name ?? "",
       last_name: pl.last_name ?? "",
-      photo: pl.photo ?? "/player-placeholder.jpg",
+      photo: pl.photo ?? "/player-placeholder.svg",
       position: pl.position ?? "",
       height_cm: pl.height_cm ?? null,
       birth_date: pl.birth_date ?? null,
@@ -454,16 +454,14 @@ export default async function PaiktesPage({
   }
 
   return (
-    <div className="h-screen bg-black overflow-hidden">
-      <PlayersClient
-        initialPlayers={enriched}
-        tournaments={tournaments}
-        totalCount={finalTotalCount}
-        currentPage={page}
-        pageSize={pageSize}
-        usePagination={true}
-        initialSearchQuery={rawSearchTerm}
-      />
-    </div>
+    <PlayersClient
+      initialPlayers={enriched}
+      tournaments={tournaments}
+      totalCount={finalTotalCount}
+      currentPage={page}
+      pageSize={pageSize}
+      usePagination={true}
+      initialSearchQuery={rawSearchTerm}
+    />
   );
 }

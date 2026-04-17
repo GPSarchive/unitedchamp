@@ -67,13 +67,13 @@ function buildEmbeddedPlayerEntry(stat: any, matchCount: number) {
   const firstPt = Array.isArray(p?.player_teams) ? p.player_teams[0] : null;
   const team = firstPt?.team ?? null;
   const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-  const hasRealPhoto = p?.photo && p.photo !== '/player-placeholder.jpg';
+  const hasRealPhoto = p?.photo && p.photo !== '/player-placeholder.svg';
   const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(p.photo, ImageType.PLAYER) : null;
   return {
     id: stat.player_id,
     firstName: p?.first_name ?? '',
     lastName: p?.last_name ?? '',
-    photo: playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg',
+    photo: playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.svg',
     goals: stat.total_goals ?? 0,
     assists: stat.total_assists ?? 0,
     matches: matchCount,
@@ -87,13 +87,13 @@ function buildCareerEntry(stat: any, extraKey: string, extraField: string) {
   const p = stat.player as any;
   const team = stat.team as any;
   const teamLogoUrl = team?.logo ? resolveImageUrl(team.logo, ImageType.TEAM) : null;
-  const hasRealPhoto = p?.photo && p.photo !== '/player-placeholder.jpg';
+  const hasRealPhoto = p?.photo && p.photo !== '/player-placeholder.svg';
   const playerPhotoUrl = hasRealPhoto ? resolveImageUrl(p.photo, ImageType.PLAYER) : null;
   return {
     id: stat.player_id,
     firstName: p?.first_name ?? '',
     lastName: p?.last_name ?? '',
-    photo: playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.jpg',
+    photo: playerPhotoUrl ?? teamLogoUrl ?? '/player-placeholder.svg',
     goals: stat.total_goals ?? 0,
     assists: stat.total_assists ?? 0,
     matches: stat.total_matches ?? 0,

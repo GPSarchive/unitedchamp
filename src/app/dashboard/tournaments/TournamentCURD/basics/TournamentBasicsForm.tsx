@@ -1,7 +1,7 @@
 // app/dashboard/tournaments/TournamentCURD/basics/TournamentBasicsForm.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
@@ -16,6 +16,37 @@ export default function TournamentBasicsForm({
 }) {
   // Get store action to mark tournament as dirty (no auto-save)
   const updateTournament = useTournamentStore(s => s.updateTournament);
+
+  // Participating teams for the winner picker: joined from store entities.
+  // Falls back gracefully in create mode (empty list until teams are added).
+  const tournamentTeams = useTournamentStore((s) => s.entities.tournamentTeams);
+  const teamsById = useTournamentStore((s) => s.entities.teamsById);
+  const winnerOptions = useMemo(() => {
+    const seen = new Set<number>();
+    const list: { id: number; name: string }[] = [];
+    for (const tt of tournamentTeams) {
+      if (seen.has(tt.team_id)) continue;
+      seen.add(tt.team_id);
+      const team = teamsById[tt.team_id];
+      list.push({
+        id: tt.team_id,
+        name: team?.name ?? `Team #${tt.team_id}`,
+      });
+    }
+    // If the current winner isn't in tournament_teams (edge case), still show it
+    // so the admin can see what's saved.
+    if (
+      value.winner_team_id != null &&
+      !seen.has(value.winner_team_id)
+    ) {
+      const team = teamsById[value.winner_team_id];
+      list.push({
+        id: value.winner_team_id,
+        name: team?.name ?? `Team #${value.winner_team_id}`,
+      });
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, "el"));
+  }, [tournamentTeams, teamsById, value.winner_team_id]);
 
   const editedSlug = useRef(false);
   const [uploading, setUploading] = useState(false);
@@ -292,6 +323,50 @@ export default function TournamentBasicsForm({
             updateTournament({ logo: e.target.value || null } as any);
           }}
         />
+      </div>
+
+      {/* Winner picker — sets tournaments.winner_team_id */}
+      <div className="pt-2 space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300/90">
+            🏆 Πρωταθλητής
+          </label>
+          {value.winner_team_id != null && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange({ ...value, winner_team_id: null });
+                updateTournament({ winner_team_id: null } as any);
+              }}
+              className="text-[11px] px-2 py-0.5 rounded-md border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 transition-colors"
+            >
+              Καθαρισμός
+            </button>
+          )}
+        </div>
+        <select
+          className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400/60 transition-colors disabled:opacity-50"
+          value={value.winner_team_id ?? ""}
+          disabled={winnerOptions.length === 0}
+          onChange={(e) => {
+            const v = e.target.value;
+            const next = v === "" ? null : Number(v);
+            onChange({ ...value, winner_team_id: next });
+            updateTournament({ winner_team_id: next } as any);
+          }}
+        >
+          <option value="">— Κανένας (δεν έχει οριστεί) —</option>
+          {winnerOptions.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-[11px] text-zinc-500">
+          {winnerOptions.length === 0
+            ? "Προσθέστε πρώτα ομάδες στο τουρνουά για να επιλέξετε πρωταθλητή."
+            : "Η επιλογή αποθηκεύεται με το «Save Changes» μαζί με τα υπόλοιπα πεδία."}
+        </p>
       </div>
     </div>
   );

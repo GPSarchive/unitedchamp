@@ -110,7 +110,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     // NEW player fields
     if (body.photo !== undefined) {
       const p = String(body.photo ?? "").trim();
-      patchPlayer.photo = p || "/player-placeholder.jpg"; // keep NOT NULL
+      patchPlayer.photo = p || "/player-placeholder.svg"; // keep NOT NULL
     }
     if (body.height_cm !== undefined) {
       const v = body.height_cm === "" || body.height_cm == null ? null : Number(body.height_cm);

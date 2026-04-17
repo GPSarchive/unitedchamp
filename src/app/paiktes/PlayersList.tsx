@@ -1,4 +1,4 @@
-// src/app/paiktes/PlayersList.tsx (OPTIMIZED - Mobile-friendly layout)
+// src/app/paiktes/PlayersList.tsx
 "use client";
 
 import { useRef, useMemo, memo, useCallback } from "react";
@@ -17,47 +17,51 @@ type Props = {
   isTournamentScoped?: boolean;
 };
 
-// ✅ Mobile-optimized grid - all columns visible with horizontal scroll on mobile
+// Column widths are tuned for six stat columns + photo + name
 const GRID_TEMPLATE =
-  "grid grid-cols-[60px_minmax(140px,1fr)_60px_60px_60px_60px_60px_60px] sm:grid-cols-[70px_1fr_70px_70px_70px_70px_70px_70px] md:grid-cols-[90px_1fr_90px_90px_90px_90px_90px_90px]";
-const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-4";
+  "grid grid-cols-[56px_minmax(140px,1fr)_52px_52px_52px_52px_52px_52px] sm:grid-cols-[64px_1fr_60px_60px_60px_60px_60px_60px] md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px]";
+const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-3";
 
 const COLUMN_HEADERS = [
-  { key: "photo", label: "Φωτό", fullLabel: "Φωτογραφία", align: "text-left" },
-  { key: "player", label: "Παίκτης", fullLabel: "Παίκτης / Ομάδα", align: "text-left" },
+  { key: "photo", label: "Φωτό", fullLabel: "Φωτό", align: "text-left" },
+  {
+    key: "player",
+    label: "Παίκτης",
+    fullLabel: "Παίκτης / Ομάδα",
+    align: "text-left",
+  },
   { key: "matches", label: "Αγ.", fullLabel: "Αγώνες", align: "text-center" },
   { key: "wins", label: "Ν.", fullLabel: "Νίκες", align: "text-center" },
-  { key: "goals", label: "Γκολ", fullLabel: "Γκολ", align: "text-center" },
+  { key: "goals", label: "Γκ.", fullLabel: "Γκολ", align: "text-center" },
   { key: "assists", label: "Ασ.", fullLabel: "Ασίστ", align: "text-center" },
-  { key: "mvp", label: "MVP", fullLabel: "Βραβεία MVP", align: "text-center" },
-  { key: "best_gk", label: "GK", fullLabel: "Καλύτερος GK", align: "text-center" },
+  { key: "mvp", label: "MVP", fullLabel: "MVP", align: "text-center" },
+  { key: "best_gk", label: "TΦ.", fullLabel: "Τερμ.", align: "text-center" },
 ];
 
-// ✅ Helper function to compute display photo (moved outside component)
+const pad2 = (n: number | string) => String(n).padStart(2, "0");
+
 function getDisplayPhoto(player: PlayerRow): string {
-  if (player.photo && player.photo !== "/player-placeholder.jpg") {
+  if (player.photo && player.photo !== "/player-placeholder.svg") {
     return player.photo;
   }
-  // Fallback to first team logo
   return player.team?.logo || player.teams?.[0]?.logo || player.photo;
 }
 
-// ✅ Memoized individual player row component
 const PlayerRowItem = memo(function PlayerRowItem({
   player,
+  index,
   isActive,
   showLetter,
   letter,
-  showTournamentGoals,
   isTournamentScoped,
   onPlayerSelect,
   onPlayerHover,
 }: {
   player: PlayerRow;
+  index: number;
   isActive: boolean;
   showLetter: boolean;
   letter: string;
-  showTournamentGoals: boolean;
   isTournamentScoped: boolean;
   onPlayerSelect: (id: number) => void;
   onPlayerHover?: (id: number) => void;
@@ -72,12 +76,39 @@ const PlayerRowItem = memo(function PlayerRowItem({
     onPlayerHover?.(player.id);
   }, [onPlayerHover, player.id]);
 
+  const goals = isTournamentScoped && player.tournament_goals !== undefined
+    ? player.tournament_goals
+    : player.goals;
+
+  const matches = isTournamentScoped && player.tournament_matches !== undefined
+    ? player.tournament_matches
+    : player.matches;
+
+  const wins = isTournamentScoped && player.tournament_wins !== undefined
+    ? player.tournament_wins
+    : player.wins;
+
+  const assists = isTournamentScoped && player.tournament_assists !== undefined
+    ? player.tournament_assists
+    : player.assists;
+
+  const mvp = isTournamentScoped && player.tournament_mvp !== undefined
+    ? player.tournament_mvp
+    : player.mvp;
+
+  const bestGk = isTournamentScoped && player.tournament_best_gk !== undefined
+    ? player.tournament_best_gk
+    : player.best_gk;
+
   return (
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="bg-zinc-900 border-y border-white/10 px-2 sm:px-3 md:px-6 py-1.5 sm:py-2 md:py-3 text-[10px] sm:text-xs md:text-sm font-bold text-white/70 tracking-widest min-w-[640px]">
-          {letter}
+        <div className="border-y-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 md:px-6 py-2 min-w-[640px]">
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+            <span className="h-[2px] w-6 bg-[#fb923c]" />
+            {letter}
+          </div>
         </div>
       )}
 
@@ -86,27 +117,34 @@ const PlayerRowItem = memo(function PlayerRowItem({
         data-pid={player.id}
         onMouseEnter={handleMouseEnter}
         onClick={handleClick}
-        className={`
-          ${GRID_TEMPLATE} ${GRID_GAPS}
-          px-2 sm:px-3 md:px-6 py-2 sm:py-3 md:py-4
-          border-b border-white/5
-          cursor-pointer
-          transition-all duration-200
-          hover:bg-white/5
-          active:bg-white/10
-          ${isActive ? "bg-cyan-500/10 border-l-2 md:border-l-4 border-l-cyan-400" : ""}
-        `}
+        className={`${GRID_TEMPLATE} ${GRID_GAPS}
+          px-4 md:px-6 py-2.5 md:py-3 min-w-[640px]
+          border-b border-[#F3EFE6]/10
+          cursor-pointer transition-colors
+          ${
+            isActive
+              ? "bg-[#fb923c]/10 border-l-2 md:border-l-4 border-l-[#fb923c]"
+              : "hover:bg-[#13131d]"
+          }`}
         role="button"
         aria-pressed={isActive}
       >
         {/* Photo */}
         <div className="flex items-center">
-          <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 overflow-hidden rounded-md md:rounded-lg bg-white/5 border border-white/10">
+          <div
+            className="relative h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 overflow-hidden border-2"
+            style={{
+              borderColor: isActive
+                ? "#fb923c"
+                : "rgba(243,239,230,0.2)",
+              background: "#13131d",
+            }}
+          >
             <PlayerImage
               src={displayPhoto}
               alt={`${player.first_name} ${player.last_name}`}
-              width={56}
-              height={56}
+              width={48}
+              height={48}
               className="w-full h-full object-cover"
               animate={false}
             />
@@ -115,85 +153,65 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Player Info */}
         <div className="flex flex-col justify-center min-w-0">
-          <div className="text-white font-semibold text-xs sm:text-sm md:text-base truncate">
-            {player.first_name} {player.last_name}
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[9px] tabular-nums text-[#F3EFE6]/40 shrink-0">
+              {pad2(index + 1)}
+            </span>
+            <div className="font-[var(--f-display)] text-sm md:text-base font-semibold italic text-[#F3EFE6] truncate">
+              {player.first_name} {player.last_name}
+            </div>
           </div>
-          <div className="text-white/50 text-[10px] sm:text-xs md:text-sm mt-0.5 flex items-center gap-1 md:gap-2">
+          <div className="mt-0.5 flex items-center gap-1.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/50">
             <span className="truncate">{player.team?.name || "—"}</span>
             {player.position && (
               <>
-                <span className="text-white/30 hidden sm:inline">•</span>
+                <span className="text-[#F3EFE6]/25 hidden sm:inline">·</span>
                 <span className="hidden sm:inline">{player.position}</span>
               </>
             )}
           </div>
         </div>
 
-        {/* Stats - Tournament-aware */}
-        {/* Matches */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
-            {isTournamentScoped && player.tournament_matches !== undefined
-              ? player.tournament_matches
-              : player.matches}
-          </span>
-        </div>
-
-        {/* Wins */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
-            {isTournamentScoped && player.tournament_wins !== undefined
-              ? player.tournament_wins
-              : player.wins}
-          </span>
-        </div>
-
-        {/* Goals */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base font-semibold">
-            {isTournamentScoped && player.tournament_goals !== undefined
-              ? player.tournament_goals
-              : player.goals}
-          </span>
-        </div>
-
-        {/* Assists */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
-            {isTournamentScoped && player.tournament_assists !== undefined
-              ? player.tournament_assists
-              : player.assists}
-          </span>
-        </div>
-
-        {/* MVP */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-sm md:text-base">
-            {isTournamentScoped && player.tournament_mvp !== undefined
-              ? player.tournament_mvp
-              : player.mvp}
-          </span>
-        </div>
-
-        {/* Best GK */}
-        <div className="flex items-center justify-center">
-          <span className="text-white font-mono text-[10px] sm:text-xs md:text-base">
-            {isTournamentScoped && player.tournament_best_gk !== undefined
-              ? player.tournament_best_gk
-              : player.best_gk}
-          </span>
-        </div>
+        {/* Stats */}
+        <StatCell value={matches} />
+        <StatCell value={wins} />
+        <StatCell value={goals} highlight={goals > 0} />
+        <StatCell value={assists} />
+        <StatCell value={mvp} highlight={mvp > 0} accent="#E8B931" />
+        <StatCell value={bestGk} highlight={bestGk > 0} accent="#60a5fa" />
       </div>
     </div>
   );
 });
+
+function StatCell({
+  value,
+  highlight,
+  accent = "#fb923c",
+}: {
+  value: number;
+  highlight?: boolean;
+  accent?: string;
+}) {
+  return (
+    <div className="flex items-center justify-center">
+      <span
+        className="font-[var(--f-brutal)] text-sm md:text-base leading-none tabular-nums"
+        style={{
+          color: highlight ? accent : value === 0 ? "rgba(243,239,230,0.35)" : "#F3EFE6",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function PlayersListComponent({
   players,
   activeId,
   onPlayerSelect,
   onPlayerHover,
-  showTournamentGoals = false,
   isAlphaSort = false,
   isTournamentScoped = false,
 }: Props) {
@@ -203,30 +221,37 @@ function PlayersListComponent({
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
         {players.length === 0 ? (
-          <div className="flex items-center justify-center py-20 text-white/40 text-sm">
-            Δεν βρέθηκαν παίκτες
+          <div className="flex items-center justify-center p-12">
+            <div className="border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 px-10 py-8 text-center">
+              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+                / 00 · Κατάλογος
+              </span>
+              <p className="mt-3 font-[var(--f-display)] text-2xl font-black italic leading-tight text-[#F3EFE6]">
+                Δεν βρέθηκαν παίκτες
+              </p>
+              <p className="mt-2 font-[var(--f-body)] text-sm text-[#F3EFE6]/60">
+                Δοκιμάστε άλλα κριτήρια αναζήτησης.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-zinc-950 border-b border-white/10 shadow-lg min-w-[640px]">
+            <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15 min-w-[640px]">
               <div
-                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-2 sm:px-3 md:px-6 py-2 sm:py-2.5 md:py-3 text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase tracking-wider text-white/60`}
+                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
               >
                 {COLUMN_HEADERS.map((col) => (
-                  <div
-                    key={col.key}
-                    className={col.align}
-                  >
-                    <span className="hidden sm:inline">{col.fullLabel}</span>
-                    <span className="sm:hidden">{col.label}</span>
+                  <div key={col.key} className={col.align}>
+                    <span className="hidden md:inline">{col.fullLabel}</span>
+                    <span className="md:hidden">{col.label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Player rows */}
-            <div className="min-w-[640px]">
+            <div>
               {players.map((player, idx) => {
                 const prev = players[idx - 1];
                 const letter = (player.last_name || player.first_name || "?")
@@ -242,10 +267,10 @@ function PlayersListComponent({
                   <PlayerRowItem
                     key={player.id}
                     player={player}
+                    index={idx}
                     isActive={isActive}
                     showLetter={showLetter}
                     letter={letter}
-                    showTournamentGoals={showTournamentGoals}
                     isTournamentScoped={isTournamentScoped}
                     onPlayerSelect={onPlayerSelect}
                     onPlayerHover={onPlayerHover}
@@ -260,6 +285,5 @@ function PlayersListComponent({
   );
 }
 
-// ✅ Export memoized component
 const PlayersList = memo(PlayersListComponent);
 export default PlayersList;

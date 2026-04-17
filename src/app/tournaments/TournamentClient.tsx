@@ -154,7 +154,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                       src={winnerTeam.logo}
                       alt={winnerTeam.name}
                       className="w-8 h-8 rounded-full object-cover border border-yellow-500/40"
-                      onError={(e) => { e.currentTarget.src = "/team-placeholder.png"; }}
+                      onError={(e) => { e.currentTarget.src = "/team-placeholder.svg"; }}
                     />
                     <div>
                       <p className="text-xs text-yellow-400/70">Νικητής</p>
@@ -408,7 +408,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                         src={resolvePlayerPhotoUrl(player.photo)}
                         alt={player.name}
                         className="w-14 h-14 rounded-full object-cover border-2 border-yellow-500/40"
-                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.svg"; }}
                       />
                       <div>
                         <p className="font-bold text-white">{player.name}</p>
@@ -437,7 +437,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                         src={resolvePlayerPhotoUrl(player.photo)}
                         alt={player.name}
                         className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500/40"
-                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.svg"; }}
                       />
                       <div>
                         <p className="font-bold text-white">{player.name}</p>
@@ -466,7 +466,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                         src={resolvePlayerPhotoUrl(player.photo)}
                         alt={player.name}
                         className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/40"
-                        onError={(e) => { e.currentTarget.src = "/player-placeholder.jpg"; }}
+                        onError={(e) => { e.currentTarget.src = "/player-placeholder.svg"; }}
                       />
                       <div>
                         <p className="font-bold text-white">{player.name}</p>
@@ -505,7 +505,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                         src={team.logo}
                         alt={team.name}
                         className="w-10 h-10 rounded-full object-cover border border-white/10"
-                        onError={(e) => { e.currentTarget.src = "/team-placeholder.png"; }}
+                        onError={(e) => { e.currentTarget.src = "/team-placeholder.svg"; }}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-white truncate">{team.name}</p>

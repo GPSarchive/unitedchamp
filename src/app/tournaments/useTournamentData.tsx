@@ -22,7 +22,8 @@ export type Tournament = {
 export type Team = {
   id: number;
   name: string;
-  logo: string; 
+  logo: string;
+  colour?: string | null;
   matchesPlayed: number;
   wins: number;
   draws: number;

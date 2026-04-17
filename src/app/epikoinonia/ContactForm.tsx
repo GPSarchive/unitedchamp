@@ -163,6 +163,24 @@ export default function ContactForm() {
         />
       </div>
 
+      {/* Privacy consent */}
+      <label className="flex items-start gap-2 text-xs text-white/70 leading-relaxed">
+        <input
+          type="checkbox"
+          name="privacy_consent"
+          required
+          className="mt-0.5 accent-orange-400 shrink-0"
+        />
+        <span>
+          Έχω διαβάσει την{" "}
+          <a href="/privacy" className="text-orange-400 underline">
+            Πολιτική Απορρήτου
+          </a>{" "}
+          και αποδέχομαι ότι τα στοιχεία μου θα προωθηθούν μέσω Web3Forms στο
+          info@ultrachamp.gr για τον σκοπό της απάντησης στο μήνυμά μου. *
+        </span>
+      </label>
+
       {/* Submit */}
       <div className="flex items-center justify-between pt-2">
         <p className="text-white/30 text-xs">* Υποχρεωτικά πεδία</p>

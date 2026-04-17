@@ -170,7 +170,7 @@ function ParticipantCard({
   const firstName = player.first_name || "Άγνωστος";
 
   const isPlaceholderPhoto =
-    !player.photo || player.photo === "/player-placeholder.jpg";
+    !player.photo || player.photo === "/player-placeholder.svg";
 
   return (
     <motion.div

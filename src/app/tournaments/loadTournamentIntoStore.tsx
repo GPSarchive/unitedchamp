@@ -177,7 +177,7 @@ export const loadTournamentIntoStore = async (
   // Fetch teams
   const { data: tournamentTeamsData, error: teamsError } = await supabaseInstance
     .from('tournament_teams')
-    .select('*, team:teams(id, name, logo, season_score), stage_id, group_id, seed')
+    .select('*, team:teams(id, name, logo, colour, season_score), stage_id, group_id, seed')
     .eq('tournament_id', tournamentId);
 
   if (teamsError) {
@@ -345,7 +345,7 @@ export const loadTournamentIntoStore = async (
       bestGoalkeeper: stat.best_goalkeeper || 0,
       matchesPlayed: stat.matches || 0,
       teamId: stat.team_id,
-      photo: detail.photo || '/player-placeholder.jpg',
+      photo: detail.photo || '/player-placeholder.svg',
       isCaptain: stat.is_captain || false,
       isDeleted: !!detail.deleted_at,
     };
@@ -410,6 +410,7 @@ export const loadTournamentIntoStore = async (
       id: tt.team.id,
       name: tt.team.name,
       logo: tt.team.logo,
+      colour: (tt.team as any).colour ?? null,
       ...aggregatedStandings,
       topScorer,
       stageStandings: teamStandings.map((s: Standing) => ({ stageId: s.stage_id, rank: s.rank, points: s.points })),
