@@ -28,6 +28,7 @@ import type {
 } from "@/app/tournaments/useTournamentData";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 import KOBracketV2Dark from "./KOBracketV2Dark";
+import MobileShell from "./MobileShell";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography — distinctive editorial pairing.
@@ -1422,7 +1423,14 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
     >
       <PaperBackground />
 
-      <TopStrip tournament={tournament} />
+      {/* Mobile shell — visible only on < md */}
+      <div className="md:hidden">
+        <MobileShell data={initialData} />
+      </div>
+
+      {/* Desktop layout — everything below renders only at md+ */}
+      <div className="hidden md:block">
+        <TopStrip tournament={tournament} />
 
       <Masthead
         tournament={tournament}
@@ -1576,6 +1584,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
       )}
 
       <Colophon tournament={tournament} />
+      </div>
     </div>
   );
 };
