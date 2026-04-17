@@ -15,6 +15,7 @@ import {
   Figtree,
 } from "next/font/google";
 import { supabase } from "@/app/lib/supabase/supabaseClient";
+import MatchesExplorerMobile from "./MatchesExplorerMobile";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography
@@ -276,6 +277,27 @@ export default function MatchesExplorer({ tournaments }: Props) {
     >
       <PaperBackground />
 
+      {/* Mobile shell — visible only on < md */}
+      <div className="md:hidden">
+        <MatchesExplorerMobile
+          tab={tab}
+          setTab={setTab}
+          tournaments={tournaments}
+          tournamentId={tournamentId}
+          setTournamentId={setTournamentId}
+          rows={rows}
+          total={total}
+          loading={loading}
+          error={error}
+          page={page}
+          setPage={setPage}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+        />
+      </div>
+
+      {/* Desktop layout — md+ */}
+      <div className="hidden md:block">
       <PageHeader total={total} tab={tab} />
 
       <section className="relative">
@@ -363,6 +385,7 @@ export default function MatchesExplorer({ tournaments }: Props) {
       </section>
 
       <Colophon total={total} />
+      </div>
     </div>
   );
 }

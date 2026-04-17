@@ -17,6 +17,11 @@ type DbTournament = {
   slug: string;
   format: "league" | "groups" | "knockout" | "mixed";
   season?: string | null;
+  logo?: string | null;
+  status?: "scheduled" | "running" | "completed" | "archived";
+  start_date?: string | null;
+  end_date?: string | null;
+  winner_team_id?: number | null;
 };
 type DbStage = {
   id: number;
@@ -328,7 +333,22 @@ export type TournamentState = {
   seedFromWizard: (canon: NewTournamentPayload, teams: TeamDraft[], drafts: DraftMatch[]) => void;
 
   // entity mutators + dirties
-  updateTournament: (patch: Partial<Pick<DbTournament, "name" | "slug" | "format" | "season">>) => void;
+  updateTournament: (
+    patch: Partial<
+      Pick<
+        DbTournament,
+        | "name"
+        | "slug"
+        | "format"
+        | "season"
+        | "logo"
+        | "status"
+        | "start_date"
+        | "end_date"
+        | "winner_team_id"
+      >
+    >
+  ) => void;
 
   upsertStage: (
     stageIdx: number | undefined,
@@ -1403,15 +1423,23 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   
       if (st1.dirty.tournament) {
         const t = st1.entities.tournament!;
-        payload1.tournament = {
-          patch: {
-            name: t.name,
-            slug: t.slug,
-            season: t.season ?? null,
-            format: t.format,
-            logo: (t as any).logo ?? null, 
-          },
+        const anyT = t as any;
+        // Build the patch from fields the admin can edit. Use `in` guards so
+        // we don't overwrite a column with `null` just because the form never
+        // touched it (e.g. admin edits the name only — logo should stay).
+        const patch: Record<string, unknown> = {
+          name: t.name,
+          slug: t.slug,
+          season: t.season ?? null,
+          format: t.format,
         };
+        if ("logo" in anyT) patch.logo = anyT.logo ?? null;
+        if ("status" in anyT) patch.status = anyT.status;
+        if ("start_date" in anyT) patch.start_date = anyT.start_date ?? null;
+        if ("end_date" in anyT) patch.end_date = anyT.end_date ?? null;
+        if ("winner_team_id" in anyT)
+          patch.winner_team_id = anyT.winner_team_id ?? null;
+        payload1.tournament = { patch };
       }
   
       if (st1.dirty.stages || st1.dirty.deletedStageIds.size) {

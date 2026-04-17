@@ -27,7 +27,7 @@ export async function GET(
   // ---- 1) Tournament -------------------------------------------------------
   const { data: t, error: tErr } = await supabaseAdmin
     .from("tournaments")
-    .select("id,name,slug,format,season")
+    .select("id,name,slug,format,season,logo,status,start_date,end_date,winner_team_id")
     .eq("id", num)
     .single();
 
