@@ -144,12 +144,8 @@ const PageHeader: React.FC<{
 
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
-            <span className="h-[2px] w-8 bg-[#fb923c]" />
-            Μητρώο
-          </div>
           <h1
-            className="mt-2 font-[var(--f-display)] font-black italic leading-[0.9] tracking-[-0.02em] text-[#F3EFE6]"
+            className="font-[var(--f-display)] font-black italic leading-[0.9] tracking-[-0.02em] text-[#F3EFE6]"
             style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)" }}
           >
             Οι Παίκτες
