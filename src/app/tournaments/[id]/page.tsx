@@ -1,7 +1,8 @@
 // app/tournaments/[id]/page.tsx
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { loadTournamentIntoStore } from "@/app/tournaments/loadTournamentIntoStore";
-import TournamentClient from "../TournamentClient";
+import { signSingleTournamentLogo } from "@/app/tournaments/signTournamentLogos";
+import TournamentClientV2Dark from "./v2-dark/TournamentClientV2Dark";
 import { notFound } from "next/navigation";
 
 export default async function TournamentPage(
@@ -16,9 +17,15 @@ export default async function TournamentPage(
 
   try {
     const data = await loadTournamentIntoStore(tournamentId, supabaseAdmin);
-    return <TournamentClient initialData={data} />;
+    const signedLogo = await signSingleTournamentLogo(data.tournament.logo);
+    const tournament = { ...data.tournament, logo: signedLogo };
+    return <TournamentClientV2Dark initialData={{ ...data, tournament }} />;
   } catch (error) {
     console.error("Error loading tournament data:", error);
-    return <div>Error loading tournament data: {(error as Error).message}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
+        Σφάλμα φόρτωσης δεδομένων τουρνουά: {(error as Error).message}
+      </div>
+    );
   }
 }
