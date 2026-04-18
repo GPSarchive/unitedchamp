@@ -8,7 +8,8 @@
       "Bash(cp \"src/app/tournaments/[id]/v2/TournamentClientV2.tsx\" \"src/app/tournaments/[id]/v2-dark/TournamentClientV2Dark.tsx\")",
       "Bash(cp \"src/app/tournaments/[id]/v2/KOBracketV2.tsx\" \"src/app/tournaments/[id]/v2-dark/KOBracketV2Dark.tsx\")",
       "Bash(grep -n 'const Rubric\\\\|^};$\\\\|^\\)$' \"src/app/tournaments/TournamentsClient.tsx\")",
-      "Bash(xargs sed *)"
+      "Bash(xargs sed *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

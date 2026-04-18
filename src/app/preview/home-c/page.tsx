@@ -1,6 +1,7 @@
-// app/preview/home-b/page.tsx
-// PREVIEW — Option B: editorial standard for all sections, keep photo-carousel hero
-// This is a read-only preview route. The live home page at / is untouched.
+// app/preview/home-c/page.tsx
+// PREVIEW — Option C (conservative): keep existing per-section backgrounds
+// (VantaSection / GridBgSection), only upgrade typography + cards + kickers
+// to the editorial language used on /tournaments, /paiktes, /matches.
 
 export const revalidate = 300;
 
@@ -10,22 +11,25 @@ import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/goog
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { fetchRecentNewsCount } from "@/app/lib/fetchRecentNewsCount";
 import { Trophy, Users, BarChart3 } from "lucide-react";
-import { UserRow as DbUser, MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
+import { MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 
-import PreviewHero from "./PreviewHero";
+// Keep the existing home wrappers — backgrounds stay identical to live
+import HomeHero from "@/app/home/HomeHero";
+import GridBgSection from "@/app/home/GridBgSection";
+import VantaSection from "@/app/home/VantaSection";
 import TeamDashboard from "@/app/home/TeamDashboard";
 import EnhancedMobileCalendar from "@/app/home/EnhancedMobileCalendar";
-import TournamentsGrid from "@/app/home/TournamentsGrid";
+import EditorialTournamentsGrid from "./EditorialTournamentsGrid";
 import HomeArticles from "@/app/home/HomeArticles";
 import HomeVideos from "@/app/home/HomeVideos";
 import TopPlayersSection from "@/app/home/TopPlayersSection";
 import RecentAnnouncementsBubble from "@/app/home/RecentAnnouncementsBubble";
 
 // ───────────────────────────────────────────────────────────────────────
-// Typography (same stack as /tournaments, /paiktes, /matches)
+// Editorial typography stack (same as /tournaments)
 // ───────────────────────────────────────────────────────────────────────
 const fraunces = Fraunces({
   subsets: ["latin", "latin-ext"],
@@ -54,73 +58,95 @@ const figtree = Figtree({
 });
 
 // ───────────────────────────────────────────────────────────────────────
-// PaperBackground — shared atmosphere (lifted from tournaments page)
+// PaperBgSection — shared editorial background matching /tournaments, /paiktes.
+// Used for sections we're lifting out of Vanta (Top Players, Tournaments CTA).
 // ───────────────────────────────────────────────────────────────────────
-const PaperBackground: React.FC = () => (
-  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-    <div
-      className="absolute inset-0"
-      style={{
-        background:
-          "radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, #0a0a14 45%, #08080f 100%)",
-      }}
-    />
-    <div
-      className="absolute -top-40 -left-40 h-[60rem] w-[60rem] rounded-full opacity-[0.18] blur-3xl"
-      style={{ background: "radial-gradient(closest-side, #fb923c 0%, rgba(251,146,60,0) 70%)" }}
-    />
-    <div
-      className="absolute -bottom-60 -right-40 h-[55rem] w-[55rem] rounded-full opacity-[0.14] blur-3xl"
-      style={{ background: "radial-gradient(closest-side, #a855f7 0%, rgba(168,85,247,0) 70%)" }}
-    />
-    <svg className="absolute inset-0 h-full w-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <pattern id="pg-bb" width="48" height="48" patternUnits="userSpaceOnUse">
-          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F3EFE6" strokeWidth="1" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#pg-bb)" />
-    </svg>
-    <svg className="absolute inset-0 h-full w-full mix-blend-screen opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
-      <filter id="pg-noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-        <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0" />
-      </filter>
-      <rect width="100%" height="100%" filter="url(#pg-noise)" />
-    </svg>
-  </div>
+const PaperBgSection: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
+  className = "",
+  children,
+}) => (
+  <section className={`relative isolate overflow-hidden ${className}`}>
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, #0a0a14 45%, #08080f 100%)",
+        }}
+      />
+      <div
+        className="absolute -top-40 -left-40 h-[55rem] w-[55rem] rounded-full opacity-[0.18] blur-3xl"
+        style={{
+          background: "radial-gradient(closest-side, #fb923c 0%, rgba(251,146,60,0) 70%)",
+        }}
+      />
+      <div
+        className="absolute -bottom-60 -right-40 h-[50rem] w-[50rem] rounded-full opacity-[0.14] blur-3xl"
+        style={{
+          background: "radial-gradient(closest-side, #a855f7 0%, rgba(168,85,247,0) 70%)",
+        }}
+      />
+      <svg className="absolute inset-0 h-full w-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="pbsg" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F3EFE6" strokeWidth="1" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#pbsg)" />
+      </svg>
+      <svg className="absolute inset-0 h-full w-full mix-blend-screen opacity-[0.08]" xmlns="http://www.w3.org/2000/svg">
+        <filter id="pbsn">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.4 0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#pbsn)" />
+      </svg>
+    </div>
+    {children}
+  </section>
 );
 
 // ───────────────────────────────────────────────────────────────────────
-// SectionKicker — small mono caps label + underline bar (reused below)
+// Reusable editorial section header — sits on top of the existing bg
 // ───────────────────────────────────────────────────────────────────────
-const SectionKicker: React.FC<{ label: string; eyebrow?: string; align?: "left" | "center" }> = ({
-  label,
-  eyebrow,
-  align = "left",
-}) => (
-  <div className={`flex flex-col ${align === "center" ? "items-center text-center" : "items-start"}`}>
-    {eyebrow && (
-      <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c] mb-3">
-        <span className="h-[2px] w-8 bg-[#fb923c]" />
-        {eyebrow}
-      </div>
-    )}
+const SectionHeader: React.FC<{
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  align?: "left" | "center";
+}> = ({ eyebrow, title, subtitle, align = "center" }) => (
+  <div
+    className={`mb-10 md:mb-14 flex flex-col ${
+      align === "center" ? "items-center text-center" : "items-start"
+    }`}
+  >
+    <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c] mb-3">
+      <span className="h-[2px] w-8 bg-[#fb923c]" />
+      {eyebrow}
+    </div>
     <h2
-      className="font-[var(--f-display)] font-black italic leading-[0.95] tracking-[-0.02em] text-[#F3EFE6]"
+      className="font-[var(--f-display)] font-black italic leading-[0.95] tracking-[-0.02em] text-white"
       style={{ fontSize: "clamp(1.75rem, 4.5vw, 3.25rem)" }}
     >
-      {label}
+      {title}
     </h2>
+    {subtitle && (
+      <p
+        className={`mt-5 max-w-2xl text-white/75 text-base md:text-lg leading-relaxed ${
+          align === "center" ? "mx-auto" : ""
+        }`}
+      >
+        {subtitle}
+      </p>
+    )}
   </div>
 );
 
 // ───────────────────────────────────────────────────────────────────────
-// Date helpers (copied verbatim from home page to preserve behavior)
+// Date helpers (copied from home page)
 // ───────────────────────────────────────────────────────────────────────
 const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 const pad2 = (n: number) => String(n).padStart(2, "0");
-
 function parseIsoPreserveClock(iso: string) {
   const m = ISO_RE.exec(iso);
   if (!m) throw new Error(`Unrecognized ISO datetime: ${iso}`);
@@ -174,7 +200,7 @@ function partsToIso(
 }
 
 // ───────────────────────────────────────────────────────────────────────
-// Data fetchers (same shape as home page)
+// Data fetchers (mirror live home page)
 // ───────────────────────────────────────────────────────────────────────
 async function fetchMatchesWithTeams() {
   type SupaResp = { data: MatchRowRaw[] | null; error: { message: string } | null };
@@ -306,38 +332,40 @@ function resolveMatchTournamentLogos(events: CalendarEvent[]): CalendarEvent[] {
 // ───────────────────────────────────────────────────────────────────────
 // Page
 // ───────────────────────────────────────────────────────────────────────
-export default async function PreviewHomeB() {
+export default async function PreviewHomeC() {
   const [{ rawMatches }, { tournaments }, recentContentCount, { videoMatches }] = await Promise.all([
     fetchMatchesWithTeams(),
     fetchTournaments(),
     fetchRecentNewsCount(),
     fetchVideoMatches(),
   ]);
-
   const events = mapMatchesToEvents(rawMatches ?? []);
   const eventsToPass = resolveMatchTournamentLogos(events);
 
   return (
     <div
-      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} font-[var(--f-body)] relative min-h-screen bg-[#08080f] text-[#F3EFE6] overflow-x-hidden`}
+      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} font-[var(--f-body)] min-h-screen flex flex-col overflow-x-hidden bg-zinc-950`}
     >
-      <PaperBackground />
-
-      {/* Preview banner — lets you know it's the preview */}
-      <div className="relative z-20 border-b border-[#fb923c]/30 bg-[#0a0a14]/80 backdrop-blur">
-        <div className="mx-auto max-w-[1400px] px-6 py-2 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.28em] text-[#F3EFE6]/70">
+      {/* Preview banner */}
+      <div className="relative z-30 border-b border-[#fb923c]/30 bg-[#0a0a14]/90 backdrop-blur">
+        <div className="mx-auto max-w-[1400px] px-6 py-2 flex items-center justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.28em] text-white/70">
           <span className="flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#fb923c] animate-pulse" />
-            Preview · Option B
+            Προεπισκόπηση · Επιλογή Γ — Νέα Τυπογραφία
           </span>
-          <Link href="/" className="text-[#F3EFE6]/60 hover:text-[#fb923c] transition-colors">
-            ← Αρχική (live)
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/preview/home-b" className="text-white/60 hover:text-[#fb923c] transition-colors">
+              Εργαστήριο (home-b) →
+            </Link>
+            <Link href="/" className="text-white/60 hover:text-[#fb923c] transition-colors">
+              ← Αρχική
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* ═══ Hero — photo carousel kept, editorial typography overlay ═══ */}
-      <PreviewHero
+      {/* ═══ Hero — photo carousel (unchanged from live) ═══ */}
+      <HomeHero
         images={[
           "/carousel5.jpg",
           "/carousel8.jpg",
@@ -348,58 +376,59 @@ export default async function PreviewHomeB() {
         ]}
       />
 
-      {/* ═══ Welcome / brand statement ═══ */}
-      <section className="relative py-20 md:py-28">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-10 md:gap-16 items-end">
-            <div className="flex flex-col gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
-              <span className="h-[2px] w-8 bg-[#fb923c]" />
-              <span>Vol. I — The League</span>
-              <span className="text-[#F3EFE6]/55">Est. Ελλάδα</span>
-            </div>
-            <div>
-              <h2
-                className="font-[var(--f-display)] font-black italic leading-[0.95] tracking-[-0.02em] text-[#F3EFE6]"
-                style={{ fontSize: "clamp(2rem, 5.5vw, 4.25rem)" }}
-              >
-                UltraChamp — <span className="text-[#fb923c]">η νέα τάση</span> στο mini football.
-              </h2>
-              <p className="mt-6 max-w-2xl text-[#F3EFE6]/75 text-base md:text-lg leading-relaxed">
-                Συναρπαστικοί αγώνες, δίκαιη διαιτησία και μια ζωντανή κοινότητα. Αγωνίσου σε κλίμα
-                ασφάλειας, οργάνωσης και ηθικής — και γίνε εσύ ο επόμενος UltraChamp.
-              </p>
-            </div>
-          </div>
+      {/* ═══ Welcome / VantaSection — same brightness as live home (bg-black/20) ═══ */}
+      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+        <div className="container mx-auto px-4 text-center">
+          <h1
+            className="font-[var(--f-display)] font-black italic leading-[0.95] tracking-[-0.02em] mb-4 text-white"
+            style={{
+              fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
+              textShadow:
+                "0 2px 24px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,1)",
+            }}
+          >
+            UltraChamp
+          </h1>
+          <p
+            className="text-base sm:text-xl max-w-3xl mx-auto text-white leading-relaxed"
+            style={{
+              textShadow:
+                "0 1px 16px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,1)",
+            }}
+          >
+            Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον
+            κόσμο! Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνεις εσύ ο
+            Ultrachamp! Αγωνίσου σε κλίμα ασφάλειας, οργάνωσης και ηθικής!
+          </p>
         </div>
-      </section>
+      </VantaSection>
 
-      {/* ═══ Team Dashboard + Calendar ═══ */}
-      <section className="relative py-16 md:py-24 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-10 md:mb-14">
-            <SectionKicker eyebrow="Matchday" label="Το πρόγραμμα" />
-          </div>
-
-          <div className="flex flex-col gap-12 lg:gap-16">
+      {/* ═══ Dashboard + Calendar / GridBgSection (bg kept) ═══ */}
+      <GridBgSection
+        className="py-16 sm:py-20 text-white"
+        bgColor="#08080f"
+        baseColor="#1a1a2e"
+        redPurpleGlow
+      >
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader eyebrow="Αγωνιστική" title="Το πρόγραμμα" align="left" />
+          <div className="flex flex-col gap-10 lg:gap-14">
             <TeamDashboard allMatches={eventsToPass} userTeams={[]} />
-
             <div>
-              <div className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
-                <span className="h-[2px] w-6 bg-[#F3EFE6]/30" />
-                Πλήρες Πρόγραμμα
+              <div className="mb-5 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/55">
+                <span className="h-[2px] w-6 bg-white/30" />
+                Πλήρες Πρόγραμμα Αγώνων
               </div>
               <EnhancedMobileCalendar initialEvents={eventsToPass} highlightTeams={[]} />
             </div>
           </div>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* ═══ Articles ═══ */}
-      <section className="relative py-16 md:py-24 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-10 md:mb-14">
-            <SectionKicker eyebrow="Dispatch" label="Τελευταία Νέα" />
-          </div>
+      {/* ═══ Articles / PaperBgSection — shared with /tournaments, /paiktes ═══ */}
+      <PaperBgSection className="py-16 sm:py-20 text-white">
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader eyebrow="Ανακοινώσεις" title="Τελευταία Νέα" align="left" />
           <Suspense
             fallback={
               <div className="py-20 flex items-center justify-center">
@@ -410,24 +439,20 @@ export default async function PreviewHomeB() {
             <HomeArticles />
           </Suspense>
         </div>
-      </section>
+      </PaperBgSection>
 
-      {/* ═══ Videos ═══ */}
-      <section className="relative py-16 md:py-24 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-10 md:mb-14">
-            <SectionKicker eyebrow="Reels" label="Highlights" />
-          </div>
+      {/* ═══ Videos / GridBgSection (bg kept) ═══ */}
+      <GridBgSection className="py-16 sm:py-20 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader eyebrow="Στιγμιότυπα" title="Highlights" align="left" />
           <HomeVideos videos={videoMatches} />
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* ═══ Top Players ═══ */}
-      <section className="relative py-16 md:py-24 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-10 md:mb-14">
-            <SectionKicker eyebrow="Form Chart" label="Οι κορυφαίοι" />
-          </div>
+      {/* ═══ Top Players / PaperBgSection — shared with /paiktes ═══ */}
+      <PaperBgSection className="py-16 sm:py-20 text-white">
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader eyebrow="Αποδόσεις" title="Οι κορυφαίοι" align="left" />
           <Suspense
             fallback={
               <div className="py-20 flex items-center justify-center">
@@ -438,19 +463,19 @@ export default async function PreviewHomeB() {
             <TopPlayersSection />
           </Suspense>
         </div>
-      </section>
+      </PaperBgSection>
 
-      {/* ═══ Features — "Η ομάδα σε περιμένει" ═══ */}
-      <section className="relative py-20 md:py-28 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-12 md:mb-16 max-w-3xl">
-            <SectionKicker eyebrow="Manifesto" label="Η ομάδα σε περιμένει" />
-            <p className="mt-5 text-[#F3EFE6]/70 text-base md:text-lg leading-relaxed">
-              Τρεις λόγοι που μας εμπιστεύονται παίκτες κάθε επιπέδου.
-            </p>
-          </div>
+      {/* ═══ Features / GridBgSection (bg kept) — cards upgraded ═══ */}
+      <GridBgSection className="py-20 sm:py-24 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader
+            eyebrow="Οι Αξίες μας"
+            title="Η ομάδα σε περιμένει"
+            subtitle="Τρεις λόγοι που μας εμπιστεύονται παίκτες κάθε επιπέδου."
+            align="center"
+          />
 
-          <div className="grid md:grid-cols-3 gap-px bg-[#F3EFE6]/10">
+          <div className="grid md:grid-cols-3 gap-5 sm:gap-6">
             {[
               {
                 n: "01",
@@ -476,59 +501,58 @@ export default async function PreviewHomeB() {
             ].map(({ n, icon: Icon, title, body }) => (
               <div
                 key={n}
-                className="group relative bg-[#0a0a14] p-8 md:p-10 hover:bg-[#0f0f1b] transition-colors"
+                className="group relative p-8 border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:border-[#fb923c]/40 hover:bg-white/[0.06] transition-all"
               >
-                <div className="flex items-start justify-between mb-8">
+                <div className="flex items-start justify-between mb-7">
                   <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#fb923c]">
                     № {n}
                   </span>
-                  <Icon className="w-6 h-6 text-[#F3EFE6]/40 group-hover:text-[#fb923c] transition-colors" />
+                  <Icon className="w-6 h-6 text-white/40 group-hover:text-[#fb923c] transition-colors" />
                 </div>
-                <h3 className="font-[var(--f-display)] font-black italic leading-tight text-[#F3EFE6] mb-4 text-2xl md:text-3xl">
+                <h3 className="font-[var(--f-display)] font-black italic leading-tight text-white mb-4 text-2xl md:text-3xl">
                   {title}
                 </h3>
-                <p className="text-[#F3EFE6]/70 text-sm md:text-base leading-relaxed">{body}</p>
+                <p className="text-white/70 text-sm md:text-base leading-relaxed">{body}</p>
                 <div className="mt-6 h-[2px] w-12 bg-[#fb923c] transition-all group-hover:w-24" />
               </div>
             ))}
           </div>
         </div>
-      </section>
+      </GridBgSection>
 
-      {/* ═══ Tournaments CTA ═══ */}
-      <section className="relative py-20 md:py-28 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-12 md:mb-16 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div>
-              <SectionKicker eyebrow="Fixtures" label="Έτοιμοι για σέντρα;" />
-              <p className="mt-5 max-w-xl text-[#F3EFE6]/70 text-base md:text-lg leading-relaxed">
-                Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
-              </p>
-            </div>
-            <Link
-              href="/tournaments"
-              className="group inline-flex items-center gap-3 self-start border-2 border-[#fb923c] bg-transparent px-6 py-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#fb923c] hover:bg-[#fb923c] hover:text-[#08080f] transition-all"
-            >
-              Όλα τα Τουρνουά
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </Link>
+      {/* ═══ Tournaments CTA / PaperBgSection — shared with /tournaments ═══ */}
+      <PaperBgSection className="min-h-[70vh] sm:min-h-[75vh] flex items-center justify-center py-20 text-white">
+        <div className="w-full max-w-7xl px-4 flex flex-col items-center text-center">
+          <SectionHeader
+            eyebrow="Τα Τουρνουά"
+            title="Έτοιμοι για σέντρα;"
+            subtitle="Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ."
+            align="center"
+          />
+
+          <Link
+            href="/tournaments"
+            className="group mb-10 inline-flex items-center gap-3 border-2 border-[#fb923c] bg-[#fb923c] px-7 py-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#08080f] hover:bg-[#fb923c]/90 transition-all"
+          >
+            Όλα τα Τουρνουά
+            <span className="transition-transform group-hover:translate-x-1">→</span>
+          </Link>
+
+          <div className="w-full max-w-7xl text-left">
+            <EditorialTournamentsGrid tournaments={tournaments} />
           </div>
-          <TournamentsGrid tournaments={tournaments} />
         </div>
-      </section>
+      </PaperBgSection>
 
-      {/* ═══ Testimonials ═══ */}
-      <section className="relative py-20 md:py-28 border-t border-[#F3EFE6]/10">
-        <div className="mx-auto max-w-[1400px] px-6">
-          <div className="mb-14 md:mb-20 max-w-3xl">
-            <SectionKicker eyebrow="On the Record" label="Τι λένε οι παίκτες μας" />
-          </div>
+      {/* ═══ Testimonials / GridBgSection (bg kept) — editorial quotes ═══ */}
+      <GridBgSection className="py-20 sm:py-28 text-white" bgColor="#08080f" baseColor="#1a1a2e">
+        <div className="container mx-auto max-w-7xl px-4">
+          <SectionHeader eyebrow="Μαρτυρίες" title="Τι λένε οι παίκτες μας" align="center" />
 
-          <div className="grid md:grid-cols-3 gap-px bg-[#F3EFE6]/10">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {[
               {
-                quote:
-                  "Ενα πρότζεκτ για όλους με άξονα την ποδοσφαιρική παιδεία.",
+                quote: "Ενα πρότζεκτ για όλους με άξονα την ποδοσφαιρική παιδεία.",
                 name: "Φίλιππος Αστεριάδης",
                 role: "Αρχηγός Μεικτής Ομάδας UltraChamp",
               },
@@ -547,23 +571,23 @@ export default async function PreviewHomeB() {
             ].map((t, i) => (
               <figure
                 key={i}
-                className="relative bg-[#0a0a14] p-8 md:p-10 flex flex-col gap-6"
+                className="relative p-8 border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:border-[#fb923c]/30 hover:bg-white/[0.06] transition-all flex flex-col gap-5"
               >
                 <span
                   aria-hidden
-                  className="font-[var(--f-display)] italic text-[#fb923c]/60 leading-none text-6xl md:text-7xl"
+                  className="font-[var(--f-display)] italic text-[#fb923c]/60 leading-none text-6xl"
                 >
                   “
                 </span>
-                <blockquote className="font-[var(--f-display)] italic text-[#F3EFE6] text-xl md:text-2xl leading-snug">
+                <blockquote className="font-[var(--f-display)] italic text-white text-xl leading-snug">
                   {t.quote}
                 </blockquote>
-                <figcaption className="mt-auto pt-6 border-t border-[#F3EFE6]/10">
+                <figcaption className="mt-auto pt-5 border-t border-white/10">
                   <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c] mb-1">
                     № 0{i + 1}
                   </div>
-                  <div className="font-[var(--f-body)] font-semibold text-[#F3EFE6]">{t.name}</div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/55 mt-1">
+                  <div className="font-semibold text-white">{t.name}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/55 mt-1">
                     {t.role}
                   </div>
                 </figcaption>
@@ -571,10 +595,7 @@ export default async function PreviewHomeB() {
             ))}
           </div>
         </div>
-      </section>
-
-      {/* Bottom spacer so the final border meets the footer cleanly */}
-      <div className="h-px bg-[#F3EFE6]/10" />
+      </GridBgSection>
 
       <RecentAnnouncementsBubble count={recentContentCount} />
     </div>
