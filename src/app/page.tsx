@@ -392,7 +392,7 @@ export default async function Home() {
         redPurpleGlow
       >
         <div className="container mx-auto max-w-7xl px-4">
-          <SectionHeader eyebrow="Αγωνιστική" title="Το πρόγραμμα" align="left" />
+          <SectionHeader eyebrow="Το πρόγραμμα" title="Επερχόμενοι αγώνες" align="left" />
           <div className="flex flex-col gap-14 lg:gap-20">
             <EditorialTeamDashboard allMatches={eventsToPass} userTeams={[]} />
             <div className="relative border-t-2 border-[#F3EFE6]/15 pt-8 md:pt-10">
