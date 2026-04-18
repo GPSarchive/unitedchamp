@@ -322,7 +322,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
               onClick={prev}
               disabled={page === 0}
               aria-label="Previous page"
-              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
+              className="p-3 sm:p-3.5 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -391,7 +391,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
               onClick={next}
               disabled={page === totalPages - 1 && !nextCursor}
               aria-label="Next page"
-              className="p-2.5 sm:p-3 border-2 border-white/10 text-white/70 hover:text-white hover:border-orange-500/50 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
+              className="p-3 sm:p-3.5 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
