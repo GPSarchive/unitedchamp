@@ -187,7 +187,7 @@ const EditorialPlayerCard = forwardRef<HTMLDivElement, EditorialPlayerCardProps>
                 <div className="mt-3 flex items-center gap-3">
                   <span className="h-[3px] w-10" style={{ background: rank.accent }} />
                   <span
-                    className="font-mono text-[10px] uppercase tracking-[0.3em] font-bold"
+                    className="font-mono text-[15px] sm:text-[17px] uppercase tracking-[0.3em] font-bold"
                     style={{ color: rank.accent }}
                   >
                     {meta.heroLabel}
