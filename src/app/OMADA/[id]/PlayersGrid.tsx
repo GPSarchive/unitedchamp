@@ -90,17 +90,6 @@ export default function PlayersGrid({
                     <span className="inline-flex items-center gap-1">
                       <FaUser /> {p.position ?? "—"}
                     </span>
-                    {p.height_cm && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaRulerVertical /> {p.height_cm}cm
-                      </span>
-                    )}
-                    {p.birth_date && (
-                      <span className="inline-flex items-center gap-1">
-                        <FaBirthdayCake />{" "}
-                        {new Date(p.birth_date).toLocaleDateString("el-GR")}
-                      </span>
-                    )}
                   </p>
 
                   {DEV && (
