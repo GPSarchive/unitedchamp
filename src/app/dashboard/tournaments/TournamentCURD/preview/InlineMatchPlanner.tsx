@@ -497,7 +497,6 @@ export default function InlineMatchPlanner({
         newP = patch.bracket_pos ?? currP;
 
       if (newR !== currR || newP !== currP) {
-        ensureRowExists(effectiveStageIdx, newR, newP);
         const afterLegacyTmp = legacyRowSignature({
           ...target,
           round: newR,
