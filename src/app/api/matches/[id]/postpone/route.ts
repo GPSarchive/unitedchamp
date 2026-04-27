@@ -19,6 +19,7 @@ function ensureSameOrigin(req: Request) {
   // Do NOT add req.url origin to the whitelist — the Host header can be spoofed,
   // which would let an attacker self-whitelist their own origin.
   if (allowedOrigins.size === 0) {
+    console.error("[postpone] bad-origin: ALLOWED_ORIGINS env is empty/unset");
     throw new Error("bad-origin");
   }
   const origin = req.headers.get("origin");
@@ -30,7 +31,14 @@ function ensureSameOrigin(req: Request) {
       return false;
     }
   });
-  if (!ok) throw new Error("bad-origin");
+  if (!ok) {
+    console.error("[postpone] bad-origin", {
+      origin,
+      referer,
+      allowed: Array.from(allowedOrigins),
+    });
+    throw new Error("bad-origin");
+  }
 }
 
 /* ==============
