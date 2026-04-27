@@ -45,26 +45,47 @@ const pad2 = (n: number | string) => String(n).padStart(2, "0");
 const one = <T,>(v: T | T[] | null): T | null =>
   Array.isArray(v) ? v[0] ?? null : v;
 
-const elDay = (iso?: string | null) =>
-  iso ? String(new Date(iso).getDate()) : "—";
+// Parse the wall-clock parts from the DB ISO string without applying any
+// timezone conversion. Supabase stores the kickoff as the intended local
+// time; using `new Date(iso)` would shift it by the viewer's offset.
+const ISO_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const parseWallClock = (iso: string) => {
+  const m = ISO_RE.exec(iso);
+  if (!m) return null;
+  const [, y, M, d, h, min] = m;
+  return { y: +y, M: +M, d: +d, h: +h, min: +min };
+};
 
-const elMonthShort = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", { month: "short" })
-    : "";
+const wallClockDate = (iso: string) => {
+  const p = parseWallClock(iso);
+  if (!p) return null;
+  return new Date(p.y, p.M - 1, p.d, p.h, p.min, 0);
+};
 
-const elWeekday = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", { weekday: "short" })
-    : "";
+const elDay = (iso?: string | null) => {
+  if (!iso) return "—";
+  const p = parseWallClock(iso);
+  return p ? String(p.d) : "—";
+};
 
-const elTime = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+const elMonthShort = (iso?: string | null) => {
+  if (!iso) return "";
+  const d = wallClockDate(iso);
+  return d ? d.toLocaleDateString("el-GR", { month: "short" }) : "";
+};
+
+const elWeekday = (iso?: string | null) => {
+  if (!iso) return "";
+  const d = wallClockDate(iso);
+  return d ? d.toLocaleDateString("el-GR", { weekday: "short" }) : "";
+};
+
+const elTime = (iso?: string | null) => {
+  if (!iso) return "";
+  const p = parseWallClock(iso);
+  return p ? `${pad2(p.h)}:${pad2(p.min)}` : "";
+};
 
 // ───────────────────────────────────────────────────────────────────────
 // Props
