@@ -540,7 +540,8 @@ type RosterPlayer = {
   stats: SeasonStats;
 };
 
-const INITIAL_ROSTER_LIMIT = 6;
+// Two rows per breakpoint: mobile (2 cols) → 4, lg (3 cols) → 6, xl (4 cols) → 8.
+const INITIAL_ROSTER_LIMIT = 4;
 
 const RosterSection: React.FC<{
   players: RosterPlayer[];
@@ -582,7 +583,7 @@ const RosterSection: React.FC<{
           accent={accent}
         />
 
-        {players.length > 6 && (
+        {players.length > INITIAL_ROSTER_LIMIT && (
           <div className="mb-6 max-w-md">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]/40 pointer-events-none">
@@ -610,6 +611,13 @@ const RosterSection: React.FC<{
             const isSearching = query.trim().length > 0;
             const canToggle = !isSearching && filtered.length > INITIAL_ROSTER_LIMIT;
             const hiddenCount = Math.max(0, filtered.length - INITIAL_ROSTER_LIMIT);
+            const hiddenClassFor = (i: number) => {
+              if (expanded || isSearching) return undefined;
+              if (i < 4) return undefined;
+              if (i < 6) return "hidden lg:block";
+              if (i < 8) return "hidden xl:block";
+              return "hidden";
+            };
             return (
               <>
                 <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
@@ -620,16 +628,12 @@ const RosterSection: React.FC<{
                       index={i}
                       accent={accent}
                       isTopScorer={p.id === topScorerId}
-                      className={
-                        !expanded && !isSearching && i >= INITIAL_ROSTER_LIMIT
-                          ? "hidden lg:block"
-                          : undefined
-                      }
+                      className={hiddenClassFor(i)}
                     />
                   ))}
                 </div>
                 {canToggle && (
-                  <div className="mt-8 flex justify-center lg:hidden">
+                  <div className="mt-8 flex justify-center">
                     <button
                       type="button"
                       onClick={() => setExpanded((v) => !v)}

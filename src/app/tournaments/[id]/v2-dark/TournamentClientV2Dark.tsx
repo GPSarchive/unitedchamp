@@ -695,14 +695,17 @@ const MatchRow: React.FC<{
   const b = m.team_b_id ? teamById.get(m.team_b_id) : null;
   const aWon = m.winner_team_id === m.team_a_id;
   const bWon = m.winner_team_id === m.team_b_id;
+  const hasLink = m.db_id != null;
 
-  return (
+  const Inner = (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ delay: index * 0.05 }}
-      className="group grid grid-cols-12 items-center gap-3 border-b-2 border-[#F3EFE6]/20 py-5 last:border-0 hover:border-[#fb923c]"
+      className={`group grid grid-cols-12 items-center gap-3 border-b-2 border-[#F3EFE6]/20 py-5 last:border-0 hover:border-[#fb923c] ${
+        hasLink ? "cursor-pointer" : ""
+      }`}
     >
       {/* left date block */}
       <div className="col-span-3 md:col-span-2">
@@ -788,6 +791,14 @@ const MatchRow: React.FC<{
         {m.matchday != null && <span>ΑΓ · {m.matchday}</span>}
       </div>
     </motion.div>
+  );
+
+  return hasLink ? (
+    <Link href={`/matches/${m.db_id}`} className="block">
+      {Inner}
+    </Link>
+  ) : (
+    Inner
   );
 };
 
@@ -1305,17 +1316,30 @@ const FixtureTicker: React.FC<{
             {loop.map((m, i) => {
               const a = m.team_a_id ? teamById.get(m.team_a_id) : null;
               const b = m.team_b_id ? teamById.get(m.team_b_id) : null;
-              return (
-                <span
-                  key={`${m.db_id}-${i}`}
-                  className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em]"
-                >
+              const content = (
+                <>
                   <span>{elDate(m.match_date)}</span>
                   <span className="opacity-60">·</span>
                   <span className="font-bold">{a?.name ?? "ΤΒΑ"}</span>
                   <span className="opacity-60">VS</span>
                   <span className="font-bold">{b?.name ?? "ΤΒΑ"}</span>
                   <span className="ml-6 text-[#F3EFE6]">◆</span>
+                </>
+              );
+              return m.db_id != null ? (
+                <Link
+                  key={`${m.db_id}-${i}`}
+                  href={`/matches/${m.db_id}`}
+                  className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em] hover:text-[#13131d] transition-colors"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <span
+                  key={`${m.db_id}-${i}`}
+                  className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em]"
+                >
+                  {content}
                 </span>
               );
             })}

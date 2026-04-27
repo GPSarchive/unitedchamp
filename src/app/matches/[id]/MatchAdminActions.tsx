@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { Clock, Shield } from "lucide-react";
 import PostponeDialog from "@/app/dashboard/matches/PostponeDialog";
-import type { MatchRow } from "@/app/lib/types";
 
 interface MatchAdminActionsProps {
   match: {
@@ -22,23 +21,6 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
   if (match.status !== "scheduled" && match.status !== "postponed") {
     return null;
   }
-
-  // Prepare match data for PostponeDialog
-  const matchForDialog: MatchRow & {
-    teamA?: { name: string };
-    teamB?: { name: string };
-  } = {
-    id: match.id,
-    status: match.status,
-    match_date: match.match_date,
-    team_a_score: 0,
-    team_b_score: 0,
-    winner_team_id: null,
-    team_a_id: 0,
-    team_b_id: 0,
-    teamA: match.teamA || undefined,
-    teamB: match.teamB || undefined,
-  };
 
   return (
     <>
@@ -62,7 +44,12 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
       {/* Postpone Dialog */}
       {showPostpone && (
         <PostponeDialog
-          match={matchForDialog}
+          match={{
+            id: match.id,
+            match_date: match.match_date,
+            teamA: match.teamA ?? undefined,
+            teamB: match.teamB ?? undefined,
+          }}
           onCancel={() => setShowPostpone(false)}
           onSuccess={() => {
             setShowPostpone(false);

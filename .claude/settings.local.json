@@ -9,7 +9,9 @@
       "Bash(cp \"src/app/tournaments/[id]/v2/KOBracketV2.tsx\" \"src/app/tournaments/[id]/v2-dark/KOBracketV2Dark.tsx\")",
       "Bash(grep -n 'const Rubric\\\\|^};$\\\\|^\\)$' \"src/app/tournaments/TournamentsClient.tsx\")",
       "Bash(xargs sed *)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx --yes tsc --noEmit -p tsconfig.json)",
+      "Bash(grep -E \"preview[/\\\\\\\\\\\\\\\\]paiktes-v2\")"
     ]
   }
 }

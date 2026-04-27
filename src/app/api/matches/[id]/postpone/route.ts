@@ -122,10 +122,16 @@ export async function POST(
 
     const { new_match_date, postponement_reason: rawReason } = body;
 
-    // Sanitize postponement_reason: strip markdown/HTML injection characters
+    // Sanitize postponement_reason. We interpolate this into a markdown announcement,
+    // so neutralize HTML tag delimiters and markdown-formatting characters by escaping
+    // (rather than stripping) — that way readable punctuation like ()! ? , . is kept.
     const postponement_reason =
       typeof rawReason === "string"
-        ? rawReason.replace(/[<>[\](){}*_~`#|!\\]/g, "").trim().slice(0, 500) || null
+        ? rawReason
+            .replace(/[<>]/g, "") // drop HTML tag delimiters outright
+            .replace(/([\\`*_~#|\[\]])/g, "\\$1") // escape markdown specials
+            .trim()
+            .slice(0, 500) || null
         : null;
 
     // Parse and validate new_match_date if provided
@@ -174,9 +180,13 @@ export async function POST(
       return jsonError(409, `Cannot postpone a ${current.status} match. Only scheduled matches can be postponed.`);
     }
 
-    if (!current.match_date) {
+    // A scheduled match must have a date. A postponed match may have a cleared
+    // match_date (date TBD); in that case we still allow setting/clearing again,
+    // and we fall back to original_match_date for the announcement copy.
+    if (!current.match_date && current.status === "scheduled") {
       return jsonError(400, "Cannot postpone a match without a date set");
     }
+    const referenceOldDate = current.match_date ?? current.original_match_date ?? null;
 
     // Extract team names for announcement
     const teamA = Array.isArray(current.teamA) ? current.teamA[0] : current.teamA;
@@ -198,10 +208,10 @@ export async function POST(
       });
     };
 
-    const oldDateFormatted = formatGreekDate(current.match_date);
+    const oldDateFormatted = referenceOldDate ? formatGreekDate(referenceOldDate) : null;
     const newDateFormatted = newDateISO ? formatGreekDate(newDateISO) : null;
 
-    // Store original date only if this is the first postponement
+    // Preserve the very first scheduled date across repeated postponements.
     const originalDate = current.original_match_date ?? current.match_date;
 
     // Prepare postponement update
@@ -233,7 +243,7 @@ export async function POST(
 
     let announcementBody = `Ο αγώνας **${teamAName}** vs **${teamBName}**`;
 
-    if (current.match_date) {
+    if (oldDateFormatted) {
       announcementBody += ` που ήταν προγραμματισμένος για **${oldDateFormatted}**`;
     }
 
@@ -270,7 +280,19 @@ export async function POST(
       end_at: endDate.toISOString(),
     };
 
-    // Create the announcement
+    // Supersede any previous postponement announcements for this match
+    // (no match_id FK on announcements, so match by title prefix).
+    const titlePrefix = `Αναβολή Αγώνα: ${teamAName} - ${teamBName}`;
+    const { error: supersedeErr } = await supa
+      .from("announcements")
+      .update({ end_at: new Date().toISOString(), pinned: false })
+      .eq("title", titlePrefix)
+      .eq("status", "published");
+    if (supersedeErr) {
+      console.error("Postpone: failed to supersede prior announcements", supersedeErr);
+    }
+
+    // Create the new announcement
     const { data: announcement, error: announcementErr } = await supa
       .from("announcements")
       .insert(announcementPayload)

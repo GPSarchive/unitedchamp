@@ -2,13 +2,17 @@
 
 import React, { useState } from "react";
 import { X, Clock, Calendar, AlertCircle } from "lucide-react";
-import type { MatchRow } from "@/app/lib/types";
+import type { Id } from "@/app/lib/types";
+
+export interface PostponeDialogMatch {
+  id: Id;
+  match_date: string | null;
+  teamA?: { name: string } | { name: string }[] | null;
+  teamB?: { name: string } | { name: string }[] | null;
+}
 
 interface PostponeDialogProps {
-  match: MatchRow & {
-    teamA?: { name: string } | { name: string }[] | null;
-    teamB?: { name: string } | { name: string }[] | null;
-  };
+  match: PostponeDialogMatch;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -56,11 +60,14 @@ export default function PostponeDialog({
     });
   };
 
-  // Get minimum date (tomorrow)
+  // Get minimum date (tomorrow) in the user's local timezone
   const getMinDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const d = String(tomorrow.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,16 +78,17 @@ export default function PostponeDialog({
     let newDateTime: string | undefined = undefined;
 
     if (newDate) {
-      // Combine date and time
-      newDateTime = `${newDate}T${newTime}:00.000Z`;
-
-      // Validate future date only if date is provided
-      const selectedDate = new Date(newDateTime);
-      const now = new Date();
-      if (selectedDate <= now) {
+      // Interpret the picked date/time in the admin's local timezone, then send as UTC ISO.
+      const local = new Date(`${newDate}T${newTime}`);
+      if (Number.isNaN(local.getTime())) {
+        setError("Invalid date/time");
+        return;
+      }
+      if (local <= new Date()) {
         setError("New date must be in the future");
         return;
       }
+      newDateTime = local.toISOString();
     }
 
     // Get reason text - now optional

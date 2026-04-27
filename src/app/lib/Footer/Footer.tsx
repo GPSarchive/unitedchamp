@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { openConsentBanner } from "@/app/lib/consent/use-consent";
 
 // Routes that own a full-screen layout and don't want the global footer.
-const HIDDEN_ROUTES: ReadonlyArray<string> = ["/paiktes"];
+const HIDDEN_ROUTES: ReadonlyArray<string> = ["/paiktes", "/preview/paiktes-mobile"];
 
 export default function Footer() {
   const pathname = usePathname() ?? "";

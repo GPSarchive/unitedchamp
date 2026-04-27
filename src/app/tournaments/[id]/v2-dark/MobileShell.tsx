@@ -1448,10 +1448,17 @@ const MobileMatchCard: React.FC<{
   const b = m.team_b_id ? teamById.get(m.team_b_id) : null;
   const aWon = m.winner_team_id === m.team_a_id;
   const bWon = m.winner_team_id === m.team_b_id;
+  const hasLink = m.db_id != null;
+
+  const Wrapper: React.ElementType = hasLink ? Link : "div";
+  const wrapperProps = hasLink
+    ? { href: `/matches/${m.db_id}` }
+    : {};
 
   return (
-    <div
-      className="overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14] active:bg-[#13131d] transition-colors"
+    <Wrapper
+      {...wrapperProps}
+      className="block overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14] active:bg-[#13131d] transition-colors"
     >
       <div className="flex items-center justify-between border-b border-[#F3EFE6]/10 bg-[#13131d] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
         <span>{elDayFull(m.match_date)}</span>
@@ -1527,7 +1534,7 @@ const MobileMatchCard: React.FC<{
           </span>
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 };
 
