@@ -16,7 +16,7 @@ export default function LeftSideBubbles({ count }: Props) {
   return (
     <>
       {/* Left-side stacked bubbles */}
-      <div className="fixed top-32 left-4 sm:left-6 z-50 flex flex-col gap-2">
+      <div className="fixed top-32 left-4 sm:left-6 z-50 flex flex-col gap-3">
         {count > 0 && (
           <Link
             href="/articles"
