@@ -19,8 +19,7 @@ import GridBgSection from "@/app/home/GridBgSection";
 import VantaSection from "@/app/home/VantaSection";
 import HomeArticles from "@/app/home/HomeArticles";
 import HomeVideos from "@/app/home/HomeVideos";
-import RecentAnnouncementsBubble from "@/app/home/RecentAnnouncementsBubble";
-import ContactBubble from "@/app/home/ContactBubble";
+import LeftSideBubbles from "@/app/home/LeftSideBubbles";
 
 // Editorial components (promoted from preview/home-b)
 import EditorialTeamDashboard from "@/app/home/EditorialTeamDashboard";
@@ -588,8 +587,7 @@ export default async function Home() {
         </div>
       </GridBgSection>
 
-      <RecentAnnouncementsBubble count={recentContentCount} />
-      <ContactBubble />
+      <LeftSideBubbles count={recentContentCount} />
     </div>
   );
 }
