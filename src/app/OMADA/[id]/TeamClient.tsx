@@ -95,22 +95,45 @@ type Props = {
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
-const elDate = (iso?: string | null, opts?: Intl.DateTimeFormatOptions) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
+const ISO_RE =
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function parseIsoWallClock(iso: string) {
+  const m = ISO_RE.exec(iso);
+  if (!m) return null;
+  return { y: +m[1], M: +m[2], d: +m[3], h: +m[4], min: +m[5], s: +m[6] };
+}
+
+const wallClockDate = (iso?: string | null): Date | null => {
+  if (!iso) return null;
+  const p = parseIsoWallClock(iso);
+  if (!p) {
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return new Date(p.y, p.M - 1, p.d, p.h, p.min, p.s);
+};
+
+const elDate = (iso?: string | null, opts?: Intl.DateTimeFormatOptions) => {
+  const d = wallClockDate(iso);
+  return d
+    ? d.toLocaleDateString("el-GR", {
         day: "2-digit",
         month: "short",
         ...opts,
       })
     : "";
+};
 
-const elTime = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+const elTime = (iso?: string | null) => {
+  if (!iso) return "";
+  const p = parseIsoWallClock(iso);
+  if (p) return `${pad2(p.h)}:${pad2(p.min)}`;
+  const d = new Date(iso);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+};
 
 const hexIsLight = (hex: string | null | undefined) => {
   if (!hex) return false;
@@ -1118,14 +1141,12 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
       }}
     >
       <span className="font-[var(--f-brutal)] text-xl leading-none">
-        {m.match_date ? new Date(m.match_date).getDate() : "—"}
+        {wallClockDate(m.match_date)?.getDate() ?? "—"}
       </span>
       <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#F3EFE6]/60">
-        {m.match_date
-          ? new Date(m.match_date).toLocaleDateString("el-GR", {
-              month: "short",
-            })
-          : ""}
+        {wallClockDate(m.match_date)?.toLocaleDateString("el-GR", {
+          month: "short",
+        }) ?? ""}
       </span>
     </div>
   );
