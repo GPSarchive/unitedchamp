@@ -318,34 +318,50 @@ if (body.matches?.deleteIds?.length) {
       }
     }
 
-    /* 6) Tournament teams upsert ------------------------------------------ */
-    if (body.tournamentTeams?.upsert?.length) {
-      const createRows = body.tournamentTeams.upsert
+    /* 6) Tournament teams: delete then upsert ----------------------------- */
+    if (body.tournamentTeams?.deleteIds?.length) {
+      const { error } = await supabaseAdmin
+        .from("tournament_teams")
+        .delete()
+        .eq("tournament_id", tournamentId)
+        .in("id", body.tournamentTeams.deleteIds);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (
+      body.tournamentTeams?.upsert?.length ||
+      body.tournamentTeams?.deleteIds?.length
+    ) {
+      const upsertRows = body.tournamentTeams?.upsert ?? [];
+      const createRows = upsertRows
         .filter((r) => r.id == null)
         .map(({ id: _drop, ...r }) => ({ ...r, tournament_id: tournamentId }));
-      const updateRows = body.tournamentTeams.upsert.filter((r) => r.id != null);
-
-      let upserted: any[] = [];
+      const updateRows = upsertRows.filter((r) => r.id != null);
 
       if (createRows.length) {
-        const { data, error } = await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("tournament_teams")
           .insert(createRows)
           .select();
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        upserted = upserted.concat(data ?? []);
       }
 
       if (updateRows.length) {
-        const { data, error } = await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("tournament_teams")
-          .upsert(updateRows, )
+          .upsert(updateRows)
           .select();
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-        upserted = upserted.concat(data ?? []);
       }
 
-      out.tournamentTeams = upserted;
+      // Return the authoritative current set so the client can reconcile
+      // after both inserts and deletions in a single round trip.
+      const { data: allRows, error: listErr } = await supabaseAdmin
+        .from("tournament_teams")
+        .select("*")
+        .eq("tournament_id", tournamentId);
+      if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
+      out.tournamentTeams = allRows ?? [];
     }
 
     /* 7) Stage slots upsert (optimistic, with optional force) -------------- */

@@ -105,6 +105,9 @@ export default function TournamentWizard({
   const removeStage = useTournamentStore((s) => s.removeStage);
   const upsertGroup = useTournamentStore((s) => s.upsertGroup);
   const removeGroup = useTournamentStore((s) => s.removeGroup);
+  const setTournamentTeamIdsFromPicker = useTournamentStore(
+    (s) => s.setTournamentTeamIdsFromPicker
+  );
 
   // hydrate the store once from incoming props (payload + initial matches + teams)
   // BUT skip in edit mode - the snapshot load below will handle it
@@ -260,6 +263,9 @@ export default function TournamentWizard({
             onChange={(t) => {
               setTeams(t);
               setPayload((p) => ({ ...p, tournament_team_ids: t.map((x) => x.id) }));
+              if (mode === "edit") {
+                setTournamentTeamIdsFromPicker(t.map((x) => x.id));
+              }
             }}
           />
         </div>
