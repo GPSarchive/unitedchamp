@@ -601,6 +601,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
+        db_id: m.id ?? null,
+        updated_at: m.updated_at ?? null,
         stageIdx: sIdx,
         groupIdx,
         round: m.round ?? null,
@@ -732,6 +734,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
+        db_id: m.id ?? null,
+        updated_at: (m as any).updated_at ?? null,
         stageIdx: sIdx as number,
         groupIdx,
         round: m.round ?? null,
@@ -1785,17 +1789,19 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           }));
         }
   
-        // Matches reconcile (overlay)
+        // Matches reconcile (overlay + draft row identity)
         if (resp4.matches) {
           const st2 = get();
           const overlay = { ...st2.dbOverlayBySig };
+          const dbIdBySig: Record<string, number | null> = {};
+          const updatedAtBySig: Record<string, string | null> = {};
           for (const m of resp4.matches) {
             const stageIdx = (st2.ids.stageIndexById as any)[m.stage_id] ?? -1;
             const groupIdx =
               m.group_id != null
                 ? (st2.ids.groupIndexByStageAndId as any)[m.stage_id]?.[m.group_id] ?? null
                 : null;
-  
+
             const uiSig = matchSig({
               stageIdx,
               groupIdx,
@@ -1810,7 +1816,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               away_source_round: m.away_source_round ?? null,
               away_source_bracket_pos: m.away_source_bracket_pos ?? null,
             } as DraftMatch);
-  
+
             const prev = overlay[uiSig] ?? {};
             overlay[uiSig] = {
               ...prev,
@@ -1825,8 +1831,21 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
               away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
             };
+            dbIdBySig[uiSig] = m.id ?? null;
+            updatedAtBySig[uiSig] = m.updated_at ?? null;
           }
-          set({ dbOverlayBySig: overlay });
+          set((curr) => ({
+            dbOverlayBySig: overlay,
+            draftMatches: curr.draftMatches.map((r) => {
+              const sig = matchSig(r);
+              if (!(sig in dbIdBySig)) return r;
+              return {
+                ...r,
+                db_id: dbIdBySig[sig] ?? r.db_id ?? null,
+                updated_at: updatedAtBySig[sig] ?? r.updated_at ?? null,
+              };
+            }),
+          }));
         }
   
         // clear phase-4 dirties
