@@ -294,6 +294,7 @@ export type TournamentState = {
     deletedStageIds: Set<number>;
     deletedGroupIds: Set<number>;
     deletedMatchIds: Set<number>; // NEW: DB ids to delete
+    deletedTournamentTeamIds: Set<number>; // tournament_teams row ids to delete
   };
 
   busy: boolean;
@@ -369,6 +370,7 @@ export type TournamentState = {
 
   setTournamentTeamSeed: (teamId: number, seed: number | null) => void;
   assignTeamToGroup: (teamId: number, stageId: number, groupId: number | null) => void;
+  setTournamentTeamIdsFromPicker: (teamIds: number[]) => void;
 
   replaceAllDraftMatches: (next: DraftMatch[]) => void;
   updateMatches: (stageIdx: number, updater: (rows: DraftMatch[]) => DraftMatch[]) => void;
@@ -435,6 +437,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     deletedStageIds: new Set<number>(),
     deletedGroupIds: new Set<number>(),
     deletedMatchIds: new Set<number>(), // NEW
+    deletedTournamentTeamIds: new Set<number>(),
   },
 
   busy: false,
@@ -601,6 +604,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
+        db_id: m.id ?? null,
+        updated_at: m.updated_at ?? null,
         stageIdx: sIdx,
         groupIdx,
         round: m.round ?? null,
@@ -664,6 +669,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         deletedStageIds: new Set(),
         deletedGroupIds: new Set(),
         deletedMatchIds: new Set(),
+        deletedTournamentTeamIds: new Set(),
       },
       lastSnapshot: JSON.parse(JSON.stringify(snap)),
     });
@@ -732,6 +738,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
+        db_id: m.id ?? null,
+        updated_at: (m as any).updated_at ?? null,
         stageIdx: sIdx as number,
         groupIdx,
         round: m.round ?? null,
@@ -786,6 +794,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         deletedStageIds: new Set(),
         deletedGroupIds: new Set(),
         deletedMatchIds: new Set(),
+        deletedTournamentTeamIds: new Set(),
       },
     }));
   },
@@ -1142,6 +1151,67 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     });
   },
 
+  // Reconciles the tournament-wide team membership against an authoritative
+  // list of team_ids (as produced by the TeamPicker). Adds rows for new
+  // team_ids and marks every row of removed team_ids for deletion. Existing
+  // per-stage / per-group assignments for retained teams are preserved.
+  setTournamentTeamIdsFromPicker: (teamIds) => {
+    set((st) => {
+      const tid = st.ids.tournamentId;
+      if (tid == null) return {} as Partial<TournamentState>;
+
+      const desired = new Set(teamIds);
+      const present = new Set<number>();
+      st.entities.tournamentTeams.forEach((tt) => {
+        if (tt.tournament_id === tid) present.add(tt.team_id);
+      });
+
+      const toAdd: number[] = [];
+      desired.forEach((id) => { if (!present.has(id)) toAdd.push(id); });
+      const toRemove: number[] = [];
+      present.forEach((id) => { if (!desired.has(id)) toRemove.push(id); });
+
+      if (toAdd.length === 0 && toRemove.length === 0) {
+        return {} as Partial<TournamentState>;
+      }
+
+      const removeSet = new Set(toRemove);
+      const kept = st.entities.tournamentTeams.filter(
+        (tt) => tt.tournament_id !== tid || !removeSet.has(tt.team_id)
+      );
+
+      const deletedIds = new Set(st.dirty.deletedTournamentTeamIds);
+      st.entities.tournamentTeams.forEach((tt) => {
+        if (
+          tt.tournament_id === tid &&
+          removeSet.has(tt.team_id) &&
+          typeof tt.id === "number" &&
+          tt.id > 0
+        ) {
+          deletedIds.add(tt.id);
+        }
+      });
+
+      const added = toAdd.map((team_id) => ({
+        id: nextTempId(),
+        tournament_id: tid,
+        team_id,
+        stage_id: null,
+        group_id: null,
+        seed: null,
+      })) as DbTournamentTeam[];
+
+      return {
+        entities: { ...st.entities, tournamentTeams: [...kept, ...added] },
+        dirty: {
+          ...st.dirty,
+          tournamentTeams: true,
+          deletedTournamentTeamIds: deletedIds,
+        },
+      };
+    });
+  },
+
   /* -------------------- Matches (editor) -------------------- */
 
   replaceAllDraftMatches: (next) => {
@@ -1405,7 +1475,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       !st0.dirty.tournament && !st0.dirty.stages && st0.dirty.deletedStageIds.size === 0;
     const nothingPhase2 =
       !st0.dirty.groups && st0.dirty.deletedGroupIds.size === 0;
-    const nothingPhase3 = !st0.dirty.tournamentTeams;
+    const nothingPhase3 =
+      !st0.dirty.tournamentTeams &&
+      (st0.dirty.deletedTournamentTeamIds?.size ?? 0) === 0;
     const nothingPhase4 =
       st0.dirty.matches.size === 0 &&
       st0.dirty.stageSlots.size === 0 &&
@@ -1660,7 +1732,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   
       /* -------- PHASE 3: tournamentTeams -------- */
       const st3 = get();
-      if (st3.dirty.tournamentTeams) {
+      const deletedTTIds = Array.from(st3.dirty.deletedTournamentTeamIds ?? []);
+      if (st3.dirty.tournamentTeams || deletedTTIds.length) {
         const upsert = st3.entities.tournamentTeams.map((tt) => {
           const row: any = {
             ...(tt.id > 0 ? { id: tt.id } : {}),
@@ -1672,13 +1745,29 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           };
           return row;
         });
-  
-        const resp3 = await doPost(tid, { tournamentTeams: { upsert } });
-  
+
+        const ttPayload: any = {};
+        if (upsert.length) ttPayload.upsert = upsert;
+        if (deletedTTIds.length) ttPayload.deleteIds = deletedTTIds;
+
+        const resp3 = await doPost(tid, { tournamentTeams: ttPayload });
+
         if (resp3.tournamentTeams) {
           set((curr) => ({
             entities: { ...curr.entities, tournamentTeams: resp3.tournamentTeams! },
-            dirty: { ...curr.dirty, tournamentTeams: false },
+            dirty: {
+              ...curr.dirty,
+              tournamentTeams: false,
+              deletedTournamentTeamIds: new Set(),
+            },
+          }));
+        } else {
+          set((curr) => ({
+            dirty: {
+              ...curr.dirty,
+              tournamentTeams: false,
+              deletedTournamentTeamIds: new Set(),
+            },
           }));
         }
       }
@@ -1785,17 +1874,19 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           }));
         }
   
-        // Matches reconcile (overlay)
+        // Matches reconcile (overlay + draft row identity)
         if (resp4.matches) {
           const st2 = get();
           const overlay = { ...st2.dbOverlayBySig };
+          const dbIdBySig: Record<string, number | null> = {};
+          const updatedAtBySig: Record<string, string | null> = {};
           for (const m of resp4.matches) {
             const stageIdx = (st2.ids.stageIndexById as any)[m.stage_id] ?? -1;
             const groupIdx =
               m.group_id != null
                 ? (st2.ids.groupIndexByStageAndId as any)[m.stage_id]?.[m.group_id] ?? null
                 : null;
-  
+
             const uiSig = matchSig({
               stageIdx,
               groupIdx,
@@ -1810,7 +1901,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               away_source_round: m.away_source_round ?? null,
               away_source_bracket_pos: m.away_source_bracket_pos ?? null,
             } as DraftMatch);
-  
+
             const prev = overlay[uiSig] ?? {};
             overlay[uiSig] = {
               ...prev,
@@ -1825,8 +1916,21 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
               away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
             };
+            dbIdBySig[uiSig] = m.id ?? null;
+            updatedAtBySig[uiSig] = m.updated_at ?? null;
           }
-          set({ dbOverlayBySig: overlay });
+          set((curr) => ({
+            dbOverlayBySig: overlay,
+            draftMatches: curr.draftMatches.map((r) => {
+              const sig = matchSig(r);
+              if (!(sig in dbIdBySig)) return r;
+              return {
+                ...r,
+                db_id: dbIdBySig[sig] ?? r.db_id ?? null,
+                updated_at: updatedAtBySig[sig] ?? r.updated_at ?? null,
+              };
+            }),
+          }));
         }
   
         // clear phase-4 dirties
