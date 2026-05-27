@@ -298,9 +298,9 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
           className="absolute left-0 top-0 h-full w-[3px] bg-[#fb923c] scale-y-0 origin-center transition-transform duration-300 group-hover:scale-y-100"
         />
 
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-4 px-3 py-4 md:px-5 md:py-5">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 py-4 md:px-5 md:py-5">
           {/* Date block */}
-          <div className="flex flex-col items-center w-14 md:w-16 shrink-0 border-r border-[#F3EFE6]/10 pr-3 md:pr-4">
+          <div className="flex flex-col items-center w-12 md:w-16 shrink-0 border-r border-[#F3EFE6]/10 pr-2.5 md:pr-4">
             <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/55">
               {GREEK_WEEKDAYS_SHORT[p.weekday]}
             </span>
@@ -324,7 +324,7 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
                   sizes="28px"
                 />
               </div>
-              <span className="font-[var(--f-display)] italic text-base md:text-lg text-[#F3EFE6] truncate leading-tight">
+              <span className="min-w-0 flex-1 font-[var(--f-display)] italic text-sm sm:text-base md:text-lg text-[#F3EFE6] truncate leading-tight">
                 {teamA}
               </span>
             </div>
@@ -338,28 +338,25 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
                   sizes="28px"
                 />
               </div>
-              <span className="font-[var(--f-display)] italic text-base md:text-lg text-[#F3EFE6] truncate leading-tight">
+              <span className="min-w-0 flex-1 font-[var(--f-display)] italic text-sm sm:text-base md:text-lg text-[#F3EFE6] truncate leading-tight">
                 {teamB}
               </span>
             </div>
           </div>
 
-          {/* Right column — time + meta + arrow */}
+          {/* Right column — time + meta. Tournament name hidden on mobile to give names room. */}
           <div className="flex flex-col items-end gap-1.5 shrink-0 text-right">
-            <span className="font-[var(--f-brutal)] text-lg md:text-xl text-[#F3EFE6] leading-none group-hover:text-[#fb923c] transition-colors">
+            <span className="font-[var(--f-brutal)] text-base md:text-xl text-[#F3EFE6] leading-none group-hover:text-[#fb923c] transition-colors">
               {time}
             </span>
-            {(match.tournament_name || matchdayRound) && (
-              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/55 max-w-[180px] truncate">
-                {match.tournament_name && (
-                  <span className="truncate">{match.tournament_name}</span>
-                )}
-                {matchdayRound && (
-                  <>
-                    <span className="text-[#F3EFE6]/25">·</span>
-                    <span>{matchdayRound}</span>
-                  </>
-                )}
+            {matchdayRound && (
+              <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
+                {matchdayRound}
+              </span>
+            )}
+            {match.tournament_name && (
+              <span className="hidden md:block font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/55 max-w-[180px] truncate">
+                {match.tournament_name}
               </span>
             )}
           </div>

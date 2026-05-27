@@ -409,7 +409,7 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
             {/* Brand with Logo + Two-line text */}
             <Link href="/home" className="flex items-center gap-2 md:gap-3">
               <Image
-                src="/UltraChampLogo.png"
+                src="/UltraChampLogo3.png"
                 alt="Ultra Champ"
                 width={28}
                 height={28}
@@ -421,7 +421,7 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
                   Ultra Champ
                 </span>
                 <span className="text-[10px] md:text-xs font-medium tracking-[0.15em] uppercase text-white/60 leading-tight">
-                  Championship League
+                  Mini Football Organization
                 </span>
               </div>
             </Link>

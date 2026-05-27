@@ -8,6 +8,7 @@ import React, {
   isValidElement,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   type ReactNode,
@@ -15,6 +16,11 @@ import React, {
   type CSSProperties,
 } from 'react';
 import gsap from 'gsap';
+
+export interface CardSwapHandle {
+  next: () => void;
+  prev: () => void;
+}
 
 /* ───────── Card ───────── */
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -86,7 +92,7 @@ interface CardSwapProps {
   children: ReactNode;
 }
 
-const CardSwap = ({
+const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
   width = 600,
   height = 340,
   cardDistance = 55,
@@ -100,7 +106,7 @@ const CardSwap = ({
   containerClassName,
   containerStyle,
   children,
-}: CardSwapProps) => {
+}, ref) => {
   const autoConfig =
     easing === 'elastic'
       ? {
@@ -377,6 +383,22 @@ const CardSwap = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing]);
 
+  /* ── expose imperative next/prev for parent-controlled navigation ── */
+  useImperativeHandle(
+    ref,
+    () => ({
+      next: () => {
+        if (order.current.length < 2) return;
+        selectCard(order.current[1]);
+      },
+      prev: () => {
+        if (order.current.length < 2) return;
+        selectCard(order.current[order.current.length - 1]);
+      },
+    }),
+    [selectCard]
+  );
+
   /* ── swipe left/right to advance or go back ── */
   useEffect(() => {
     const node = container.current;
@@ -448,6 +470,7 @@ const CardSwap = ({
       {rendered}
     </div>
   );
-};
+});
+CardSwap.displayName = 'CardSwap';
 
 export default CardSwap;
