@@ -153,6 +153,7 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       tlRef.current.kill();
       tlRef.current = null;
     }
+    isAnimatingRef.current = false;
   }, []);
 
   /* ── schedule next auto-swap ── */
@@ -389,14 +390,17 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
     () => ({
       next: () => {
         if (order.current.length < 2) return;
-        selectCard(order.current[1]);
+        // Match auto-swap: front card drops to back, everyone else promotes by one.
+        cancelCurrent();
+        autoSwap();
       },
       prev: () => {
         if (order.current.length < 2) return;
+        // Inverse of auto-swap: back card comes to front, everyone else shifts down by one.
         selectCard(order.current[order.current.length - 1]);
       },
     }),
-    [selectCard]
+    [autoSwap, cancelCurrent, selectCard]
   );
 
   /* ── swipe left/right to advance or go back ── */
@@ -418,10 +422,11 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
       if (order.current.length < 2) return;
       if (dx < 0) {
-        // Swipe left → advance to next card
-        selectCard(order.current[1]);
+        // Swipe left → advance: front card drops to back (same as auto-swap).
+        cancelCurrent();
+        autoSwap();
       } else {
-        // Swipe right → go back to previous card (last in stack)
+        // Swipe right → go back: back card returns to front.
         selectCard(order.current[order.current.length - 1]);
       }
     };
@@ -432,7 +437,7 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       node.removeEventListener('touchstart', onTouchStart);
       node.removeEventListener('touchend', onTouchEnd);
     };
-  }, [selectCard]);
+  }, [autoSwap, cancelCurrent, selectCard]);
 
   /* ── render children with refs + click handlers ── */
   const rendered = childArr.map((child, i) =>
