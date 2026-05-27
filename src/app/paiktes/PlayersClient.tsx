@@ -1,7 +1,7 @@
 // src/app/paiktes/PlayersClient.tsx
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -75,6 +75,50 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
+}
+
+// Track scroll direction on a given scrollable element so the filter header
+// can collapse on scroll-down and reveal on scroll-up (mobile UX pattern).
+function useScrollCollapse(
+  ref: React.RefObject<HTMLElement | null>,
+  { threshold = 24, topAnchor = 16 }: { threshold?: number; topAnchor?: number } = {}
+) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let lastY = el.scrollTop;
+    let raf = 0;
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        const y = el.scrollTop;
+        const dy = y - lastY;
+        if (y <= topAnchor) {
+          setCollapsed(false);
+        } else if (dy > threshold) {
+          setCollapsed(true);
+          lastY = y;
+        } else if (dy < -threshold) {
+          setCollapsed(false);
+          lastY = y;
+        }
+        if (Math.abs(dy) > threshold) lastY = y;
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [ref, threshold, topAnchor]);
+
+  return collapsed;
 }
 
 type TournamentOpt = { id: number; name: string; season: string | null };
@@ -199,6 +243,9 @@ export default function PlayersClient({
 
   const isXL = useIsXL();
   const [detailOpen, setDetailOpen] = useState(false);
+  const listScrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollCollapsed = useScrollCollapse(listScrollRef);
+  const autoCollapsed = !isXL && scrollCollapsed;
 
   const router = useRouter();
   const sp = useSearchParams();
@@ -461,6 +508,7 @@ export default function PlayersClient({
             onTopInputChange={setClientTopInput}
             onSearchChange={setQ}
             onReset={handleReset}
+            autoCollapsed={autoCollapsed}
           />
 
           <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -475,7 +523,7 @@ export default function PlayersClient({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            <div ref={listScrollRef} className="flex-1 overflow-y-auto">
               <PlayersList
                 players={players}
                 activeId={activeId}

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
+import { safeNextUrl } from '@/app/lib/safe-redirect';
 
 type Ctx = { params: Promise<{ id: string }> }; // ← params is a Promise
 
@@ -55,7 +56,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   // 6) Redirect for form posts; JSON for programmatic calls
   if (!ct.includes('application/json')) {
-    const location = returnTo && returnTo.startsWith('/') ? returnTo : '/dashboard';
+    const location = safeNextUrl(returnTo ?? '', '/dashboard');
     return NextResponse.redirect(new URL(location, req.url), { status: 303 });
   }
   return NextResponse.json({ ok: true, roles: newRoles });
