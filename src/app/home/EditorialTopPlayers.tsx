@@ -8,7 +8,8 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState, useCallback, type ReactNode } from "react";
-import CardSwap from "@/components/CardSwap";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import CardSwap, { type CardSwapHandle } from "@/components/CardSwap";
 import type { TopPlayerData } from "@/components/cards/types";
 import {
   EditorialScorerCard,
@@ -101,9 +102,12 @@ function CategoryColumn({
   swapOffset = 0,
 }: CategoryColumnProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const swapRef = useRef<CardSwapHandle>(null);
   const { scale, cardDistance } = useCardLayout(wrapperRef, players.length);
 
   if (players.length === 0) return null;
+
+  const hasNav = players.length > 1;
 
   const nativeWidth = CARD_WIDTH + cardDistance * players.length;
   const nativeHeight = CARD_HEIGHT;
@@ -153,6 +157,7 @@ function CategoryColumn({
             }}
           >
             <CardSwap
+              ref={swapRef}
               width={CARD_WIDTH}
               height={CARD_HEIGHT}
               cardDistance={cardDistance}
@@ -166,6 +171,27 @@ function CategoryColumn({
               {players.map((p, i) => renderCard(p, i))}
             </CardSwap>
           </div>
+
+          {hasNav && (
+            <>
+              <button
+                type="button"
+                aria-label="Προηγούμενος παίκτης"
+                onClick={() => swapRef.current?.prev()}
+                className="group absolute left-0 top-1/2 z-20 -translate-y-1/2 -translate-x-1 sm:-translate-x-2 md:-translate-x-3 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-white/70 backdrop-blur-sm transition-all hover:border-[#fb923c]/60 hover:bg-black/50 hover:text-[#fb923c] focus:outline-none focus-visible:border-[#fb923c]/60 focus-visible:text-[#fb923c]"
+              >
+                <ChevronLeft className="h-4 w-4 sm:h-[18px] sm:w-[18px] transition-transform group-hover:-translate-x-[1px]" strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                aria-label="Επόμενος παίκτης"
+                onClick={() => swapRef.current?.next()}
+                className="group absolute right-0 top-1/2 z-20 -translate-y-1/2 translate-x-1 sm:translate-x-2 md:translate-x-3 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-white/15 bg-black/30 text-white/70 backdrop-blur-sm transition-all hover:border-[#fb923c]/60 hover:bg-black/50 hover:text-[#fb923c] focus:outline-none focus-visible:border-[#fb923c]/60 focus-visible:text-[#fb923c]"
+              >
+                <ChevronRight className="h-4 w-4 sm:h-[18px] sm:w-[18px] transition-transform group-hover:translate-x-[1px]" strokeWidth={2.25} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

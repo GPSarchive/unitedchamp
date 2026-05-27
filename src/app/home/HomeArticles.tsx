@@ -107,7 +107,7 @@ export default async function HomeArticles() {
                     )}
 
                     {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
 
                     {/* Index counter badge */}
                     <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 font-mono text-[10px] sm:text-xs font-bold text-orange-400 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 tracking-widest">
