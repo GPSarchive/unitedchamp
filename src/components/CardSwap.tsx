@@ -153,6 +153,7 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       tlRef.current.kill();
       tlRef.current = null;
     }
+    isAnimatingRef.current = false;
   }, []);
 
   /* ── schedule next auto-swap ── */
@@ -165,172 +166,89 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
     [delay]
   );
 
-  /* ── auto-swap: send front card to back ── */
-  const autoSwap = useCallback(() => {
-    if (order.current.length < 2) return;
-    if (isAnimatingRef.current) return;
+  /* ── animate the current order into its slots from wherever cards are now ──
+   * Updates order.current synchronously up front, then animates from each
+   * card's current visual position to its target slot. Safe to call mid-flight:
+   * just cancel the previous timeline first.
+   */
+  const animateToOrder = useCallback(
+    (
+      newOrder: number[],
+      opts: { pulseFront?: boolean; durMove?: number; ease?: string; stagger?: number } = {}
+    ) => {
+      const { pulseFront = false, durMove = clickDur, ease = clickEase, stagger = 0.035 } = opts;
 
-    const [front, ...rest] = order.current;
-    const elFront = refs[front].current;
-    if (!elFront) return;
-
-    isAnimatingRef.current = true;
-
-    const tl = gsap.timeline({
-      onComplete: () => {
-        isAnimatingRef.current = false;
-        scheduleNext(autoSwap);
-      },
-    });
-    tlRef.current = tl;
-
-    tl.to(elFront, {
-      y: '+=500',
-      opacity: 0,
-      duration: autoConfig.durDrop,
-      ease: autoConfig.ease,
-    });
-
-    tl.addLabel('promote', `-=${autoConfig.durDrop * autoConfig.promoteOverlap}`);
-    rest.forEach((idx, i) => {
-      const el = refs[idx].current;
-      if (!el) return;
-      const slot = makeSlot(i, cardDistance, verticalDistance, refs.length);
-      tl.set(el, { zIndex: slot.zIndex }, 'promote');
-      tl.to(
-        el,
-        {
-          x: slot.x,
-          y: slot.y,
-          z: slot.z,
-          duration: autoConfig.durMove,
-          ease: autoConfig.ease,
-        },
-        `promote+=${i * 0.15}`
-      );
-    });
-
-    const backSlot = makeSlot(
-      refs.length - 1,
-      cardDistance,
-      verticalDistance,
-      refs.length
-    );
-    tl.addLabel('return', `promote+=${autoConfig.durMove * autoConfig.returnDelay}`);
-    tl.call(
-      () => {
-        gsap.set(elFront, { zIndex: backSlot.zIndex });
-      },
-      [],
-      'return'
-    );
-    tl.to(
-      elFront,
-      {
-        x: backSlot.x,
-        y: backSlot.y,
-        z: backSlot.z,
-        opacity: 1,
-        duration: autoConfig.durReturn,
-        ease: autoConfig.ease,
-      },
-      'return'
-    );
-    tl.call(() => {
-      order.current = [...rest, front];
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardDistance, verticalDistance, delay, skewAmount, easing]);
-
-  /* ── click-to-select: bring any card to front ── */
-  const selectCard = useCallback(
-    (clickedOriginalIndex: number) => {
-      const currentOrder = order.current;
-      const posInOrder = currentOrder.indexOf(clickedOriginalIndex);
-
-      // Already in front or not found
-      if (posInOrder <= 0) return;
-
-      // ① Interrupt anything in flight immediately
-      cancelCurrent();
-
-      // ② Reset every card's opacity & scale
-      refs.forEach((r) => {
-        if (r.current) gsap.set(r.current, { opacity: 1, scale: 1 });
-      });
-
+      // ① Commit the new order synchronously so subsequent clicks see fresh state.
+      order.current = newOrder;
       isAnimatingRef.current = true;
-
-      // ③ Build new order: clicked card → front
-      const newOrder = [
-        clickedOriginalIndex,
-        ...currentOrder.filter((idx) => idx !== clickedOriginalIndex),
-      ];
 
       const tl = gsap.timeline({
         onComplete: () => {
-          order.current = newOrder;
           isAnimatingRef.current = false;
           scheduleNext(autoSwap);
         },
       });
       tlRef.current = tl;
 
-      // ④ Animate every card to its new slot
       newOrder.forEach((originalIdx, newSlotIndex) => {
         const el = refs[originalIdx].current;
         if (!el) return;
 
-        const slot = makeSlot(
-          newSlotIndex,
-          cardDistance,
-          verticalDistance,
-          refs.length
-        );
+        const slot = makeSlot(newSlotIndex, cardDistance, verticalDistance, refs.length);
 
-        if (originalIdx === clickedOriginalIndex) {
-          // Selected card: quick pop-to-front with subtle scale pulse
-          tl.set(el, { zIndex: slot.zIndex }, 0);
+        // Reset any residual opacity/scale from a killed timeline, then animate
+        // from wherever the card actually is to its new slot.
+        gsap.set(el, { opacity: 1, scale: 1, zIndex: slot.zIndex });
+
+        if (pulseFront && newSlotIndex === 0) {
           tl.to(
             el,
-            {
-              x: slot.x,
-              y: slot.y,
-              z: slot.z,
-              scale: 1.04,
-              duration: clickDur * 0.55,
-              ease: 'power2.out',
-            },
+            { x: slot.x, y: slot.y, z: slot.z, scale: 1.04, duration: durMove * 0.55, ease: 'power2.out' },
             0
           );
-          tl.to(
-            el,
-            {
-              scale: 1,
-              duration: clickDur * 0.45,
-              ease: 'power2.inOut',
-            },
-            clickDur * 0.55
-          );
-        } else {
-          // Other cards slide into place
-          tl.set(el, { zIndex: slot.zIndex }, 0);
-          tl.to(
-            el,
-            {
-              x: slot.x,
-              y: slot.y,
-              z: slot.z,
-              duration: clickDur,
-              ease: clickEase,
-            },
-            newSlotIndex * 0.035
-          );
+          tl.to(el, { scale: 1, duration: durMove * 0.45, ease: 'power2.inOut' }, durMove * 0.55);
+          return;
         }
+
+        tl.to(
+          el,
+          { x: slot.x, y: slot.y, z: slot.z, duration: durMove, ease },
+          newSlotIndex * stagger
+        );
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cardDistance, verticalDistance, delay, skewAmount, easing, autoSwap, cancelCurrent, scheduleNext]
+    [cardDistance, verticalDistance, scheduleNext]
+  );
+
+  /* ── auto-swap: front card drops to back, everyone else promotes by one. ── */
+  const autoSwap = useCallback(() => {
+    if (order.current.length < 2) return;
+    cancelCurrent();
+    const [front, ...rest] = order.current;
+    animateToOrder([...rest, front], {
+      durMove: autoConfig.durMove,
+      ease: autoConfig.ease,
+      stagger: 0.06,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animateToOrder, cancelCurrent, easing]);
+
+  /* ── click-to-select: bring any card to front ── */
+  const selectCard = useCallback(
+    (clickedOriginalIndex: number) => {
+      const currentOrder = order.current;
+      const posInOrder = currentOrder.indexOf(clickedOriginalIndex);
+      if (posInOrder <= 0) return;
+
+      cancelCurrent();
+      const newOrder = [
+        clickedOriginalIndex,
+        ...currentOrder.filter((idx) => idx !== clickedOriginalIndex),
+      ];
+      animateToOrder(newOrder, { pulseFront: true });
+    },
+    [animateToOrder, cancelCurrent]
   );
 
   /* ── initial placement + start auto-swap loop ── */
@@ -383,20 +301,29 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing]);
 
+  /* ── snappy user-driven rotate (used by arrows + swipe) ── */
+  const rotate = useCallback(
+    (dir: 1 | -1) => {
+      if (order.current.length < 2) return;
+      cancelCurrent();
+      const cur = order.current;
+      const newOrder =
+        dir === 1
+          ? [...cur.slice(1), cur[0]] // front → back
+          : [cur[cur.length - 1], ...cur.slice(0, -1)]; // back → front
+      animateToOrder(newOrder);
+    },
+    [animateToOrder, cancelCurrent]
+  );
+
   /* ── expose imperative next/prev for parent-controlled navigation ── */
   useImperativeHandle(
     ref,
     () => ({
-      next: () => {
-        if (order.current.length < 2) return;
-        selectCard(order.current[1]);
-      },
-      prev: () => {
-        if (order.current.length < 2) return;
-        selectCard(order.current[order.current.length - 1]);
-      },
+      next: () => rotate(1),
+      prev: () => rotate(-1),
     }),
-    [selectCard]
+    [rotate]
   );
 
   /* ── swipe left/right to advance or go back ── */
@@ -417,13 +344,7 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       // Ignore if swipe is too short or more vertical than horizontal
       if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
       if (order.current.length < 2) return;
-      if (dx < 0) {
-        // Swipe left → advance to next card
-        selectCard(order.current[1]);
-      } else {
-        // Swipe right → go back to previous card (last in stack)
-        selectCard(order.current[order.current.length - 1]);
-      }
+      rotate(dx < 0 ? 1 : -1);
     };
 
     node.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -432,7 +353,7 @@ const CardSwap = forwardRef<CardSwapHandle, CardSwapProps>(({
       node.removeEventListener('touchstart', onTouchStart);
       node.removeEventListener('touchend', onTouchEnd);
     };
-  }, [selectCard]);
+  }, [rotate]);
 
   /* ── render children with refs + click handlers ── */
   const rendered = childArr.map((child, i) =>
