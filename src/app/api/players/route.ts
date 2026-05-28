@@ -61,6 +61,14 @@ export async function GET(req: Request) {
         red_cards,
         blue_cards,
         updated_at
+      ),
+      player_teams (
+        team_id,
+        teams (
+          id,
+          name,
+          logo
+        )
       )
     `)
     .order("last_name", { ascending: true })
