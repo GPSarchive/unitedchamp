@@ -17,13 +17,19 @@ type Props = {
   isTournamentScoped?: boolean;
 };
 
-// Column widths are tuned for six stat columns + photo + name
-const GRID_TEMPLATE =
-  "grid grid-cols-[56px_minmax(140px,1fr)_52px_52px_52px_52px_52px_52px] sm:grid-cols-[64px_1fr_60px_60px_60px_60px_60px_60px] md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px]";
-const GRID_GAPS = "gap-1.5 sm:gap-2 md:gap-3";
+// Mobile (<sm): photo + name + 3 stats (Αγ. Ν. Γκ.) — fits 360px wide, no h-scroll
+// sm+: full 8 columns (photo + name + 6 stats)
+const GRID_TEMPLATE_MOBILE =
+  "grid grid-cols-[44px_minmax(0,1fr)_36px_36px_36px]";
+const GRID_TEMPLATE_DESKTOP =
+  "sm:grid-cols-[64px_1fr_60px_60px_60px_60px_60px_60px] md:grid-cols-[80px_1fr_80px_80px_80px_80px_80px_80px]";
+const GRID_GAPS = "gap-2 sm:gap-2 md:gap-3";
+
+// Columns hidden on mobile: assists, mvp, best_gk
+const HIDDEN_ON_MOBILE = new Set(["assists", "mvp", "best_gk"]);
 
 const COLUMN_HEADERS = [
-  { key: "photo", label: "Φωτό", fullLabel: "Φωτό", align: "text-left" },
+  { key: "photo", label: "", fullLabel: "Φωτό", align: "text-left" },
   {
     key: "player",
     label: "Παίκτης",
@@ -104,7 +110,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="border-y-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 md:px-6 py-2 min-w-[640px]">
+        <div className="border-y-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 md:px-6 py-2">
           <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
             <span className="h-[2px] w-6 bg-[#fb923c]" />
             {letter}
@@ -117,8 +123,8 @@ const PlayerRowItem = memo(function PlayerRowItem({
         data-pid={player.id}
         onMouseEnter={handleMouseEnter}
         onClick={handleClick}
-        className={`${GRID_TEMPLATE} ${GRID_GAPS}
-          px-4 md:px-6 py-2.5 md:py-3 min-w-[640px]
+        className={`${GRID_TEMPLATE_MOBILE} ${GRID_TEMPLATE_DESKTOP} ${GRID_GAPS}
+          px-3 sm:px-4 md:px-6 py-2.5 md:py-3
           border-b border-[#F3EFE6]/10
           cursor-pointer transition-colors
           ${
@@ -132,7 +138,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
         {/* Photo */}
         <div className="flex items-center">
           <div
-            className="relative h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 overflow-hidden border-2"
+            className="relative h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 overflow-hidden border-2"
             style={{
               borderColor: isActive
                 ? "#fb923c"
@@ -153,7 +159,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
 
         {/* Player Info */}
         <div className="flex flex-col justify-center min-w-0">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-1.5 sm:gap-2">
             <span className="font-mono text-[9px] tabular-nums text-[#F3EFE6]/40 shrink-0">
               {pad2(index + 1)}
             </span>
@@ -172,13 +178,14 @@ const PlayerRowItem = memo(function PlayerRowItem({
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats — mobile: matches, wins, goals only */}
         <StatCell value={matches} />
         <StatCell value={wins} />
         <StatCell value={goals} highlight={goals > 0} />
-        <StatCell value={assists} />
-        <StatCell value={mvp} highlight={mvp > 0} accent="#E8B931" />
-        <StatCell value={bestGk} highlight={bestGk > 0} accent="#60a5fa" />
+        {/* sm+: assists, mvp, best_gk */}
+        <StatCell value={assists} className="hidden sm:flex" />
+        <StatCell value={mvp} highlight={mvp > 0} accent="#E8B931" className="hidden sm:flex" />
+        <StatCell value={bestGk} highlight={bestGk > 0} accent="#60a5fa" className="hidden sm:flex" />
       </div>
     </div>
   );
@@ -188,13 +195,15 @@ function StatCell({
   value,
   highlight,
   accent = "#fb923c",
+  className = "",
 }: {
   value: number;
   highlight?: boolean;
   accent?: string;
+  className?: string;
 }) {
   return (
-    <div className="flex items-center justify-center">
+    <div className={`flex items-center justify-center ${className}`}>
       <span
         className="font-[var(--f-brutal)] text-sm md:text-base leading-none tabular-nums"
         style={{
@@ -219,7 +228,7 @@ function PlayersListComponent({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         {players.length === 0 ? (
           <div className="flex items-center justify-center p-12">
             <div className="border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 px-10 py-8 text-center">
@@ -235,14 +244,19 @@ function PlayersListComponent({
             </div>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
+          <div className="w-full">
             {/* Header */}
-            <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15 min-w-[640px]">
+            <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
               <div
-                className={`${GRID_TEMPLATE} ${GRID_GAPS} px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
+                className={`${GRID_TEMPLATE_MOBILE} ${GRID_TEMPLATE_DESKTOP} ${GRID_GAPS} px-3 sm:px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
               >
                 {COLUMN_HEADERS.map((col) => (
-                  <div key={col.key} className={col.align}>
+                  <div
+                    key={col.key}
+                    className={`${col.align} ${
+                      HIDDEN_ON_MOBILE.has(col.key) ? "hidden sm:block" : ""
+                    }`}
+                  >
                     <span className="hidden md:inline">{col.fullLabel}</span>
                     <span className="md:hidden">{col.label}</span>
                   </div>

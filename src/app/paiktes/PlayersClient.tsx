@@ -133,7 +133,35 @@ const PageHeader: React.FC<{
   isTournamentScoped: boolean;
 }> = ({ totalCount, shownCount, isTournamentScoped }) => (
   <header className="relative border-b-2 border-[#F3EFE6]/20 shrink-0">
-    <div className="mx-auto max-w-[1800px] px-4 md:px-6 pt-6 pb-4 md:pt-8 md:pb-6">
+    {/* Compact mobile bar — single line, ~48px tall */}
+    <div className="md:hidden mx-auto max-w-[1800px] px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="flex items-baseline gap-2 min-w-0">
+        <Link
+          href="/"
+          aria-label="Αρχική"
+          className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/50 hover:text-[#fb923c] transition-colors shrink-0"
+        >
+          ←
+        </Link>
+        <h1 className="font-[var(--f-display)] text-lg font-black italic leading-none tracking-[-0.02em] text-[#F3EFE6] truncate">
+          Παίκτες
+        </h1>
+      </div>
+      <div className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70 shrink-0">
+        {isTournamentScoped && (
+          <span
+            aria-label="Εμβέλεια τουρνουά"
+            className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#fb923c]"
+          />
+        )}
+        <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2 py-0.5 tabular-nums">
+          {pad2(shownCount)}/{pad2(totalCount)}
+        </span>
+      </div>
+    </div>
+
+    {/* Full header from md+ unchanged */}
+    <div className="hidden md:block mx-auto max-w-[1800px] px-4 md:px-6 pt-6 pb-4 md:pt-8 md:pb-6">
       <nav className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
         <Link href="/" className="hover:text-[#fb923c] transition-colors">
           Αρχική
@@ -374,7 +402,7 @@ export default function PlayersClient({
 
   return (
     <div
-      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} flex h-screen w-screen flex-col overflow-hidden text-[#F3EFE6] font-[var(--f-body)] selection:bg-[#fb923c] selection:text-[#0a0a14]`}
+      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} flex min-h-screen w-full flex-col xl:h-screen xl:w-screen xl:overflow-hidden text-[#F3EFE6] font-[var(--f-body)] selection:bg-[#fb923c] selection:text-[#0a0a14]`}
     >
       <PaperBackground />
 
@@ -442,28 +470,13 @@ export default function PlayersClient({
 
       {/* ===== Split layout ===== */}
       <div
-        className={`relative z-10 flex flex-1 overflow-hidden ${
+        className={`relative z-10 flex flex-col xl:flex-row xl:flex-1 xl:overflow-hidden ${
           !isXL && detailOpen ? "hidden" : ""
         }`}
       >
         {/* LEFT — Filters + List */}
-        <div className="flex flex-1 flex-col overflow-hidden xl:flex-none xl:basis-[70%] border-r-2 border-[#F3EFE6]/15">
-          <PlayersFilterHeader
-            selectedSort={clientSort}
-            selectedTournamentId={clientTournamentId}
-            topInputValue={clientTopInput}
-            tournaments={tournaments}
-            searchQuery={q}
-            playerCount={players.length}
-            onSortChange={onSortChange}
-            onTournamentChange={onTournamentChange}
-            onTopChange={onTopChange}
-            onTopInputChange={setClientTopInput}
-            onSearchChange={setQ}
-            onReset={handleReset}
-          />
-
-          <div className="relative flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-col xl:flex-1 xl:overflow-hidden xl:flex-none xl:basis-[70%] xl:border-r-2 xl:border-[#F3EFE6]/15">
+          <div className="relative flex flex-col xl:flex-1 xl:overflow-hidden">
             {isLoading && (
               <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[#0a0a14]/70 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-3">
@@ -475,7 +488,24 @@ export default function PlayersClient({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto">
+            {/* Filters now scroll WITH the list — user can scroll past them.
+                Inner scroll only on xl+ where the split layout requires it. */}
+            <div className="xl:flex-1 xl:overflow-y-auto">
+              <PlayersFilterHeader
+                selectedSort={clientSort}
+                selectedTournamentId={clientTournamentId}
+                topInputValue={clientTopInput}
+                tournaments={tournaments}
+                searchQuery={q}
+                playerCount={players.length}
+                onSortChange={onSortChange}
+                onTournamentChange={onTournamentChange}
+                onTopChange={onTopChange}
+                onTopInputChange={setClientTopInput}
+                onSearchChange={setQ}
+                onReset={handleReset}
+              />
+
               <PlayersList
                 players={players}
                 activeId={activeId}

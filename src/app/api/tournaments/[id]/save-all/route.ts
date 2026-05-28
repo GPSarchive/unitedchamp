@@ -218,10 +218,9 @@ if (body.matches?.deleteIds?.length) {
     return NextResponse.json({ error: "No valid match ids to delete" }, { status: 400 });
   }
 
-  // optional: clear KO pointers first
-  const idList = deleteIds.join(",");
-  await supabaseAdmin.from("matches").update({ home_source_match_id: null }).or(`home_source_match_id.in.(${idList})`);
-  await supabaseAdmin.from("matches").update({ away_source_match_id: null }).or(`away_source_match_id.in.(${idList})`);
+  // optional: clear KO pointers first — use typed .in() to avoid string-templated filters
+  await supabaseAdmin.from("matches").update({ home_source_match_id: null }).in("home_source_match_id", deleteIds);
+  await supabaseAdmin.from("matches").update({ away_source_match_id: null }).in("away_source_match_id", deleteIds);
 
   // fetch stages for KO resolution
   const { data: delRows, error: delFetchErr } = await supabaseAdmin
