@@ -644,6 +644,12 @@ const EventBadge: React.FC<{ event: StatEvent }> = ({ event }) => {
               +{event.count - 5}
             </span>
           )}
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold"
+            style={{ color: meta.tint }}
+          >
+            {meta.label}
+          </span>
         </>
       ) : (
         <>
@@ -652,7 +658,8 @@ const EventBadge: React.FC<{ event: StatEvent }> = ({ event }) => {
             className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold"
             style={{ color: meta.tint }}
           >
-            {event.count > 1 ? `×${event.count}` : meta.label}
+            {meta.label}
+            {event.count > 1 && ` ×${event.count}`}
           </span>
         </>
       )}
@@ -828,39 +835,6 @@ const MatchEventsV2: React.FC<{
             participants={teamB}
           />
         )}
-      </div>
-
-      {/* Legend */}
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-2 border-[#F3EFE6]/15 bg-[#13131d]/50 px-4 py-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
-          Υπόμνημα ·
-        </span>
-        {(
-          [
-            "goal",
-            "assist",
-            "own_goal",
-            "yellow_card",
-            "red_card",
-            "blue_card",
-            "mvp",
-            "best_gk",
-            "captain",
-            "gk",
-          ] as const
-        ).map((type) => {
-          const meta = EVENT_META[type];
-          const Icon = meta.icon;
-          return (
-            <div
-              key={type}
-              className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/55"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{meta.label}</span>
-            </div>
-          );
-        })}
       </div>
     </motion.section>
   );
