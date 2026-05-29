@@ -2,6 +2,7 @@
 "use client";
 
 import { memo, useEffect, useMemo, useState } from "react";
+import { X, Upload } from "lucide-react";
 import type { TeamRow } from "@/app/lib/types";
 import { isStoragePath, isUrl, safeJson, signIfNeeded } from "../../teams/teamHelpers";
 
@@ -148,51 +149,44 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={isEdit ? "Επεξεργασία ομάδας" : "Νέα ομάδα"}
-        className={`absolute inset-x-0 bottom-0 top-[8vh] flex flex-col
-          bg-[#0a0a14] border-t-2 border-[#F3EFE6]/20 shadow-2xl
+        className={`absolute inset-x-0 bottom-0 top-[6vh] sm:top-auto sm:bottom-4 sm:right-4 sm:left-auto sm:w-[520px] sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl flex flex-col
+          bg-zinc-950 border border-white/10 shadow-2xl rounded-t-2xl
           transition-transform duration-200 ease-out
           ${mounted ? "translate-y-0" : "translate-y-full"}`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="flex justify-center pt-2 pb-1 shrink-0">
-          <div className="h-1 w-10 rounded-full bg-[#F3EFE6]/30" />
+        <div className="flex justify-center pt-2 pb-1 sm:hidden shrink-0">
+          <div className="h-1 w-10 rounded-full bg-white/20" />
         </div>
 
-        <div className="px-4 pt-1 pb-3 flex items-center justify-between border-b border-[#F3EFE6]/10 shrink-0">
-          <h3 className="font-mono text-[11px] uppercase tracking-[0.3em] text-[#F3EFE6]">
-            {isEdit ? "Επεξεργασία" : "Νέα Ομάδα"}
+        <div className="px-4 pt-3 pb-3 flex items-center justify-between border-b border-white/10 shrink-0">
+          <h3 className="text-sm font-semibold text-white">
+            {isEdit ? "Επεξεργασία ομάδας" : "Νέα ομάδα"}
           </h3>
           <button
             onClick={onClose}
             aria-label="Κλείσιμο"
-            className="h-9 w-9 flex items-center justify-center text-[#F3EFE6]/60 active:text-[#F3EFE6]"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/5 hover:text-white"
           >
-            <span className="text-[18px] leading-none">✕</span>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {/* Logo preview + upload */}
           <div className="flex items-center gap-3">
             <div
-              className="relative h-16 w-16 shrink-0 overflow-hidden border-2 grid place-items-center"
-              style={{ borderColor: colour || "rgba(243,239,230,0.2)", background: "#0a0a14" }}
+              className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-zinc-900 grid place-items-center"
+              style={{ borderColor: colour || "rgba(255,255,255,0.1)" }}
             >
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  alt="logo"
-                  src={preview}
-                  className="w-full h-full object-contain"
-                />
+                <img alt="logo" src={preview} className="h-full w-full object-contain" />
               ) : (
-                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/40">
-                  No logo
-                </span>
+                <span className="text-[10px] text-white/30">No logo</span>
               )}
             </div>
-            <label className="flex-1 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-3 py-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/80 active:bg-[#1a1a26] transition-colors text-center cursor-pointer">
+            <label className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-zinc-900 px-3 py-3 text-sm text-white/80 hover:bg-zinc-800 transition-colors cursor-pointer">
+              <Upload className="h-4 w-4" />
               {uploading ? "Ανέβασμα…" : "Ανέβασμα λογότυπου"}
               <input
                 type="file"
@@ -209,33 +203,27 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
-              Όνομα *
-            </span>
+            <span className="text-xs font-medium text-white/55">Όνομα *</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="π.χ. Athens City FC"
-              className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-3 font-[var(--f-body)] text-sm text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors"
+              className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
             />
           </label>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
-                ΑΜ
-              </span>
+              <span className="text-xs font-medium text-white/55">ΑΜ</span>
               <input
                 value={am}
                 onChange={(e) => setAm(e.target.value)}
-                placeholder="π.χ. AM-12345"
-                className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-3 font-[var(--f-body)] text-sm text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors"
+                placeholder="AM-12345"
+                className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
-                Σκορ σεζόν
-              </span>
+              <span className="text-xs font-medium text-white/55">Σκορ σεζόν</span>
               <input
                 type="number"
                 inputMode="numeric"
@@ -243,64 +231,61 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
                 value={seasonScore}
                 onChange={(e) => setSeasonScore(e.target.value)}
                 placeholder="0"
-                className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-3 font-[var(--f-body)] text-sm text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors"
+                className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
               />
             </label>
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
+            <span className="text-xs font-medium text-white/55">
               Λογότυπο (URL ή διαδρομή)
             </span>
             <input
               value={logo}
               onChange={(e) => setLogo(e.target.value)}
               placeholder="https://… ή teams/<id>/file.png"
-              className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-3 font-mono text-xs text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors"
+              className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 font-mono text-xs text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
-              Χρώμα ομάδας
-            </span>
+            <span className="text-xs font-medium text-white/55">Χρώμα ομάδας</span>
             <div className="flex items-center gap-2">
               <input
                 type="color"
-                value={colour || "#fb923c"}
+                value={colour || "#3b82f6"}
                 onChange={(e) => setColour(e.target.value)}
-                className="h-11 w-14 border-2 border-[#F3EFE6]/20 bg-[#0a0a14] cursor-pointer"
+                className="h-10 w-12 shrink-0 rounded-lg border border-white/15 bg-zinc-900 cursor-pointer"
                 aria-label="Επιλογέας χρώματος"
               />
               <input
                 value={colour}
                 onChange={(e) => setColour(e.target.value)}
-                placeholder="#fb923c"
+                placeholder="#3b82f6"
                 maxLength={7}
-                className="flex-1 border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-3 font-mono text-xs uppercase text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors"
+                className="flex-1 rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 font-mono text-xs text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
               />
             </div>
           </label>
 
           {validationError && (
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-red-400">
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               {validationError}
             </p>
           )}
         </div>
 
-        {/* Footer actions */}
-        <div className="px-4 pt-3 pb-4 border-t border-[#F3EFE6]/10 bg-[#0a0a14] shrink-0 flex gap-2">
+        <div className="px-4 pt-3 pb-4 border-t border-white/10 flex gap-2 shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 border-2 border-[#F3EFE6]/20 bg-[#13131d] py-3 font-mono text-[11px] uppercase tracking-[0.25em] text-[#F3EFE6]/80 active:text-[#F3EFE6] transition-colors"
+            className="flex-1 rounded-lg border border-white/15 bg-zinc-900 py-2.5 text-sm text-white/80 hover:bg-zinc-800 transition-colors"
           >
             Ακύρωση
           </button>
           <button
             onClick={save}
             disabled={!!validationError || saving}
-            className="flex-1 border-2 border-[#fb923c] bg-[#fb923c] py-3 font-mono text-[11px] uppercase tracking-[0.25em] text-[#0a0a14] disabled:opacity-50 active:bg-[#fb923c]/85 transition-colors"
+            className="flex-1 rounded-lg border border-blue-500/50 bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
           >
             {saving ? "Αποθήκευση…" : isEdit ? "Αποθήκευση" : "Δημιουργία"}
           </button>

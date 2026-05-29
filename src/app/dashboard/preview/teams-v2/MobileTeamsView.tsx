@@ -236,7 +236,7 @@ export default function MobileTeamsView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-[#F3EFE6]">
+    <div className="min-h-screen bg-zinc-950 text-white">
       <MobileTeamsTopBar
         q={q}
         onQChange={setQ}
@@ -249,41 +249,31 @@ export default function MobileTeamsView() {
         }
       />
 
-      {loading ? (
-        <p className="px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
-          Φόρτωση…
-        </p>
-      ) : error ? (
-        <p className="px-4 py-10 text-center font-mono text-[11px] uppercase tracking-[0.25em] text-red-400">
-          {error}
-        </p>
-      ) : filteredRows.length === 0 ? (
-        <div className="px-4 py-12">
-          <div className="border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 px-6 py-8 text-center">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
-              / 00 · Κατάλογος
-            </span>
-            <p className="mt-3 font-[var(--f-display)] text-xl font-black italic leading-tight">
-              Δεν βρέθηκαν ομάδες
-            </p>
-            <p className="mt-2 font-[var(--f-body)] text-sm text-[#F3EFE6]/60">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 pt-4 pb-24">
+        {loading ? (
+          <p className="py-10 text-center text-sm text-white/55">Φόρτωση…</p>
+        ) : error ? (
+          <p className="py-10 text-center text-sm text-red-400">{error}</p>
+        ) : filteredRows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/15 bg-zinc-900/40 px-6 py-12 text-center">
+            <p className="text-base font-semibold text-white">Δεν βρέθηκαν ομάδες</p>
+            <p className="mt-1.5 text-sm text-white/55">
               Δοκιμάστε άλλα κριτήρια ή δημιουργήστε νέα ομάδα.
             </p>
           </div>
-        </div>
-      ) : (
-        <div className="px-3 pt-3 pb-24 space-y-2.5">
-          {filteredRows.map((row, idx) => (
-            <MobileTeamCard
-              key={row.id}
-              row={row}
-              index={idx}
-              onTap={openPlayers}
-              onMenu={setActionRow}
-            />
-          ))}
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {filteredRows.map((row) => (
+              <MobileTeamCard
+                key={row.id}
+                row={row}
+                onTap={openPlayers}
+                onMenu={setActionRow}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {filterOpen && (
         <MobileTeamsFilterSheet

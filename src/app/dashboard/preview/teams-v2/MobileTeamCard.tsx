@@ -2,6 +2,7 @@
 "use client";
 
 import { memo, useCallback } from "react";
+import { MoreVertical, Users, ChevronRight } from "lucide-react";
 import type { TeamRow } from "@/app/lib/types";
 
 export type TeamCardRow = {
@@ -18,14 +19,11 @@ export type TeamCardRow = {
 
 type Props = {
   row: TeamCardRow;
-  index: number;
   onTap: (row: TeamCardRow) => void;
   onMenu: (row: TeamCardRow) => void;
 };
 
-const pad2 = (n: number | string) => String(n).padStart(2, "0");
-
-function MobileTeamCardComponent({ row, index, onTap, onMenu }: Props) {
+function MobileTeamCardComponent({ row, onTap, onMenu }: Props) {
   const handleTap = useCallback(() => onTap(row), [onTap, row]);
   const handleMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -36,92 +34,85 @@ function MobileTeamCardComponent({ row, index, onTap, onMenu }: Props) {
   );
 
   const isArchived = !!row.deleted_at;
-  const accent = row.colour || "#fb923c";
+  const accent = row.colour || null;
 
   return (
     <div
       onClick={handleTap}
       role="button"
-      className={`relative w-full border-2 border-[#F3EFE6]/15 bg-[#13131d] px-3 py-2.5
-        active:bg-[#1a1a26] transition-colors
-        ${isArchived ? "opacity-60" : ""}`}
+      className={`group relative flex flex-col rounded-xl border border-white/10 bg-zinc-900/60 p-3.5 hover:border-white/20 hover:bg-zinc-900 transition-colors cursor-pointer ${
+        isArchived ? "opacity-60" : ""
+      }`}
     >
-      {/* Left color stripe */}
-      <span
-        aria-hidden
-        className="absolute left-0 top-0 bottom-0 w-[3px]"
-        style={{ background: accent }}
-      />
+      {/* Accent stripe */}
+      {accent && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r"
+          style={{ background: accent }}
+        />
+      )}
 
-      <div className="flex items-start gap-3 pl-1.5">
+      <div className="flex items-start gap-3">
         {/* Logo */}
-        <div
-          className="relative h-12 w-12 shrink-0 overflow-hidden border-2 grid place-items-center"
-          style={{ borderColor: "rgba(243,239,230,0.2)", background: "#0a0a14" }}
-        >
+        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-950 grid place-items-center">
           {row.logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={row.logo}
               alt={row.name}
               loading="lazy"
-              className="w-full h-full object-contain"
+              className="h-full w-full object-contain"
             />
           ) : (
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/40">
-              —
-            </span>
+            <span className="text-[10px] text-white/30">—</span>
           )}
         </div>
 
         {/* Name + meta */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1.5">
-            <span className="font-mono text-[9px] tabular-nums text-[#F3EFE6]/40 shrink-0">
-              {pad2(index + 1)}
-            </span>
-            <h3 className="font-[var(--f-display)] text-[15px] font-semibold italic text-[#F3EFE6] truncate">
+          <div className="flex items-start gap-1.5">
+            <h3 className="text-sm font-semibold text-white truncate leading-tight">
               {row.name}
             </h3>
             {isArchived && (
-              <span className="ml-1 shrink-0 border border-[#F3EFE6]/25 px-1.5 py-[1px] font-mono text-[8px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
+              <span className="shrink-0 mt-0.5 inline-flex items-center rounded border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-200">
                 Αρχείο
               </span>
             )}
           </div>
 
-          <div className="mt-1 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
-            <span className="text-[#F3EFE6]/40">ID</span>
-            <span className="tabular-nums">#{row.id}</span>
-            {row.am && (
-              <>
-                <span className="text-[#F3EFE6]/25">·</span>
-                <span className="truncate">ΑΜ {row.am}</span>
-              </>
-            )}
+          <div className="mt-1 text-xs text-white/55 truncate">
+            ID #{row.id}
+            {row.am && <span className="ml-1.5 text-white/40">· ΑΜ {row.am}</span>}
           </div>
-
-          {row.season_score != null && (
-            <div className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/45">
-              Σκορ σεζόν · <span className="text-[#fb923c] tabular-nums">{row.season_score}</span>
-            </div>
-          )}
         </div>
 
         {/* Kebab */}
         <button
           onClick={handleMenu}
           aria-label="Ενέργειες ομάδας"
-          className="shrink-0 -mr-1 -mt-1 h-9 w-9 flex items-center justify-center text-[#F3EFE6]/60 active:text-[#F3EFE6] transition-colors"
+          className="shrink-0 -mr-1 -mt-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-white/50 hover:bg-white/5 hover:text-white/80 transition-colors"
         >
-          <span className="text-[18px] leading-none">⋮</span>
+          <MoreVertical className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Footer: tap hint */}
-      <div className="mt-2.5 pt-2 border-t border-[#F3EFE6]/10 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/45">
-        <span>Πατήστε για ρόστερ</span>
-        <span className="text-[#F3EFE6]/35">›</span>
+      {/* Footer row */}
+      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-3 text-white/60">
+          {row.season_score != null && (
+            <span>
+              <span className="text-white/40">Σκορ</span>{" "}
+              <span className="tabular-nums text-white">{row.season_score}</span>
+            </span>
+          )}
+        </div>
+        <span className="inline-flex items-center gap-1 text-white/50 group-hover:text-white/80 transition-colors">
+          <Users className="h-3.5 w-3.5" />
+          Ρόστερ
+          <ChevronRight className="h-3.5 w-3.5" />
+        </span>
       </div>
     </div>
   );

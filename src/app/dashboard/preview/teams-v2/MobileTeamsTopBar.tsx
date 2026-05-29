@@ -2,6 +2,7 @@
 "use client";
 
 import { memo } from "react";
+import { Search, SlidersHorizontal, Plus } from "lucide-react";
 
 type Props = {
   q: string;
@@ -12,8 +13,6 @@ type Props = {
   teamCount: number;
   statusLabel: string;
 };
-
-const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
 function MobileTeamsTopBarComponent({
   q,
@@ -26,32 +25,35 @@ function MobileTeamsTopBarComponent({
 }: Props) {
   return (
     <div
-      className="sticky top-0 z-30 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15"
+      className="sticky top-0 z-30 border-b border-white/10 bg-zinc-950/95 backdrop-blur"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="px-3 py-2.5 flex items-center gap-2">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-3 flex items-center gap-2">
+        <h1 className="hidden md:block text-base font-semibold text-white shrink-0 mr-2">
+          Ομάδες
+        </h1>
+
         <div className="relative flex-1 min-w-0">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]/40 pointer-events-none">
-            ΑΝΑΖ·
-          </span>
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
           <input
             type="text"
             value={q}
             onChange={(e) => onQChange(e.target.value)}
-            placeholder="Όνομα ή ΑΜ"
-            className="w-full border-2 border-[#F3EFE6]/20 bg-[#0a0a14] pl-14 pr-3 py-2 font-[var(--f-body)] text-sm text-[#F3EFE6] placeholder:text-[#F3EFE6]/30 focus:border-[#fb923c] focus:outline-none transition-colors"
+            placeholder="Αναζήτηση με όνομα ή ΑΜ"
+            className="w-full rounded-lg border border-white/15 bg-zinc-900 pl-9 pr-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
           />
         </div>
 
         <button
           onClick={onOpenFilters}
-          className="relative shrink-0 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/80 active:bg-[#1a1a26] transition-colors"
+          className="relative shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white/80 hover:bg-zinc-800 transition-colors"
           aria-label="Φίλτρα"
         >
-          Φίλτρα
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">Φίλτρα</span>
           {activeFilterCount > 0 && (
             <span
-              className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[#fb923c] text-[#0a0a14] font-mono text-[10px] font-bold tabular-nums"
+              className="ml-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-blue-500 px-1 text-[10px] font-semibold tabular-nums text-white"
               aria-label={`${activeFilterCount} ενεργά φίλτρα`}
             >
               {activeFilterCount}
@@ -61,18 +63,20 @@ function MobileTeamsTopBarComponent({
 
         <button
           onClick={onNew}
-          className="shrink-0 border-2 border-[#fb923c] bg-[#fb923c] px-3 py-2 font-mono text-[14px] leading-none text-[#0a0a14] active:bg-[#fb923c]/85 transition-colors"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-blue-500/50 bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
           aria-label="Νέα ομάδα"
         >
-          +
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Νέα ομάδα</span>
         </button>
       </div>
 
-      <div className="px-3 pb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 pb-2.5 flex items-center justify-between text-xs text-white/55">
         <span>
-          <span className="text-[#fb923c]">{pad2(teamCount)}</span> ομάδες
+          <span className="tabular-nums text-white">{teamCount}</span>{" "}
+          {teamCount === 1 ? "ομάδα" : "ομάδες"}
         </span>
-        <span>Κατάσταση · {statusLabel}</span>
+        <span>{statusLabel}</span>
       </div>
     </div>
   );

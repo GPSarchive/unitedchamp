@@ -2,6 +2,7 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
+import { RotateCcw } from "lucide-react";
 
 export type StatusFilter = "active" | "archived" | "all";
 
@@ -58,49 +59,48 @@ function MobileTeamsFilterSheetComponent({
         role="dialog"
         aria-modal="true"
         aria-label="Φίλτρα"
-        className={`absolute inset-x-0 bottom-0 max-h-[85vh] flex flex-col
-          bg-[#0a0a14] border-t-2 border-[#F3EFE6]/20 shadow-2xl
+        className={`absolute inset-x-0 bottom-0 mx-auto max-w-md max-h-[85vh] flex flex-col
+          rounded-t-2xl bg-zinc-950 border-t border-x border-white/10 shadow-2xl
           transition-transform duration-200 ease-out
           ${mounted ? "translate-y-0" : "translate-y-full"}`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex justify-center pt-2 pb-1">
-          <div className="h-1 w-10 rounded-full bg-[#F3EFE6]/30" />
+          <div className="h-1 w-10 rounded-full bg-white/20" />
         </div>
 
-        <div className="px-4 pt-2 pb-3 flex items-center justify-between border-b border-[#F3EFE6]/10">
-          <h3 className="font-mono text-[11px] uppercase tracking-[0.3em] text-[#F3EFE6]">
-            Φίλτρα
-          </h3>
+        <div className="px-4 pt-2 pb-3 flex items-center justify-between border-b border-white/10">
+          <h3 className="text-sm font-semibold text-white">Φίλτρα</h3>
           <button
             onClick={onReset}
             disabled={!hasAnyFilter}
-            className={`font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+            className={`inline-flex items-center gap-1 text-xs transition-colors ${
               hasAnyFilter
-                ? "text-[#fb923c] active:text-[#fb923c]/80"
-                : "text-[#F3EFE6]/30"
+                ? "text-blue-400 hover:text-blue-300"
+                : "text-white/30"
             }`}
           >
-            ↺ Επαναφορά
+            <RotateCcw className="h-3 w-3" />
+            Επαναφορά
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
           <section>
-            <label className="mb-2 block font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
+            <label className="mb-2 block text-xs font-medium text-white/55">
               Κατάσταση
             </label>
-            <div className="flex border-2 border-[#F3EFE6]/20 bg-[#13131d]">
+            <div className="flex rounded-lg border border-white/15 bg-zinc-900 p-0.5">
               {STATUS_OPTIONS.map((opt) => {
                 const active = status === opt.value;
                 return (
                   <button
                     key={opt.value}
                     onClick={() => onStatusChange(opt.value)}
-                    className={`flex-1 px-2 py-3 font-mono text-[11px] uppercase tracking-[0.22em] transition-colors ${
+                    className={`flex-1 rounded-md px-2 py-2 text-sm transition-colors ${
                       active
-                        ? "bg-[#fb923c] text-[#0a0a14]"
-                        : "text-[#F3EFE6]/70 active:text-[#F3EFE6]"
+                        ? "bg-blue-600 text-white"
+                        : "text-white/70 hover:text-white"
                     }`}
                   >
                     {opt.label}
@@ -111,12 +111,12 @@ function MobileTeamsFilterSheetComponent({
           </section>
         </div>
 
-        <div className="px-4 pt-3 pb-4 border-t border-[#F3EFE6]/10 bg-[#0a0a14]">
+        <div className="px-4 pt-3 pb-4 border-t border-white/10">
           <button
             onClick={onClose}
-            className="w-full border-2 border-[#fb923c] bg-[#fb923c] py-3 font-mono text-[11px] uppercase tracking-[0.25em] text-[#0a0a14] active:bg-[#fb923c]/85 transition-colors"
+            className="w-full rounded-lg border border-blue-500/50 bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-500 transition-colors"
           >
-            Εφαρμογή · {teamCount} ομάδες
+            Εφαρμογή · {teamCount} {teamCount === 1 ? "ομάδα" : "ομάδες"}
           </button>
         </div>
       </div>
