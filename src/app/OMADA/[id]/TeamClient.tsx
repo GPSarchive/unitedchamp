@@ -1169,8 +1169,13 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ delay: Math.min(index * 0.03, 0.3) }}
-      className="group p-4 transition-colors hover:bg-[#13131d] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
+      className="group relative p-4 transition-colors hover:bg-[#13131d] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
     >
+      <Link
+        href={`/matches/${m.id}`}
+        aria-label={`Λεπτομέρειες αγώνα: ${mine?.name ?? "—"} εναντίον ${opp?.name ?? "ΤΒΑ"}`}
+        className="absolute inset-0 z-0"
+      />
       {/* Mobile-only top row: date + outcome */}
       <div className="mb-3 flex items-center justify-between gap-2 sm:hidden">
         {datePill}
@@ -1275,7 +1280,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
         {m.tournament?.name && (
           <Link
             href={`/tournaments/${m.tournament.id}`}
-            className="truncate text-[#F3EFE6]/55 hover:text-[#fb923c] transition-colors max-w-[160px]"
+            className="relative z-10 truncate text-[#F3EFE6]/55 hover:text-[#fb923c] transition-colors max-w-[160px]"
             title={m.tournament.name}
           >
             {m.tournament.name}

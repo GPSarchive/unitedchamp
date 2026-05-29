@@ -751,7 +751,7 @@ export default function EditorialCalendar({
                 className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-3"
                 style={{
                   height: 110,
-                  background: "linear-gradient(to bottom, transparent 0%, #0a0a14 65%)",
+                  background: "linear-gradient(to bottom, transparent 0%, rgba(10,10,20,0.55) 85%)",
                 }}
               >
                 <motion.button

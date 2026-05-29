@@ -7,6 +7,8 @@ import PlayersToolbar from "./PlayersToolbar";
 import PlayersGrid from "./PlayersGrid";
 import PlayerEditorDrawer from "./PlayerEditorDrawer";
 
+type TeamLite = { id: number; name: string };
+
 export default function AdminPlayersCRUD() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([]);
   const [loading, setLoading] = useState(false);
@@ -17,6 +19,10 @@ export default function AdminPlayersCRUD() {
 
   // archive toggle
   const [showArchived, setShowArchived] = useState(false);
+
+  // team filter
+  const [teams, setTeams] = useState<TeamLite[]>([]);
+  const [teamId, setTeamId] = useState<number | null>(null);
 
   // editor
   const [showEditor, setShowEditor] = useState(false);
@@ -213,6 +219,31 @@ export default function AdminPlayersCRUD() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showArchived]);
 
+  // Load teams once for the filter dropdown
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/teams`, { credentials: "include" });
+        const body = await safeJson(res);
+        if (!res.ok) return;
+        const rows = (body?.teams as TeamLite[]) ?? [];
+        setTeams(rows);
+      } catch {
+        // non-blocking
+      }
+    })();
+  }, []);
+
+  // Apply team filter on top of fetched players
+  const visiblePlayers = useMemo(() => {
+    if (teamId == null) return players;
+    return players.filter((p: any) => {
+      const pt = p?.player_teams;
+      if (!Array.isArray(pt)) return false;
+      return pt.some((row: any) => row?.team_id === teamId);
+    });
+  }, [players, teamId]);
+
   // Log whenever state changes (what the UI will actually render)
   useEffect(() => {
     logPlayers(players, "STATE (post-filter, rendered)");
@@ -362,17 +393,20 @@ export default function AdminPlayersCRUD() {
         onNew={openCreate}
         showArchived={showArchived}
         onToggleArchived={setShowArchived}
+        teams={teams}
+        teamId={teamId}
+        onTeamChange={setTeamId}
       />
 
       {loading ? (
         <p className="text-white/70">Loading…</p>
       ) : error ? (
         <p className="text-red-400">{error}</p>
-      ) : players.length === 0 ? (
+      ) : visiblePlayers.length === 0 ? (
         <p className="text-white/60">No players found.</p>
       ) : (
         <PlayersGrid
-          players={players}
+          players={visiblePlayers}
           onEdit={openEdit}
           onDelete={handleDelete}
           onRestore={showArchived ? handleRestore : undefined}

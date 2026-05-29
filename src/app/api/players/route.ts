@@ -35,7 +35,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim();
   const excludeTeamId = Number(url.searchParams.get("excludeTeamId") || "");
-  const limit = Math.min(Number(url.searchParams.get("limit") || 25), 100);
+  const limitParam = url.searchParams.get("limit");
+  const limit = limitParam ? Number(limitParam) : null;
   const include = (url.searchParams.get("include") || "").trim();
 
   // Read with service role so RLS on child tables can't hide stats
@@ -60,12 +61,23 @@ export async function GET(req: Request) {
         red_cards,
         blue_cards,
         updated_at
+      ),
+      player_teams (
+        team_id,
+        teams (
+          id,
+          name,
+          logo
+        )
       )
     `)
     .order("last_name", { ascending: true })
-    .limit(limit)
     .order("id", { foreignTable: "player_statistics", ascending: false })
     .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
+
+  if (limit && Number.isFinite(limit) && limit > 0) {
+    query = query.limit(limit);
+  }
 
   // Soft-delete filtering (same pattern as teams)
   if (include === "archived") {

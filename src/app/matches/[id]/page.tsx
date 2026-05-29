@@ -9,7 +9,6 @@ import {
   fetchPlayersForTeam,
   fetchMatchStatsMap,
   fetchParticipantsMap,
-  fetchStandingsByStage,
 } from "./queries";
 import { parseId, extractYouTubeId, formatStatus } from "./utils";
 import { notFound } from "next/navigation";
@@ -26,7 +25,6 @@ import TournamentHeader from "./TournamentHeader";
 import TeamVersusScore from "./TeamVersusScore";
 import MatchEventsTimeline from "./MatchEventsTimeline";
 import TeamRostersDisplay from "./TeamRostersDisplay";
-import TournamentStandings from "./TournamentStandings";
 import MatchAdminActions from "./MatchAdminActions";
 
 function errMsg(e: unknown) {
@@ -63,14 +61,11 @@ export default async function Page({
   // NO SIGNING - Keep raw path
   const tournamentLogo = match.tournament?.logo ?? null;
 
-  const [aRes, bRes, statsRes, partsRes, standingsRes] = await Promise.allSettled([
+  const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
-    match.stage_id
-      ? fetchStandingsByStage(match.stage_id)
-      : Promise.resolve({ standings: [], stageKind: null, stageName: null } as import("./queries").StandingsResult),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -81,10 +76,6 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
-  const { standings, stageKind, stageName } =
-    standingsRes.status === "fulfilled"
-      ? standingsRes.value
-      : { standings: [] as import("./queries").StandingRow[], stageKind: null, stageName: null };
 
   // ✅ Detect players who appear on both rosters
   const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
@@ -105,8 +96,6 @@ export default async function Page({
     dataLoadErrors.push(`Match stats: ${errMsg(statsRes.reason)}`);
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
-  if (standingsRes.status === "rejected")
-    dataLoadErrors.push(`Standings: ${errMsg(standingsRes.reason)}`);
 
   // Video: prefer query param override, else DB column, and hide section when none
   const dbVideoRaw = match.video_url ?? null;
@@ -295,9 +284,6 @@ export default async function Page({
             </div>
           </section>
         )}
-
-        {/* Tournament Standings - After Video - Always shows, displays empty state if no data */}
-        <TournamentStandings standings={standings} stageKind={stageKind} stageName={stageName} />
 
         {isAdmin ? (
           <>
