@@ -98,6 +98,20 @@ function MobileTeamCardComponent({ row, onTap, onMenu }: Props) {
         </button>
       </div>
 
+      {/* Timestamp line */}
+      {(row.created_at || (isArchived && row.deleted_at)) && (
+        <div className="mt-2 text-[11px] text-white/40 truncate">
+          {isArchived && row.deleted_at ? (
+            <>
+              <span className="text-amber-400/70">Αρχ.</span>{" "}
+              {new Date(row.deleted_at).toLocaleDateString("el-GR")}
+            </>
+          ) : row.created_at ? (
+            <>Δημιουργία {new Date(row.created_at).toLocaleDateString("el-GR")}</>
+          ) : null}
+        </div>
+      )}
+
       {/* Footer row */}
       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3 text-white/60">

@@ -1,18 +1,27 @@
 // src/app/dashboard/preview/teams-v2/MobileTeamEditorSheet.tsx
 "use client";
 
-import { memo, useEffect, useMemo, useState } from "react";
-import { X, Upload } from "lucide-react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { X, Upload, Droplet, Scissors } from "lucide-react";
 import type { TeamRow } from "@/app/lib/types";
 import { isStoragePath, isUrl, safeJson, signIfNeeded } from "../../teams/teamHelpers";
+import ConfirmLogoModal from "../../teams/ConfirmLogoModal";
+import {
+  extractColorFromImageFile,
+  extractColorFromImageElement,
+  extractColorFromImageUrl,
+} from "@/app/lib/colorExtraction";
 
 type Props = {
   initial: (Partial<TeamRow> & { id?: number }) | null;
   onClose: () => void;
+  /** Called when the user explicitly saves; should close the editor. */
   onSaved: (saved: TeamRow) => void;
+  /** Called after auto-save flows (logo upload, color extraction, trim). Should NOT close. */
+  onAutoSaved?: (saved: TeamRow) => void;
 };
 
-function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
+function MobileTeamEditorSheetComponent({ initial, onClose, onSaved, onAutoSaved }: Props) {
   const [mounted, setMounted] = useState(false);
   const isEdit = !!initial?.id;
 
@@ -27,6 +36,15 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [trimming, setTrimming] = useState(false);
+  const [trimResult, setTrimResult] = useState<string | null>(null);
+
+  // Confirm-upload modal
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const previewImgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -73,8 +91,17 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
     return null;
   }, [name, am, seasonScore, logo]);
 
-  async function uploadLogo(file: File) {
+  function pickFile(file: File) {
+    setPendingFile(file);
+    setShowConfirm(true);
+  }
+
+  async function actuallyUpload(file: File) {
+    setShowConfirm(false);
+    setPendingFile(null);
     setUploading(true);
+    let uploadedUrl: string | null = null;
+    let extractedColour: string | null = null;
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -86,13 +113,111 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
       });
       const body = await safeJson(res);
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      const url = body.publicUrl as string;
-      setLogo(url);
-      setPreview(url);
+      uploadedUrl = body.publicUrl as string;
+      setLogo(uploadedUrl);
+      setPreview(uploadedUrl);
+
+      // auto-extract color from the file directly (safer than waiting on signed URL)
+      try {
+        extractedColour = await extractColorFromImageFile(file);
+        setColour(extractedColour);
+      } catch (err) {
+        console.warn("Color extraction failed:", err);
+      }
+
+      // Auto-save when editing existing team (keeps editor open)
+      if (isEdit && initial?.id && uploadedUrl) {
+        const patchBody: Record<string, any> = { logo: uploadedUrl };
+        if (extractedColour) patchBody.colour = extractedColour;
+        const res2 = await fetch(`/api/teams/${initial.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(patchBody),
+        });
+        const body2 = await safeJson(res2);
+        if (!res2.ok) throw new Error(body2?.error || `HTTP ${res2.status}`);
+        const saved = body2.team as TeamRow;
+        const mapped = await signIfNeeded(saved.logo ?? null);
+        setPreview(mapped ?? saved.logo ?? uploadedUrl);
+        onAutoSaved?.(saved);
+      }
     } catch (e: any) {
       alert(e?.message ?? String(e));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function extractColorFromCurrentLogo() {
+    setExtracting(true);
+    try {
+      let colourHex: string;
+      const img = previewImgRef.current;
+      if (img && img.complete && img.naturalWidth > 0) {
+        try {
+          colourHex = extractColorFromImageElement(img);
+        } catch (err: any) {
+          if (preview) {
+            colourHex = await extractColorFromImageUrl(preview);
+          } else {
+            throw err;
+          }
+        }
+      } else if (preview) {
+        colourHex = await extractColorFromImageUrl(preview);
+      } else {
+        throw new Error("Δεν υπάρχει λογότυπο για εξαγωγή χρώματος.");
+      }
+      setColour(colourHex);
+
+      // Auto-save extracted colour when editing existing team (keeps editor open)
+      if (isEdit && initial?.id) {
+        const res = await fetch(`/api/teams/${initial.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ colour: colourHex }),
+        });
+        const body = await safeJson(res);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        onAutoSaved?.(body.team as TeamRow);
+      }
+    } catch (e: any) {
+      alert(e?.message ?? String(e));
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  async function trimLogo() {
+    if (!isEdit || !initial?.id) return;
+    setTrimming(true);
+    setTrimResult(null);
+    try {
+      const res = await fetch(`/api/teams/${initial.id}/trim-logo`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setTrimResult(`✗ ${body?.error || "Αποτυχία"}`);
+        return;
+      }
+      if (body.trimmed) {
+        setTrimResult(
+          `✓ ${body.before.width}×${body.before.height} → ${body.after.width}×${body.after.height}`
+        );
+        // refresh preview via cache-busted re-sign
+        const mapped = await signIfNeeded(logo || null);
+        if (mapped) setPreview(`${mapped}${mapped.includes("?") ? "&" : "?"}_=${Date.now()}`);
+      } else {
+        setTrimResult("✓ Δεν χρειάστηκε");
+      }
+    } catch (err: any) {
+      setTrimResult(`✗ ${err?.message || "Σφάλμα"}`);
+    } finally {
+      setTrimming(false);
     }
   }
 
@@ -135,6 +260,8 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
       setSaving(false);
     }
   }
+
+  const hasLogo = !!logo.trim();
 
   return (
     <div className="fixed inset-0 z-50">
@@ -180,7 +307,13 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
             >
               {preview ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img alt="logo" src={preview} className="h-full w-full object-contain" />
+                <img
+                  ref={previewImgRef}
+                  alt="logo"
+                  src={preview}
+                  crossOrigin="anonymous"
+                  className="h-full w-full object-contain"
+                />
               ) : (
                 <span className="text-[10px] text-white/30">No logo</span>
               )}
@@ -195,12 +328,40 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   e.target.value = "";
-                  if (f) uploadLogo(f);
+                  if (f) pickFile(f);
                 }}
                 disabled={uploading}
               />
             </label>
           </div>
+
+          {hasLogo && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={extractColorFromCurrentLogo}
+                disabled={extracting || !preview}
+                className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-zinc-900 px-2.5 py-1.5 text-xs text-white/80 hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+              >
+                <Droplet className="h-3.5 w-3.5" />
+                {extracting ? "Εξαγωγή…" : "Εξαγωγή χρώματος"}
+              </button>
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={trimLogo}
+                  disabled={trimming}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-zinc-900 px-2.5 py-1.5 text-xs text-white/80 hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+                >
+                  <Scissors className="h-3.5 w-3.5" />
+                  {trimming ? "Trim…" : "Trim λογότυπου"}
+                </button>
+              )}
+              {trimResult && (
+                <span className="text-xs text-white/55">{trimResult}</span>
+              )}
+            </div>
+          )}
 
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-white/55">Όνομα *</span>
@@ -291,6 +452,18 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved }: Props) {
           </button>
         </div>
       </div>
+
+      {pendingFile && (
+        <ConfirmLogoModal
+          file={pendingFile}
+          open={showConfirm}
+          onCancel={() => {
+            setShowConfirm(false);
+            setPendingFile(null);
+          }}
+          onConfirm={(f) => actuallyUpload(f)}
+        />
+      )}
     </div>
   );
 }

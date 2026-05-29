@@ -1,7 +1,7 @@
 // src/app/dashboard/preview/teams-v2/MobileTeamsView.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { safeJson, signIfNeeded } from "../../teams/teamHelpers";
 import type { TeamRow, PlayerAssociation } from "@/app/lib/types";
 
@@ -11,6 +11,8 @@ import MobileTeamActionSheet from "./MobileTeamActionSheet";
 import MobileTeamPlayersSheet from "./MobileTeamPlayersSheet";
 import MobileTeamEditorSheet from "./MobileTeamEditorSheet";
 import MobileTeamsFilterSheet, { type StatusFilter } from "./MobileTeamsFilterSheet";
+import PlayerEditorDrawer from "../../players/PlayerEditorDrawer";
+import type { PlayerWithStats, PlayerFormPayload } from "../../players/types";
 
 type TeamRowWithArchived = TeamRow & { deleted_at?: string | null };
 
@@ -53,6 +55,12 @@ export default function MobileTeamsView() {
   const [playersFor, setPlayersFor] = useState<TeamCardRow | null>(null);
   const [editorRow, setEditorRow] = useState<TeamRowWithArchived | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+
+  // player drawer
+  const [playerEditorOpen, setPlayerEditorOpen] = useState(false);
+  const [playerEditing, setPlayerEditing] = useState<PlayerWithStats | null>(null);
+  // when set, a newly-created player should be attached to this team id
+  const playerCreateForTeamRef = useRef<number | null>(null);
 
   // players cache per team id (kept across opens within session)
   const [playersByTeam, setPlayersByTeam] = useState<
@@ -147,7 +155,7 @@ export default function MobileTeamsView() {
     setEditorRow(null);
   }
 
-  async function handleSaved(saved: TeamRow) {
+  async function mergeSavedTeam(saved: TeamRow) {
     const logo = await signIfNeeded(saved.logo);
     const signed = { ...(saved as TeamRowWithArchived), logo };
     setTeams((prev) => {
@@ -155,7 +163,15 @@ export default function MobileTeamsView() {
       if (exists) return prev.map((t) => (t.id === signed.id ? signed : t));
       return [signed, ...prev];
     });
+  }
+
+  async function handleSaved(saved: TeamRow) {
+    await mergeSavedTeam(saved);
     closeEditor();
+  }
+
+  async function handleAutoSaved(saved: TeamRow) {
+    await mergeSavedTeam(saved);
   }
 
   async function handleArchive(id: number) {
@@ -235,18 +251,81 @@ export default function MobileTeamsView() {
     setStatus("active");
   }
 
+  function openEditPlayer(player: PlayerWithStats) {
+    playerCreateForTeamRef.current = null;
+    setPlayerEditing(player);
+    setPlayerEditorOpen(true);
+  }
+
+  function openCreatePlayer(teamId: number) {
+    playerCreateForTeamRef.current = teamId;
+    setPlayerEditing(null);
+    setPlayerEditorOpen(true);
+  }
+
+  function closePlayerEditor() {
+    setPlayerEditorOpen(false);
+    setPlayerEditing(null);
+    playerCreateForTeamRef.current = null;
+  }
+
+  async function handlePlayerSave(payload: PlayerFormPayload) {
+    const editingId = playerEditing?.id;
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/players/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        const body = await safeJson(res);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        if (playersFor) await loadPlayers(playersFor.id, true);
+      } else {
+        const res = await fetch(`/api/players`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        const body = await safeJson(res);
+        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        const created = body?.player as { id: number } | undefined;
+        const attachTo = playerCreateForTeamRef.current;
+        if (created && attachTo) {
+          const attachRes = await fetch(`/api/teams/${attachTo}/players`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ player_id: created.id }),
+          });
+          const attachBody = await safeJson(attachRes);
+          if (!attachRes.ok)
+            throw new Error(attachBody?.error || `HTTP ${attachRes.status}`);
+          await loadPlayers(attachTo, true);
+        }
+      }
+      closePlayerEditor();
+    } catch (e: any) {
+      alert(e?.message ?? String(e));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <MobileTeamsTopBar
         q={q}
         onQChange={setQ}
         onOpenFilters={() => setFilterOpen(true)}
+        onRefresh={() => fetchTeams(status)}
         onNew={openCreate}
         activeFilterCount={activeFilterCount}
         teamCount={filteredRows.length}
         statusLabel={
           status === "active" ? "Ενεργές" : status === "archived" ? "Αρχείο" : "Όλες"
         }
+        refreshing={loading}
       />
 
       <div className="mx-auto max-w-7xl px-3 sm:px-4 pt-4 pb-24">
@@ -320,6 +399,8 @@ export default function MobileTeamsView() {
           error={playersErr[playersFor.id] ?? null}
           onClose={() => setPlayersFor(null)}
           onReload={() => loadPlayers(playersFor.id, true)}
+          onEditPlayer={openEditPlayer}
+          onCreatePlayer={() => openCreatePlayer(playersFor.id)}
         />
       )}
 
@@ -328,6 +409,16 @@ export default function MobileTeamsView() {
           initial={editorRow}
           onClose={closeEditor}
           onSaved={handleSaved}
+          onAutoSaved={handleAutoSaved}
+        />
+      )}
+
+      {playerEditorOpen && (
+        <PlayerEditorDrawer
+          open={playerEditorOpen}
+          onClose={closePlayerEditor}
+          player={playerEditing}
+          onSubmit={handlePlayerSave}
         />
       )}
     </div>

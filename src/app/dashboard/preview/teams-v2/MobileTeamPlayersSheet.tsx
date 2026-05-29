@@ -2,10 +2,11 @@
 "use client";
 
 import { memo, useEffect, useState } from "react";
-import { X, RefreshCw, Search, UserPlus, Trash2 } from "lucide-react";
+import { X, RefreshCw, Search, UserPlus, Trash2, Pencil } from "lucide-react";
 import type { PlayerAssociation, PlayerRow } from "@/app/lib/types";
 import { safeJson } from "../../teams/teamHelpers";
 import type { TeamCardRow } from "./MobileTeamCard";
+import type { PlayerWithStats } from "../../players/types";
 
 type Props = {
   team: TeamCardRow;
@@ -14,9 +15,11 @@ type Props = {
   error?: string | null;
   onClose: () => void;
   onReload: () => void;
+  onEditPlayer: (player: PlayerWithStats) => void;
+  onCreatePlayer: () => void;
 };
 
-type Mode = "list" | "add" | "create";
+type Mode = "list" | "add";
 
 function MobileTeamPlayersSheetComponent({
   team,
@@ -25,6 +28,8 @@ function MobileTeamPlayersSheetComponent({
   error,
   onClose,
   onReload,
+  onEditPlayer,
+  onCreatePlayer,
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<Mode>("list");
@@ -35,11 +40,6 @@ function MobileTeamPlayersSheetComponent({
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<PlayerRow[]>([]);
-
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
-  const [playerNumber, setPlayerNumber] = useState<string>("");
-  const [position, setPosition] = useState("");
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -87,37 +87,6 @@ function MobileTeamPlayersSheetComponent({
       const assoc = body?.association as PlayerAssociation | undefined;
       if (assoc) setList((xs) => [...xs, assoc]);
       setResults((xs) => xs.filter((p) => p.id !== playerId));
-    } catch (e: any) {
-      alert(e?.message ?? String(e));
-    }
-  }
-
-  async function createAndAdd() {
-    if (!first.trim() || !last.trim()) return;
-    try {
-      const res = await fetch(`/api/players`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          first_name: first.trim(),
-          last_name: last.trim(),
-          position: position.trim() || null,
-          player_number:
-            playerNumber.trim() && Number.isFinite(Number(playerNumber))
-              ? Number(playerNumber)
-              : null,
-        }),
-      });
-      const body = await safeJson(res);
-      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      const player = body?.player as PlayerRow;
-      if (player) await addExisting(player.id);
-      setFirst("");
-      setLast("");
-      setPlayerNumber("");
-      setPosition("");
-      setMode("list");
     } catch (e: any) {
       alert(e?.message ?? String(e));
     }
@@ -207,12 +176,18 @@ function MobileTeamPlayersSheetComponent({
 
         <div className="px-3 pt-2 pb-2 flex items-center gap-1 border-b border-white/10 shrink-0">
           <TabBtn value="list" label="Ρόστερ" />
-          <TabBtn value="add" label="Προσθήκη" />
-          <TabBtn value="create" label="Νέος" />
+          <TabBtn value="add" label="Προσθήκη υπάρχοντος" />
+          <button
+            onClick={onCreatePlayer}
+            className="ml-auto inline-flex items-center gap-1 rounded-md border border-blue-500/40 bg-blue-600/20 px-2.5 py-1.5 text-xs font-medium text-blue-200 hover:bg-blue-600/30 transition-colors"
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Νέος παίκτης
+          </button>
           <button
             onClick={onReload}
             aria-label="Ανανέωση"
-            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/5 hover:text-white"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/5 hover:text-white"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -229,7 +204,7 @@ function MobileTeamPlayersSheetComponent({
                 <div className="rounded-xl border border-dashed border-white/15 bg-zinc-900/40 px-4 py-8 text-center">
                   <p className="text-sm font-semibold text-white">Άδειο ρόστερ</p>
                   <p className="mt-1 text-xs text-white/55">
-                    Χρησιμοποίησε Προσθήκη ή Νέος.
+                    Χρησιμοποίησε Προσθήκη υπάρχοντος ή Νέος παίκτης.
                   </p>
                 </div>
               ) : (
@@ -240,9 +215,13 @@ function MobileTeamPlayersSheetComponent({
                     return (
                       <li
                         key={p.id}
-                        className="flex items-center gap-3 rounded-lg border border-white/10 bg-zinc-900/60 px-3 py-2.5"
+                        className="group flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-900/60 px-3 py-2.5 hover:border-white/20 transition-colors"
                       >
-                        <div className="min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => onEditPlayer(p as PlayerWithStats)}
+                          className="min-w-0 flex-1 text-left"
+                        >
                           <div className="text-sm font-medium text-white truncate">
                             {p.first_name} {p.last_name}
                           </div>
@@ -267,7 +246,14 @@ function MobileTeamPlayersSheetComponent({
                               </>
                             )}
                           </div>
-                        </div>
+                        </button>
+                        <button
+                          onClick={() => onEditPlayer(p as PlayerWithStats)}
+                          aria-label="Επεξεργασία"
+                          className="shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-md text-white/55 hover:bg-white/5 hover:text-white transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => removeFromTeam(p.id)}
                           aria-label="Αφαίρεση"
@@ -349,56 +335,6 @@ function MobileTeamPlayersSheetComponent({
             </div>
           )}
 
-          {mode === "create" && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-white/55">Όνομα *</span>
-                  <input
-                    value={first}
-                    onChange={(e) => setFirst(e.target.value)}
-                    className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-white/55">Επώνυμο *</span>
-                  <input
-                    value={last}
-                    onChange={(e) => setLast(e.target.value)}
-                    className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
-                  />
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-white/55">Φανέλα</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={playerNumber}
-                    onChange={(e) => setPlayerNumber(e.target.value)}
-                    className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-medium text-white/55">Θέση</span>
-                  <input
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)}
-                    placeholder="π.χ. CF"
-                    className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
-                  />
-                </label>
-              </div>
-              <button
-                onClick={createAndAdd}
-                disabled={!first.trim() || !last.trim()}
-                className="w-full rounded-lg border border-blue-500/50 bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
-              >
-                Δημιουργία & προσθήκη
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

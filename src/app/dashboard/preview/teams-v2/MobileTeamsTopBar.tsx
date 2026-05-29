@@ -2,26 +2,30 @@
 "use client";
 
 import { memo } from "react";
-import { Search, SlidersHorizontal, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, Plus, RefreshCw } from "lucide-react";
 
 type Props = {
   q: string;
   onQChange: (v: string) => void;
   onOpenFilters: () => void;
+  onRefresh: () => void;
   onNew: () => void;
   activeFilterCount: number;
   teamCount: number;
   statusLabel: string;
+  refreshing?: boolean;
 };
 
 function MobileTeamsTopBarComponent({
   q,
   onQChange,
   onOpenFilters,
+  onRefresh,
   onNew,
   activeFilterCount,
   teamCount,
   statusLabel,
+  refreshing,
 }: Props) {
   return (
     <div
@@ -59,6 +63,15 @@ function MobileTeamsTopBarComponent({
               {activeFilterCount}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={onRefresh}
+          disabled={refreshing}
+          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-zinc-900 text-white/80 hover:bg-zinc-800 disabled:opacity-50 transition-colors"
+          aria-label="Ανανέωση"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
         </button>
 
         <button
