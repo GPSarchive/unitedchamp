@@ -285,10 +285,9 @@ const TournamentMasthead: React.FC<{
             <div className="mt-6 flex items-center gap-4">
               <span className="h-[2px] w-12 bg-[#fb923c]" />
               <p className="font-[var(--f-body)] max-w-xl text-sm md:text-base text-[#F3EFE6]/70 leading-relaxed">
-                Επίσημο δελτίο αγώνα · στατιστικά, συμμετοχές και αποτέλεσμα
-                σε{" "}
+                Επίσημο δελτίο αγώνα ·{" "}
                 <span className="italic text-[#fb923c] font-semibold">
-                  πραγματικό χρόνο
+                  στατιστικά, συμμετοχές και αποτελέσματα
                 </span>
                 .
               </p>
@@ -405,14 +404,14 @@ const ScorePanel: React.FC<{
         )}
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-6 md:gap-8 md:px-8 md:py-10">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 px-4 py-6 md:gap-8 md:px-8 md:py-10">
         <TeamColumn
           team={match.team_a}
           align="right"
           scorers={[...teamAScorers, ...teamAOwnGoals]}
         />
 
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3 pt-2 md:pt-6">
           {isFinished ? (
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
@@ -479,6 +478,7 @@ const TeamColumn: React.FC<{
             objectFit="contain"
             sizes="(min-width: 1024px) 128px, (min-width: 768px) 112px, 80px"
             priority
+            animate={false}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center font-[var(--f-brutal)] text-2xl text-[#F3EFE6]/40">

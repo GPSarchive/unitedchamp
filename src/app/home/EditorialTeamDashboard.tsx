@@ -81,6 +81,9 @@ function formatRelative(iso: string) {
 function isUpcoming(iso: string) {
   return new Date(iso) > new Date();
 }
+function hasScore(score?: [number, number]) {
+  return Array.isArray(score) && score.length === 2 && score[0] != null && score[1] != null;
+}
 
 // =========================================================
 // Hero card — the "next match" editorial broadsheet card
@@ -381,7 +384,12 @@ export default function EditorialTeamDashboard({
   const upcomingMatches = useMemo(
     () =>
       allMatches
-        .filter((m) => isUpcoming(m.start))
+        .filter(
+          (m) =>
+            isUpcoming(m.start) &&
+            m.status !== "finished" &&
+            !hasScore(m.score)
+        )
         .sort((a, b) => a.start.localeCompare(b.start)),
     [allMatches]
   );
