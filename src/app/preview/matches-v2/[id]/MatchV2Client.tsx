@@ -623,46 +623,26 @@ function getPlayerEvents(stats: MatchPlayerStatRow | null): StatEvent[] {
 const EventBadge: React.FC<{ event: StatEvent }> = ({ event }) => {
   const meta = EVENT_META[event.type];
   const Icon = meta.icon;
-  const showRepeated =
-    event.type === "goal" || event.type === "own_goal" || event.type === "assist";
+  const isCountable =
+    event.type === "goal" ||
+    event.type === "own_goal" ||
+    event.type === "assist" ||
+    event.type === "yellow_card" ||
+    event.type === "red_card" ||
+    event.type === "blue_card";
 
   return (
     <div
       className="flex items-center gap-1 border-2 border-[#F3EFE6]/15 bg-[#0a0a14] px-2 py-0.5"
       title={`${meta.label}${event.count > 1 ? ` ×${event.count}` : ""}`}
     >
-      {showRepeated ? (
-        <>
-          {Array.from({ length: Math.min(event.count, 5) }).map((_, i) => (
-            <Icon key={i} className="h-3.5 w-3.5 shrink-0" />
-          ))}
-          {event.count > 5 && (
-            <span
-              className="font-mono text-[10px] font-bold"
-              style={{ color: meta.tint }}
-            >
-              +{event.count - 5}
-            </span>
-          )}
-          <span
-            className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: meta.tint }}
-          >
-            {meta.label}
-          </span>
-        </>
-      ) : (
-        <>
-          <Icon className="h-3.5 w-3.5 shrink-0" />
-          <span
-            className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: meta.tint }}
-          >
-            {meta.label}
-            {event.count > 1 && ` ×${event.count}`}
-          </span>
-        </>
-      )}
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span
+        className="font-mono text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: meta.tint }}
+      >
+        {isCountable ? `${event.count} ${meta.label}` : meta.label}
+      </span>
     </div>
   );
 };
