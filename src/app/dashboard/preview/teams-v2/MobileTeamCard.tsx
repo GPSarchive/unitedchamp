@@ -113,15 +113,7 @@ function MobileTeamCardComponent({ row, onTap, onMenu }: Props) {
       )}
 
       {/* Footer row */}
-      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-3 text-white/60">
-          {row.season_score != null && (
-            <span>
-              <span className="text-white/40">Σκορ</span>{" "}
-              <span className="tabular-nums text-white">{row.season_score}</span>
-            </span>
-          )}
-        </div>
+      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-end text-xs">
         <span className="inline-flex items-center gap-1 text-white/50 group-hover:text-white/80 transition-colors">
           <Users className="h-3.5 w-3.5" />
           Ρόστερ
