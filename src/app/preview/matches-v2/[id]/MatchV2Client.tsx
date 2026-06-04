@@ -242,9 +242,8 @@ const PageHeader: React.FC<{ tournamentName: string | null }> = ({
 // ───────────────────────────────────────────────────────────────────────
 const TournamentMasthead: React.FC<{
   tournament: { id: number; name: string; logo: string | null } | null;
-  matchId: Id;
   matchDate: string | null;
-}> = ({ tournament, matchId, matchDate }) => {
+}> = ({ tournament, matchDate }) => {
   if (!tournament) return null;
 
   return (
@@ -260,9 +259,6 @@ const TournamentMasthead: React.FC<{
             <div className="mb-5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em]">
               <span className="h-[2px] w-8 bg-[#fb923c]" />
               <span className="text-[#fb923c]">Διοργάνωση</span>
-              <span className="border border-[#F3EFE6]/20 px-2 py-0.5 text-[#F3EFE6]/70">
-                MATCH · #{pad2(String(matchId))}
-              </span>
             </div>
 
             <h1
@@ -1019,7 +1015,6 @@ const MatchV2Client: React.FC<Props> = ({
 
       <TournamentMasthead
         tournament={match.tournament}
-        matchId={match.id}
         matchDate={match.match_date}
       />
 
