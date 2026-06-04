@@ -1,8 +1,13 @@
-// Preview route — v2 match detail page in the editorial broadsheet aesthetic.
-// Mirrors the styling system used in /OMADA/[id] and /preview/anakoinoseis-v2
-// (Fraunces/Archivo/JetBrains/Figtree, #0a0a14 ground, #F3EFE6 ink, #fb923c
-// orange, #E8B931 saffron, 2px borders + hard shadow). Public-facing only —
-// admin sections from the live page are intentionally omitted here.
+// Production candidate — v2 match detail page in the editorial broadsheet
+// aesthetic. Mirrors the styling system used in /OMADA/[id] and
+// /preview/anakoinoseis-v2 (Fraunces/Archivo/JetBrains/Figtree, #0a0a14 ground,
+// #F3EFE6 ink, #fb923c orange, #E8B931 saffron, 2px borders + hard shadow).
+//
+// Unlike the original preview, this version carries over the full admin surface
+// from the live /matches/[id] page (stats editor, video CRUD, postpone action,
+// duplicate-player warning) so it can replace the live page without losing
+// functionality. Admin sections are gated behind the same isAdmin check and
+// reuse the existing, battle-tested server actions and components.
 export const revalidate = 0;
 
 import { notFound } from "next/navigation";
@@ -13,11 +18,16 @@ import {
   fetchParticipantsMap,
 } from "@/app/matches/[id]/queries";
 import { parseId, extractYouTubeId } from "@/app/matches/[id]/utils";
+import { saveAllStatsAction } from "@/app/matches/[id]/actions";
+import StatsEditor from "@/app/matches/[id]/StatsEditor";
+import MatchVideoAdminForm from "@/app/matches/[id]/MatchVideoAdminForm";
+import MatchAdminActions from "@/app/matches/[id]/MatchAdminActions";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
 
 export const metadata = {
-  title: "Αγώνας · v2 preview",
+  title: "Αγώνας",
 };
 
 function errMsg(e: unknown) {
@@ -34,6 +44,15 @@ export default async function Page({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ video?: string }>;
 }) {
+  const supabase = await createSupabaseRSCClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isAdmin = Array.isArray(user?.app_metadata?.roles)
+    ? (user!.app_metadata!.roles as string[]).includes("admin")
+    : false;
+
   const { id: idStr } = await params;
   const { video } = await searchParams;
   const id = parseId(idStr) as Id | null;
@@ -57,6 +76,16 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
+
+  // Detect players who appear on both rosters (admin warning).
+  const teamAPlayerIds = new Set(teamAPlayers.map((p) => p.player.id));
+  const teamBPlayerIds = new Set(teamBPlayers.map((p) => p.player.id));
+  const duplicatePlayerIds = new Set<number>();
+  for (const playerId of teamAPlayerIds) {
+    if (teamBPlayerIds.has(playerId)) {
+      duplicatePlayerIds.add(playerId);
+    }
+  }
 
   const dataLoadErrors: string[] = [];
   if (aRes.status === "rejected")
@@ -166,6 +195,85 @@ export default async function Page({
       isScheduled={isScheduled}
       videoId={videoId}
       dataLoadErrors={dataLoadErrors}
+      adminSlot={
+        isAdmin ? (
+          <>
+            {/* Admin Actions (Postpone Match) */}
+            <MatchAdminActions
+              match={{
+                id: match.id,
+                status: match.status,
+                match_date: match.match_date,
+                teamA: match.team_a,
+                teamB: match.team_b,
+              }}
+            />
+
+            <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
+              <h2 className="mb-3 text-lg font-semibold text-white">
+                Admin: Match Player Stats
+              </h2>
+              <p className="mb-4 text-xs text-white/70">
+                Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και
+                συμπλήρωσε στατιστικά. Πάτησε <strong>Save all</strong> για
+                αποθήκευση.
+              </p>
+
+              <form id="stats-form" action={saveAllStatsAction}>
+                <input type="hidden" name="match_id" value={String(match.id)} />
+
+                {duplicatePlayerIds.size > 0 && (
+                  <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
+                    <p className="font-semibold text-amber-200 text-sm">
+                      ⚠️ Προσοχή: {duplicatePlayerIds.size} παίκτης/παίκτες
+                      βρίσκονται και στις δύο ομάδες
+                    </p>
+                    <p className="mt-1 text-xs text-amber-200/80">
+                      Βεβαιωθείτε ότι επισημαίνετε κάθε παίκτη ως "συμμετοχή" μόνο
+                      σε ΜΙΑ ομάδα. Η επισήμανση παίκτη στις δύο ομάδες θα
+                      προκαλέσει σφάλμα.
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-6">
+                  <StatsEditor
+                    teamId={match.team_a.id}
+                    teamName={match.team_a.name}
+                    associations={teamAPlayers}
+                    existing={existingStats}
+                    participants={participants}
+                    duplicatePlayerIds={duplicatePlayerIds}
+                  />
+                  <StatsEditor
+                    teamId={match.team_b.id}
+                    teamName={match.team_b.name}
+                    associations={teamBPlayers}
+                    existing={existingStats}
+                    participants={participants}
+                    duplicatePlayerIds={duplicatePlayerIds}
+                  />
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    type="submit"
+                    className="rounded bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-500"
+                  >
+                    Save all
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            {/* Admin: Match video CRUD, at the very bottom */}
+            <MatchVideoAdminForm
+              matchId={match.id}
+              initialVideoUrl={match.video_url ?? null}
+            />
+          </>
+        ) : null
+      }
     />
   );
 }

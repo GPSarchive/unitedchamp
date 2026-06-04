@@ -14,6 +14,7 @@ import type { PlayerLite } from "./types";
 import PlayerProfileCard from "./PlayerProfileCard";
 import PlayersList from "./PlayersList";
 import PlayersFilterHeader from "./PlayersFilterHeader";
+import CardBackdrop from "./CardBackdrop";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography
@@ -75,6 +76,20 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
+}
+
+// Tracks tab visibility so the profile card can pause its always-on
+// animations (mesh/glow/holo/sweep) when the page isn't being looked at.
+function usePageVisible(): boolean {
+  const [visible, setVisible] = useState<boolean>(() =>
+    typeof document === "undefined" ? true : !document.hidden
+  );
+  useEffect(() => {
+    const onChange = () => setVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onChange);
+    return () => document.removeEventListener("visibilitychange", onChange);
+  }, []);
+  return visible;
 }
 
 type TournamentOpt = { id: number; name: string; season: string | null };
@@ -226,6 +241,7 @@ export default function PlayersClient({
   const [isLoading, setIsLoading] = useState(false);
 
   const isXL = useIsXL();
+  const pageVisible = usePageVisible();
   const [detailOpen, setDetailOpen] = useState(false);
 
   const router = useRouter();
@@ -349,9 +365,11 @@ export default function PlayersClient({
     setIsLoading(false);
   }, [initialPlayers]);
 
-  const players = useMemo(() => {
-    return topLimit != null ? base.slice(0, topLimit) : base;
-  }, [base, topLimit]);
+  // The server is authoritative for the top=N hard cap and pagination: it
+  // returns the already-capped, already-paged window (≤ pageSize rows) with a
+  // matching totalCount. No client-side re-slicing — that previously made the
+  // header count, pagination, and visible rows disagree with each other.
+  const players = base;
 
   const byId = useMemo(
     () => Object.fromEntries(players.map((p) => [p.id, p] as const)),
@@ -410,35 +428,7 @@ export default function PlayersClient({
       {!isXL && detailOpen && active && (
         <div className="fixed inset-0 z-50 flex flex-col overflow-hidden">
           {/* Original gold topographic backdrop (matches desktop right panel) */}
-          <div className="absolute inset-0 z-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: `
-                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
-                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
-                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
-                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
-                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
-                `,
-                backgroundSize: "100% 100%",
-              }}
-            />
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: `
-                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
-                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
-                `,
-                animation: "meshGradient 20s ease-in-out infinite",
-                backgroundSize: "200% 200%",
-              }}
-            />
-            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
-          </div>
+          <CardBackdrop />
 
           <div className="sticky top-0 z-10 border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/85 backdrop-blur-sm px-4 py-2.5 shrink-0">
             <button
@@ -455,6 +445,7 @@ export default function PlayersClient({
               <PlayerProfileCard
                 player={active}
                 isTournamentScoped={isTournamentScoped}
+                paused={!pageVisible}
               />
             </div>
           </div>
@@ -533,47 +524,7 @@ export default function PlayersClient({
 
         {/* RIGHT — 3D card (desktop). Original gold topographic backdrop. */}
         <aside className="relative hidden xl:flex xl:flex-none xl:basis-[30%] flex-col overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            {/* Base gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black" />
-            {/* Topographic contour lines pattern */}
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: `
-                  repeating-radial-gradient(circle at 20% 30%, transparent 0px, transparent 40px, rgba(212, 175, 55, 0.6) 40px, rgba(212, 175, 55, 0.6) 41px),
-                  repeating-radial-gradient(circle at 80% 70%, transparent 0px, transparent 35px, rgba(255, 193, 7, 0.5) 35px, rgba(255, 193, 7, 0.5) 36px),
-                  repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 50px, rgba(140, 108, 0, 0.7) 50px, rgba(140, 108, 0, 0.7) 51px),
-                  repeating-radial-gradient(circle at 10% 80%, transparent 0px, transparent 45px, rgba(212, 175, 55, 0.4) 45px, rgba(212, 175, 55, 0.4) 46px),
-                  repeating-radial-gradient(circle at 90% 20%, transparent 0px, transparent 38px, rgba(255, 193, 7, 0.6) 38px, rgba(255, 193, 7, 0.6) 39px)
-                `,
-                backgroundSize: "100% 100%",
-              }}
-            />
-            {/* Subtle animated glow overlay */}
-            <div
-              className="absolute inset-0 opacity-30"
-              style={{
-                background: `
-                  radial-gradient(circle at 30% 40%, rgba(212, 175, 55, 0.08) 0%, transparent 40%),
-                  radial-gradient(circle at 70% 60%, rgba(255, 193, 7, 0.06) 0%, transparent 40%)
-                `,
-                animation: "meshGradient 20s ease-in-out infinite",
-                backgroundSize: "200% 200%",
-              }}
-            />
-            {/* Spotlight from top */}
-            <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/[0.03] to-transparent" />
-            {/* Vignette effect */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_0%,_rgba(0,0,0,0.4)_100%)]" />
-            {/* Subtle noise texture for depth */}
-            <div
-              className="absolute inset-0 opacity-[0.02] mix-blend-overlay pointer-events-none"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-              }}
-            />
-          </div>
+          <CardBackdrop />
 
           <div className="relative z-10 flex-1 overflow-y-auto p-6">
             {active ? (
@@ -581,6 +532,7 @@ export default function PlayersClient({
                 <PlayerProfileCard
                   player={active}
                   isTournamentScoped={isTournamentScoped}
+                  paused={!pageVisible}
                 />
               </div>
             ) : (

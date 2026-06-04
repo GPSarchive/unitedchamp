@@ -42,3 +42,39 @@ export type PlayerLite = {
   tournament_best_gk?: number;
   tournament_wins?: number;
 };
+
+// Career stat keys that have a `tournament_*` twin. The twin key is always
+// the career key prefixed with `tournament_` (e.g. goals → tournament_goals).
+export type ScopableStatKey =
+  | "matches"
+  | "goals"
+  | "assists"
+  | "yellow_cards"
+  | "red_cards"
+  | "blue_cards"
+  | "mvp"
+  | "best_gk"
+  | "wins";
+
+/**
+ * Single source of truth for "scoped vs career" stat selection.
+ *
+ * When a tournament is selected (`scoped`), prefer the player's tournament_*
+ * value for `careerKey` if it is defined; otherwise fall back to the career
+ * value, then 0. When not scoped, always return the career value (or 0).
+ *
+ * Used by the list rows, the profile card, and the server-side sort/filter so
+ * the displayed number, the sort order, and the stat filter never diverge.
+ */
+export function resolveStat(
+  p: PlayerLite,
+  careerKey: ScopableStatKey,
+  scoped: boolean,
+): number {
+  if (scoped) {
+    const tournamentValue = p[`tournament_${careerKey}` as const];
+    if (typeof tournamentValue === "number") return tournamentValue;
+  }
+  const careerValue = p[careerKey];
+  return typeof careerValue === "number" ? careerValue : 0;
+}

@@ -129,6 +129,9 @@ type Props = {
   isScheduled: boolean;
   videoId: string | null;
   dataLoadErrors: string[];
+  /** Admin-only sections (stats editor, video CRUD, postpone), rendered by the
+   * server component and gated behind isAdmin. Null/absent for public viewers. */
+  adminSlot?: React.ReactNode;
 };
 
 // ───────────────────────────────────────────────────────────────────────
@@ -1018,6 +1021,7 @@ const MatchV2Client: React.FC<Props> = ({
   isScheduled,
   videoId,
   dataLoadErrors,
+  adminSlot,
 }) => {
   const showRoster = isScheduled && roster.length > 0;
   const showEvents = !showRoster && participants.length > 0;
@@ -1060,21 +1064,25 @@ const MatchV2Client: React.FC<Props> = ({
           )}
 
           {videoId && <VideoV2 videoId={videoId} />}
+
+          {adminSlot && (
+            <section className="space-y-6 border-t-2 border-dashed border-[#fb923c]/30 pt-10">
+              <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+                <span className="h-[2px] w-8 bg-[#fb923c]" />
+                Διαχείριση Αγώνα
+              </div>
+              {adminSlot}
+            </section>
+          )}
         </div>
       </section>
 
       <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
         <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-4 py-6 md:flex-row md:items-center md:px-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
-            Αγώνας · έκδοση v2 (preview)
+            Επίσημο δελτίο αγώνα
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/matches/${match.id}`}
-              className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
-            >
-              ← Παλιά έκδοση
-            </Link>
             <Link
               href="/matches"
               className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"

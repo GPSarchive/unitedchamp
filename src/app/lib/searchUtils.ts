@@ -153,9 +153,12 @@ export type ParsedSearchQuery = {
   text: string[];          // General text search terms
   team?: string[];         // team:Barcelona
   position?: string[];     // position:Forward
-  minGoals?: number;       // goals:>10
-  minMatches?: number;     // matches:>5
-  minAssists?: number;     // assists:>3
+  // Stat filters are MINIMUMS (≥). The `>`/`>=` operator in the input is
+  // parsed but ignored — `goals:>10`, `goals:>=10` and `goals:10` all mean
+  // "goals ≥ 10" (so a player with exactly 10 is included). See parseSearchQuery.
+  minGoals?: number;       // goals:10  → total_goals ≥ 10
+  minMatches?: number;     // matches:5 → total_matches ≥ 5
+  minAssists?: number;     // assists:3 → total_assists ≥ 3
 };
 
 /**
@@ -164,9 +167,10 @@ export type ParsedSearchQuery = {
  * Supports:
  * - team:Barcelona - filter by team name
  * - position:Forward - filter by position
- * - goals:>10 - filter by goals greater than 10
- * - matches:>5 - filter by matches greater than 5
- * - assists:>3 - filter by assists greater than 3
+ * - goals:10 - filter by goals AT LEAST 10 (≥). `>`/`>=` are accepted in the
+ *   input for convenience but treated identically — the threshold is inclusive.
+ * - matches:5 - filter by matches at least 5 (≥)
+ * - assists:3 - filter by assists at least 3 (≥)
  * - Plain text - searches across name, team, position
  *
  * Examples:
@@ -211,7 +215,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
         case 'goals':
         case 'γκολ':
         case 'gkol':
-          // Support >N, >=N, N formats
+          // Accept >N, >=N, N. The operator (group 1) is INTENTIONALLY ignored:
+          // the threshold is always inclusive (≥). Don't "fix" to strict `>`
+          // without re-deciding — three consumers depend on the ≥ semantics.
           const goalsMatch = valueTrimmed.match(/^(>=?)?(\d+)$/);
           if (goalsMatch) {
             result.minGoals = parseInt(goalsMatch[2], 10);
