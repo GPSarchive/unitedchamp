@@ -244,21 +244,8 @@ const TournamentMasthead: React.FC<{
   tournament: { id: number; name: string; logo: string | null } | null;
   matchId: Id;
   matchDate: string | null;
-  status: string;
-}> = ({ tournament, matchId, matchDate, status }) => {
+}> = ({ tournament, matchId, matchDate }) => {
   if (!tournament) return null;
-  const statusLabel =
-    status === "finished"
-      ? "Ολοκληρώθηκε"
-      : status === "postponed"
-      ? "Αναβολή"
-      : "Προγραμματισμένο";
-  const statusColor =
-    status === "finished"
-      ? "#fb923c"
-      : status === "postponed"
-      ? "#a855f7"
-      : "#E8B931";
 
   return (
     <header className="relative overflow-hidden border-b-2 border-[#F3EFE6]/20">
@@ -305,11 +292,7 @@ const TournamentMasthead: React.FC<{
             className="col-span-12 md:col-span-4 flex flex-col gap-4"
           >
             <div className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] p-4 shadow-[6px_6px_0_0_#fb923c] md:p-5 md:shadow-[10px_10px_0_0_#fb923c]">
-              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em]">
-                <span className="text-[#fb923c]">Κατάσταση</span>
-                <span style={{ color: statusColor }}>{statusLabel}</span>
-              </div>
-              <div className="mt-4 flex items-center gap-4">
+              <div className="flex items-center gap-4">
                 {tournament.logo ? (
                   <div className="relative h-16 w-16 shrink-0 md:h-20 md:w-20">
                     <TournamentImage
@@ -395,7 +378,7 @@ const ScorePanel: React.FC<{
       {/* Top strip */}
       <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.25em] md:px-6">
         <span className="text-[#F3EFE6]/70">
-          {isFinished ? "Τελικό σκορ" : isPostponed ? "Αναβολή" : "Συνάντηση"}
+          {isFinished ? "Τελικό σκορ" : isPostponed ? "Αναβολή" : "Προσεχώς"}
         </span>
         {resultLabel && (
           <span
@@ -548,7 +531,7 @@ const WelcomeKicker: React.FC<{ matchDate: string | null }> = ({
     className="relative border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 p-8 text-center md:p-10"
   >
     <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
-      / 00 · Προγραμματισμένο
+      Προγραμματισμένο
     </span>
     <p className="mt-4 font-[var(--f-display)] text-2xl font-black italic leading-tight text-[#F3EFE6] md:text-3xl">
       Ο αγώνας δεν έχει διεξαχθεί ακόμα
@@ -795,7 +778,7 @@ const MatchEventsV2: React.FC<{
             className="mt-2 font-[var(--f-display)] font-black italic leading-[0.95] text-[#F3EFE6]"
             style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)" }}
           >
-            Αναφορά Συμμετοχών
+            Φύλλο Αγώνα
           </h2>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
@@ -954,7 +937,7 @@ const RostersV2: React.FC<{
             className="mt-2 font-[var(--f-display)] font-black italic leading-[0.95] text-[#F3EFE6]"
             style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)" }}
           >
-            Οι ομάδες που θα αγωνιστούν
+            Οι Παίκτες που θα αγωνιστούν
           </h2>
         </div>
       </div>
@@ -1038,7 +1021,6 @@ const MatchV2Client: React.FC<Props> = ({
         tournament={match.tournament}
         matchId={match.id}
         matchDate={match.match_date}
-        status={match.status}
       />
 
       <section className="relative">
