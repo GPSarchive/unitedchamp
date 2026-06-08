@@ -58,15 +58,6 @@ function LoginContent() {
     <div className="page">
       <div className="bg" aria-hidden style={{ ['--bg-url' as any]: `url('${bgUrl}')` }} />
 
-      {/* Quick theme switcher */}
-      <div className="themes">
-        {['track','court','stadium','soccer','cycling','tennis'].map((key) => (
-          <a key={key} className={`chip ${bgParam===key? 'active':''}`} href={`?bg=${key}${next ? `&next=${encodeURIComponent(next)}` : ''}`}>
-            {key}
-          </a>
-        ))}
-      </div>
-
       <main className="card" role="main">
         <header className="header">
           <div className="logo">🏃‍♂️</div>
@@ -166,28 +157,6 @@ function LoginContent() {
           from { transform: translateY(0); }
           to { transform: translateY(-40px); }
         }
-
-        .themes {
-          position: fixed;
-          right: 16px;
-          top: 16px;
-          display: flex;
-          gap: 8px;
-          z-index: 10;
-        }
-        .chip {
-          padding: 6px 10px;
-          border-radius: 999px;
-          background: rgba(2,6,23,0.55);
-          border: 1px solid rgba(255,255,255,0.18);
-          text-decoration: none;
-          color: #e5e7eb;
-          font-size: 12px;
-          backdrop-filter: blur(6px);
-          transition: background 150ms ease, transform 120ms ease, border-color 120ms ease;
-        }
-        .chip:hover { background: rgba(2,6,23,0.75); transform: translateY(-1px); border-color: rgba(255,255,255,0.35); }
-        .chip.active { background: linear-gradient(90deg, rgba(34,197,94,0.85), rgba(59,130,246,0.85)); border: none; }
 
         .card {
           width: 100%;
