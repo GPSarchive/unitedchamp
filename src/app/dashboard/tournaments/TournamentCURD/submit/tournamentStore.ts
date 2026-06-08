@@ -81,7 +81,6 @@ type DbMatchRow = {
   matchday?: number | null;
   round?: number | null;
   bracket_pos?: number | null;
-  is_ko?: boolean | null;
   // KO round/pos pointers
   home_source_round?: number | null;
   home_source_bracket_pos?: number | null;
@@ -1831,9 +1830,6 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             id: (ov as any).db_id ?? null,
             stage_id: stageId,
             group_id: groupId ?? null,
-            // Derive is_ko from the row's bracket coordinates so the server can
-            // route KO vs league matches correctly (don't rely on a stale flag).
-            is_ko: r.round != null && r.bracket_pos != null ? true : (r.is_ko ?? false),
             team_a_id: r.team_a_id ?? null,
             team_b_id: r.team_b_id ?? null,
             team_a_score: (ov as any).team_a_score ?? null,
