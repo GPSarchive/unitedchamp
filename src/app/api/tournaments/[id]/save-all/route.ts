@@ -124,10 +124,20 @@ function matchNaturalKey(r: {
   matchday?: number | null;
   round?: number | null;
   bracket_pos?: number | null;
+  team_a_id?: number | null;
+  team_b_id?: number | null;
 }) {
   const isKO = r.round != null && r.bracket_pos != null;
   if (isKO) return `KO|${r.stage_id}|${r.round}|${r.bracket_pos}`;
-  return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}`;
+  // For league/group matches bracket_pos is always null, so the schedule slot
+  // alone (stage|group|matchday) is not unique — a matchday holds several
+  // fixtures. Include the (order-independent) team pair so distinct matches in
+  // the same matchday don't collapse to one key and get dropped by the dedup.
+  const a = r.team_a_id ?? 0;
+  const b = r.team_b_id ?? 0;
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${lo}-${hi}`;
 }
 
 export async function POST(
@@ -557,7 +567,7 @@ if (body.matches?.upsert?.length) {
     const lgStageIds = Array.from(new Set(toCreateLG.map(m => m.stage_id).filter(Boolean)));
     const { data: existingMatches } = await supabaseAdmin
       .from("matches")
-      .select("stage_id, group_id, matchday, round, bracket_pos")
+      .select("stage_id, group_id, matchday, round, bracket_pos, team_a_id, team_b_id")
       .in("stage_id", lgStageIds)
       .is("round", null);
 
