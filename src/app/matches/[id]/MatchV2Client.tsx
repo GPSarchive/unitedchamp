@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Match detail (v2 preview) — editorial sports-broadsheet × kinetic brutalism.
- * Same atmosphere/typography as /OMADA/[id] and /preview/anakoinoseis-v2:
- * dark ground, ivory ink, orange signal, saffron honours, 2px borders with
- * offset hard shadows, mono labels, italic display headlines.
+ * Match detail — editorial sports-broadsheet × kinetic brutalism.
+ * Same atmosphere/typography as /OMADA/[id]: dark ground, ivory ink, orange
+ * signal, saffron honours, 2px borders with offset hard shadows, mono labels,
+ * italic display headlines.
  */
 
 import React from "react";
@@ -28,7 +28,7 @@ import {
   BestGkIcon,
   CaptainIcon,
   GkIcon,
-} from "@/app/matches/[id]/StatIcons";
+} from "./StatIcons";
 import type { Id, MatchPlayerStatRow } from "@/app/lib/types";
 import {
   FormerPlayerBadge,
