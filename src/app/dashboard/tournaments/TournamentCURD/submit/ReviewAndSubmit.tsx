@@ -215,6 +215,7 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
 ----------------------------------------------------------------- */
 const selectBusy = (s: any) => s.busy as boolean;
 const selectSaveAll = (s: any) => s.saveAll as () => Promise<void>;
+const selectResetUnsaved = (s: any) => s.resetUnsavedChanges as () => void;
 const selectSeedFromWizard = (s: any) =>
   s.seedFromWizard as
     | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
@@ -280,8 +281,17 @@ export default function ReviewAndSubmit({
   // ✅ use stable, module-scoped selectors
   const busy = useTournamentStore(selectBusy);
   const saveAll = useTournamentStore(selectSaveAll);
+  const resetUnsavedChanges = useTournamentStore(selectResetUnsaved);
   const seedFromWizard = useTournamentStore(selectSeedFromWizard);
   const anyDirty = useTournamentStore(selectAnyDirty);
+
+  const discard = () => {
+    if (!anyDirty) return;
+    if (!confirm("Discard all unsaved changes and revert to the last saved state?")) return;
+    setError(null);
+    setWarningsUi([]);
+    resetUnsavedChanges();
+  };
 
   const submit = () => {
     setError(null);
@@ -405,6 +415,17 @@ export default function ReviewAndSubmit({
         >
           Back
         </button>
+
+        {mode === "edit" && (
+          <button
+            onClick={discard}
+            disabled={!anyDirty || pending || busy}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+            title={anyDirty ? "Revert all unsaved changes to the last saved state" : "No unsaved changes"}
+          >
+            Discard changes
+          </button>
+        )}
 
         <button
           onClick={submit}
