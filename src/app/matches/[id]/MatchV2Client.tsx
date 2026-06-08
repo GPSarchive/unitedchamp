@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Match detail (v2 preview) — editorial sports-broadsheet × kinetic brutalism.
- * Same atmosphere/typography as /OMADA/[id] and /preview/anakoinoseis-v2:
- * dark ground, ivory ink, orange signal, saffron honours, 2px borders with
- * offset hard shadows, mono labels, italic display headlines.
+ * Match detail — editorial sports-broadsheet × kinetic brutalism.
+ * Same atmosphere/typography as /OMADA/[id]: dark ground, ivory ink, orange
+ * signal, saffron honours, 2px borders with offset hard shadows, mono labels,
+ * italic display headlines.
  */
 
 import React from "react";
@@ -28,7 +28,7 @@ import {
   BestGkIcon,
   CaptainIcon,
   GkIcon,
-} from "@/app/matches/[id]/StatIcons";
+} from "./StatIcons";
 import type { Id, MatchPlayerStatRow } from "@/app/lib/types";
 import {
   FormerPlayerBadge,
@@ -129,6 +129,9 @@ type Props = {
   isScheduled: boolean;
   videoId: string | null;
   dataLoadErrors: string[];
+  /** Admin-only sections (stats editor, video CRUD, postpone), rendered by the
+   * server component and gated behind isAdmin. Null/absent for public viewers. */
+  adminSlot?: React.ReactNode;
 };
 
 // ───────────────────────────────────────────────────────────────────────
@@ -239,23 +242,9 @@ const PageHeader: React.FC<{ tournamentName: string | null }> = ({
 // ───────────────────────────────────────────────────────────────────────
 const TournamentMasthead: React.FC<{
   tournament: { id: number; name: string; logo: string | null } | null;
-  matchId: Id;
   matchDate: string | null;
-  status: string;
-}> = ({ tournament, matchId, matchDate, status }) => {
+}> = ({ tournament, matchDate }) => {
   if (!tournament) return null;
-  const statusLabel =
-    status === "finished"
-      ? "Ολοκληρώθηκε"
-      : status === "postponed"
-      ? "Αναβολή"
-      : "Προγραμματισμένο";
-  const statusColor =
-    status === "finished"
-      ? "#fb923c"
-      : status === "postponed"
-      ? "#a855f7"
-      : "#E8B931";
 
   return (
     <header className="relative overflow-hidden border-b-2 border-[#F3EFE6]/20">
@@ -270,9 +259,6 @@ const TournamentMasthead: React.FC<{
             <div className="mb-5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em]">
               <span className="h-[2px] w-8 bg-[#fb923c]" />
               <span className="text-[#fb923c]">Διοργάνωση</span>
-              <span className="border border-[#F3EFE6]/20 px-2 py-0.5 text-[#F3EFE6]/70">
-                MATCH · #{pad2(String(matchId))}
-              </span>
             </div>
 
             <h1
@@ -302,11 +288,7 @@ const TournamentMasthead: React.FC<{
             className="col-span-12 md:col-span-4 flex flex-col gap-4"
           >
             <div className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] p-4 shadow-[6px_6px_0_0_#fb923c] md:p-5 md:shadow-[10px_10px_0_0_#fb923c]">
-              <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em]">
-                <span className="text-[#fb923c]">Κατάσταση</span>
-                <span style={{ color: statusColor }}>{statusLabel}</span>
-              </div>
-              <div className="mt-4 flex items-center gap-4">
+              <div className="flex items-center gap-4">
                 {tournament.logo ? (
                   <div className="relative h-16 w-16 shrink-0 md:h-20 md:w-20">
                     <TournamentImage
@@ -392,7 +374,7 @@ const ScorePanel: React.FC<{
       {/* Top strip */}
       <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.25em] md:px-6">
         <span className="text-[#F3EFE6]/70">
-          {isFinished ? "Τελικό σκορ" : isPostponed ? "Αναβολή" : "Συνάντηση"}
+          {isFinished ? "Τελικό σκορ" : isPostponed ? "Αναβολή" : "Προσεχώς"}
         </span>
         {resultLabel && (
           <span
@@ -545,7 +527,7 @@ const WelcomeKicker: React.FC<{ matchDate: string | null }> = ({
     className="relative border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 p-8 text-center md:p-10"
   >
     <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
-      / 00 · Προγραμματισμένο
+      Προγραμματισμένο
     </span>
     <p className="mt-4 font-[var(--f-display)] text-2xl font-black italic leading-tight text-[#F3EFE6] md:text-3xl">
       Ο αγώνας δεν έχει διεξαχθεί ακόμα
@@ -792,7 +774,7 @@ const MatchEventsV2: React.FC<{
             className="mt-2 font-[var(--f-display)] font-black italic leading-[0.95] text-[#F3EFE6]"
             style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)" }}
           >
-            Αναφορά Συμμετοχών
+            Φύλλο Αγώνα
           </h2>
         </div>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
@@ -951,7 +933,7 @@ const RostersV2: React.FC<{
             className="mt-2 font-[var(--f-display)] font-black italic leading-[0.95] text-[#F3EFE6]"
             style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)" }}
           >
-            Οι ομάδες που θα αγωνιστούν
+            Οι Παίκτες που θα αγωνιστούν
           </h2>
         </div>
       </div>
@@ -1018,6 +1000,7 @@ const MatchV2Client: React.FC<Props> = ({
   isScheduled,
   videoId,
   dataLoadErrors,
+  adminSlot,
 }) => {
   const showRoster = isScheduled && roster.length > 0;
   const showEvents = !showRoster && participants.length > 0;
@@ -1032,9 +1015,7 @@ const MatchV2Client: React.FC<Props> = ({
 
       <TournamentMasthead
         tournament={match.tournament}
-        matchId={match.id}
         matchDate={match.match_date}
-        status={match.status}
       />
 
       <section className="relative">
@@ -1060,21 +1041,25 @@ const MatchV2Client: React.FC<Props> = ({
           )}
 
           {videoId && <VideoV2 videoId={videoId} />}
+
+          {adminSlot && (
+            <section className="space-y-6 border-t-2 border-dashed border-[#fb923c]/30 pt-10">
+              <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+                <span className="h-[2px] w-8 bg-[#fb923c]" />
+                Διαχείριση Αγώνα
+              </div>
+              {adminSlot}
+            </section>
+          )}
         </div>
       </section>
 
       <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
         <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-4 py-6 md:flex-row md:items-center md:px-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
-            Αγώνας · έκδοση v2 (preview)
+            Επίσημο δελτίο αγώνα
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/matches/${match.id}`}
-              className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
-            >
-              ← Παλιά έκδοση
-            </Link>
             <Link
               href="/matches"
               className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"

@@ -1,11 +1,59 @@
 // src/app/paiktes/PlayersList.tsx
 "use client";
 
-import { useRef, useMemo, memo, useCallback } from "react";
+import {
+  useMemo,
+  memo,
+  useCallback,
+  useState,
+  useLayoutEffect,
+} from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import type { PlayerLite } from "./types";
+import { resolveStat } from "./types";
 
 type PlayerRow = PlayerLite & { tournament_goals?: number };
+
+// Estimated row height (px) used before each row self-measures. Rows that carry
+// an alphabetical divider are taller; measureElement corrects this per row.
+const ESTIMATED_ROW = 64;
+// Below this many rows, virtualization overhead isn't worth it — render plainly.
+const VIRTUALIZE_THRESHOLD = 60;
+
+// Resolve the nearest scrollable ancestor of `el`, falling back to the document
+// scrolling element (the page scroller on < xl, where the list itself doesn't
+// own a scroll container; on xl the parent has overflow-y: auto).
+function useScrollParent(el: HTMLElement | null): HTMLElement | null {
+  const [parent, setParent] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!el) {
+      setParent(null);
+      return;
+    }
+    const resolve = () => {
+      let node: HTMLElement | null = el.parentElement;
+      while (node) {
+        const oy = getComputedStyle(node).overflowY;
+        if (oy === "auto" || oy === "scroll") break;
+        node = node.parentElement;
+      }
+      setParent(
+        node ??
+          (document.scrollingElement as HTMLElement | null) ??
+          document.body,
+      );
+    };
+    resolve();
+    // The scroller flips between the page (< xl) and the aside (xl) at the
+    // breakpoint, so re-resolve on resize.
+    window.addEventListener("resize", resolve);
+    return () => window.removeEventListener("resize", resolve);
+  }, [el]);
+
+  return parent;
+}
 
 type Props = {
   players: PlayerRow[];
@@ -82,29 +130,12 @@ const PlayerRowItem = memo(function PlayerRowItem({
     onPlayerHover?.(player.id);
   }, [onPlayerHover, player.id]);
 
-  const goals = isTournamentScoped && player.tournament_goals !== undefined
-    ? player.tournament_goals
-    : player.goals;
-
-  const matches = isTournamentScoped && player.tournament_matches !== undefined
-    ? player.tournament_matches
-    : player.matches;
-
-  const wins = isTournamentScoped && player.tournament_wins !== undefined
-    ? player.tournament_wins
-    : player.wins;
-
-  const assists = isTournamentScoped && player.tournament_assists !== undefined
-    ? player.tournament_assists
-    : player.assists;
-
-  const mvp = isTournamentScoped && player.tournament_mvp !== undefined
-    ? player.tournament_mvp
-    : player.mvp;
-
-  const bestGk = isTournamentScoped && player.tournament_best_gk !== undefined
-    ? player.tournament_best_gk
-    : player.best_gk;
+  const goals = resolveStat(player, "goals", isTournamentScoped);
+  const matches = resolveStat(player, "matches", isTournamentScoped);
+  const wins = resolveStat(player, "wins", isTournamentScoped);
+  const assists = resolveStat(player, "assists", isTournamentScoped);
+  const mvp = resolveStat(player, "mvp", isTournamentScoped);
+  const bestGk = resolveStat(player, "best_gk", isTournamentScoped);
 
   return (
     <div>
@@ -216,6 +247,134 @@ function StatCell({
   );
 }
 
+// Column header row — shared by both the plain and virtualized layouts.
+function ListHeader() {
+  return (
+    <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
+      <div
+        className={`${GRID_TEMPLATE_MOBILE} ${GRID_TEMPLATE_DESKTOP} ${GRID_GAPS} px-3 sm:px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
+      >
+        {COLUMN_HEADERS.map((col) => (
+          <div
+            key={col.key}
+            className={`${col.align} ${
+              HIDDEN_ON_MOBILE.has(col.key) ? "hidden sm:block" : ""
+            }`}
+          >
+            <span className="hidden md:inline">{col.fullLabel}</span>
+            <span className="md:hidden">{col.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+type RowMeta = { player: PlayerRow; showLetter: boolean; letter: string };
+
+// Precompute the divider boundary for each row once, so the virtualized render
+// path never has to look at neighbors.
+function useRowMeta(players: PlayerRow[], isAlphaSort: boolean): RowMeta[] {
+  return useMemo(
+    () =>
+      players.map((player, idx) => {
+        const prev = players[idx - 1];
+        const letter = (player.last_name || player.first_name || "?")
+          .charAt(0)
+          .toUpperCase();
+        const prevLetter = (prev?.last_name || prev?.first_name || "")
+          .charAt(0)
+          .toUpperCase();
+        const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
+        return { player, showLetter, letter };
+      }),
+    [players, isAlphaSort],
+  );
+}
+
+function VirtualizedPlayerRows({
+  rows,
+  activeId,
+  isTournamentScoped,
+  onPlayerSelect,
+  onPlayerHover,
+}: {
+  rows: RowMeta[];
+  activeId: number | null;
+  isTournamentScoped: boolean;
+  onPlayerSelect: (id: number) => void;
+  onPlayerHover?: (id: number) => void;
+}) {
+  // State-backed element ref so resolving the scroll parent / scrollMargin
+  // re-runs once the list node actually mounts (a plain ref isn't reactive).
+  const [listEl, setListEl] = useState<HTMLDivElement | null>(null);
+  const scrollParent = useScrollParent(listEl);
+
+  // Distance from the scroll container's top to the start of the rows. Lets the
+  // virtualizer line up its absolute offsets with the real scroll position even
+  // though the filter header + column header sit above the list in the scroller.
+  const scrollMargin = useMemo(() => {
+    if (!listEl || !scrollParent) return 0;
+    const isDocScroller =
+      scrollParent === document.scrollingElement ||
+      scrollParent === document.body;
+    const listTop = listEl.getBoundingClientRect().top;
+    const parentTop = isDocScroller
+      ? 0
+      : scrollParent.getBoundingClientRect().top;
+    const scrollTop = isDocScroller ? window.scrollY : scrollParent.scrollTop;
+    return Math.max(0, listTop - parentTop + scrollTop);
+  }, [scrollParent, listEl]);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollParent,
+    estimateSize: () => ESTIMATED_ROW,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    overscan: 8,
+    getItemKey: (i) => rows[i].player.id,
+    scrollMargin,
+  });
+
+  const items = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={setListEl}
+      style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+    >
+      {items.map((vi) => {
+        const { player, showLetter, letter } = rows[vi.index];
+        return (
+          <div
+            key={vi.key}
+            data-index={vi.index}
+            ref={virtualizer.measureElement}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              transform: `translateY(${vi.start - scrollMargin}px)`,
+            }}
+          >
+            <PlayerRowItem
+              player={player}
+              index={vi.index}
+              isActive={activeId === player.id}
+              showLetter={showLetter}
+              letter={letter}
+              isTournamentScoped={isTournamentScoped}
+              onPlayerSelect={onPlayerSelect}
+              onPlayerHover={onPlayerHover}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PlayersListComponent({
   players,
   activeId,
@@ -224,7 +383,8 @@ function PlayersListComponent({
   isAlphaSort = false,
   isTournamentScoped = false,
 }: Props) {
-  const itemRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const rows = useRowMeta(players, isAlphaSort);
+  const shouldVirtualize = players.length > VIRTUALIZE_THRESHOLD;
 
   return (
     <div className="flex flex-col h-full">
@@ -245,53 +405,33 @@ function PlayersListComponent({
           </div>
         ) : (
           <div className="w-full">
-            {/* Header */}
-            <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
-              <div
-                className={`${GRID_TEMPLATE_MOBILE} ${GRID_TEMPLATE_DESKTOP} ${GRID_GAPS} px-3 sm:px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
-              >
-                {COLUMN_HEADERS.map((col) => (
-                  <div
-                    key={col.key}
-                    className={`${col.align} ${
-                      HIDDEN_ON_MOBILE.has(col.key) ? "hidden sm:block" : ""
-                    }`}
-                  >
-                    <span className="hidden md:inline">{col.fullLabel}</span>
-                    <span className="md:hidden">{col.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ListHeader />
 
-            {/* Player rows */}
-            <div>
-              {players.map((player, idx) => {
-                const prev = players[idx - 1];
-                const letter = (player.last_name || player.first_name || "?")
-                  .charAt(0)
-                  .toUpperCase();
-                const prevLetter = (prev?.last_name || prev?.first_name || "")
-                  .charAt(0)
-                  .toUpperCase();
-                const showLetter = isAlphaSort && (!prev || prevLetter !== letter);
-                const isActive = activeId === player.id;
-
-                return (
+            {shouldVirtualize ? (
+              <VirtualizedPlayerRows
+                rows={rows}
+                activeId={activeId}
+                isTournamentScoped={isTournamentScoped}
+                onPlayerSelect={onPlayerSelect}
+                onPlayerHover={onPlayerHover}
+              />
+            ) : (
+              <div>
+                {rows.map(({ player, showLetter, letter }, idx) => (
                   <PlayerRowItem
                     key={player.id}
                     player={player}
                     index={idx}
-                    isActive={isActive}
+                    isActive={activeId === player.id}
                     showLetter={showLetter}
                     letter={letter}
                     isTournamentScoped={isTournamentScoped}
                     onPlayerSelect={onPlayerSelect}
                     onPlayerHover={onPlayerHover}
                   />
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

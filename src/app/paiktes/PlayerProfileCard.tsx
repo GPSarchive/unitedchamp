@@ -4,10 +4,13 @@
 import { memo, useMemo } from "react";
 import ProfileCard from "./ProfileCard";
 import type { PlayerLite } from "./types";
+import { resolveStat } from "./types";
 
 type Props = {
   player: PlayerLite;
   isTournamentScoped?: boolean;
+  /** Pause the card's always-on background animations (tab hidden, etc.). */
+  paused?: boolean;
 };
 
 function StatPill({
@@ -55,6 +58,7 @@ function StatPill({
 function PlayerProfileCardComponent({
   player,
   isTournamentScoped = false,
+  paused = false,
 }: Props) {
   const name = useMemo(
     () => `${player.first_name} ${player.last_name}`.trim() || "—",
@@ -107,42 +111,27 @@ function PlayerProfileCardComponent({
 
   // Tournament-aware stats
   const matchesPlayed = useMemo(
-    () =>
-      isTournamentScoped && player.tournament_matches !== undefined
-        ? player.tournament_matches
-        : player.matches ?? 0,
+    () => resolveStat(player, "matches", isTournamentScoped),
     [isTournamentScoped, player.tournament_matches, player.matches]
   );
 
   const totalGoals = useMemo(
-    () =>
-      isTournamentScoped && player.tournament_goals !== undefined
-        ? player.tournament_goals
-        : player.goals ?? 0,
+    () => resolveStat(player, "goals", isTournamentScoped),
     [isTournamentScoped, player.tournament_goals, player.goals]
   );
 
   const totalAssists = useMemo(
-    () =>
-      isTournamentScoped && player.tournament_assists !== undefined
-        ? player.tournament_assists
-        : player.assists ?? 0,
+    () => resolveStat(player, "assists", isTournamentScoped),
     [isTournamentScoped, player.tournament_assists, player.assists]
   );
 
   const mvpAwards = useMemo(
-    () =>
-      isTournamentScoped && player.tournament_mvp !== undefined
-        ? player.tournament_mvp
-        : player.mvp ?? 0,
+    () => resolveStat(player, "mvp", isTournamentScoped),
     [isTournamentScoped, player.tournament_mvp, player.mvp]
   );
 
   const bestGkAwards = useMemo(
-    () =>
-      isTournamentScoped && player.tournament_best_gk !== undefined
-        ? player.tournament_best_gk
-        : player.best_gk ?? 0,
+    () => resolveStat(player, "best_gk", isTournamentScoped),
     [isTournamentScoped, player.tournament_best_gk, player.best_gk]
   );
 
@@ -164,6 +153,7 @@ function PlayerProfileCardComponent({
         enableTilt={true}
         enableMobileTilt={false}
         mobileTiltSensitivity={5}
+        paused={paused}
       />
 
       {/* Stats panel under the 3D card — editorial Midnight */}

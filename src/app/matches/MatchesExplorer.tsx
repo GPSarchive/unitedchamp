@@ -5,7 +5,7 @@
  * Dark palette: near-black ground, ivory ink, orange signal, saffron honours.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -217,6 +217,8 @@ export default function MatchesExplorer({ tournaments }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const currentISO = useMemo(() => new Date().toISOString(), []);
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
@@ -245,10 +247,10 @@ export default function MatchesExplorer({ tournaments }: Props) {
 
         const isUpcoming = tab === "upcoming";
         q = isUpcoming
-          ? q.or("team_a_score.is.null,team_b_score.is.null")
-          : q
-              .not("team_a_score", "is", null)
-              .not("team_b_score", "is", null);
+          ? q
+              .gte("match_date", currentISO)
+              .or("status.is.null,status.neq.finished")
+          : q.eq("status", "finished");
 
         q = q.order("match_date", { ascending: isUpcoming });
 
@@ -267,7 +269,7 @@ export default function MatchesExplorer({ tournaments }: Props) {
       }
     };
     run();
-  }, [tab, tournamentId, page]);
+  }, [tab, tournamentId, page, currentISO]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

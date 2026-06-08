@@ -108,6 +108,7 @@ export default function TournamentWizard({
   const setTournamentTeamIdsFromPicker = useTournamentStore(
     (s) => s.setTournamentTeamIdsFromPicker
   );
+  const assignTeamToGroup = useTournamentStore((s) => s.assignTeamToGroup);
 
   // hydrate the store once from incoming props (payload + initial matches + teams)
   // BUT skip in edit mode - the snapshot load below will handle it
@@ -195,6 +196,22 @@ export default function TournamentWizard({
           : t
       )
     );
+
+    // In edit mode, also feed the change into the store so saveAll's Phase 3
+    // persists it and the Save button registers as dirty. Resolve the stage/
+    // group *indices* into real DB ids via the store's hydrated maps.
+    if (mode === "edit") {
+      const { stageIdByIndex, groupIdByStage } = useTournamentStore.getState().ids;
+      const stageId = stageIdByIndex[stageIdx];
+      const groupId =
+        groupIdx == null ? null : (groupIdByStage[stageIdx]?.[groupIdx] ?? null);
+      // Only write when we have a real stage id, and either a genuine unassign
+      // (groupIdx == null) or a resolved real group id. Skip newly-added stages/
+      // groups whose temp ids aren't in the maps yet — they need a save first.
+      if (typeof stageId === "number" && (groupIdx == null || groupId != null)) {
+        assignTeamToGroup(teamId, stageId, groupId);
+      }
+    }
   };
 
   // --- validation summary (advisory; does not block saving) ----------------
