@@ -139,32 +139,43 @@ type Props = {
 // ───────────────────────────────────────────────────────────────────────
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
-const fmtDay = (iso: string | null) =>
-  iso ? String(new Date(iso).getDate()).padStart(2, "0") : "—";
+// Greek short months, indexed 1–12 (index 0 unused) for literal-ISO formatting.
+const GR_MONTHS_SHORT = [
+  "",
+  "Ιαν",
+  "Φεβ",
+  "Μαρ",
+  "Απρ",
+  "Μαΐ",
+  "Ιουν",
+  "Ιουλ",
+  "Αυγ",
+  "Σεπ",
+  "Οκτ",
+  "Νοε",
+  "Δεκ",
+];
 
-const fmtMonthShort = (iso: string | null) =>
-  iso
-    ? new Date(iso)
-        .toLocaleDateString("el-GR", { month: "short" })
-        .toUpperCase()
-    : "";
+// Date/time helpers read the literal wall-clock value straight from the ISO
+// string — NO timezone conversion — so the match page shows the exact same
+// date and time as the homepage calendar/dashboard, which use `start.slice(0,10)`
+// and a `/T(\d{2}):(\d{2})/` regex. Using new Date(iso).toLocale* instead would
+// re-render in the runtime's timezone (UTC on the server), shifting the time and
+// sometimes rolling the date across midnight.
+const fmtFullDate = (iso: string | null) => {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return "";
+  const [, y, mo, d] = m;
+  const month = GR_MONTHS_SHORT[Number(mo)] ?? mo;
+  return `${d} ${month} ${y}`;
+};
 
-const fmtFullDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "";
-
-const fmtTime = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+const fmtTime = (iso: string | null) => {
+  if (!iso) return "";
+  const m = /T(\d{2}):(\d{2})/.exec(iso);
+  return m ? `${m[1]}:${m[2]}` : "";
+};
 
 const playerNameOf = (p: { first_name: string | null; last_name: string | null }) =>
   `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Άγνωστος";
