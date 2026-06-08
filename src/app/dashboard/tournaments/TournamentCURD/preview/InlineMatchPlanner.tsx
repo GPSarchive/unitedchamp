@@ -330,6 +330,15 @@ export default function InlineMatchPlanner({
     return sid ? ((stagesById as any)[sid]?.kind ?? "league") : "league";
   }, [stageIdByIndex, stagesById, effectiveStageIdx]);
 
+  // How many times each pair should meet in this stage (double round, etc.).
+  const repeatsForStage = useMemo(() => {
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    const cfg = (sid ? (stagesById as any)[sid]?.config : null) ?? {};
+    const raw = cfg.rounds_per_opponent ?? cfg["αγώνες_ανά_αντίπαλο"];
+    const dbl = !!(cfg.double_round ?? cfg["διπλός_γύρος"]);
+    return Number.isFinite(raw) ? Math.max(1, Number(raw)) : dbl ? 2 : 1;
+  }, [stageIdByIndex, stagesById, effectiveStageIdx]);
+
   // ✅ FILTER: Only matches for THIS stage
   const allRowsForStage = useMemo(() => {
     const rows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
@@ -414,6 +423,7 @@ export default function InlineMatchPlanner({
   const [teamQuery1, setTeamQuery1] = useState("");
   const [teamQuery2, setTeamQuery2] = useState("");
   const [editingMatch, setEditingMatch] = useState<DraftMatch | null>(null);
+  const [genTeamId, setGenTeamId] = useState<number | null>(null);
 
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
@@ -646,6 +656,65 @@ export default function InlineMatchPlanner({
     }
   };
 
+  // Generate round-robin fixtures for a single team: one match (×repeats) against
+  // every OTHER team that already appears in this stage/group's fixtures. Each new
+  // match goes on its own fresh matchday so the team isn't double-booked. The admin
+  // can then delete any fixtures they don't actually need.
+  const addFixturesForTeam = (teamId: number) => {
+    if (isKO || teamId == null) return;
+    const effectiveGroup = isGroups && !useAllGroups ? (groupIdx ?? 0) : null;
+
+    const scope =
+      effectiveGroup !== null
+        ? allRowsForStage.filter((r) => r.groupIdx === effectiveGroup)
+        : allRowsForStage;
+
+    // Opponents = distinct teams already scheduled in this scope, minus the team itself.
+    const opponents = new Set<number>();
+    scope.forEach((r) => {
+      if (r.team_a_id != null && r.team_a_id !== teamId) opponents.add(r.team_a_id);
+      if (r.team_b_id != null && r.team_b_id !== teamId) opponents.add(r.team_b_id);
+    });
+    const oppList = Array.from(opponents);
+    if (oppList.length === 0) return;
+
+    // Skip pairings that already exist (in this scope) for the full repeat count,
+    // so re-running the button doesn't pile on duplicates.
+    const existingPairCounts = new Map<string, number>();
+    scope.forEach((r) => {
+      if (r.round != null || r.bracket_pos != null) return;
+      if (r.team_a_id == null || r.team_b_id == null) return;
+      const k = rrPairKey(r.team_a_id, r.team_b_id);
+      existingPairCounts.set(k, (existingPairCounts.get(k) ?? 0) + 1);
+    });
+
+    let startMd = scope.reduce((mx, r) => Math.max(mx, r.matchday ?? 0), 0);
+
+    updateMatches(effectiveStageIdx, (rows) => {
+      const next = rows.slice();
+      for (const opp of oppList) {
+        const have = existingPairCounts.get(rrPairKey(teamId, opp)) ?? 0;
+        const toAdd = Math.max(0, repeatsForStage - have);
+        for (let k = 0; k < toAdd; k++) {
+          startMd += 1;
+          next.push({
+            stageIdx: effectiveStageIdx,
+            groupIdx: effectiveGroup,
+            matchday: startMd,
+            round: null,
+            bracket_pos: null,
+            team_a_id: teamId,
+            team_b_id: opp,
+            match_date: null,
+            is_ko: false,
+          });
+        }
+      }
+      return next;
+    });
+    setGenTeamId(null);
+  };
+
   const removeRow = (m: DraftMatch) => {
     // ✅ FIXED: Ensure db_id is in overlay before removal
     const dbId = (m as any).db_id;
@@ -781,6 +850,44 @@ export default function InlineMatchPlanner({
           </button>
         </div>
       </header>
+
+      {!isKO && (
+        <div className="flex flex-wrap items-center gap-2 rounded border border-emerald-400/20 bg-emerald-500/5 px-3 py-2">
+          <span className="text-emerald-200/90 text-xs font-medium">
+            Add a team&apos;s fixtures:
+          </span>
+          <select
+            className="bg-slate-950 border border-white/15 rounded px-2 py-1 text-white text-xs min-w-48"
+            value={genTeamId ?? ""}
+            onChange={(e) => setGenTeamId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">— select team —</option>
+            {teamOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <button
+            className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={() => genTeamId != null && addFixturesForTeam(genTeamId)}
+            disabled={genTeamId == null || (isGroups && useAllGroups)}
+            title="Create round-robin matches for this team against every other team already in this stage"
+          >
+            Generate round-robin matches
+          </button>
+          {isGroups && useAllGroups ? (
+            <span className="text-amber-300/80 text-[11px]">
+              Pick a specific group above first.
+            </span>
+          ) : (
+            <span className="text-white/40 text-[11px]">
+              (one match{repeatsForStage > 1 ? ` ×${repeatsForStage}` : ""} vs each existing
+              opponent{isGroups ? " in this group" : ""} — delete any you don&apos;t need)
+            </span>
+          )}
+        </div>
+      )}
 
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
