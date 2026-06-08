@@ -848,46 +848,37 @@ export default function InlineMatchPlanner({
           >
             + Add match
           </button>
-        </div>
-      </header>
-
-      {!isKO && (
-        <div className="flex flex-wrap items-center gap-2 rounded border border-emerald-400/20 bg-emerald-500/5 px-3 py-2">
-          <span className="text-emerald-200/90 text-xs font-medium">
-            Add a team&apos;s fixtures:
-          </span>
-          <select
-            className="bg-slate-950 border border-white/15 rounded px-2 py-1 text-white text-xs min-w-48"
-            value={genTeamId ?? ""}
-            onChange={(e) => setGenTeamId(e.target.value ? Number(e.target.value) : null)}
-          >
-            <option value="">— select team —</option>
-            {teamOptions.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <button
-            className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-            onClick={() => genTeamId != null && addFixturesForTeam(genTeamId)}
-            disabled={genTeamId == null || (isGroups && useAllGroups)}
-            title="Create round-robin matches for this team against every other team already in this stage"
-          >
-            Generate round-robin matches
-          </button>
-          {isGroups && useAllGroups ? (
-            <span className="text-amber-300/80 text-[11px]">
-              Pick a specific group above first.
-            </span>
-          ) : (
-            <span className="text-white/40 text-[11px]">
-              (one match{repeatsForStage > 1 ? ` ×${repeatsForStage}` : ""} vs each existing
-              opponent{isGroups ? " in this group" : ""} — delete any you don&apos;t need)
-            </span>
+          {!isKO && (
+            <>
+              <select
+                className="bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white text-xs max-w-40"
+                value={genTeamId ?? ""}
+                onChange={(e) => setGenTeamId(e.target.value ? Number(e.target.value) : null)}
+                title="Pick a team, then generate its round-robin fixtures"
+              >
+                <option value="">Team…</option>
+                {teamOptions.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => genTeamId != null && addFixturesForTeam(genTeamId)}
+                disabled={genTeamId == null || (isGroups && useAllGroups)}
+                title={
+                  isGroups && useAllGroups
+                    ? "Pick a specific group first"
+                    : `Generate round-robin matches for this team${repeatsForStage > 1 ? ` (×${repeatsForStage})` : ""} vs every other team already in this ${isGroups ? "group" : "stage"} — delete any you don't need`
+                }
+              >
+                Generate fixtures
+              </button>
+            </>
           )}
         </div>
-      )}
+      </header>
 
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
