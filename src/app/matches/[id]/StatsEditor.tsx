@@ -37,7 +37,22 @@ export default function StatsEditor({
 
   // Track which players are expanded
   const [expandedPlayers, setExpandedPlayers] = React.useState<Record<number, boolean>>({});
-  
+
+  // Boolean role state (captain / goalkeeper) kept separate from the string-based
+  // playerStats map. These checkboxes must be driven by real booleans — storing
+  // them as "true"/"false" strings broke the controlled `checked` value (every
+  // non-empty string is truthy), which made the boxes untoggleable on iOS Safari.
+  const [captainMap, setCaptainMap] = React.useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    for (const a of associations) init[a.player.id] = !!existing.get(a.player.id)?.is_captain;
+    return init;
+  });
+  const [gkMap, setGkMap] = React.useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    for (const a of associations) init[a.player.id] = !!existing.get(a.player.id)?.gk;
+    return init;
+  });
+
   // Initialize player stats with existing data or empty
   const [playerStats, setPlayerStats] = React.useState<PlayerStatsMap>(() => {
     const initStats: PlayerStatsMap = {};
@@ -52,6 +67,12 @@ export default function StatsEditor({
 
   const setPlayed = (playerId: number, next: boolean) =>
     setPlayedMap((m) => ({ ...m, [playerId]: next }));
+
+  const setCaptain = (playerId: number, next: boolean) =>
+    setCaptainMap((m) => ({ ...m, [playerId]: next }));
+
+  const setGk = (playerId: number, next: boolean) =>
+    setGkMap((m) => ({ ...m, [playerId]: next }));
 
   const toggleExpanded = (playerId: number) =>
     setExpandedPlayers((m) => ({ ...m, [playerId]: !m[playerId] }));
@@ -96,8 +117,8 @@ export default function StatsEditor({
           const isExpanded = !!expandedPlayers[p.id];
 
           const posVal = stats?.position ?? "";
-          const capDefault = !!stats?.is_captain;
-          const gkDefault = !!stats?.gk;
+          const capOn = !!captainMap[p.id];
+          const gkOn = !!gkMap[p.id];
 
           // Ensure all values are strings when passed to inputs
           const goals = String(stats?.goals ?? 0);
@@ -249,8 +270,9 @@ export default function StatsEditor({
                           <input
                             type="checkbox"
                             name={`${baseStats}[is_captain]`}
-                            checked={capDefault}
-                            onChange={(e) => handleStatChange(p.id, 'is_captain', e.target.checked.toString())}
+                            value="true"
+                            checked={capOn}
+                            onChange={(e) => setCaptain(p.id, e.currentTarget.checked)}
                             disabled={readOnly || !playedOn}
                             className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                           />
@@ -261,8 +283,9 @@ export default function StatsEditor({
                           <input
                             type="checkbox"
                             name={`${baseStats}[gk]`}
-                            checked={gkDefault}
-                            onChange={(e) => handleStatChange(p.id, 'gk', e.target.checked.toString())}
+                            value="true"
+                            checked={gkOn}
+                            onChange={(e) => setGk(p.id, e.currentTarget.checked)}
                             disabled={readOnly || !playedOn}
                             className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                           />
