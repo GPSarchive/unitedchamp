@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { dbError } from "@/app/lib/api-error";
 
 export const runtime = "nodejs";
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
   const normalized = String(path).replace(/^\/+/, "");
 
   const { data, error } = await supabaseAdmin.storage.from(bucket).remove([normalized]);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return dbError(error, 400, "storage/delete-object");
 
   return NextResponse.json({ ok: true, removed: data });
 }

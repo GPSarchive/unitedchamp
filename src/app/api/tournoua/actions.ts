@@ -4,6 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
+import { safeErrorMessage } from '@/app/lib/api-error';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { redirect } from 'next/navigation';
 
@@ -47,7 +48,7 @@ export async function createTournamentAction(formData: FormData) {
   if (!roles.includes('admin')) return { ok: false, error: 'Forbidden' };
 
   const { data, error } = await supa.rpc('create_tournament', { v_json: payload as any });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: safeErrorMessage(error, 'create_tournament') };
 
   // Cache bust & redirect to the new tournament
   revalidatePath('/tournoua');

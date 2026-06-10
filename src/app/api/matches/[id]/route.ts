@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -31,40 +32,6 @@ const UPDATABLE_FIELDS = new Set<keyof any>([
   "field", // ✅ NEW
 ]);
 
-
-/* =======================
-   Minimal same-origin guard
-   ======================= */
-// .env: ALLOWED_ORIGINS=https://app.example.com,http://localhost:3000
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  // Do NOT add req.url origin to the whitelist — the Host header can be spoofed,
-  // which would let an attacker self-whitelist their own origin.
-  // Only trust explicitly configured ALLOWED_ORIGINS.
-  if (allowedOrigins.size === 0) {
-    // No allowed origins configured — block all mutating cross-origin requests
-    throw new Error("bad-origin");
-  }
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some((val) => {
-    try {
-      return !!val && allowedOrigins.has(new URL(val).origin);
-    } catch {
-      return false;
-    }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
 
 /* ==============
    Helper utils

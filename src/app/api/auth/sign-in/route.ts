@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   // Stops distributed brute force even when attackers rotate IPs
   const normalizedEmail = email.trim().toLowerCase();
   if (normalizedEmail) {
-    const emailLimit = await checkLimit(`auth-email:${normalizedEmail}`, 5, 900);
+    const emailLimit = await checkLimit(`auth-email:${normalizedEmail}`, 5, 900, { failClosed: true });
     if (!emailLimit.success) {
       url.pathname = '/login';
       url.searchParams.set('error', 'Too many login attempts. Please try again later.');

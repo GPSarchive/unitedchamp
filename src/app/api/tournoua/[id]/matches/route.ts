@@ -1,6 +1,7 @@
 // app/api/tournaments/[id]/matches/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -27,7 +28,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     .order("matchday", { ascending: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return dbError(error, 400, "tournoua/[id]/matches");
   }
 
   return NextResponse.json({ matches });

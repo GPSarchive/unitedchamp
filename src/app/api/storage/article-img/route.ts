@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { dbError } from "@/app/lib/api-error";
 
 export const runtime = "nodejs";
 
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     .createSignedUploadUrl(path);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return dbError(error, 400, "storage/article-img");
   }
 
   return NextResponse.json({

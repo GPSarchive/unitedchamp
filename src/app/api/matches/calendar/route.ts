@@ -3,6 +3,7 @@
 // Used by Calendar.tsx when navigating to a month outside the initial SSR window.
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { dbError } from "@/app/lib/api-error";
 
 const MAX_PER_PAGE = 200;
 
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
     .limit(MAX_PER_PAGE);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return dbError(error, 500, "matches/calendar");
   }
 
   return NextResponse.json({ matches: data ?? [] });

@@ -1,45 +1,7 @@
 // app/api/matches/[id]/postpone/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
-
-/* =======================
-   Same-origin guard
-   ======================= */
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  // Do NOT add req.url origin to the whitelist — the Host header can be spoofed,
-  // which would let an attacker self-whitelist their own origin.
-  if (allowedOrigins.size === 0) {
-    console.error("[postpone] bad-origin: ALLOWED_ORIGINS env is empty/unset");
-    throw new Error("bad-origin");
-  }
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some((val) => {
-    try {
-      return !!val && allowedOrigins.has(new URL(val).origin);
-    } catch {
-      return false;
-    }
-  });
-  if (!ok) {
-    console.error("[postpone] bad-origin", {
-      origin,
-      referer,
-      allowed: Array.from(allowedOrigins),
-    });
-    throw new Error("bad-origin");
-  }
-}
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 /* ==============
    Helper utils

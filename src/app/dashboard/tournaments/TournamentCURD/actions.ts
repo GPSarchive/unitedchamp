@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin'; // service role for writes (bypass RLS)
+import { sanitizeFilterTerm } from '@/app/lib/pgrest';
 
 /* =========================================================
    Local server-only types (avoid importing from Client code)
@@ -575,8 +576,8 @@ export async function listTournamentsAction(opts?: {
     .range(from, to);
 
   if (opts?.search?.trim()) {
-    const s = opts.search.trim();
-    q = q.or(`name.ilike.%${s}%,slug.ilike.%${s}%`);
+    const s = sanitizeFilterTerm(opts.search);
+    if (s) q = q.or(`name.ilike.%${s}%,slug.ilike.%${s}%`);
   }
 
   const { data, error, count } = await q;

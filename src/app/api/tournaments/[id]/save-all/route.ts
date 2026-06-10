@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -184,7 +185,7 @@ export async function POST(
         .eq("id", tournamentId)
         .select()
         .single();
-      if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+      if (tErr) return dbError(tErr, 500, "save-all");
       out.tournament = tData;
     }
 
@@ -195,7 +196,7 @@ export async function POST(
         .from("tournament_groups")
         .delete()
         .in("id", body.groups.deleteIds);
-      if (grpDelErr) return NextResponse.json({ error: grpDelErr.message }, { status: 500 });
+      if (grpDelErr) return dbError(grpDelErr, 500, "save-all");
       out.deletedGroupIds = body.groups.deleteIds;
     }
 
@@ -206,7 +207,7 @@ export async function POST(
         .from("tournament_stages")
         .delete()
         .in("id", body.stages.deleteIds);
-      if (stgDelErr) return NextResponse.json({ error: stgDelErr.message }, { status: 500 });
+      if (stgDelErr) return dbError(stgDelErr, 500, "save-all");
       out.deletedStageIds = body.stages.deleteIds;
     }
 
@@ -225,13 +226,13 @@ if (body.matches?.deleteIds?.length) {
   // fetch stages for KO resolution
   const { data: delRows, error: delFetchErr } = await supabaseAdmin
     .from("matches").select("id,stage_id").in("id", deleteIds);
-  if (delFetchErr) return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
+  if (delFetchErr) return dbError(delFetchErr, 500, "save-all");
   matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
 
   // delete and verify
   const { data: deleted, error: delErr } = await supabaseAdmin
     .from("matches").delete().in("id", deleteIds).select("id");
-  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+  if (delErr) return dbError(delErr, 500, "save-all");
 
   const deletedIds = new Set((deleted ?? []).map((r: any) => r.id));
   const missing = deleteIds.filter((id) => !deletedIds.has(id));
@@ -258,7 +259,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_stages")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         upserted = upserted.concat(data ?? []);
       }
 
@@ -267,7 +268,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_stages")
           .upsert(updateRows.map(r => ({ ...r, tournament_id: tournamentId })), )
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         upserted = upserted.concat(data ?? []);
       }
 
@@ -288,7 +289,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_groups")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         upserted = upserted.concat(data ?? []);
       }
 
@@ -297,7 +298,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_groups")
           .upsert(updateRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         upserted = upserted.concat(data ?? []);
       }
 
@@ -324,7 +325,7 @@ if (body.matches?.deleteIds?.length) {
         .delete()
         .eq("tournament_id", tournamentId)
         .in("id", body.tournamentTeams.deleteIds);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbError(error, 500, "save-all");
     }
 
     if (
@@ -342,7 +343,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_teams")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
       }
 
       if (updateRows.length) {
@@ -350,7 +351,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_teams")
           .upsert(updateRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
       }
 
       // Return the authoritative current set so the client can reconcile
@@ -359,7 +360,7 @@ if (body.matches?.deleteIds?.length) {
         .from("tournament_teams")
         .select("*")
         .eq("tournament_id", tournamentId);
-      if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
+      if (listErr) return dbError(listErr, 500, "save-all");
       out.tournamentTeams = allRows ?? [];
     }
 
@@ -380,7 +381,7 @@ if (body.matches?.deleteIds?.length) {
           .eq("updated_at", r.updated_at)
           .select("*");
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         if (!data || data.length === 0) {
           const { data: cur } = await supabaseAdmin
             .from("stage_slots")
@@ -407,7 +408,7 @@ if (body.matches?.deleteIds?.length) {
         const { error } = await supabaseAdmin
           .from("stage_slots")
           .upsert(rest, { onConflict: "stage_id,group_id,slot_id" });
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
       }
 
       const affectedStageIds = Array.from(new Set(rows.map((r) => r.stage_id)));
@@ -415,7 +416,7 @@ if (body.matches?.deleteIds?.length) {
         .from("stage_slots")
         .select("*")
         .in("stage_id", affectedStageIds);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbError(error, 500, "save-all");
 
       out.stageSlots = data ?? [];
     }
@@ -431,7 +432,7 @@ if (body.matches?.deleteIds?.length) {
           .from("intake_mappings")
           .delete()
           .in("target_stage_id", targetStageIds);
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
       }
 
       const createRows = (body.intakeMappings.replace ?? []).map(({ id: _drop, ...r }) => r);
@@ -441,7 +442,7 @@ if (body.matches?.deleteIds?.length) {
           .from("intake_mappings")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
         out.intakeMappings = data ?? [];
       } else {
         out.intakeMappings = [];
@@ -490,7 +491,7 @@ if (body.matches?.upsert?.length) {
       .from("matches")
       .upsert(upsertRows, { onConflict: "id" })
       .select("*");
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return dbError(error, 500, "save-all");
     updated.push(...(data ?? []));
   } else {
     // Per-row updates with optimistic locking
@@ -519,7 +520,7 @@ if (body.matches?.upsert?.length) {
       if (r.updated_at) q = q.eq("updated_at", r.updated_at);
 
       const { data, error } = await q.select("*");
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbError(error, 500, "save-all");
 
       if (r.updated_at && (!data || data.length === 0)) {
         const { data: cur } = await supabaseAdmin
@@ -545,7 +546,7 @@ if (body.matches?.upsert?.length) {
       .from("matches")
       .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
       .select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return dbError(error, 500, "save-all");
     created.push(...(data ?? []));
   }
 
@@ -569,7 +570,7 @@ if (body.matches?.upsert?.length) {
         .from("matches")
         .insert(deduped)
         .select();
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbError(error, 500, "save-all");
       created.push(...(data ?? []));
     }
   }
@@ -605,7 +606,7 @@ if (body.matches?.upsert?.length) {
         )
         .in("stage_id", touchedStageIds);
 
-      if (stageSelErr) return NextResponse.json({ error: stageSelErr.message }, { status: 500 });
+      if (stageSelErr) return dbError(stageSelErr, 500, "save-all");
 
       type Key = string;
       const keyOf = (s: number, r: number | null | undefined, p: number | null | undefined): Key =>
@@ -641,7 +642,7 @@ if (body.matches?.upsert?.length) {
         const { error } = await supabaseAdmin
           .from("matches")
           .upsert(pointerPatches, { onConflict: "id" });
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbError(error, 500, "save-all");
       }
 
       const { data: resolvedMatches, error: resolvedFetchErr } = await supabaseAdmin
@@ -649,7 +650,7 @@ if (body.matches?.upsert?.length) {
         .select("*")
         .in("stage_id", touchedStageIds);
 
-      if (resolvedFetchErr) return NextResponse.json({ error: resolvedFetchErr.message }, { status: 500 });
+      if (resolvedFetchErr) return dbError(resolvedFetchErr, 500, "save-all");
 
       out.matches = resolvedMatches ?? out.matches;
     }
@@ -658,7 +659,6 @@ if (body.matches?.upsert?.length) {
     console.log("[save-all][out] Final:", JSON.stringify(out, null, 2));
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {
-    console.error("[save-all] Error:", e?.message ?? "Unknown error");
-    return NextResponse.json({ error: e?.message ?? "Unknown error" }, { status: 500 });
+    return dbError(e, 500, "save-all");
   }
 }

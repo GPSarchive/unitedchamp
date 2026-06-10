@@ -1,37 +1,10 @@
 // app/api/announcements/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
+import { dbError } from "@/app/lib/api-error";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-// --- same-origin guard (copy from matches) ---
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean)
-);
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  const whitelist = new Set(allowedOrigins);
-  try {
-    whitelist.add(new URL(req.url).origin);
-  } catch {}
-
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some(val => {
-    try {
-      return !!val && whitelist.has(new URL(val).origin);
-    } catch {
-      return false;
-    }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
-// ---------------------------------------------
 
 function parseId(s: string) {
   const n = Number(s);
@@ -84,7 +57,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .select("*")
       .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return dbError(error, 400, "announcements/[id].PATCH");
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ data });
   } catch (e: any) {
@@ -119,7 +92,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .select("id")
       .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return dbError(error, 400, "announcements/[id].DELETE");
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch (e: any) {

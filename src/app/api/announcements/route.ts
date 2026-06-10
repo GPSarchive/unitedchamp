@@ -1,28 +1,8 @@
 // app/api/announcements/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
-
-// ---- same-origin guard (copy of matches) ----
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  const whitelist = new Set(
-    (process.env.ALLOWED_ORIGINS ?? "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-  );
-  try { whitelist.add(new URL(req.url).origin); } catch {}
-
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some(val => {
-    try { return !!val && whitelist.has(new URL(val).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
-// --------------------------------------------
+import { ensureSameOrigin } from "@/app/lib/same-origin";
+import { dbError } from "@/app/lib/api-error";
 
 function toBool(v: string | null) {
   return v === "1" || v === "true";
@@ -67,7 +47,7 @@ export async function GET(req: Request) {
   }
 
   const { data, error, count } = await q.range(offset, offset + limit - 1);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return dbError(error, 400, "announcements.GET");
 
   const total = typeof count === "number" ? count : null;
   const nextOffset = total !== null && offset + limit < total ? offset + limit : null;
@@ -110,7 +90,7 @@ export async function POST(req: Request) {
       .select("*")
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return dbError(error, 400, "announcements.POST");
     return NextResponse.json({ data }, { status: 201 });
   } catch (e: any) {
     const msg = String(e?.message ?? "");

@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // ← service role (server-only)
-
-/* same-origin guard (like matches) */
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-  const wl = new Set((process.env.ALLOWED_ORIGINS ?? "").split(",").map(s => s.trim()).filter(Boolean));
-  try { wl.add(new URL(req.url).origin); } catch {}
-  const ok = [req.headers.get("origin"), req.headers.get("referer")].some(v => {
-    try { return !!v && wl.has(new URL(v).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
+import { ensureSameOrigin } from "@/app/lib/same-origin";
+import { dbError, safeErrorMessage } from "@/app/lib/api-error";
+import { sanitizeFilterTerm } from "@/app/lib/pgrest";
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { Allow: "GET,POST,OPTIONS,HEAD" } });
@@ -88,19 +79,20 @@ export async function GET(req: Request) {
     query = query.is("deleted_at", null);           // active only (default)
   }
 
-  if (q) {
-    query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+  const safeQ = sanitizeFilterTerm(q);
+  if (safeQ) {
+    query = query.or(`first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%`);
   }
 
   const { data: rows, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return dbError(error, 400, "players.GET");
 
   if (Number.isFinite(excludeTeamId)) {
     const { data: links, error: linkErr } = await supabaseAdmin
       .from("player_teams")
       .select("player_id")
       .eq("team_id", excludeTeamId);
-    if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 });
+    if (linkErr) return dbError(linkErr, 400, "players.GET");
 
     const linked = new Set((links ?? []).map((l: any) => l.player_id));
     return NextResponse.json({ players: (rows ?? []).filter((p: any) => !linked.has(p.id)) });
@@ -176,7 +168,7 @@ export async function POST(req: Request) {
       .insert(insertPlayer)
       .select("id, first_name, last_name, photo, height_cm, position, birth_date, player_number")
       .single();
-    if (pErr || !player) return NextResponse.json({ error: pErr?.message || "Create failed" }, { status: 400 });
+    if (pErr || !player) return NextResponse.json({ error: pErr ? safeErrorMessage(pErr, "players.POST") : "Create failed" }, { status: 400 });
 
     // 2) upsert stats (requires UNIQUE (player_id) on player_statistics)
     const { data: stats, error: sErr } = await supa
@@ -191,7 +183,7 @@ export async function POST(req: Request) {
     if (sErr) {
       // best-effort cleanup if stats fail
       await supa.from("player").delete().eq("id", player.id);
-      return NextResponse.json({ error: sErr.message }, { status: 400 });
+      return dbError(sErr, 400, "players.POST");
     }
 
     return NextResponse.json({ player: { ...player, player_statistics: [stats] } }, { status: 201 });

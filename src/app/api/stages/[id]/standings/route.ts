@@ -1,6 +1,7 @@
 // app/api/stages/[id]/standings/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 // Make sure this runs on the Node runtime, not Edge
 export const runtime = "nodejs";
@@ -31,7 +32,7 @@ export async function GET(
       .order("rank", { ascending: true });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      return dbError(error, 400, "stages/[id]/standings");
     }
 
     const rows: Row[] = (data ?? []).map((r: any) => ({

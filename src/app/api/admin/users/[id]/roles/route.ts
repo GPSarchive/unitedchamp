@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { safeNextUrl } from '@/app/lib/safe-redirect';
+import { dbError, safeErrorMessage } from '@/app/lib/api-error';
 
 type Ctx = { params: Promise<{ id: string }> }; // ← params is a Promise
 
@@ -38,7 +39,7 @@ export async function POST(req: Request, ctx: Ctx) {
   // 4) Get current roles for target user
   const { data: target, error: getErr } = await supabaseAdmin.auth.admin.getUserById(id);
   if (getErr || !target?.user) {
-    return NextResponse.json({ error: getErr?.message || 'user not found' }, { status: 404 });
+    return NextResponse.json({ error: getErr ? safeErrorMessage(getErr, 'admin/roles') : 'user not found' }, { status: 404 });
   }
 
   const currentRoles: string[] = Array.isArray(target.user.app_metadata?.roles)
@@ -52,7 +53,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(id, {
     app_metadata: { roles: newRoles },
   });
-  if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 400 });
+  if (updateErr) return dbError(updateErr, 400, 'admin/roles');
 
   // 6) Redirect for form posts; JSON for programmatic calls
   if (!ct.includes('application/json')) {

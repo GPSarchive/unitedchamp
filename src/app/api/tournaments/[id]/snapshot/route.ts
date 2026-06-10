@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // service role for server routes
 import { requireAdmin } from "@/app/lib/supabase/apiAuth";
+import { dbError, safeErrorMessage } from "@/app/lib/api-error";
 import type { FullTournamentSnapshot } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 
 /** Avoid ISR here; editor needs fresh reads */
@@ -32,7 +33,7 @@ export async function GET(
     .single();
 
   if (tErr || !t) {
-    return NextResponse.json({ error: tErr?.message || "Not found" }, { status: 404 });
+    return NextResponse.json({ error: tErr ? safeErrorMessage(tErr, "snapshot") : "Not found" }, { status: 404 });
   }
 
   // ---- 2) Stages -----------------------------------------------------------
@@ -43,7 +44,7 @@ export async function GET(
     .order("ordering", { ascending: true });
 
   if (sErr) {
-    return NextResponse.json({ error: sErr.message }, { status: 500 });
+    return dbError(sErr, 500, "snapshot");
   }
 
   const stageIds = (stages ?? []).map((s) => s.id);
@@ -55,7 +56,7 @@ export async function GET(
     .in("stage_id", stageIds.length ? stageIds : [-1]);
 
   if (gErr) {
-    return NextResponse.json({ error: gErr.message }, { status: 500 });
+    return dbError(gErr, 500, "snapshot");
   }
 
   // ---- 4) Matches (all useful fields + updated_at) -------------------------
@@ -78,7 +79,7 @@ export async function GET(
     .order("id", { ascending: true });
 
   if (mErr) {
-    return NextResponse.json({ error: mErr.message }, { status: 500 });
+    return dbError(mErr, 500, "snapshot");
   }
 
   // ---- 5) Participation (tournament_teams) --------------------------------
@@ -88,7 +89,7 @@ export async function GET(
     .eq("tournament_id", num);
 
   if (pErr) {
-    return NextResponse.json({ error: pErr.message }, { status: 500 });
+    return dbError(pErr, 500, "snapshot");
   }
 
   // ---- 6) KO→Groups intake helpers ----------------------------------------
@@ -98,7 +99,7 @@ export async function GET(
     .in("stage_id", stageIds.length ? stageIds : [-1]);
 
   if (ssErr) {
-    return NextResponse.json({ error: ssErr.message }, { status: 500 });
+    return dbError(ssErr, 500, "snapshot");
   }
 
   const { data: intakeMappings, error: imErr } = await supabaseAdmin
@@ -107,7 +108,7 @@ export async function GET(
     .in("target_stage_id", stageIds.length ? stageIds : [-1]);
 
   if (imErr) {
-    return NextResponse.json({ error: imErr.message }, { status: 500 });
+    return dbError(imErr, 500, "snapshot");
   }
 
   // ---- 7) Standings (league/groups) ---------------------------------------
@@ -120,7 +121,7 @@ export async function GET(
     .order("rank", { ascending: true, nullsFirst: true });
 
   if (stErr) {
-    return NextResponse.json({ error: stErr.message }, { status: 500 });
+    return dbError(stErr, 500, "snapshot");
   }
 
   // ---- 8) Teams used anywhere (participants, matches, slots, standings) ----

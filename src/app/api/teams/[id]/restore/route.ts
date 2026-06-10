@@ -1,30 +1,10 @@
 // app/api/teams/[id]/restore/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 const BUCKET = "GPSarchive's Project";
 type Ctx = { params: Promise<{ id: string }> };
-
-// .env: ALLOWED_ORIGINS=https://app.example.com,http://localhost:3000
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean)
-);
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-  const whitelist = new Set(allowedOrigins);
-  try { whitelist.add(new URL(req.url).origin); } catch {}
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some(val => {
-    try { return !!val && whitelist.has(new URL(val).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
 
 function parsePositiveInt(s: string): number | null {
   const n = Number(s);

@@ -1,6 +1,7 @@
 // app/api/tournaments/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 export async function GET(req: NextRequest) {
   const s = await createSupabaseRouteClient();
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (limit && Number.isFinite(limit)) q = q.limit(limit);
 
   const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return dbError(error, 500, "tournaments.GET");
 
   return NextResponse.json({ items: data ?? [] });
 }

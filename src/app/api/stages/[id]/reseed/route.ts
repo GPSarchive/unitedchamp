@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { safeErrorMessage } from "@/app/lib/api-error";
 
 export const runtime = "nodejs";
 export const revalidate = 0;
@@ -190,7 +191,7 @@ export async function POST(
       .eq("id", koStageId)
       .single<StageRow>();
     if (koErr || !ko) {
-      return NextResponse.json({ ok: false, error: koErr?.message || "KO stage not found" }, { status: 404 });
+      return NextResponse.json({ ok: false, error: koErr ? safeErrorMessage(koErr, "reseed") : "KO stage not found" }, { status: 404 });
     }
     if (ko.kind !== "knockout") {
       return NextResponse.json({ ok: false, error: "Stage is not knockout" }, { status: 400 });
@@ -249,6 +250,6 @@ export async function POST(
     const matches = await listStageMatches(koStageId);
     return NextResponse.json({ ok: true, matches });
   } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || "Unexpected error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: safeErrorMessage(err, "reseed") }, { status: 500 });
   }
 }

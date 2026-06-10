@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
+import { safeErrorMessage } from '@/app/lib/api-error';
 
 export async function GET() {
   try {
@@ -36,14 +37,12 @@ export async function GET() {
     }
 
     if (error) {
-      console.error('Error fetching articles:', error);
-      return NextResponse.json({ error: error.message, articles: [] }, { status: 500 });
+      return NextResponse.json({ error: safeErrorMessage(error, "articles-public"), articles: [] }, { status: 500 });
     }
 
     console.log(`Successfully fetched ${articles?.length || 0} articles`);
     return NextResponse.json({ articles: articles || [] });
   } catch (error: any) {
-    console.error('Error in articles-public API:', error);
-    return NextResponse.json({ error: error.message, articles: [] }, { status: 500 });
+    return NextResponse.json({ error: safeErrorMessage(error, "articles-public"), articles: [] }, { status: 500 });
   }
 }

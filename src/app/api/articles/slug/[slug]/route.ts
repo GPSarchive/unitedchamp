@@ -1,6 +1,7 @@
 // app/api/articles/slug/[slug]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -17,7 +18,7 @@ export async function GET(req: Request, ctx: Ctx) {
       .eq("slug", slug)
       .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return dbError(error, 400, "articles/slug.GET");
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     // Only return published articles to non-authenticated users

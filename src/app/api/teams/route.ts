@@ -1,51 +1,10 @@
 // app/api/teams/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 // If possible, rename your bucket to an id without spaces/apostrophes (e.g. "gpsarchives-project").
 const BUCKET = "GPSarchive's Project";
-
-/* =======================
-   Minimal same-origin guard
-   ======================= */
-// .env: ALLOWED_ORIGINS=https://app.example.com,http://localhost:3000
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  // Build a whitelist: env + the API’s own origin at runtime (dev/preview safe)
-  const whitelist = new Set(
-    (process.env.ALLOWED_ORIGINS ?? "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
-  try {
-    whitelist.add(new URL(req.url).origin);
-  } catch {
-    // ignore
-  }
-
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-
-  const ok = [origin, referer].some((val) => {
-    try {
-      return !!val && whitelist.has(new URL(val).origin);
-    } catch {
-      return false;
-    }
-  });
-
-  if (!ok) throw new Error("bad-origin");
-}
 
 /* ==============
    Helper utils

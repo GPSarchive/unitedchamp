@@ -9,6 +9,8 @@
 // videos attached to older matches still surface on the first page.
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { dbError } from "@/app/lib/api-error";
+import { isIsoTimestamp } from "@/app/lib/pgrest";
 
 const PAGE_SIZE = 10;
 
@@ -32,7 +34,9 @@ export async function GET(req: NextRequest) {
     .order("id",         { ascending: false })
     .limit(PAGE_SIZE);
 
-  if (cursorDate && cursorId && !isNaN(Number(cursorId))) {
+  // cursorDate is interpolated into the .or() filter string below, so it must
+  // be a strict ISO timestamp — anything else could inject filter clauses.
+  if (cursorDate && isIsoTimestamp(cursorDate) && cursorId && !isNaN(Number(cursorId))) {
     // Compound cursor: rows older than the cursor
     // (created_at < cursorDate) OR (created_at = cursorDate AND id < cursorId)
     query = query.or(
@@ -43,7 +47,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return dbError(error, 500, "matches/videos");
   }
 
   const items = data ?? [];

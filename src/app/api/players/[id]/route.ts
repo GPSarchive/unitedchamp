@@ -1,29 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { dbError } from "@/app/lib/api-error";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-/* ================  Same-origin guard  ================ */
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  const whitelist = new Set(
-    (process.env.ALLOWED_ORIGINS ?? "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-  );
-  try { whitelist.add(new URL(req.url).origin); } catch {}
-
-  const origin  = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-  const ok = [origin, referer].some(v => {
-    try { return !!v && whitelist.has(new URL(v).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
@@ -77,7 +58,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     .limit(1, { foreignTable: "player_statistics" })
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return dbError(error, 400, "players/[id].GET");
   if (!data) return NextResponse.json({ error: "Player not found" }, { status: 404 });
   return NextResponse.json({ player: data });
 }
@@ -142,7 +123,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     if (Object.keys(patchPlayer).length > 0) {
       const { error: pErr } = await supa.from("player").update(patchPlayer).eq("id", pid);
-      if (pErr) return NextResponse.json({ error: pErr.message }, { status: 400 });
+      if (pErr) return dbError(pErr, 400, "players/[id].PATCH");
     }
 
     // Stats fields (optional)
@@ -192,7 +173,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       const { error: sErr } = await supa
         .from("player_statistics")
         .upsert(statsPatch, { onConflict: "player_id" });
-      if (sErr) return NextResponse.json({ error: sErr.message }, { status: 400 });
+      if (sErr) return dbError(sErr, 400, "players/[id].PATCH");
     }
 
     // Refetch combined row with service role
@@ -224,7 +205,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .limit(1, { foreignTable: "player_statistics" })
       .maybeSingle();
 
-    if (refErr) return NextResponse.json({ error: refErr.message }, { status: 400 });
+    if (refErr) return dbError(refErr, 400, "players/[id].PATCH");
     if (!player) return NextResponse.json({ error: "Player not found after update" }, { status: 404 });
 
     return NextResponse.json({ player });
@@ -261,7 +242,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .select("id")
       .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return dbError(error, 400, "players/[id].DELETE");
     if (!data)  return NextResponse.json({ error: "Not found or already archived" }, { status: 404 });
 
     return NextResponse.json({ ok: true, soft_deleted: true });

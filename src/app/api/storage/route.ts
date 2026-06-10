@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { dbError } from "@/app/lib/api-error";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -16,6 +17,6 @@ export async function GET(req: Request) {
   if (!user || !roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 60);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return dbError(error, 400, "storage.GET");
   return NextResponse.json({ signedUrl: data?.signedUrl ?? null });
 }

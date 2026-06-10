@@ -1,6 +1,7 @@
 // app/api/teams/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 /* =========================
    Storage / Bucket settings
@@ -11,44 +12,6 @@ const BUCKET = "GPSarchive's Project";
    Types
    ========================= */
 type Ctx = { params: Promise<{ id: string }> };
-
-/* =======================
-   Minimal same-origin guard
-   ======================= */
-// .env: ALLOWED_ORIGINS=https://app.example.com,http://localhost:3000
-const allowedOrigins = new Set(
-  (process.env.ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-);
-
-/** Tokenless CSRF mitigation: enforce same-origin via Origin/Referer on mutating verbs. */
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-
-  // Build a whitelist: env + the API’s own origin at runtime (dev/preview safe)
-  const whitelist = new Set(allowedOrigins);
-  try {
-    whitelist.add(new URL(req.url).origin);
-  } catch {
-    // ignore
-  }
-
-  const origin = req.headers.get("origin");
-  const referer = req.headers.get("referer");
-
-  const ok = [origin, referer].some((val) => {
-    try {
-      return !!val && whitelist.has(new URL(val).origin);
-    } catch {
-      return false;
-    }
-  });
-
-  if (!ok) throw new Error("bad-origin");
-}
 
 /* ==============
    Helper utils

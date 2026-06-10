@@ -1,24 +1,9 @@
 // app/api/players/[id]/restore/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-  const wl = new Set(
-    (process.env.ALLOWED_ORIGINS ?? "")
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean)
-  );
-  try { wl.add(new URL(req.url).origin); } catch {}
-  const ok = [req.headers.get("origin"), req.headers.get("referer")].some(v => {
-    try { return !!v && wl.has(new URL(v).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
 
 function parsePositiveInt(s: string): number | null {
   const n = Number(s);

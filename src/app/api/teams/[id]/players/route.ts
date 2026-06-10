@@ -3,19 +3,10 @@ import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { normalizeTeamPlayers, type TeamPlayersRowRaw } from "@/app/lib/types";
+import { ensureSameOrigin } from "@/app/lib/same-origin";
+import { safeErrorMessage } from "@/app/lib/api-error";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-function ensureSameOrigin(req: Request) {
-  const m = req.method.toUpperCase();
-  if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
-  const wl = new Set((process.env.ALLOWED_ORIGINS ?? "").split(",").map(s => s.trim()).filter(Boolean));
-  try { wl.add(new URL(req.url).origin); } catch {}
-  const ok = [req.headers.get("origin"), req.headers.get("referer")].some(v => {
-    try { return !!v && wl.has(new URL(v).origin); } catch { return false; }
-  });
-  if (!ok) throw new Error("bad-origin");
-}
 
 const parseId = (v: unknown) => {
   const n = Number(v);
@@ -153,7 +144,7 @@ export async function GET(req: Request, ctx: Ctx) {
         status, statusText, error: error.message
       });
     }
-    return NextResponse.json({ error: error.message, requestId }, { status: 400, headers });
+    return NextResponse.json({ error: safeErrorMessage(error, "team-players.GET"), requestId }, { status: 400, headers });
   }
 
   // Filter out soft-deleted players from team roster
@@ -351,7 +342,7 @@ export async function POST(req: Request, ctx: Ctx) {
       const tCreatePlayer1 = now();
       if (pErr || !pRow) {
         if (dbg) console.error(`[POST] requestId=${requestId} create player failed`, { pStatus, error: pErr?.message });
-        return NextResponse.json({ error: pErr?.message || "Create player failed", requestId }, { status: 400, headers });
+        return NextResponse.json({ error: pErr ? safeErrorMessage(pErr, "team-players.POST") : "Create player failed", requestId }, { status: 400, headers });
       }
 
       playerId = pRow.id as number;
@@ -364,7 +355,7 @@ export async function POST(req: Request, ctx: Ctx) {
       if (sErr) {
         await supabaseAdmin.from("player").delete().eq("id", playerId).limit(1);
         if (dbg) console.error(`[POST] requestId=${requestId} create stats failed`, { sStatus, error: sErr.message });
-        return NextResponse.json({ error: sErr.message || "Create stats failed", requestId }, { status: 400, headers });
+        return NextResponse.json({ error: safeErrorMessage(sErr, "team-players.POST"), requestId }, { status: 400, headers });
       }
 
       if (dbg) {
@@ -393,7 +384,7 @@ export async function POST(req: Request, ctx: Ctx) {
         return NextResponse.json({ error: "Player already linked to this team", requestId, player_id: playerId }, { status: 409, headers });
       }
       if (dbg) console.error(`[POST] requestId=${requestId} link failed`, { aStatus, error: aErr.message });
-      return NextResponse.json({ error: aErr.message, requestId }, { status: 400, headers });
+      return NextResponse.json({ error: safeErrorMessage(aErr, "team-players.POST"), requestId }, { status: 400, headers });
     }
 
     const tFetch0 = now();
@@ -424,7 +415,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
     if (refErr || !association) {
       if (dbg) console.error(`[POST] requestId=${requestId} fetch failed`, { refStatus, error: refErr?.message });
-      return NextResponse.json({ error: refErr?.message || "Fetch failed", requestId }, { status: 400, headers });
+      return NextResponse.json({ error: refErr ? safeErrorMessage(refErr, "team-players.POST") : "Fetch failed", requestId }, { status: 400, headers });
     }
 
     const [normalized] = normalizeTeamPlayers([association as TeamPlayersRowRaw]);

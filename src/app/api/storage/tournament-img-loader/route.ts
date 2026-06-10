@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { dbError } from "@/app/lib/api-error";
 
 export const runtime = "nodejs";
 
@@ -110,7 +111,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await admin.storage.from(BUCKET).createSignedUrl(key, 60 * 60);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return dbError(error, 400, "storage/tournament-img-loader");
   }
   return NextResponse.json({ url: data?.signedUrl ?? null, key });
 }

@@ -17,11 +17,16 @@ export type LimitResult = {
 /**
  * Fixed-window rate limiter using Vercel KV
  * Counts hits inside a time window with 1 KV INCR per request
+ *
+ * `failClosed`: when KV is configured but unreachable, deny instead of allow.
+ * Use for brute-force-sensitive limits (auth) where failing open would let an
+ * attacker bypass the limit by degrading KV.
  */
 export async function checkLimit(
   key: string,
   limit: number,
-  windowSec: number
+  windowSec: number,
+  opts?: { failClosed?: boolean }
 ): Promise<LimitResult> {
   if (!process.env.KV_REST_API_URL || process.env.NODE_ENV === 'development') {
     return {
@@ -55,11 +60,12 @@ export async function checkLimit(
     }
   } catch (error) {
     console.error('Rate limit error:', error)
-    // Fail open - allow request if KV is down
+    // Auth-critical limits fail closed; everything else fails open so a KV
+    // outage doesn't take the whole site down.
     return {
-      success: true,
+      success: !opts?.failClosed,
       limit,
-      remaining: limit,
+      remaining: opts?.failClosed ? 0 : limit,
       reset: Date.now() + windowSec * 1000,
     }
   }
@@ -98,7 +104,7 @@ export async function checkDailyLimit(ip: string): Promise<LimitResult> {
 
 /** Auth endpoints: stricter limit for brute-force protection (10 req/min) */
 export async function checkAuthLimit(ip: string): Promise<LimitResult> {
-  return checkLimit(`auth:${ip}`, 10, 60)
+  return checkLimit(`auth:${ip}`, 10, 60, { failClosed: true })
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -269,6 +275,20 @@ export async function checkLimitsBatch(checks: LimitCheck[]): Promise<BatchResul
     return { success: true }
   } catch (error) {
     console.error('Batch rate limit error:', error)
-    return { success: true } // Fail open
+    // Fail closed if the batch contained an auth-critical check, open otherwise
+    const authCheck = checks.find((c) => c.name === 'auth')
+    if (authCheck) {
+      return {
+        success: false,
+        failedCheck: authCheck.name,
+        result: {
+          success: false,
+          limit: authCheck.limit,
+          remaining: 0,
+          reset: Date.now() + authCheck.windowSec * 1000,
+        },
+      }
+    }
+    return { success: true }
   }
 }

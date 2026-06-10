@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { requireAdmin } from '@/app/lib/supabase/apiAuth';
+import { safeErrorMessage } from '@/app/lib/api-error';
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -30,7 +31,7 @@ export async function GET() {
     return NextResponse.json(stats);
   } catch (error: any) {
     return NextResponse.json(
-      { error: error.message || 'Failed to get stats' },
+      { error: safeErrorMessage(error, 'debug/invocations') },
       { status: 500 }
     );
   }

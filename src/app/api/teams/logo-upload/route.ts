@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { randomUUID } from "crypto";
+import { dbError } from "@/app/lib/api-error";
 
 const BUCKET = "GPSarchive's Project";
 const MAX_BYTES = 3 * 1024 * 1024; // 3MB
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     .from(BUCKET)
     .upload(path, Buffer.from(ab), { contentType: file.type, upsert: false });
 
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 400 });
+  if (upErr) return dbError(upErr, 400, "logo-upload");
 
   // Return a stable proxy URL (served via your Next.js route), no signing needed.
   const origin = new URL(req.url).origin;
