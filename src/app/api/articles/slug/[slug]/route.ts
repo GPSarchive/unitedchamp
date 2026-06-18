@@ -1,6 +1,7 @@
 // app/api/articles/slug/[slug]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -22,10 +23,9 @@ export async function GET(req: Request, ctx: Ctx) {
 
     // Only return published articles to non-authenticated users
     if (data.status !== "published") {
-      // Check if user is admin
+      // Drafts are visible only to content editors (admins/editors)
       const { data: { user } } = await supa.auth.getUser();
-      const roles = Array.isArray(user?.app_metadata?.roles) ? user.app_metadata.roles : [];
-      if (!roles.includes("admin")) {
+      if (!canEditContent(user)) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
     }

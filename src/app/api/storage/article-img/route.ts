@@ -28,9 +28,10 @@ async function requireAdmin() {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return { ok: false as const, reason: "Not authenticated" };
   const roles = (data.user.app_metadata as any)?.roles ?? [];
-  return Array.isArray(roles) && roles.includes("admin")
+  const canEdit = Array.isArray(roles) && (roles.includes("admin") || roles.includes("editor"));
+  return canEdit
     ? { ok: true as const, user: data.user }
-    : { ok: false as const, reason: "Not admin" };
+    : { ok: false as const, reason: "Not authorized" };
 }
 
 export async function POST(req: Request) {

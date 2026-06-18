@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { DraftMatch } from "../useTournamentData";
+import { formatMatchDateTime } from "@/app/lib/datetime";
 
 interface MatchCardProps {
   match: DraftMatch;
@@ -20,15 +21,11 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, getTeamName, getTeamLogo, 
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "TBD";
-    const date = new Date(dateString);
-    return date.toLocaleString("el-GR", {
+    return formatMatchDateTime(dateString, {
       weekday: "short",
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
     });
   };
 

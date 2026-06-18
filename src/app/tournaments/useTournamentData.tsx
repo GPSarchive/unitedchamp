@@ -81,6 +81,12 @@ export type DraftMatch = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
+
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 };
 
 export type Stage = {

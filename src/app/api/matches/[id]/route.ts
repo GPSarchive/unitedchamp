@@ -1,6 +1,7 @@
 // app/api/matches/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
 
@@ -29,6 +30,9 @@ const UPDATABLE_FIELDS = new Set<keyof any>([
   "team_b_score",
   "matchday",
   "field", // ✅ NEW
+  // ✅ Two-legged KO penalty scores (leg + tie link are structural, set at generation)
+  "penalty_a",
+  "penalty_b",
 ]);
 
 
@@ -172,8 +176,7 @@ export async function PATCH(
       error: userErr,
     } = await supa.auth.getUser();
     if (userErr || !user) return jsonError(401, "Unauthorized", userErr);
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return jsonError(403, "Forbidden");
+    if (!canEditContent(user)) return jsonError(403, "Forbidden");
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") return jsonError(400, "Invalid JSON");
@@ -187,7 +190,7 @@ export async function PATCH(
     // Load current row incl. wiring anchors + stage kind
     const { data: current, error: curErr } = await supa
       .from("matches")
-      .select("id, tournament_id, stage_id, round, bracket_pos, team_a_id, team_b_id, status, winner_team_id, team_a_score, team_b_score")
+      .select("id, tournament_id, stage_id, round, bracket_pos, team_a_id, team_b_id, status, winner_team_id, team_a_score, team_b_score, leg, tie_leg1_match_id, penalty_a, penalty_b")
       .eq("id", id)
       .maybeSingle();
 
@@ -230,6 +233,19 @@ export async function PATCH(
         return jsonError(400, "Invalid team_b_score");
       if (s == null) delete update.team_b_score;
       else update.team_b_score = s;
+    }
+
+    // Penalty scores (two-legged KO). Empty clears to null.
+    for (const k of ["penalty_a", "penalty_b"] as const) {
+      if (k in update) {
+        if (update[k] === null || update[k] === "" || update[k] === undefined) {
+          update[k] = null;
+        } else {
+          const p = parseNonNegativeInt(update[k]);
+          if (p == null) return jsonError(400, `Invalid ${k}`);
+          update[k] = p;
+        }
+      }
     }
 
     // Normalize date
@@ -292,6 +308,15 @@ export async function PATCH(
     const effAS = "team_a_score" in update ? update.team_a_score : current.team_a_score;
     const effBS = "team_b_score" in update ? update.team_b_score : current.team_b_score;
     const effWinner = "winner_team_id" in update ? update.winner_team_id : current.winner_team_id;
+    const effPenA = "penalty_a" in update ? update.penalty_a : current.penalty_a;
+    const effPenB = "penalty_b" in update ? update.penalty_b : current.penalty_b;
+
+    // Two-legged KO context: leg-1 row is a plain leg; a leg-2 row with a live
+    // tie link is the "decider" (aggregate + penalties). If leg 1 was deleted,
+    // tie_leg1_match_id is null and the row falls back to single-match rules.
+    const isLeg1 = stageKind === "knockout" && current.leg === 1;
+    const isLeg2Decider =
+      stageKind === "knockout" && current.leg === 2 && current.tie_leg1_match_id != null;
 
     // Winner rules per stage kind
     if (finalStatus === "finished") {
@@ -299,7 +324,45 @@ export async function PATCH(
         return jsonError(400, "team_a_score and team_b_score are required when status is 'finished'");
       }
 
-      if (stageKind === "knockout") {
+      if (isLeg1) {
+        // Leg 1 of a two-legged tie: any score (incl. level) is allowed; it carries
+        // no winner — the tie is decided when leg 2 finishes.
+        update.winner_team_id = null;
+      } else if (isLeg2Decider) {
+        // Leg 2 (decider): compute aggregate vs leg 1; penalties break a level aggregate.
+        const { data: leg1 } = await supa
+          .from("matches")
+          .select("team_a_id, team_b_id, team_a_score, team_b_score")
+          .eq("id", current.tie_leg1_match_id)
+          .maybeSingle();
+
+        if (!leg1 || leg1.team_a_score == null || leg1.team_b_score == null) {
+          return jsonError(409, "Finish leg 1 before finishing leg 2 of this tie.");
+        }
+
+        const scoreFor = (row: any, teamId: number) =>
+          row.team_a_id === teamId ? (row.team_a_score ?? 0)
+          : row.team_b_id === teamId ? (row.team_b_score ?? 0)
+          : 0;
+
+        const aggA = (effAS ?? 0) + scoreFor(leg1, teamA);
+        const aggB = (effBS ?? 0) + scoreFor(leg1, teamB);
+
+        if (aggA !== aggB) {
+          update.winner_team_id = aggA > aggB ? teamA : teamB;
+          // pens irrelevant when aggregate is decisive; leave as provided
+        } else {
+          // Level on aggregate → require a penalty result
+          if (effPenA == null || effPenB == null) {
+            return jsonError(400, "Aggregate is level — enter the penalty shootout result.");
+          }
+          if (effPenA === effPenB) {
+            return jsonError(400, "Penalty shootout cannot end level — enter a winner on penalties.");
+          }
+          update.winner_team_id = effPenA > effPenB ? teamA : teamB;
+        }
+      } else if (stageKind === "knockout") {
+        // Single-leg KO (or leg-2 whose leg 1 was deleted): unchanged behaviour.
         if (effAS === effBS) {
           return jsonError(400, "Knockout matches cannot finish level; set a winner (pens).");
         }
@@ -331,6 +394,8 @@ export async function PATCH(
       delete update.winner_team_id;
       update.team_a_score = null;
       update.team_b_score = null;
+      update.penalty_a = null;
+      update.penalty_b = null;
     }
 
     // Determine risky changes (that affect downstream)
@@ -466,10 +531,7 @@ export async function PATCH(
         error: userErr,
       } = await supa.auth.getUser();
       if (userErr || !user) return jsonError(401, "Unauthorized", userErr);
-      const roles = Array.isArray(user.app_metadata?.roles)
-        ? (user.app_metadata!.roles as string[])
-        : [];
-      if (!roles.includes("admin")) return jsonError(403, "Forbidden");
+      if (!canEditContent(user)) return jsonError(403, "Forbidden");
   
       // Load current match with stage + wiring anchors
       const { data: current, error: curErr } = await supa

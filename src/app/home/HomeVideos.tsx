@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useConsent } from "@/app/lib/consent/use-consent";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 type VideoMatch = {
   id: number;
@@ -161,7 +162,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
 
             const isPlaying = playingId === videoId;
             const matchDate = match.match_date
-              ? new Date(match.match_date).toLocaleDateString("el-GR", {
+              ? formatMatchDate(match.match_date, {
                   year: "numeric",
                   month: "short",
                   day: "numeric",

@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTournamentData, type Stage } from "@/app/tournaments/useTournamentData";
 import KOStageViewer from "./KOStageViewer";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 // Types for knockout
 export type DraftMatch = {
@@ -17,7 +18,7 @@ export type DraftMatch = {
   team_a_id?: number | null;
   team_b_id?: number | null;
   round?: number | null;
-  status?: "scheduled" | "finished" | null;
+  status?: "scheduled" | "postponed" | "finished" | null;
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
@@ -25,6 +26,11 @@ export type DraftMatch = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 };
 
 type Connection = [string, string];
@@ -47,6 +53,11 @@ type MatchNodeData = {
   status: string | null;
   winnerId: number | null;
   matchDate: string | null;
+  // two-legged KO (null for single-leg)
+  twoLegged?: boolean;
+  legScores?: { a: number | null; b: number | null }[]; // per displayed leg, in teamA/teamB orientation
+  penA?: number | null;
+  penB?: number | null;
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -116,53 +127,93 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
 
     const maxRound = Math.max(...stageRows.map((m) => m.round ?? 1));
 
-    const nx: NodeBox[] = stageRows.map((m) => {
-      const r = m.round ?? 1;
-      const b = m.bracket_pos ?? 1;
-      return {
-        id: `R${r}-B${b}`,
+    // Group rows by bracket slot — two-legged ties have two rows per (round, pos).
+    const byKey = new Map<string, DraftMatch[]>();
+    stageRows.forEach((m) => {
+      const key = `R${m.round ?? 1}-B${m.bracket_pos ?? 1}`;
+      const arr = byKey.get(key) ?? [];
+      arr.push(m);
+      byKey.set(key, arr);
+    });
+
+    const nx: NodeBox[] = [];
+    const meta: Record<string, NodeMeta> = {};
+    const edges: Connection[] = [];
+    const md: Record<string, MatchNodeData> = {};
+
+    // Score that `teamId` put up in a row (teams may be on either side).
+    const scoreFor = (m: DraftMatch, teamId: number | null) => {
+      if (teamId == null) return 0;
+      if (m.team_a_id === teamId) return m.team_a_score ?? 0;
+      if (m.team_b_id === teamId) return m.team_b_score ?? 0;
+      return 0;
+    };
+
+    byKey.forEach((rows, key) => {
+      const sample = rows[0];
+      const r = sample.round ?? 1;
+      const b = sample.bracket_pos ?? 1;
+
+      nx.push({
+        id: key,
         x: (r - 1) * COL_GAP + X_MARGIN,
         y: getYPosition(r, b),
         w: BOX_W,
         h: BOX_H,
         label: getRoundLabel(r, maxRound),
-      };
-    });
+      });
+      meta[key] = { round: r, bracket_pos: b };
 
-    const meta: Record<string, NodeMeta> = {};
-    stageRows.forEach((m) => {
-      const r = m.round ?? 1;
-      const b = m.bracket_pos ?? 1;
-      meta[`R${r}-B${b}`] = { round: r, bracket_pos: b };
-    });
-
-    const edges: Connection[] = [];
-    stageRows.forEach((m) => {
-      const toKey = `R${m.round}-B${m.bracket_pos}`;
+      // Edges from a representative row (both legs share the same source coords).
       const homeKey =
-        m.home_source_round && m.home_source_bracket_pos
-          ? `R${m.home_source_round}-B${m.home_source_bracket_pos}`
+        sample.home_source_round && sample.home_source_bracket_pos
+          ? `R${sample.home_source_round}-B${sample.home_source_bracket_pos}`
           : null;
       const awayKey =
-        m.away_source_round && m.away_source_bracket_pos
-          ? `R${m.away_source_round}-B${m.away_source_bracket_pos}`
+        sample.away_source_round && sample.away_source_bracket_pos
+          ? `R${sample.away_source_round}-B${sample.away_source_bracket_pos}`
           : null;
-      if (homeKey) edges.push([homeKey, toKey]);
-      if (awayKey) edges.push([awayKey, toKey]);
-    });
+      if (homeKey) edges.push([homeKey, key]);
+      if (awayKey) edges.push([awayKey, key]);
 
-    const md: Record<string, MatchNodeData> = {};
-    stageRows.forEach((m) => {
-      const r = m.round ?? 1;
-      const b = m.bracket_pos ?? 1;
-      md[`R${r}-B${b}`] = {
-        teamA: m.team_a_id ?? null,
-        teamB: m.team_b_id ?? null,
-        scoreA: m.team_a_score ?? null,
-        scoreB: m.team_b_score ?? null,
-        status: m.status ?? null,
-        winnerId: m.winner_team_id ?? null,
-        matchDate: m.match_date ?? null,
+      const twoLegged = rows.length > 1 || rows.some((m) => m.leg != null);
+
+      if (!twoLegged) {
+        md[key] = {
+          teamA: sample.team_a_id ?? null,
+          teamB: sample.team_b_id ?? null,
+          scoreA: sample.team_a_score ?? null,
+          scoreB: sample.team_b_score ?? null,
+          status: sample.status ?? null,
+          winnerId: sample.winner_team_id ?? null,
+          matchDate: sample.match_date ?? null,
+        };
+        return;
+      }
+
+      // Two-legged: display in leg-2 (decider) orientation; pens live on leg 2.
+      const leg2 = rows.find((m) => m.leg === 2) ?? rows[rows.length - 1];
+      const leg1 = rows.find((m) => m !== leg2) ?? null;
+      const teamA = leg2.team_a_id ?? null;
+      const teamB = leg2.team_b_id ?? null;
+
+      const orderedLegs = [leg1, leg2].filter(Boolean) as DraftMatch[];
+      const allFinished = orderedLegs.every((m) => m.status === "finished");
+      const aggA = orderedLegs.reduce((sum, m) => sum + scoreFor(m, teamA), 0);
+      const aggB = orderedLegs.reduce((sum, m) => sum + scoreFor(m, teamB), 0);
+
+      md[key] = {
+        teamA,
+        teamB,
+        scoreA: allFinished ? aggA : null,
+        scoreB: allFinished ? aggB : null,
+        status: allFinished ? "finished" : "scheduled",
+        winnerId: leg2.winner_team_id ?? null,
+        matchDate: leg2.match_date ?? leg1?.match_date ?? null,
+        twoLegged: true,
+        legScores: orderedLegs.map((m) => ({ a: scoreFor(m, teamA), b: scoreFor(m, teamB) })),
+        penA: leg2.penalty_a ?? null,
+        penB: leg2.penalty_b ?? null,
       };
     });
 
@@ -196,12 +247,13 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         const data = matchData[n.id];
         if (!data) return null;
 
-        const { teamA, teamB, scoreA, scoreB, status, winnerId, matchDate } = data;
+        const { teamA, teamB, scoreA, scoreB, status, winnerId, matchDate, twoLegged, legScores, penA, penB } = data;
         const nameA = getTeamName(teamA);
         const nameB = getTeamName(teamB);
         const logoA = getTeamLogo(teamA);
         const logoB = getTeamLogo(teamB);
         const isFinished = status === "finished";
+        const hasPens = penA != null && penB != null;
 
         return (
           <div className="flex flex-col h-full">
@@ -209,6 +261,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
             <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/[0.06] bg-white/[0.02]">
               <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
                 {n.label}
+                {twoLegged && <span className="ml-1.5 text-cyan-400/70">· 2 legs</span>}
               </span>
               {isFinished ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
@@ -217,7 +270,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
                 </span>
               ) : matchDate ? (
                 <span className="text-[10px] text-white/30 font-medium">
-                  {new Date(matchDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  {formatMatchDate(matchDate, { month: "short", day: "numeric" })}
                 </span>
               ) : (
                 <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider">
@@ -253,6 +306,25 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
                 score={isFinished ? scoreB : null}
                 isTBD={teamB == null}
               />
+
+              {/* Two-legged breakdown: aggregate label + per-leg scores + pens */}
+              {twoLegged && (
+                <div className="mt-1 flex items-center justify-center gap-2 px-2 text-[9px] font-medium text-white/40">
+                  {isFinished && <span className="uppercase tracking-wider text-cyan-400/60">agg</span>}
+                  {legScores && legScores.length > 0 && (
+                    <span className="tabular-nums">
+                      {legScores
+                        .map((l) => `${l.a ?? "–"}-${l.b ?? "–"}`)
+                        .join(" , ")}
+                    </span>
+                  )}
+                  {hasPens && (
+                    <span className="rounded bg-amber-500/15 border border-amber-500/20 px-1.5 py-0.5 text-amber-300 tabular-nums">
+                      pens {penA}-{penB}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );

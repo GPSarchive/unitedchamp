@@ -302,9 +302,19 @@ export default function BracketCanvas({
      LOAD FROM STORE (draft + overlay) — LISTEN ONLY
      ============================ */
   const loadFromStore = useCallback(() => {
-    const stageRows = (rows ?? []).filter(
+    const allStageRows = (rows ?? []).filter(
       (m) => (m.round ?? null) != null && (m.bracket_pos ?? null) != null
     );
+
+    // Two-legged ties have two rows per (round, bracket_pos). The preview renders
+    // one box per slot — keep the decider (leg 2) so ids stay unique.
+    const bySlot = new Map<string, typeof allStageRows[number]>();
+    for (const m of allStageRows) {
+      const key = `R${m.round}-B${m.bracket_pos}`;
+      const existing = bySlot.get(key);
+      if (!existing || (m.leg ?? 0) >= (existing.leg ?? 0)) bySlot.set(key, m);
+    }
+    const stageRows = Array.from(bySlot.values());
 
     if (!stageRows.length) {
       // visual starter only

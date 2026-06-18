@@ -13,13 +13,15 @@ import {
   fetchPlayersForTeam,
   fetchMatchStatsMap,
   fetchParticipantsMap,
+  fetchLegOneScores,
 } from "./queries";
 import { parseId, extractYouTubeId } from "./utils";
 import { saveAllStatsAction } from "./actions";
-import StatsEditor from "./StatsEditor";
+import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
 
@@ -46,9 +48,8 @@ export default async function Page({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = Array.isArray(user?.app_metadata?.roles)
-    ? (user!.app_metadata!.roles as string[]).includes("admin")
-    : false;
+  // Editors and admins both get the full match-editing surface.
+  const isAdmin = canEditContent(user);
 
   const { id: idStr } = await params;
   const { video } = await searchParams;
@@ -102,6 +103,34 @@ export default async function Page({
   const hasParticipants = participants.size > 0;
   const hasScores = match.team_a_score !== null && match.team_b_score !== null;
   const showWelcomeMessage = isScheduled && !hasParticipants && !hasScores;
+
+  // ----- Two-legged KO context (leg-2 decider) -----
+  const isLeg2Decider = match.leg === 2 && match.tie_leg1_match_id != null;
+  const leg1 = isLeg2Decider
+    ? await fetchLegOneScores(match.tie_leg1_match_id as Id)
+    : null;
+
+  // Aggregate per team in leg-2's (team_a/team_b) orientation. Null until both
+  // legs have scores.
+  const scoreForTeam = (
+    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
+    teamId: number | null,
+  ) => {
+    if (!row || teamId == null) return 0;
+    if (row.team_a_id === teamId) return row.team_a_score ?? 0;
+    if (row.team_b_id === teamId) return row.team_b_score ?? 0;
+    return 0;
+  };
+  const leg1Ready = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
+  const aggA =
+    isLeg2Decider && leg1Ready && match.team_a_score != null
+      ? (match.team_a_score ?? 0) + scoreForTeam(leg1, match.team_a.id)
+      : null;
+  const aggB =
+    isLeg2Decider && leg1Ready && match.team_b_score != null
+      ? (match.team_b_score ?? 0) + scoreForTeam(leg1, match.team_b.id)
+      : null;
+  const aggregateLevel = aggA != null && aggB != null && aggA === aggB;
 
   const scorers = Array.from(existingStats.values())
     .filter((stat) => stat.goals > 0 || (stat.own_goals && stat.own_goals > 0))
@@ -184,6 +213,12 @@ export default async function Page({
               logo: match.tournament.logo ?? null,
             }
           : null,
+        // two-legged KO (leg-2 decider): show penalties + aggregate publicly
+        leg: match.leg ?? null,
+        penalty_a: match.penalty_a ?? null,
+        penalty_b: match.penalty_b ?? null,
+        aggregate_a: aggA,
+        aggregate_b: aggB,
       }}
       scorers={scorers}
       participants={participantsData}
@@ -233,24 +268,81 @@ export default async function Page({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-6">
-                  <StatsEditor
-                    teamId={match.team_a.id}
-                    teamName={match.team_a.name}
-                    associations={teamAPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
-                  />
-                  <StatsEditor
-                    teamId={match.team_b.id}
-                    teamName={match.team_b.name}
-                    associations={teamBPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
-                  />
-                </div>
+                <MatchAwardsProvider
+                  initialMvpPlayerId={
+                    [...existingStats.values()].find((s) => s.mvp)?.player_id ?? null
+                  }
+                  initialBestGkPlayerId={
+                    [...existingStats.values()].find((s) => s.best_goalkeeper)?.player_id ?? null
+                  }
+                >
+                  <div className="grid grid-cols-1 gap-6">
+                    <StatsEditor
+                      teamId={match.team_a.id}
+                      teamName={match.team_a.name}
+                      associations={teamAPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                    <StatsEditor
+                      teamId={match.team_b.id}
+                      teamName={match.team_b.name}
+                      associations={teamBPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                  </div>
+                </MatchAwardsProvider>
+
+                {isLeg2Decider && (
+                  <div className="mt-4 rounded-lg border border-cyan-400/25 bg-cyan-400/5 p-4">
+                    <p className="text-sm font-semibold text-cyan-200">
+                      Δεύτερο σκέλος (νοκ-άουτ διπλών αγώνων)
+                    </p>
+                    <p className="mt-1 text-xs text-white/60">
+                      Ο νικητής κρίνεται στο <strong>συνολικό σκορ</strong> των δύο σκελών.
+                      {leg1Ready ? (
+                        <>
+                          {" "}Συνολικό μέχρι τώρα:{" "}
+                          <strong className="text-white/80">
+                            {match.team_a.name} {aggA ?? "–"} – {aggB ?? "–"} {match.team_b.name}
+                          </strong>
+                          .{" "}
+                          {aggregateLevel
+                            ? "Ισόπαλο — συμπλήρωσε τα πέναλτι."
+                            : "Συμπλήρωσε πέναλτι μόνο αν το συνολικό είναι ισόπαλο."}
+                        </>
+                      ) : (
+                        <> Ολοκλήρωσε πρώτα το 1ο σκέλος για να υπολογιστεί το συνολικό σκορ.</>
+                      )}
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="w-28 truncate text-xs text-white/70">
+                        Πέναλτι {match.team_a.name}
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        name="penalty_a"
+                        defaultValue={match.penalty_a ?? ""}
+                        className="w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border border-white/10"
+                      />
+                      <span className="text-white/50">–</span>
+                      <input
+                        type="number"
+                        min={0}
+                        name="penalty_b"
+                        defaultValue={match.penalty_b ?? ""}
+                        className="w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border border-white/10"
+                      />
+                      <span className="w-28 truncate text-xs text-white/70">
+                        Πέναλτι {match.team_b.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 flex justify-end gap-2">
                   <button

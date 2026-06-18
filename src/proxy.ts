@@ -390,10 +390,32 @@ export async function proxy(req: NextRequest) {
       const isAdmin = roles.includes('admin')
       const emailIsAdmin =
         !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
+      const isEditor = roles.includes('editor')
 
-      if (!isAdmin && !emailIsAdmin) {
+      // Editors may reach only the Articles + Announcements sections (and the
+      // bare /dashboard landing, which redirects them onward). Admins (and the
+      // ADMIN_EMAIL fallback) get the whole dashboard.
+      const path = req.nextUrl.pathname
+      const editorAllowed =
+        path === '/dashboard' ||
+        path.startsWith('/dashboard/articles') ||
+        path.startsWith('/dashboard/announcements')
+
+      const isAdminLike = isAdmin || emailIsAdmin
+      const allowed = isAdminLike || (isEditor && editorAllowed)
+
+      if (!allowed) {
         const url = req.nextUrl.clone()
         url.pathname = '/403'
+        url.searchParams.delete('next')
+        return NextResponse.redirect(url, { headers: res.headers })
+      }
+
+      // The dashboard home lists admin-only sections, so send editor-only
+      // users straight to the section they can actually use.
+      if (!isAdminLike && isEditor && path === '/dashboard') {
+        const url = req.nextUrl.clone()
+        url.pathname = '/dashboard/articles'
         url.searchParams.delete('next')
         return NextResponse.redirect(url, { headers: res.headers })
       }

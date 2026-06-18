@@ -3,7 +3,7 @@ import type { DraftMatch } from "../TournamentWizard";
 import type { NewTournamentPayload, StageConfig } from "@/app/lib/types";
 import type { TeamDraft } from "../TournamentWizard";
 
-import { shuffleArray } from "./functions/common";
+import { shuffleArray, expandToTwoLegs } from "./functions/common";
 import { genRoundRobin } from "./functions/roundRobin";
 import { genKnockoutAnyN } from "./functions/knockoutAnyN";
 import {
@@ -14,7 +14,8 @@ import {
 /** internal: make a unique key per match for de-dupe */
 function matchKey(m: DraftMatch): string {
   if (m.round != null && m.bracket_pos != null) {
-    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
+    // Include leg so the two legs of a two-legged tie aren't collapsed as duplicates.
+    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}|L${m.leg ?? 0}`;
   }
   const g = m.groupIdx ?? -1;
   const md = m.matchday ?? -1;
@@ -167,6 +168,14 @@ export function generateDraftMatches({
 
     /* ---------------- KNOCKOUT ---------------- */
     if (stage.kind === "knockout") {
+      const doubleRoundKo = !!(cfg as any).double_round_ko;
+      // Collect this stage's KO matches locally so we can optionally expand them
+      // into two legs before pushing to the global output.
+      const koMatches: DraftMatch[] = [];
+      const flushKo = () => {
+        out.push(...(doubleRoundKo ? expandToTwoLegs(koMatches) : koMatches));
+      };
+
       // from_stage_idx: generic pointer to an earlier stage (league or groups)
       const fromStageIdx: number | undefined = Number.isFinite((cfg as any).from_stage_idx)
         ? Number((cfg as any).from_stage_idx)
@@ -236,7 +245,7 @@ export function generateDraftMatches({
 
           // Semifinals (round 1)
           semiPairs.forEach((pair, i) => {
-            out.push({
+            koMatches.push({
               stageIdx,
               round: 1,
               bracket_pos: i + 1,
@@ -247,7 +256,7 @@ export function generateDraftMatches({
           });
 
           // Final (round 2): winners of SF1 & SF2 using stable pointers + outcomes
-          out.push({
+          koMatches.push({
             stageIdx,
             round: 2,
             bracket_pos: 1,
@@ -260,6 +269,7 @@ export function generateDraftMatches({
             is_ko: true, // Add KO marker
           });
 
+          flushKo();
           return;
         }
 
@@ -273,7 +283,8 @@ export function generateDraftMatches({
           }));
 
         const ids = qualifiersSeeded.map((s) => s.id);
-        out.push(...genKnockoutAnyN(ids, stageIdx, qualifiersSeeded));
+        koMatches.push(...genKnockoutAnyN(ids, stageIdx, qualifiersSeeded));
+        flushKo();
         return;
       }
 
@@ -288,7 +299,8 @@ export function generateDraftMatches({
           .map((t, i) => ({ id: t.id, seed: t.seed ?? i + 1 }));
 
         const ids = seeded.map((s) => s.id);
-        out.push(...genKnockoutAnyN(ids, stageIdx, seeded));
+        koMatches.push(...genKnockoutAnyN(ids, stageIdx, seeded));
+        flushKo();
         return;
       }
 
@@ -311,7 +323,8 @@ export function generateDraftMatches({
 
       const ids = entrants.map((s) => s.id);
       // AnyN also handles exact powers of two and writes stable pointers.
-      out.push(...genKnockoutAnyN(ids, stageIdx, entrants));
+      koMatches.push(...genKnockoutAnyN(ids, stageIdx, entrants));
+      flushKo();
     }
   });
 

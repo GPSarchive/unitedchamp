@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Calendar, Clock } from "lucide-react";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 /**
  * WelcomeMessage - Friendly Greek message for unplayed matches
@@ -49,7 +50,12 @@ export default function WelcomeMessage({
         >
           <Clock className="h-4 w-4" />
           <span>
-            Προγραμματισμένο: {new Date(matchDate).toLocaleDateString("el-GR", { timeZone: "UTC" })}
+            Προγραμματισμένο:{" "}
+            {formatMatchDate(matchDate, {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
           </span>
         </motion.div>
       )}

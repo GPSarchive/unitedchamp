@@ -11,6 +11,63 @@ interface PlayerStatsMap {
   [playerId: number]: MatchPlayerStatRow;
 }
 
+// ---------------------------------------------------------------------------
+// Match-wide award selection (MVP / Best GK).
+//
+// These are radio-style awards: at most one player per match. Plain HTML radios
+// can't be unticked once selected (and offer no "none"), so admins reported
+// being unable to clear a Best GK / MVP pick. We drive them with shared React
+// state instead, scoped across BOTH team editors (they live in one form), so
+// clicking the already-selected player toggles the award back off.
+// ---------------------------------------------------------------------------
+type AwardKey = "mvp" | "best_gk";
+
+interface AwardContextValue {
+  selected: Record<AwardKey, number | null>;
+  toggle: (award: AwardKey, playerId: number) => void;
+}
+
+const AwardContext = React.createContext<AwardContextValue | null>(null);
+
+export function MatchAwardsProvider({
+  initialMvpPlayerId = null,
+  initialBestGkPlayerId = null,
+  children,
+}: {
+  initialMvpPlayerId?: number | null;
+  initialBestGkPlayerId?: number | null;
+  children: React.ReactNode;
+}) {
+  const [selected, setSelected] = React.useState<Record<AwardKey, number | null>>({
+    mvp: initialMvpPlayerId,
+    best_gk: initialBestGkPlayerId,
+  });
+
+  const toggle = React.useCallback((award: AwardKey, playerId: number) => {
+    setSelected((prev) => ({
+      ...prev,
+      // Re-clicking the current holder clears the award; otherwise reassign.
+      [award]: prev[award] === playerId ? null : playerId,
+    }));
+  }, []);
+
+  return (
+    <AwardContext.Provider value={{ selected, toggle }}>
+      {/* Single hidden field per award carries the form value; "" → null server-side. */}
+      <input type="hidden" name="mvp_player_id" value={selected.mvp ?? ""} />
+      <input type="hidden" name="best_gk_player_id" value={selected.best_gk ?? ""} />
+      {children}
+    </AwardContext.Provider>
+  );
+}
+
+function useAwards(): AwardContextValue {
+  const ctx = React.useContext(AwardContext);
+  if (ctx) return ctx;
+  // Fallback for any standalone usage without the provider: no-op selection.
+  return { selected: { mvp: null, best_gk: null }, toggle: () => {} };
+}
+
 export default function StatsEditor({
   teamId,
   teamName,
@@ -37,6 +94,9 @@ export default function StatsEditor({
 
   // Track which players are expanded
   const [expandedPlayers, setExpandedPlayers] = React.useState<Record<number, boolean>>({});
+
+  // Match-wide award selection, shared across both team editors via context.
+  const { selected: selectedAwards, toggle: toggleAward } = useAwards();
 
   // Boolean role state (captain / goalkeeper) kept separate from the string-based
   // playerStats map. These checkboxes must be driven by real booleans — storing
@@ -348,7 +408,9 @@ export default function StatsEditor({
                       readOnly={readOnly || !playedOn}
                     />
 
-                    {/* MVP */}
+                    {/* MVP / Best GK — radio-style awards. Click the selected
+                        player again to clear the award (plain radios can't do
+                        this, which is why admins couldn't un-pick a Best GK). */}
                     <div>
                       <label className="mb-1 block text-sm font-medium text-gray-700">
                         Awards
@@ -357,9 +419,12 @@ export default function StatsEditor({
                         <label className="flex items-center gap-2">
                           <input
                             type="radio"
-                            name="mvp_player_id"
-                            value={String(p.id)}
-                            defaultChecked={Boolean(stats?.mvp)}
+                            checked={selectedAwards.mvp === p.id}
+                            readOnly
+                            onClick={() => {
+                              if (readOnly || !playedOn) return;
+                              toggleAward("mvp", p.id);
+                            }}
                             disabled={readOnly || !playedOn}
                             className="h-4 w-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
                           />
@@ -368,9 +433,12 @@ export default function StatsEditor({
                         <label className="flex items-center gap-2">
                           <input
                             type="radio"
-                            name="best_gk_player_id"
-                            value={String(p.id)}
-                            defaultChecked={Boolean(stats?.best_goalkeeper)}
+                            checked={selectedAwards.best_gk === p.id}
+                            readOnly
+                            onClick={() => {
+                              if (readOnly || !playedOn) return;
+                              toggleAward("best_gk", p.id);
+                            }}
                             disabled={readOnly || !playedOn}
                             className="h-4 w-4 border-gray-300 text-emerald-600 focus:ring-emerald-500"
                           />

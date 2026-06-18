@@ -1,6 +1,7 @@
 // app/api/articles/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 // ---- same-origin guard ----
 function ensureSameOrigin(req: Request) {
@@ -55,14 +56,12 @@ export async function GET(req: Request) {
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? "0"));
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "10"), 1), 50);
 
-  // Only admins can list non-published articles. Anyone else is forced to
-  // published=true regardless of the query string, preventing draft leaks.
+  // Only content editors (admins/editors) can list non-published articles.
+  // Anyone else is forced to published=true regardless of the query string,
+  // preventing draft leaks.
   const { data: { user } } = await supa.auth.getUser();
-  const callerRoles = Array.isArray(user?.app_metadata?.roles)
-    ? (user!.app_metadata!.roles as string[])
-    : [];
-  const isAdmin = callerRoles.includes("admin");
-  const publishedOnly = !isAdmin || toBool(url.searchParams.get("published"));
+  const canEdit = canEditContent(user);
+  const publishedOnly = !canEdit || toBool(url.searchParams.get("published"));
 
   let q = supa
     .from("articles")
@@ -97,8 +96,7 @@ export async function POST(req: Request) {
     // Require authenticated admin
     const { data: { user }, error: userErr } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const payload = await req.json().catch(() => null);
     if (!payload || typeof payload !== "object") {

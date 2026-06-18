@@ -53,6 +53,11 @@ export type DraftMatch = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
+
+  // ✅ Two-legged KO
+  leg?: number | null; // 1 or 2; absent = single-leg
+  /** Transient: index into the draft array of this tie's leg-1 row; resolved to tie_leg1_match_id at persist time. */
+  tie_leg1_match_idx?: number | null;
 };
 
 

@@ -1,6 +1,8 @@
 // app/api/matches/[id]/postpone/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
+import { formatMatchDateTime } from "@/app/lib/datetime";
 
 /* =======================
    Same-origin guard
@@ -121,8 +123,7 @@ export async function POST(
       error: userErr,
     } = await supa.auth.getUser();
     if (userErr || !user) return jsonError(401, "Unauthorized", userErr);
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return jsonError(403, "Forbidden - admin role required");
+    if (!canEditContent(user)) return jsonError(403, "Forbidden - admin or editor role required");
 
     // Parse request body
     const body = await req.json().catch(() => null);
@@ -192,19 +193,14 @@ export async function POST(
     const teamAName = teamA?.name ?? `Team #${current.team_a_id}`;
     const teamBName = teamB?.name ?? `Team #${current.team_b_id}`;
 
-    // Format dates for announcement (Greek format)
-    const formatGreekDate = (isoDate: string) => {
-      const d = new Date(isoDate);
-      return d.toLocaleString("el-GR", {
+    // Format dates for announcement (Greek format) — literal wall-clock digits
+    const formatGreekDate = (isoDate: string) =>
+      formatMatchDateTime(isoDate, {
         weekday: "long",
         day: "2-digit",
         month: "long",
         year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "UTC",
       });
-    };
 
     const oldDateFormatted = formatGreekDate(current.match_date);
     const newDateFormatted = newDateISO ? formatGreekDate(newDateISO) : null;

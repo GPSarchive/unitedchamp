@@ -36,6 +36,25 @@ export default function KnockoutConfigFromLeague({
         Knockout — Προέλευση
       </legend>
 
+      {/* Double-round (two legs + penalties) toggle — applies to every pairing */}
+      <label className="flex items-start gap-2 rounded-md border border-cyan-400/15 bg-cyan-400/5 p-2">
+        <input
+          type="checkbox"
+          className="mt-0.5 accent-cyan-400"
+          checked={!!cfg.double_round_ko}
+          onChange={(e) => setCfg({ double_round_ko: e.target.checked })}
+        />
+        <span>
+          <span className="block text-white/90 text-sm">
+            Διπλοί αγώνες (δύο σκέλη + πέναλτι)
+          </span>
+          <span className="block text-xs text-white/60">
+            Κάθε ζευγάρι παίζει δύο φορές. Ο νικητής κρίνεται στο συνολικό σκορ· σε
+            ισοπαλία αποφασίζουν τα πέναλτι. Ισχύει για όλους τους γύρους (και τον τελικό).
+          </span>
+        </span>
+      </label>
+
       {/* Source league selector */}
       <div>
         <label className="block text-white/90 text-sm mb-1">Προέλευση</label>

@@ -13,6 +13,7 @@ import { motion } from "framer-motion";
 import { ChevronRight, Trophy, MapPin } from "lucide-react";
 import TeamFilter from "@/components/TeamFilter";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
+import { wallClockDate, formatMatchTime } from "@/app/lib/datetime";
 
 // =========================================================
 // Types
@@ -46,7 +47,8 @@ const GREEK_WEEKDAYS_SHORT = ["ΚΥΡ", "ΔΕΥ", "ΤΡΙ", "ΤΕΤ", "ΠΕΜ", 
 const GREEK_MONTHS_SHORT = ["ΙΑΝ", "ΦΕΒ", "ΜΑΡ", "ΑΠΡ", "ΜΑΪ", "ΙΟΥΝ", "ΙΟΥΛ", "ΑΥΓ", "ΣΕΠ", "ΟΚΤ", "ΝΟΕ", "ΔΕΚ"];
 
 function parts(iso: string) {
-  const d = new Date(iso);
+  // Literal wall-clock parts of the stored match datetime — no tz conversion.
+  const d = wallClockDate(iso) ?? new Date(iso);
   return {
     day: d.getDate(),
     month: d.getMonth(),
@@ -58,10 +60,6 @@ function parts(iso: string) {
 }
 function pad2(n: number) {
   return String(n).padStart(2, "0");
-}
-function formatTime(iso: string) {
-  const m = /T(\d{2}):(\d{2})/.exec(iso);
-  return m ? `${m[1]}:${m[2]}` : "";
 }
 function formatRelative(iso: string) {
   const d = new Date(iso);
@@ -94,7 +92,7 @@ function NextMatchHero({ match }: { match: Match }) {
 
   const p = parts(match.start);
   const relative = formatRelative(match.start);
-  const time = formatTime(match.start);
+  const time = formatMatchTime(match.start);
   const isLive = match.status === "live";
   const accent = isLive ? "#fb923c" : "#fb923c";
 
@@ -276,7 +274,7 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
   const [teamA, teamB] = match.teams ?? ["Ομάδα Α", "Ομάδα Β"];
   const [logoA, logoB] = match.logos ?? ["/placeholder.png", "/placeholder.png"];
   const p = parts(match.start);
-  const time = formatTime(match.start);
+  const time = formatMatchTime(match.start);
   const matchdayRound = match.round
     ? `R${match.round}`
     : match.matchday

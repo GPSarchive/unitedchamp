@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { DraftMatch, Stage, Team } from "@/app/tournaments/useTournamentData";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 // Palette aliases — dark edition (matches site: zinc-950 family + orange-400 accent)
 const INK = "#F3EFE6";             // primary foreground (ivory on dark)
@@ -75,7 +76,7 @@ const MatchNode: React.FC<{
   const tba = !match.team_a_id && !match.team_b_id;
 
   const dateStr = match.match_date
-    ? new Date(match.match_date).toLocaleDateString("el-GR", {
+    ? formatMatchDate(match.match_date, {
         day: "2-digit",
         month: "short",
       })

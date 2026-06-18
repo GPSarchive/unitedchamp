@@ -11,6 +11,12 @@
    import interactionPlugin from '@fullcalendar/interaction';
    import { ChevronLeft, ChevronRight, RotateCw, CalendarDays as LCDays } from 'lucide-react';
    import EventPillShrimp, { ClusterItem as ShrimpItem } from './EventPillShrimp';
+   import {
+     parseIsoPreserveClock,
+     toNaiveIso,
+     partsToIso,
+     addMinutesNaive,
+   } from '@/app/lib/datetime';
    import '@/styles/fullcalendar-overrides.css';
    import { motion, AnimatePresence } from 'framer-motion';
    
@@ -41,69 +47,10 @@
    type TeamLiteLocal = { name?: string; logo?: string | null };
    
    // ===================== Time helpers (naive, keep DB clock) =====================
-   const ISO_RE_CLIENT =
-     /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
-   
-   const pad2c = (n: number) => String(n).padStart(2, '0');
-   
-   function parseIsoPreserveClockClient(iso: string) {
-     const m = ISO_RE_CLIENT.exec(iso);
-     if (!m) throw new Error(`Unrecognized datetime: ${iso}`);
-     const [, y, M, d, h, min, s] = m;
-     return { y: +y, M: +M, d: +d, h: +h, min: +min, s: +s };
-   }
-   
-   function toNaiveIsoClient(isoOrNaive: string) {
-     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(isoOrNaive)) return isoOrNaive;
-     const { y, M, d, h, min, s } = parseIsoPreserveClockClient(isoOrNaive);
-     return `${y}-${pad2c(M)}-${pad2c(d)}T${pad2c(h)}:${pad2c(min)}:${pad2c(s)}`;
-   }
-   
-   function daysInMonthClient(y: number, M: number) {
-     return new Date(y, M, 0).getDate();
-   }
-   
-   function addMinutesNaiveClient(
-     parts: { y: number; M: number; d: number; h: number; min: number; s: number },
-     deltaMin: number
-   ) {
-     const start = parts.h * 60 + parts.min;
-     const total = start + deltaMin;
-   
-     let dayDelta = Math.floor(total / 1440);
-     let minutesInDay = total % 1440;
-   
-     if (minutesInDay < 0) {
-       minutesInDay += 1440;
-       dayDelta -= 1;
-     }
-   
-     const h = Math.floor(minutesInDay / 60);
-     const min = minutesInDay % 60;
-   
-     let { y, M, d } = parts;
-     d += dayDelta;
-   
-     while (true) {
-       const dim = daysInMonthClient(y, M);
-       if (d <= dim) break;
-       d -= dim;
-       M += 1;
-       if (M > 12) {
-         M = 1;
-         y += 1;
-       }
-     }
-   
-     return { y, M, d, h, min, s: parts.s };
-   }
-   
    function endIsoPlusMinutes(isoOrNaive: string, minutes: number) {
-     const startParts = parseIsoPreserveClockClient(isoOrNaive);
-     const endParts = addMinutesNaiveClient(startParts, minutes);
-     return `${endParts.y}-${pad2c(endParts.M)}-${pad2c(endParts.d)}T${pad2c(endParts.h)}:${pad2c(
-       endParts.min
-     )}:${pad2c(endParts.s)}`;
+     const startParts = parseIsoPreserveClock(isoOrNaive);
+     if (!startParts) return toNaiveIso(isoOrNaive);
+     return partsToIso(addMinutesNaive(startParts, minutes));
    }
    
    // ===================== Normalizers =====================
@@ -142,8 +89,8 @@
        return {
          id: String(e.id),
          title: e.title,
-         start: toNaiveIsoClient(e.start),
-         end: toNaiveIsoClient(e.end),
+         start: toNaiveIso(e.start),
+         end: toNaiveIso(e.end),
          allDay: Boolean(e.all_day),
          extendedProps: {
            teams: e.teams,
@@ -190,8 +137,8 @@
        ...e,
        id: String(e.id),
        title: e.title ?? '',
-       start: toNaiveIsoClient(String(e.start)),
-       end: toNaiveIsoClient(String(e.end)),
+       start: toNaiveIso(String(e.start)),
+       end: toNaiveIso(String(e.end)),
        allDay: false,
        extendedProps: { ...(e.extendedProps || {}) },
      }));
@@ -382,7 +329,7 @@
          const a = one(m.teamA) as TeamLiteLocal | null;
          const b = one(m.teamB) as TeamLiteLocal | null;
 
-         const start = toNaiveIsoClient(m.match_date);
+         const start = toNaiveIso(m.match_date);
          const end = endIsoPlusMinutes(m.match_date, 50);
 
          const home = normNum(m.team_a_score);

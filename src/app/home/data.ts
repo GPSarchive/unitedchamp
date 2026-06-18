@@ -15,55 +15,12 @@ import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "@/app/tournaments/signTournamentLogos";
 
-// NOTE: date helpers are inlined here for Step 1. Step 2 will extract them
-// into `@/app/lib/datetime` so other features can reuse them.
-const ISO_RE =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
-const pad2 = (n: number) => String(n).padStart(2, "0");
-type DateParts = { y: number; M: number; d: number; h: number; min: number; s: number };
-
-function parseIsoPreserveClock(iso: string): DateParts {
-  const m = ISO_RE.exec(iso);
-  if (!m) throw new Error(`Unrecognized ISO datetime: ${iso}`);
-  const [, y, M, d, h, min, s] = m;
-  return { y: +y, M: +M, d: +d, h: +h, min: +min, s: +s };
-}
-function toNaiveIso(iso: string) {
-  const { y, M, d, h, min, s } = parseIsoPreserveClock(iso);
-  return `${y}-${pad2(M)}-${pad2(d)}T${pad2(h)}:${pad2(min)}:${pad2(s)}`;
-}
-function daysInMonth(y: number, M: number) {
-  return new Date(y, M, 0).getDate();
-}
-function addMinutesNaive(parts: DateParts, deltaMin: number): DateParts {
-  const start = parts.h * 60 + parts.min;
-  const total = start + deltaMin;
-  let dayDelta = Math.floor(total / 1440);
-  let minutesInDay = total % 1440;
-  if (minutesInDay < 0) {
-    minutesInDay += 1440;
-    dayDelta -= 1;
-  }
-  const h = Math.floor(minutesInDay / 60);
-  const min = minutesInDay % 60;
-  let { y, M, d } = parts;
-  d += dayDelta;
-  while (true) {
-    const dim = daysInMonth(y, M);
-    if (d <= dim) break;
-    d -= dim;
-    M += 1;
-    if (M > 12) {
-      M = 1;
-      y += 1;
-    }
-  }
-  return { y, M, d, h, min, s: parts.s };
-}
-function partsToIso(parts: DateParts) {
-  const { y, M, d, h, min, s } = parts;
-  return `${y}-${pad2(M)}-${pad2(d)}T${pad2(h)}:${pad2(min)}:${pad2(s)}`;
-}
+import {
+  parseIsoPreserveClock,
+  toNaiveIso,
+  partsToIso,
+  addMinutesNaive,
+} from "@/app/lib/datetime";
 
 // ──────────────────────────────────────────────────────────────────────
 // Fetchers
@@ -179,6 +136,7 @@ function matchRowToEvent(m: MatchRowRaw): CalendarEvent | null {
   const a = normalizeTeam(m.teamA);
   const b = normalizeTeam(m.teamB);
   const startParts = parseIsoPreserveClock(m.match_date);
+  if (!startParts) return null;
   const startIso = toNaiveIso(m.match_date);
   const endIso = partsToIso(addMinutesNaive(startParts, 50));
 

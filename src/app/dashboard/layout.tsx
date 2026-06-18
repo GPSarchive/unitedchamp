@@ -15,10 +15,17 @@ export default async function DashboardLayout({
   const roles = Array.isArray(user.app_metadata?.roles)
     ? (user.app_metadata!.roles as string[])
     : [];
-  if (!roles.includes("admin")) redirect("/403");
+  const isAdmin = roles.includes("admin");
+  const isEditor = roles.includes("editor");
+  // Editors are allowed in (the middleware scopes which sub-routes they can
+  // load); everyone else without admin is rejected.
+  if (!isAdmin && !isEditor) redirect("/403");
+
+  // Editor-only users see a trimmed nav (Articles + Announcements).
+  const editorOnly = !isAdmin && isEditor;
 
   return (
-    <ClientShell userEmail={user.email ?? "—"}>
+    <ClientShell userEmail={user.email ?? "—"} editorOnly={editorOnly}>
       {children}
     </ClientShell>
   );
