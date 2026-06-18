@@ -4,6 +4,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { refreshStatsForMatch } from "@/app/lib/refreshPlayerStats";
 import { nextPow2, seedOrder, roundRobinRounds } from "./util/functions/common";
+import { decideTwoLeggedTie, type TieResolution } from "./util/functions/twoLeggedTie";
 
 /** Service role key (server only) */
 const supabase = createClient(
@@ -238,53 +239,9 @@ async function ensureBaselineStandings(stageId: Id): Promise<boolean> {
 
 /* =========================================================
    Two-legged KO resolution
+   (pure helpers live in ./util/functions/twoLeggedTie — a "use server" module
+    may only export async Server Actions, so they cannot be defined here)
    ========================================================= */
-
-/**
- * Result of deciding a two-legged tie:
- *  - { kind: "single" }     → not a two-legged decider (leg null, or leg 1 deleted): use single-match logic
- *  - { kind: "pending" }    → leg 1 not finished yet: do not propagate
- *  - { kind: "undecided" }  → aggregate level and no/equal penalties: winner cannot be determined
- *  - { kind: "decided", winnerTeamId } → winner resolved (aggregate, then penalties)
- */
-type TieResolution =
-  | { kind: "single" }
-  | { kind: "pending" }
-  | { kind: "undecided" }
-  | { kind: "decided"; winnerTeamId: Id };
-
-/** Score that `teamId` put up in `m` (teams can occupy either slot). Returns 0 if not in this match. */
-function scoreForTeam(m: Pick<MatchRow, "team_a_id" | "team_b_id" | "team_a_score" | "team_b_score">, teamId: Id): number {
-  if (m.team_a_id === teamId) return m.team_a_score ?? 0;
-  if (m.team_b_id === teamId) return m.team_b_score ?? 0;
-  return 0;
-}
-
-/**
- * Decide a two-legged tie from the leg-2 (decider) row + its leg-1 sibling.
- * Aggregates per team id (teams swap home/away between legs); penalties break a level aggregate.
- * Pure given both rows — shared by progression and the API layer.
- */
-export function decideTwoLeggedTie(
-  leg2: Pick<MatchRow, "team_a_id" | "team_b_id" | "team_a_score" | "team_b_score" | "penalty_a" | "penalty_b">,
-  leg1: Pick<MatchRow, "team_a_id" | "team_b_id" | "team_a_score" | "team_b_score">
-): TieResolution {
-  const teamA = leg2.team_a_id;
-  const teamB = leg2.team_b_id;
-  if (teamA == null || teamB == null) return { kind: "single" };
-
-  const aggA = scoreForTeam(leg2, teamA) + scoreForTeam(leg1, teamA);
-  const aggB = scoreForTeam(leg2, teamB) + scoreForTeam(leg1, teamB);
-
-  if (aggA > aggB) return { kind: "decided", winnerTeamId: teamA };
-  if (aggB > aggA) return { kind: "decided", winnerTeamId: teamB };
-
-  // Level on aggregate → penalties (recorded on the leg-2 row, in team_a/team_b orientation)
-  const pa = leg2.penalty_a;
-  const pb = leg2.penalty_b;
-  if (pa == null || pb == null || pa === pb) return { kind: "undecided" };
-  return { kind: "decided", winnerTeamId: pa > pb ? teamA : teamB };
-}
 
 /** Server-side resolution that loads leg 1 from the DB for a finished leg-2 row. */
 async function resolveTwoLeggedTie(leg2: MatchRow): Promise<TieResolution> {

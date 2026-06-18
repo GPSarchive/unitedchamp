@@ -5,7 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { canEditContent } from '@/app/lib/supabase/apiAuth';
-import { progressAfterMatch, decideTwoLeggedTie } from '@/app/dashboard/tournaments/TournamentCURD/progression';
+import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
+import { decideTwoLeggedTie } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
 
 /** =========================
  *  Content-editor guard (server-side)
