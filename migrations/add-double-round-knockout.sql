@@ -36,16 +36,34 @@ ALTER TABLE matches
   ADD CONSTRAINT matches_leg_check
     CHECK (leg IS NULL OR leg IN (1, 2));
 
--- Step 3: Extend the KO uniqueness constraint to include leg, so the two legs
--- of a tie can share the same (stage_id, round, bracket_pos) bracket slot.
--- (Previous form: UNIQUE NULLS NOT DISTINCT (stage_id, round, bracket_pos)
---  in fix-duplicates-constraints.sql.)
-ALTER TABLE matches
-  DROP CONSTRAINT IF EXISTS unique_ko_match;
+-- Step 3: Extend the KO uniqueness rule to include leg, so the two legs of a
+-- tie can share the same (stage_id, round, bracket_pos) bracket slot.
+--
+-- IMPORTANT: this must be a PARTIAL unique INDEX scoped to real KO rows, NOT a
+-- table constraint. A plain UNIQUE (... NULLS NOT DISTINCT) treats the all-NULL
+-- key of every league/group match — (stage_id, NULL, NULL, NULL) — as equal,
+-- so it collides across non-KO fixtures in the same stage ("could not create
+-- unique index ... is duplicated"). The WHERE clause excludes those rows.
+DROP INDEX IF EXISTS unique_ko_match;
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS unique_ko_match; -- drop old table-constraint form if present
 
-ALTER TABLE matches
-  ADD CONSTRAINT unique_ko_match
-    UNIQUE NULLS NOT DISTINCT (stage_id, round, bracket_pos, leg);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_ko_match
+  ON matches (stage_id, round, bracket_pos, leg)
+  WHERE round IS NOT NULL AND bracket_pos IS NOT NULL;
+
+-- Step 3b: Drop ALL legacy KO-slot uniqueness objects that predate two-legged
+-- support. They enforced (stage_id, round, bracket_pos) WITHOUT leg, so they
+-- block the two legs of a tie from sharing a bracket slot. unique_ko_match
+-- (above) now covers KO-slot uniqueness in a leg-aware way, INCLUDING old
+-- single-leg matches (leg = NULL), so these are pure duplicates — dropping them
+-- removes no data and leaves existing single-leg KO brackets fully protected.
+-- (Different DBs accumulated these under different names; drop all known forms.)
+-- NOTE: do NOT touch unique_league_match_idx — it guards league matches
+-- (WHERE round IS NULL) and is unrelated.
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS matches_stage_round_pos_uniq;
+DROP INDEX IF EXISTS matches_stage_round_pos_uniq;
+ALTER TABLE matches DROP CONSTRAINT IF EXISTS unique_ko_match_idx;
+DROP INDEX IF EXISTS unique_ko_match_idx;
 
 -- Step 4: Index for looking up the leg-2 decider that points at a given leg 1
 CREATE INDEX IF NOT EXISTS idx_matches_tie_leg1_match_id
@@ -77,8 +95,9 @@ WHERE tc.table_name = 'matches'
   AND tc.constraint_name = 'matches_tie_leg1_match_id_fkey';
 -- Should show: delete_rule = 'SET NULL'
 
--- KO uniqueness now includes leg?
-SELECT conname, pg_get_constraintdef(oid)
-FROM pg_constraint
-WHERE conname = 'unique_ko_match';
--- Should show: UNIQUE NULLS NOT DISTINCT (stage_id, round, bracket_pos, leg)
+-- KO uniqueness now includes leg (as a partial index)?
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE indexname = 'unique_ko_match';
+-- Should show a UNIQUE INDEX on (stage_id, round, bracket_pos, leg)
+-- WHERE round IS NOT NULL AND bracket_pos IS NOT NULL
