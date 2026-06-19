@@ -117,6 +117,69 @@ export function expandToTwoLegs(draft: DraftMatch[]): DraftMatch[] {
   return out;
 }
 
+/**
+ * Build the leg-2 (decider) sibling for a single single-leg KO row.
+ *
+ * Mirrors the leg-2 transform in `expandToTwoLegs` but for one row at a time, so
+ * the bracket builder can toggle an *individual* tie to two legs (per-tie legs).
+ * Orientation is swapped (teams + source pointers + outcomes). `tie_leg1_match_idx`
+ * is left null here — callers operating on stable (round, bracket_pos) coords don't
+ * need transient idx pointers; persistence resolves the leg-1 link from the matching
+ * leg-1 row in the same slot. The input row is stamped `leg: 1` by the caller.
+ */
+export function makeLeg2Row(leg1: DraftMatch): DraftMatch {
+  return {
+    ...leg1,
+    leg: 2,
+    db_id: null, // a freshly-created sibling, never reuses leg 1's identity
+    tie_leg1_match_idx: null,
+
+    team_a_id: leg1.team_b_id ?? null,
+    team_b_id: leg1.team_a_id ?? null,
+
+    // scores/status are per-leg; never copy leg 1's result onto the new leg 2
+    status: "scheduled",
+    team_a_score: null,
+    team_b_score: null,
+    winner_team_id: null,
+    penalty_a: null,
+    penalty_b: null,
+
+    home_source_outcome: leg1.away_source_outcome ?? null,
+    away_source_outcome: leg1.home_source_outcome ?? null,
+    home_source_round: leg1.away_source_round ?? null,
+    home_source_bracket_pos: leg1.away_source_bracket_pos ?? null,
+    away_source_round: leg1.home_source_round ?? null,
+    away_source_bracket_pos: leg1.home_source_bracket_pos ?? null,
+  };
+}
+
+/**
+ * Expand only the matches matching `shouldExpand` into two legs; pass the rest
+ * through unchanged. Enables per-tie / per-round leg counts within one stage.
+ *
+ * `expandToTwoLegs` is the special case `shouldExpand = () => true`. Index-based
+ * transient pointers (`*_source_match_idx`) are intentionally NOT remapped here —
+ * this operates on stage drafts identified by stable (round, bracket_pos) coords,
+ * and `wireKnockoutSourcesLocal` / the persistence layer rebuild idx pointers from
+ * those coords. Use `expandToTwoLegs` (not this) for the legacy whole-bracket path
+ * that still relies on idx remapping.
+ */
+export function expandSelectedToTwoLegs(
+  draft: DraftMatch[],
+  shouldExpand: (m: DraftMatch) => boolean
+): DraftMatch[] {
+  const out: DraftMatch[] = [];
+  for (const m of draft) {
+    if (m.round != null && m.bracket_pos != null && shouldExpand(m)) {
+      out.push({ ...m, leg: 1 }, makeLeg2Row({ ...m, leg: 1 }));
+    } else {
+      out.push(m);
+    }
+  }
+  return out;
+}
+
 /** Wire knockout source references between successive rounds (W winners). */
 export function wireKnockoutSources(draft: DraftMatch[]) {
   const rounds = new Map<number, { idx: number; pos: number }[]>();

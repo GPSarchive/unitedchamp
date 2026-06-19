@@ -84,6 +84,11 @@ type MatchRow = {
   away_source_bracket_pos?: number | null;
   updated_at?: string | null; // optimistic lock token
   is_ko?: boolean; // Add this line to include 'is_ko' property
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 };
 
 
@@ -485,6 +490,9 @@ if (body.matches?.upsert?.length) {
       away_source_round: r.away_source_round ?? null,
       away_source_bracket_pos: r.away_source_bracket_pos ?? null,
       is_ko: r.is_ko ?? false,
+      leg: r.leg ?? null,
+      penalty_a: r.penalty_a ?? null,
+      penalty_b: r.penalty_b ?? null,
     }));
     const { data, error } = await supabaseAdmin
       .from("matches")
@@ -514,6 +522,9 @@ if (body.matches?.upsert?.length) {
         away_source_round: r.away_source_round ?? null,
         away_source_bracket_pos: r.away_source_bracket_pos ?? null,
         is_ko: r.is_ko ?? false,
+        leg: r.leg ?? null,
+        penalty_a: r.penalty_a ?? null,
+        penalty_b: r.penalty_b ?? null,
       }).eq("id", r.id as number);
 
       if (r.updated_at) q = q.eq("updated_at", r.updated_at);
@@ -538,12 +549,20 @@ if (body.matches?.upsert?.length) {
   const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
   const created: any[] = [];
 
-  // KO Matches - Use (stage_id, round, bracket_pos) as natural keys
+  // KO Matches - Use (stage_id, round, bracket_pos, leg) as natural keys.
+  // Two-legged ties share (stage,round,bracket_pos) and differ only by leg, so the
+  // conflict target MUST include leg to avoid collapsing both legs into one row —
+  // this matches the partial unique index `unique_ko_match`. `tie_leg1_match_id` is
+  // resolved in a second pass below (we don't have leg-1's id until it's inserted).
   if (koRowsAll.some(r => r.id == null)) {
-    const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
+    const toCreateKO = koRowsAll
+      .filter(r => r.id == null)
+      .map(strip)
+      // never send a transient/unknown tie link on create
+      .map(({ tie_leg1_match_id: _t, ...rest }: any) => rest);
     const { data, error } = await supabaseAdmin
       .from("matches")
-      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
+      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos,leg" })
       .select();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     created.push(...(data ?? []));
@@ -595,6 +614,8 @@ if (body.matches?.upsert?.length) {
           stage_id,
           round,
           bracket_pos,
+          leg,
+          tie_leg1_match_id,
           home_source_round,
           home_source_bracket_pos,
           away_source_round,
@@ -612,9 +633,12 @@ if (body.matches?.upsert?.length) {
         `${s}#${r ?? "n"}#${p ?? "n"}`;
 
       const idByPos = new Map<Key, number>();
+      // Leg-1 id per slot, so leg-2 deciders can be linked via tie_leg1_match_id.
+      const leg1IdByPos = new Map<Key, number>();
       for (const m of allStageMatches ?? []) {
         if (m.round != null && m.bracket_pos != null) {
           idByPos.set(keyOf(m.stage_id, m.round, m.bracket_pos), m.id);
+          if ((m as any).leg === 1) leg1IdByPos.set(keyOf(m.stage_id, m.round, m.bracket_pos), m.id);
         }
       }
 
@@ -633,6 +657,19 @@ if (body.matches?.upsert?.length) {
           const changes: any = { id: m.id };
           if (homeId !== (m.home_source_match_id ?? null)) changes.home_source_match_id = homeId;
           if (awayId !== (m.away_source_match_id ?? null)) changes.away_source_match_id = awayId;
+
+          // Two-legged KO: link a leg-2 decider to its leg-1 sibling (same slot).
+          // Leg-1 rows get their FK cleared (only the decider carries the link).
+          if ((m as any).leg === 2) {
+            const leg1Id =
+              m.round != null && m.bracket_pos != null
+                ? leg1IdByPos.get(keyOf(m.stage_id, m.round, m.bracket_pos)) ?? null
+                : null;
+            if (leg1Id !== ((m as any).tie_leg1_match_id ?? null)) changes.tie_leg1_match_id = leg1Id;
+          } else if ((m as any).tie_leg1_match_id != null) {
+            changes.tie_leg1_match_id = null;
+          }
+
           return changes;
         })
         .filter((p) => Object.keys(p).length > 1);

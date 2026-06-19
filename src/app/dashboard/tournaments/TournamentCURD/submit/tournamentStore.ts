@@ -7,6 +7,7 @@ import type {
   DraftMatch,
   TeamDraft,
 } from "@/app/dashboard/tournaments/TournamentCURD/TournamentWizard";
+import { makeLeg2Row } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/common";
 
 /* =========================================================
    Minimal DB row types (client-side mirrors)
@@ -86,6 +87,12 @@ type DbMatchRow = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
+  is_ko?: boolean | null;
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
   updated_at?: string | null; // concurrency (server checks if provided)
 };
 
@@ -140,8 +147,10 @@ export function matchSig(m: DraftMatch): string {
   const isKO = m.round != null && m.bracket_pos != null;
 
   if (isKO) {
-    // KO matches identified by round/bracket position
-    return `KO|S${m.stageIdx ?? -1}|R${m.round ?? 0}|B${m.bracket_pos ?? 0}`;
+    // KO matches identified by round/bracket position + leg. The leg segment keeps
+    // the two rows of a two-legged tie (which share round/bracket_pos) distinct for
+    // dirty-tracking, overlays and save reconcile. Single-leg rows are L0.
+    return `KO|S${m.stageIdx ?? -1}|R${m.round ?? 0}|B${m.bracket_pos ?? 0}|L${m.leg ?? 0}`;
   }
 
   // RR matches identified by stage/group/matchday/team pair
@@ -387,6 +396,8 @@ export type TournamentState = {
   setKOTeams: (stageIdx: number, where: KOCoord, teamAId: number | null, teamBId: number | null) => void;
   setKORoundPos: (stageIdx: number, from: KOCoord, to: KOCoord) => void;
   reindexKOPointers: (stageIdx: number) => void;
+  /** Set a single tie's leg count (1 or 2). Adds/removes the leg-2 sibling row for that slot. */
+  setKOLegCount: (stageIdx: number, where: KOCoord, legs: 1 | 2) => void;
 
   setUIKnockoutLayout: (stageIdx: number, koKey: string, frame: Frame) => void;
 
@@ -1351,6 +1362,73 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set((st) => ({ draftMatches: wireKnockoutSourcesLocal(st.draftMatches.slice(), stageIdx) }));
   },
 
+  setKOLegCount: (stageIdx, where, legs) => set((curr) => {
+    const inSlot = (m: DraftMatch) =>
+      m.stageIdx === stageIdx &&
+      m.round === where.round &&
+      m.bracket_pos === where.bracket_pos;
+
+    const slotRows = curr.draftMatches.filter(inSlot);
+    if (!slotRows.length) return {};
+
+    const hasLeg2 = slotRows.some((m) => m.leg === 2);
+
+    // ---- Make single-leg (1) ----
+    if (legs === 1) {
+      if (!hasLeg2) {
+        // already single — just normalize any stray leg markers to null
+        if (slotRows.every((m) => m.leg == null)) return {};
+        const next = curr.draftMatches.map((m) =>
+          inSlot(m) ? { ...m, leg: null, tie_leg1_match_idx: null } : m
+        );
+        const dirty = new Set(curr.dirty.matches);
+        next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
+        return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
+      }
+
+      // remove the leg-2 row, demote leg 1 → single (leg null)
+      const leg2 = slotRows.find((m) => m.leg === 2)!;
+      const leg2DbId = curr.dbOverlayBySig[matchSig(leg2)]?.db_id ?? leg2.db_id ?? null;
+
+      const next = curr.draftMatches
+        .filter((m) => !(inSlot(m) && m.leg === 2))
+        .map((m) => (inSlot(m) ? { ...m, leg: null, tie_leg1_match_idx: null } : m));
+
+      const nextOverlay = { ...curr.dbOverlayBySig };
+      delete nextOverlay[matchSig(leg2)];
+
+      const dirty = new Set(curr.dirty.matches);
+      dirty.delete(matchSig(leg2));
+      next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
+
+      const nextDeleted = new Set([...(curr.dirty.deletedMatchIds ?? [])]);
+      if (typeof leg2DbId === "number" && leg2DbId > 0) nextDeleted.add(leg2DbId);
+
+      return {
+        draftMatches: next,
+        dbOverlayBySig: nextOverlay,
+        dirty: { ...curr.dirty, matches: dirty, deletedMatchIds: nextDeleted },
+      };
+    }
+
+    // ---- Make two-legged (2) ----
+    if (hasLeg2) return {}; // already two-legged
+
+    // stamp the existing row as leg 1 and append its swapped leg-2 sibling
+    const leg1Base = { ...slotRows[0], leg: 1 as const };
+    const leg2 = makeLeg2Row(leg1Base);
+
+    const next = curr.draftMatches.map((m) =>
+      inSlot(m) ? { ...m, leg: 1, tie_leg1_match_idx: null } : m
+    );
+    next.push(leg2);
+
+    const dirty = new Set(curr.dirty.matches);
+    next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
+
+    return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
+  }),
+
   setUIKnockoutLayout: (stageIdx, koKey, frame) => {
     set((st) => ({
       ui: {
@@ -1840,12 +1918,18 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             matchday: r.matchday ?? null,
             round: r.round ?? null,
             bracket_pos: r.bracket_pos ?? null,
+            is_ko: (r as any).is_ko ?? (r.round != null && r.bracket_pos != null),
             home_source_round: r.home_source_round ?? null,
             home_source_bracket_pos: r.home_source_bracket_pos ?? null,
             away_source_round: r.away_source_round ?? null,
             away_source_bracket_pos: r.away_source_bracket_pos ?? null,
+            // two-legged KO. tie_leg1_match_id is resolved server-side from the
+            // matching leg-1 row in the same (stage, round, bracket_pos) slot.
+            leg: r.leg ?? null,
+            penalty_a: (r as any).penalty_a ?? null,
+            penalty_b: (r as any).penalty_b ?? null,
             updated_at: (ov as any).updated_at ?? null,
-          });
+          } as any);
         }
   
         if (upserts.length) {
@@ -1896,6 +1980,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               match_date: m.match_date ?? null,
               team_a_id: m.team_a_id ?? null,
               team_b_id: m.team_b_id ?? null,
+              leg: (m as any).leg ?? null,
               home_source_round: m.home_source_round ?? null,
               home_source_bracket_pos: m.home_source_bracket_pos ?? null,
               away_source_round: m.away_source_round ?? null,
