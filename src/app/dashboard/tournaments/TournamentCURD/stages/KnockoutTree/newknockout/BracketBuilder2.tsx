@@ -143,36 +143,72 @@ export default function BracketBuilder2({
     return m;
   }, [rows]);
 
-  /* ---- build canvas nodes/edges from slots (one box per slot) ---- */
-  const colW = 260, rowH = 150, x0 = 40, y0 = 40;
+  /* ---- build canvas nodes/edges: ONE BOX PER LEG (like the match planner) ----
+     A two-legged tie shows two stacked cards (Leg 1 / Leg 2). Node id encodes the
+     leg: R{r}-B{p}-L{leg}. Edges run from a parent's DECIDER card (leg 2, or the
+     single card) to each leg of the child, so the tree still reads top-to-bottom. */
+  const colW = 270, legH = 116, legGap = 10, slotGap = 26, x0 = 40, y0 = 40;
 
-  const { nodes, connections, nodeMeta } = useMemo(() => {
+  const legNodeId = (r: number, p: number, leg: number | null | undefined) => `R${r}-B${p}-L${leg ?? 0}`;
+  const deciderId = (r: number, p: number) => {
+    const slot = legsBySlot.get(slotKey(r, p)!) ?? [];
+    const dec = slot.find((m) => m.leg === 2) ?? slot[slot.length - 1] ?? slot[0];
+    return dec ? legNodeId(r, p, dec.leg) : null;
+  };
+
+  const { nodes, connections, nodeByLegId } = useMemo(() => {
     const nx: NodeBox[] = [];
     const edges: Connection[] = [];
-    const meta: Record<string, NodeMeta> = {};
+    const byId: Record<string, { row: DraftMatch; round: number; bracket_pos: number; leg: number | null; legCount: number }> = {};
 
-    legsBySlot.forEach((slotRows, key) => {
+    // sort slots by (round, bracket_pos) for stable vertical packing per column
+    const slotEntries = Array.from(legsBySlot.entries()).sort((a, b) => {
+      const A = a[1][0], B = b[1][0];
+      return (A.round ?? 0) - (B.round ?? 0) || (A.bracket_pos ?? 0) - (B.bracket_pos ?? 0);
+    });
+
+    // track the running y per column so stacked legs + slots don't overlap
+    const colNextY = new Map<number, number>();
+    const slotHeight = (legCount: number) => legCount * legH + (legCount - 1) * legGap;
+
+    slotEntries.forEach(([key, slotRows]) => {
       const sample = slotRows[0];
       const r = sample.round ?? 1;
       const b = sample.bracket_pos ?? 1;
-      const spacing = Math.pow(2, r - 1);
-      nx.push({
-        id: key,
-        x: (r - 1) * colW + x0,
-        y: y0 + (b - 1) * rowH * spacing + (spacing - 1) * (rowH / 2),
-        w: 230,
-        h: 132,
-        label: roundLabel(r, maxRound),
-      });
-      meta[key] = { round: r, bracket_pos: b };
+      const legCount = slotRows.length;
 
+      const startY = colNextY.get(r) ?? y0;
+      const h = slotHeight(legCount);
+      colNextY.set(r, startY + h + slotGap);
+
+      slotRows.forEach((row, li) => {
+        const id = legNodeId(r, b, row.leg);
+        nx.push({
+          id,
+          x: (r - 1) * colW + x0,
+          y: startY + li * (legH + legGap),
+          w: 240,
+          h: legH,
+          label: roundLabel(r, maxRound),
+        });
+        byId[id] = { row, round: r, bracket_pos: b, leg: row.leg ?? null, legCount };
+      });
+
+      // edges: parent decider -> each leg card of this slot
       const hk = slotKey(sample.home_source_round, sample.home_source_bracket_pos);
       const ak = slotKey(sample.away_source_round, sample.away_source_bracket_pos);
-      if (hk) edges.push([hk, key]);
-      if (ak) edges.push([ak, key]);
+      const parentDeciders = [
+        sample.home_source_round && sample.home_source_bracket_pos
+          ? deciderId(sample.home_source_round, sample.home_source_bracket_pos) : null,
+        sample.away_source_round && sample.away_source_bracket_pos
+          ? deciderId(sample.away_source_round, sample.away_source_bracket_pos) : null,
+      ].filter(Boolean) as string[];
+      const firstLegId = legNodeId(r, b, slotRows[0].leg);
+      parentDeciders.forEach((pid) => edges.push([pid, firstLegId]));
+      void hk; void ak;
     });
 
-    return { nodes: nx, connections: edges, nodeMeta: meta };
+    return { nodes: nx, connections: edges, nodeByLegId: byId };
   }, [legsBySlot, maxRound]);
 
   /* ---- editor needs its own node state for dragging only (positions) ---- */
@@ -189,28 +225,25 @@ export default function BracketBuilder2({
     });
   }, []);
 
-  /* ---- finished detection (two-legged needs BOTH legs done) ---- */
-  const finishedSlots = useMemo(() => {
+  /* ---- per-leg finished detection ---- */
+  const rowFinished = (m: DraftMatch) => {
+    const s = (m as any).status, a = (m as any).team_a_score, b = (m as any).team_b_score, w = (m as any).winner_team_id;
+    return s === "finished" || typeof a === "number" || typeof b === "number" || w != null;
+  };
+  const finishedLegIds = useMemo(() => {
     const done = new Set<string>();
-    legsBySlot.forEach((slotRows, key) => {
-      const twoLegged = slotRows.length > 1 || slotRows.some((m) => m.leg != null);
-      const isDone = twoLegged
-        ? slotRows.every((m) => (m as any).status === "finished")
-        : slotRows.some((m) => {
-            const s = (m as any).status, a = (m as any).team_a_score, b = (m as any).team_b_score, w = (m as any).winner_team_id;
-            return s === "finished" || typeof a === "number" || typeof b === "number" || w != null;
-          });
-      if (isDone) done.add(key);
+    nodes.forEach((n) => {
+      const info = nodeByLegId[n.id];
+      if (info && rowFinished(info.row)) done.add(n.id);
     });
     return done;
-  }, [legsBySlot]);
+  }, [nodes, nodeByLegId]);
 
-  /* ---- two-legged display data per slot ---- */
-  const twoLegInfo = useCallback(
-    (key: string) => {
-      const slotRows = legsBySlot.get(key) ?? [];
-      const isTwo = slotRows.length > 1 || slotRows.some((m) => m.leg != null);
-      if (!isTwo) return null;
+  /* ---- aggregate (+pens) for a slot, attached to the leg-2 card ---- */
+  const slotAggregate = useCallback(
+    (round: number, bracket_pos: number) => {
+      const slotRows = legsBySlot.get(slotKey(round, bracket_pos)!) ?? [];
+      if (slotRows.length < 2 && !slotRows.some((m) => m.leg != null)) return null;
       const leg2 = slotRows.find((m) => m.leg === 2) ?? slotRows[slotRows.length - 1];
       const leg1 = slotRows.find((m) => m !== leg2) ?? null;
       const ordered = [leg1, leg2].filter(Boolean) as DraftMatch[];
@@ -221,10 +254,8 @@ export default function BracketBuilder2({
         allFinished,
         aggA: allFinished ? ordered.reduce((s, m) => s + scoreFor(m, teamA), 0) : null,
         aggB: allFinished ? ordered.reduce((s, m) => s + scoreFor(m, teamB), 0) : null,
-        legScores: ordered.map((m) => ({ a: scoreFor(m, teamA), b: scoreFor(m, teamB) })),
         penA: (leg2 as any).penalty_a ?? null,
         penB: (leg2 as any).penalty_b ?? null,
-        legCount: ordered.length,
       };
     },
     [legsBySlot]
@@ -306,44 +337,50 @@ export default function BracketBuilder2({
     [stageIdx, updateMatches]
   );
 
-  /* ============================ Node card ============================ */
+  /* ============================ Node card (one per leg) ============================ */
   const nodeContent = useCallback(
     (n: NodeBox) => {
-      const meta = nodeMeta[n.id];
-      const slotRows = legsBySlot.get(n.id) ?? [];
-      const decider = slotRows.find((m) => m.leg === 2) ?? slotRows[slotRows.length - 1] ?? slotRows[0];
-      const parents = connections.filter(([, to]) => to === n.id).length;
-      const isLeaf = parents === 0;
-      const tl = twoLegInfo(n.id);
-      const finished = finishedSlots.has(n.id);
+      const info = nodeByLegId[n.id];
+      if (!info) return null;
+      const { row, round, bracket_pos, leg, legCount } = info;
+      const twoLegged = legCount > 1 || leg != null;
+      const isLeg1 = leg === 1 || (twoLegged && leg !== 2);
+      const isLeg2 = leg === 2;
+      const isSingle = !twoLegged;
 
-      const teamA = decider?.team_a_id ?? null;
-      const teamB = decider?.team_b_id ?? null;
+      // Leaf = no parent feeds this slot. Team editing lives on the leg-1 / single card.
+      const hasParents =
+        (row.home_source_round && row.home_source_bracket_pos) ||
+        (row.away_source_round && row.away_source_bracket_pos);
+      const isLeaf = !hasParents;
+      const canEditTeams = isLeaf && (isSingle || isLeg1);
+
+      const finished = finishedLegIds.has(n.id);
+      const agg = isLeg2 ? slotAggregate(round, bracket_pos) : null;
+
+      const teamA = row.team_a_id ?? null;
+      const teamB = row.team_b_id ?? null;
+
+      const legTag = isSingle ? null : isLeg2 ? "Leg 2" : "Leg 1";
 
       const TeamRow = ({ side, id }: { side: "A" | "B"; id: number | null }) => {
         const logo = getTeamLogo(id);
-        const score = tl?.allFinished
-          ? side === "A" ? tl.aggA : tl.aggB
-          : finished
-          ? (side === "A" ? (decider as any)?.team_a_score : (decider as any)?.team_b_score) ?? null
+        const score = finished
+          ? (side === "A" ? (row as any).team_a_score : (row as any).team_b_score) ?? null
           : null;
         return (
           <div className="flex items-center gap-2 min-w-0">
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt="" className="h-6 w-6 rounded-full object-cover ring-1 ring-white/10 shrink-0" />
+              <img src={logo} alt="" className="h-5 w-5 rounded-full object-cover ring-1 ring-white/10 shrink-0" />
             ) : (
-              <div className="h-6 w-6 rounded-full bg-white/5 ring-1 ring-white/10 shrink-0" />
+              <div className="h-5 w-5 rounded-full bg-white/5 ring-1 ring-white/10 shrink-0" />
             )}
-            {isLeaf ? (
+            {canEditTeams ? (
               <select
-                className="flex-1 min-w-0 bg-zinc-950/80 border border-white/10 rounded px-1.5 py-1 text-xs text-white"
+                className="flex-1 min-w-0 bg-zinc-950/80 border border-white/10 rounded px-1.5 py-0.5 text-xs text-white"
                 value={id ?? ""}
-                onChange={(e) => {
-                  const v = e.target.value ? Number(e.target.value) : null;
-                  if (!meta) return;
-                  setSlotTeams(meta, side, v);
-                }}
+                onChange={(e) => setSlotTeams({ round, bracket_pos }, side, e.target.value ? Number(e.target.value) : null)}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <option value="">— TBD —</option>
@@ -352,7 +389,7 @@ export default function BracketBuilder2({
                 ))}
               </select>
             ) : (
-              <span className={`flex-1 min-w-0 truncate text-sm ${id != null ? "text-white" : "text-white/50"}`}>
+              <span className={`flex-1 min-w-0 truncate text-xs ${id != null ? "text-white" : "text-white/50"}`}>
                 {getTeamName(id)}
               </span>
             )}
@@ -364,64 +401,68 @@ export default function BracketBuilder2({
       };
 
       return (
-        <div className="flex h-full w-full flex-col gap-1.5">
-          {/* header */}
+        <div className="flex h-full w-full flex-col gap-1">
+          {/* header: round + leg tag + status */}
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
               {n.label}
-              {tl && <span className="ml-1 text-cyan-400/70">· 2 legs</span>}
+              {legTag && <span className="ml-1 text-cyan-400/80">· {legTag}</span>}
             </span>
             {finished ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">FT</span>
+              <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">FT</span>
             ) : (
-              <span className="text-[9px] uppercase tracking-wider text-white/25">Scheduled</span>
+              <span className="text-[9px] uppercase tracking-wider text-white/25">—</span>
             )}
           </div>
 
-          {/* teams */}
-          <div className="flex flex-col gap-1">
+          {/* teams (this leg's own orientation + score) */}
+          <div className="flex flex-col gap-0.5">
             <TeamRow side="A" id={teamA} />
             <TeamRow side="B" id={teamB} />
           </div>
 
-          {/* two-legged breakdown */}
-          {tl && (
-            <div className="flex flex-wrap items-center gap-x-2 text-[9px] text-white/45">
-              {tl.allFinished && <span className="uppercase tracking-wider text-cyan-300/70">agg</span>}
-              {tl.legScores.length > 0 && (
-                <span className="tabular-nums">{tl.legScores.map((l) => `${l.a ?? "–"}-${l.b ?? "–"}`).join(" , ")}</span>
+          {/* leg-2 footer: aggregate + pens (the tie is decided here) */}
+          {isLeg2 && agg && (
+            <div className="mt-auto flex flex-wrap items-center gap-x-1.5 text-[9px] text-white/50">
+              {agg.allFinished ? (
+                <>
+                  <span className="uppercase tracking-wider text-cyan-300/70">agg</span>
+                  <span className="tabular-nums text-white/80">{agg.aggA}–{agg.aggB}</span>
+                </>
+              ) : (
+                <span className="text-white/30">aggregate pending</span>
               )}
-              {tl.legCount < 2 && <span className="text-amber-300/80">leg 2 missing</span>}
-              {tl.penA != null && tl.penB != null && (
-                <span className="rounded bg-amber-500/15 border border-amber-500/25 px-1 text-amber-300 tabular-nums">pens {tl.penA}-{tl.penB}</span>
+              {agg.penA != null && agg.penB != null && (
+                <span className="rounded bg-amber-500/15 border border-amber-500/25 px-1 text-amber-300 tabular-nums">pens {agg.penA}-{agg.penB}</span>
               )}
             </div>
           )}
 
-          {/* footer: per-tie legs toggle + advanced */}
-          <div className="mt-auto flex items-center justify-between gap-2">
-            <button
-              className={`rounded px-1.5 py-0.5 text-[9px] font-medium border transition-colors ${
-                tl ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-200" : "border-white/15 bg-white/5 text-white/60 hover:bg-white/10"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!meta) return;
-                setKOLegCount(stageIdx, { round: meta.round, bracket_pos: meta.bracket_pos }, tl ? 1 : 2);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              title={tl ? "Make this tie single-leg" : "Make this tie two-legged (home & away)"}
-            >
-              {tl ? "✓ 2 legs" : "Make 2 legs"}
-            </button>
-            {advanced && meta && (
-              <span className="text-[9px] text-white/30 tabular-nums">R{meta.round}·B{meta.bracket_pos}</span>
-            )}
-          </div>
+          {/* leg toggle: on single & leg-1 cards offer "+ 2nd leg"; on leg-2 offer collapse */}
+          {(isSingle || isLeg1 || isLeg2) && (
+            <div className={`flex items-center justify-between gap-2 ${isLeg2 && agg ? "" : "mt-auto"}`}>
+              <button
+                className={`rounded px-1.5 py-0.5 text-[9px] font-medium border transition-colors ${
+                  twoLegged ? "border-white/15 bg-white/5 text-white/55 hover:bg-white/10" : "border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setKOLegCount(stageIdx, { round, bracket_pos }, twoLegged ? 1 : 2);
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                title={twoLegged ? "Collapse to a single leg (removes leg 2)" : "Add a second leg (home & away)"}
+              >
+                {twoLegged ? "→ 1 leg" : "+ 2nd leg"}
+              </button>
+              {advanced && (
+                <span className="text-[9px] text-white/30 tabular-nums">R{round}·B{bracket_pos}{legTag ? `·${leg}` : ""}</span>
+              )}
+            </div>
+          )}
         </div>
       );
     },
-    [nodeMeta, legsBySlot, connections, twoLegInfo, finishedSlots, getTeamLogo, getTeamName, participants, setSlotTeams, setKOLegCount, stageIdx, advanced]
+    [nodeByLegId, finishedLegIds, slotAggregate, getTeamLogo, getTeamName, participants, setSlotTeams, setKOLegCount, stageIdx, advanced]
   );
 
   /* ============================ UI ============================ */
@@ -492,7 +533,7 @@ export default function BracketBuilder2({
       ) : (
         <>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-white/40">{nodes.length} slot{nodes.length === 1 ? "" : "s"} · drag to reposition</span>
+            <span className="text-[11px] text-white/40">{nodes.length} card{nodes.length === 1 ? "" : "s"} · two-legged ties show as Leg 1 / Leg 2 · drag to reposition</span>
             <label className="inline-flex items-center gap-1.5 text-[11px] text-white/50 cursor-pointer">
               <input type="checkbox" className="accent-cyan-500" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
               Advanced wiring
@@ -504,7 +545,7 @@ export default function BracketBuilder2({
             onNodesChange={onNodesChange}
             onConnectionsChange={() => { /* wiring edits handled via store in advanced flows */ }}
             nodeContent={nodeContent}
-            isFinished={(id) => finishedSlots.has(id)}
+            isFinished={(id) => finishedLegIds.has(id)}
             snap={10}
           />
           {advanced && (
