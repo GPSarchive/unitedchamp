@@ -445,8 +445,9 @@ async function applyKnockoutPropagation(m: MatchRow) {
   // Leg 1 never propagates on its own — the tie is decided when leg 2 finishes.
   if (m.leg === 1) return;
 
-  // Leg 2 (decider): resolve aggregate (+penalties) and stamp the tie winner onto
-  // this row before propagating. Single-leg rows (leg null, or leg 1 deleted) skip this.
+  // Leg 2 (decider): resolve leg wins (+penalties when level) and stamp the tie
+  // winner onto this row before propagating. Single-leg rows (leg null, or leg 1
+  // deleted) skip this.
   if (m.leg === 2 && m.tie_leg1_match_id != null) {
     const res = await resolveTwoLeggedTie(m);
     if (res.kind === "pending" || res.kind === "undecided") return; // not decided yet

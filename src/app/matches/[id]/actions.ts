@@ -34,8 +34,8 @@ async function assertAdmin() {
  *  Computes the team scores from player stats upstream; this helper decides the
  *  winner and whether finishing is allowed, honouring two-legged ties:
  *   - Leg 1: any result allowed, no winner (the tie is decided after leg 2).
- *   - Leg 2 decider: winner from aggregate (then penalties). Pens are passed in
- *     and only matter when the aggregate is level.
+ *   - Leg 2 decider: winner from LEG WINS (then penalties). Pens are passed in
+ *     and are required when leg wins are level (1–1 or both legs drawn).
  *   - Single-leg KO: a level result is rejected (unchanged behaviour).
  *  Returns the patch to apply to the match row (scores + winner) or throws.
  *  ------------------------------- */
@@ -87,18 +87,20 @@ async function resolveKoFinishPatch(
       leg1 as any
     );
     if (res.kind === 'undecided') {
-      throw new Error('Aggregate is level — enter the penalty shootout result (and it cannot be level).');
+      throw new Error('Leg wins are level (1–1) — enter the penalty shootout result (and it cannot be level).');
     }
     if (res.kind !== 'decided') {
       throw new Error('Could not resolve the two-legged tie.');
     }
+    // Persist pens only when they were the decider (leg wins level). When a team
+    // advanced on leg wins, clear any stray penalty input.
+    const decidedByPens = res.via === 'penalties';
     return {
       team_a_score: aGoals,
       team_b_score: bGoals,
       winner_team_id: res.winnerTeamId,
-      // Only persist pens when they were the decider (aggregate level).
-      penalty_a: penA,
-      penalty_b: penB,
+      penalty_a: decidedByPens ? penA : null,
+      penalty_b: decidedByPens ? penB : null,
     };
   }
 

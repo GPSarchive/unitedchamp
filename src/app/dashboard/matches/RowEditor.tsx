@@ -181,10 +181,35 @@ export default function RowEditor({
   const twoLegged = isLeg1 || isLeg2Decider;
   const isDraw = isFinished && (allowDraws || twoLegged) && scoresEqual;
 
-  // Aggregate (leg-2 decider only): sum each team's scores across both legs.
-  const aggA = isLeg2Decider ? scoreFor({ team_a_id: form.team_a_id ?? null, team_b_id: form.team_b_id ?? null, team_a_score: aScore, team_b_score: bScore }, form.team_a_id) + scoreFor(leg1, form.team_a_id) : null;
-  const aggB = isLeg2Decider ? scoreFor({ team_a_id: form.team_a_id ?? null, team_b_id: form.team_b_id ?? null, team_a_score: aScore, team_b_score: bScore }, form.team_b_id) + scoreFor(leg1, form.team_b_id) : null;
-  const aggregateLevel = isLeg2Decider && aggA != null && aggB != null && aggA === aggB;
+  // Leg-2 decider row (current edits, in team_a/team_b orientation).
+  const leg2Row = { team_a_id: form.team_a_id ?? null, team_b_id: form.team_b_id ?? null, team_a_score: aScore, team_b_score: bScore };
+
+  // Aggregate (info only — does NOT decide the tie anymore).
+  const aggA = isLeg2Decider ? scoreFor(leg2Row, form.team_a_id) + scoreFor(leg1, form.team_a_id) : null;
+  const aggB = isLeg2Decider ? scoreFor(leg2Row, form.team_b_id) + scoreFor(leg1, form.team_b_id) : null;
+
+  // The tie is decided on LEG WINS: more wins advances; level wins (1–1 / 0–0) → penalties.
+  const legWinnerId = (
+    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
+  ): Id | null => {
+    if (!row || form.team_a_id == null || form.team_b_id == null) return null;
+    const sa = scoreFor(row, form.team_a_id);
+    const sb = scoreFor(row, form.team_b_id);
+    if (sa > sb) return form.team_a_id as Id;
+    if (sb > sa) return form.team_b_id as Id;
+    return null;
+  };
+  const leg1HasScore = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
+  const winsA = isLeg2Decider
+    ? (legWinnerId(leg1) === form.team_a_id ? 1 : 0) + (legWinnerId(leg2Row) === form.team_a_id ? 1 : 0)
+    : 0;
+  const winsB = isLeg2Decider
+    ? (legWinnerId(leg1) === form.team_b_id ? 1 : 0) + (legWinnerId(leg2Row) === form.team_b_id ? 1 : 0)
+    : 0;
+  const winsLevel = isLeg2Decider && leg1HasScore && winsA === winsB;
+  const winsWinnerId = isLeg2Decider && leg1HasScore && winsA !== winsB
+    ? (winsA > winsB ? (form.team_a_id as Id) : (form.team_b_id as Id))
+    : null;
   const penA = form.penalty_a ?? null;
   const penB = form.penalty_b ?? null;
 
@@ -204,12 +229,13 @@ export default function RowEditor({
       // Two-legged leg 1: any result is fine, no winner needed.
       if (isLeg1) return null;
 
-      // Two-legged leg 2 (decider): winner comes from aggregate; require pens only when level.
+      // Two-legged leg 2 (decider): winner comes from LEG WINS; require pens only
+      // when leg wins are level (1–1 or both legs drawn).
       if (isLeg2Decider) {
         if (!leg1 || leg1.team_a_score == null || leg1.team_b_score == null)
           return "Finish leg 1 before finishing leg 2.";
-        if (aggregateLevel) {
-          if (penA == null || penB == null) return "Aggregate is level — enter the penalty result.";
+        if (winsLevel) {
+          if (penA == null || penB == null) return "Leg wins are level — enter the penalty result.";
           if (penA < 0 || penB < 0) return "Penalty scores cannot be negative.";
           if (penA === penB) return "Penalty shootout cannot end level.";
         }
@@ -227,7 +253,7 @@ export default function RowEditor({
       }
     }
     return null;
-  }, [form.team_a_id, form.team_b_id, aScore, bScore, isFinished, scoresEqual, allowDraws, form.winner_team_id, isLeg1, isLeg2Decider, leg1, aggregateLevel, penA, penB]);
+  }, [form.team_a_id, form.team_b_id, aScore, bScore, isFinished, scoresEqual, allowDraws, form.winner_team_id, isLeg1, isLeg2Decider, leg1, winsLevel, penA, penB]);
 
   // Show what will be saved if date/time was changed
   const pendingSaveUtc = useMemo(() => {
@@ -253,10 +279,10 @@ export default function RowEditor({
         winner_team_id: twoLegged ? null : isFinished ? (isDraw ? null : form.winner_team_id) : null,
       };
 
-      // Penalties only matter on a leg-2 decider when the aggregate is level.
+      // Penalties only matter on a leg-2 decider when leg wins are level.
       if (isLeg2Decider) {
-        payload.penalty_a = aggregateLevel ? form.penalty_a ?? null : null;
-        payload.penalty_b = aggregateLevel ? form.penalty_b ?? null : null;
+        payload.penalty_a = winsLevel ? form.penalty_a ?? null : null;
+        payload.penalty_b = winsLevel ? form.penalty_b ?? null : null;
       }
 
       const res = await fetch(isEdit ? `/api/matches/${form.id}` : `/api/matches`, {
@@ -386,20 +412,21 @@ export default function RowEditor({
               ) : (
                 <>
                   <div className="text-sm text-white/85">
-                    Aggregate:{" "}
+                    Leg wins:{" "}
                     <span className="font-semibold text-white">
-                      {teamLabel(teams.find((t) => t.id === form.team_a_id) ?? null, form.team_a_id as Id)} {aggA}
+                      {teamLabel(teams.find((t) => t.id === form.team_a_id) ?? null, form.team_a_id as Id)} {winsA}
                     </span>
                     <span className="mx-1 opacity-60">—</span>
                     <span className="font-semibold text-white">
-                      {aggB} {teamLabel(teams.find((t) => t.id === form.team_b_id) ?? null, form.team_b_id as Id)}
+                      {winsB} {teamLabel(teams.find((t) => t.id === form.team_b_id) ?? null, form.team_b_id as Id)}
                     </span>
+                    <span className="ml-2 text-white/45">(agg {aggA}–{aggB}, not decisive)</span>
                   </div>
 
-                  {aggregateLevel ? (
+                  {winsLevel ? (
                     <div className="space-y-2">
-                      <p className="text-xs text-cyan-200">
-                        Aggregate is level — enter the penalty shootout result.
+                      <p className="text-xs text-amber-300">
+                        Leg wins are level — penalties are required to decide the tie.
                       </p>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-white/70 w-20 truncate">Pens (A)</span>
@@ -429,10 +456,10 @@ export default function RowEditor({
                     </div>
                   ) : (
                     <p className="text-xs text-emerald-300">
-                      Winner on aggregate:{" "}
+                      Winner on legs:{" "}
                       {teamLabel(
-                        teams.find((t) => t.id === ((aggA ?? 0) > (aggB ?? 0) ? form.team_a_id : form.team_b_id)) ?? null,
-                        (((aggA ?? 0) > (aggB ?? 0)) ? form.team_a_id : form.team_b_id) as Id
+                        teams.find((t) => t.id === winsWinnerId) ?? null,
+                        winsWinnerId as Id
                       )}
                     </p>
                   )}

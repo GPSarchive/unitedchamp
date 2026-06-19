@@ -4,6 +4,7 @@ import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
+import { decideTwoLeggedTie } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -329,7 +330,9 @@ export async function PATCH(
         // no winner — the tie is decided when leg 2 finishes.
         update.winner_team_id = null;
       } else if (isLeg2Decider) {
-        // Leg 2 (decider): compute aggregate vs leg 1; penalties break a level aggregate.
+        // Leg 2 (decider): the winner is decided on LEG WINS (not aggregate goals).
+        // A team advances outright only by winning more legs; level leg wins (1–1
+        // or 0–0) require a penalty shootout. Shared with progression + actions.
         const { data: leg1 } = await supa
           .from("matches")
           .select("team_a_id, team_b_id, team_a_score, team_b_score")
@@ -340,26 +343,34 @@ export async function PATCH(
           return jsonError(409, "Finish leg 1 before finishing leg 2 of this tie.");
         }
 
-        const scoreFor = (row: any, teamId: number) =>
-          row.team_a_id === teamId ? (row.team_a_score ?? 0)
-          : row.team_b_id === teamId ? (row.team_b_score ?? 0)
-          : 0;
+        const res = decideTwoLeggedTie(
+          {
+            team_a_id: teamA,
+            team_b_id: teamB,
+            team_a_score: effAS,
+            team_b_score: effBS,
+            penalty_a: effPenA,
+            penalty_b: effPenB,
+          },
+          leg1 as any
+        );
 
-        const aggA = (effAS ?? 0) + scoreFor(leg1, teamA);
-        const aggB = (effBS ?? 0) + scoreFor(leg1, teamB);
-
-        if (aggA !== aggB) {
-          update.winner_team_id = aggA > aggB ? teamA : teamB;
-          // pens irrelevant when aggregate is decisive; leave as provided
-        } else {
-          // Level on aggregate → require a penalty result
+        if (res.kind === "undecided") {
           if (effPenA == null || effPenB == null) {
-            return jsonError(400, "Aggregate is level — enter the penalty shootout result.");
+            return jsonError(400, "Leg wins are level (1–1) — enter the penalty shootout result.");
           }
-          if (effPenA === effPenB) {
-            return jsonError(400, "Penalty shootout cannot end level — enter a winner on penalties.");
-          }
-          update.winner_team_id = effPenA > effPenB ? teamA : teamB;
+          // pens present but equal
+          return jsonError(400, "Penalty shootout cannot end level — enter a winner on penalties.");
+        }
+        if (res.kind !== "decided") {
+          return jsonError(400, "Could not resolve the two-legged tie.");
+        }
+        update.winner_team_id = res.winnerTeamId;
+        // Pens only persist when they were the decider (leg wins level); clear
+        // any stray penalty input when the tie was decided on leg wins.
+        if (res.via !== "penalties") {
+          update.penalty_a = null;
+          update.penalty_b = null;
         }
       } else if (stageKind === "knockout") {
         // Single-leg KO (or leg-2 whose leg 1 was deleted): unchanged behaviour.
