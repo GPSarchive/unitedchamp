@@ -149,8 +149,27 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
       arr.push(m);
       byKey.set(key, arr);
     });
-    // Stable leg order (leg 1 above leg 2).
-    for (const arr of byKey.values()) arr.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+    // Stable leg order + defend against legacy/duplicate data: if a slot carries
+    // any explicit leg marker, drop stray leg-null rows and keep one row per leg
+    // (preferring the row with a db id / score) so a tie never renders an orphan
+    // single card alongside its two legs.
+    for (const [key, arr] of byKey) {
+      let kept = arr;
+      if (arr.some((m) => m.leg != null)) {
+        const score = (m: DraftMatch) =>
+          (m.db_id != null ? 2 : 0) + (m.team_a_score != null || m.status === "finished" ? 1 : 0);
+        const byLeg = new Map<number, DraftMatch>();
+        arr
+          .filter((m) => m.leg != null)
+          .forEach((m) => {
+            const prev = byLeg.get(m.leg as number);
+            if (!prev || score(m) > score(prev)) byLeg.set(m.leg as number, m);
+          });
+        kept = Array.from(byLeg.values());
+      }
+      kept.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+      byKey.set(key, kept);
+    }
 
     const nx: NodeBox[] = [];
     const grp: NodeGroup[] = [];

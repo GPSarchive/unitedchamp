@@ -129,7 +129,11 @@ export default function BracketBuilder2({
     [rows]
   );
 
-  /* ---- group rows per slot (both legs) ---- */
+  /* ---- group rows per slot (both legs) ----
+     Defensive against legacy/duplicate data: a slot that has any explicit leg
+     marker (leg 1/2) should not also carry a stray leg-null row — that produced
+     a phantom "orphan" single card stacked over a two-legged tie. Keep only the
+     leg-tagged rows in that case, de-dupe by leg, and cap a slot at two legs. */
   const legsBySlot = useMemo(() => {
     const m = new Map<string, DraftMatch[]>();
     rows.forEach((r) => {
@@ -138,7 +142,27 @@ export default function BracketBuilder2({
       arr.push(r);
       m.set(key, arr);
     });
-    for (const arr of m.values()) arr.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+    for (const [key, arr] of m) {
+      let kept = arr;
+      const hasLegMarker = arr.some((r) => r.leg != null);
+      if (hasLegMarker) {
+        // drop stray leg-null rows; keep one row per distinct leg (prefer one
+        // that carries a db identity / score so we don't lose persisted data).
+        const score = (r: DraftMatch) =>
+          ((r as any).db_id != null ? 2 : 0) +
+          ((r as any).team_a_score != null || (r as any).status === "finished" ? 1 : 0);
+        const byLeg = new Map<number, DraftMatch>();
+        arr
+          .filter((r) => r.leg != null)
+          .forEach((r) => {
+            const prev = byLeg.get(r.leg as number);
+            if (!prev || score(r) > score(prev)) byLeg.set(r.leg as number, r);
+          });
+        kept = Array.from(byLeg.values());
+      }
+      kept.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+      m.set(key, kept);
+    }
     return m;
   }, [rows]);
 

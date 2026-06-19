@@ -630,7 +630,12 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
         is_ko: m.round != null && m.bracket_pos != null, // Set based on KO logic
-
+        // two-legged KO: keep the leg marker + pens so a tie hydrates as two
+        // distinct rows (without `leg`, both legs collapse to the same matchSig
+        // and the bracket renders an orphan card / loses matches on reload).
+        leg: (m as any).leg ?? null,
+        penalty_a: (m as any).penalty_a ?? null,
+        penalty_b: (m as any).penalty_b ?? null,
       };
       const sig = matchSig(uiRow);
       overlay[sig] = {
@@ -764,6 +769,12 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         away_source_round: m.away_source_round ?? null,
         away_source_bracket_pos: m.away_source_bracket_pos ?? null,
         is_ko: m.round != null && m.bracket_pos != null, // Set based on KO logic
+        // two-legged KO: keep the leg marker + pens so a tie hydrates as two
+        // distinct rows (without `leg`, both legs collapse to the same matchSig
+        // and the bracket renders an orphan card / loses matches on reload).
+        leg: (m as any).leg ?? null,
+        penalty_a: (m as any).penalty_a ?? null,
+        penalty_b: (m as any).penalty_b ?? null,
       };
       const sig = matchSig(uiRow);
       overlay[sig] = {
@@ -1373,31 +1384,59 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
     const hasLeg2 = slotRows.some((m) => m.leg === 2);
 
+    // Changing a row's `leg` changes its matchSig. Move the overlay entry (which
+    // holds the persisted db_id + scores) and the dirty marker from the old sig
+    // to the new one, so the row keeps its DB identity instead of being orphaned
+    // (which would leave a stale row in the DB and a duplicate/orphan card).
+    const migrateSig = (
+      overlay: Record<string, DbOverlay>,
+      dirty: Set<string>,
+      oldRow: DraftMatch,
+      newRow: DraftMatch
+    ) => {
+      const oldSig = matchSig(oldRow);
+      const newSig = matchSig(newRow);
+      if (oldSig === newSig) return;
+      if (overlay[oldSig] && !overlay[newSig]) overlay[newSig] = overlay[oldSig];
+      delete overlay[oldSig];
+      dirty.delete(oldSig);
+    };
+
     // ---- Make single-leg (1) ----
     if (legs === 1) {
       if (!hasLeg2) {
         // already single — just normalize any stray leg markers to null
         if (slotRows.every((m) => m.leg == null)) return {};
-        const next = curr.draftMatches.map((m) =>
-          inSlot(m) ? { ...m, leg: null, tie_leg1_match_idx: null } : m
-        );
+        const nextOverlay = { ...curr.dbOverlayBySig };
         const dirty = new Set(curr.dirty.matches);
+        const next = curr.draftMatches.map((m) => {
+          if (!inSlot(m)) return m;
+          const nm = { ...m, leg: null, tie_leg1_match_idx: null };
+          migrateSig(nextOverlay, dirty, m, nm);
+          return nm;
+        });
         next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
-        return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
+        return { draftMatches: next, dbOverlayBySig: nextOverlay, dirty: { ...curr.dirty, matches: dirty } };
       }
 
       // remove the leg-2 row, demote leg 1 → single (leg null)
       const leg2 = slotRows.find((m) => m.leg === 2)!;
       const leg2DbId = curr.dbOverlayBySig[matchSig(leg2)]?.db_id ?? leg2.db_id ?? null;
 
+      const nextOverlay = { ...curr.dbOverlayBySig };
+      const dirty = new Set(curr.dirty.matches);
+
       const next = curr.draftMatches
         .filter((m) => !(inSlot(m) && m.leg === 2))
-        .map((m) => (inSlot(m) ? { ...m, leg: null, tie_leg1_match_idx: null } : m));
+        .map((m) => {
+          if (!inSlot(m)) return m;
+          // demote the surviving leg-1 row to single, carrying its DB identity.
+          const nm = { ...m, leg: null, tie_leg1_match_idx: null };
+          migrateSig(nextOverlay, dirty, m, nm);
+          return nm;
+        });
 
-      const nextOverlay = { ...curr.dbOverlayBySig };
       delete nextOverlay[matchSig(leg2)];
-
-      const dirty = new Set(curr.dirty.matches);
       dirty.delete(matchSig(leg2));
       next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
 
@@ -1418,15 +1457,22 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     const leg1Base = { ...slotRows[0], leg: 1 as const };
     const leg2 = makeLeg2Row(leg1Base);
 
-    const next = curr.draftMatches.map((m) =>
-      inSlot(m) ? { ...m, leg: 1, tie_leg1_match_idx: null } : m
-    );
+    const nextOverlay = { ...curr.dbOverlayBySig };
+    const dirty = new Set(curr.dirty.matches);
+
+    const next = curr.draftMatches.map((m) => {
+      if (!inSlot(m)) return m;
+      // promote the existing single row to leg 1, carrying its DB identity from
+      // the old (L0) sig to the new (L1) sig so it isn't re-inserted as a dup.
+      const nm = { ...m, leg: 1, tie_leg1_match_idx: null };
+      migrateSig(nextOverlay, dirty, m, nm);
+      return nm;
+    });
     next.push(leg2);
 
-    const dirty = new Set(curr.dirty.matches);
     next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
 
-    return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
+    return { draftMatches: next, dbOverlayBySig: nextOverlay, dirty: { ...curr.dirty, matches: dirty } };
   }),
 
   setUIKnockoutLayout: (stageIdx, koKey, frame) => {
