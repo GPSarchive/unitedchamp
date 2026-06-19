@@ -53,6 +53,8 @@ type DraftMatchServer = {
   // Two-legged KO
   leg?: number | null;
   tie_leg1_match_idx?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 
   match_date?: string | null;
 };
@@ -796,6 +798,8 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
       leg: m.leg ?? null,
       tie_leg1_match_idx:
         m.tie_leg1_match_id != null ? (indexById.get(m.tie_leg1_match_id) ?? null) : null,
+      penalty_a: m.penalty_a ?? null,
+      penalty_b: m.penalty_b ?? null,
 
       match_date: m.match_date ?? null,
     };

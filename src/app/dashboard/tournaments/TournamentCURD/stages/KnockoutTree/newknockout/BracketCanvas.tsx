@@ -259,15 +259,80 @@ export default function BracketCanvas({
   }, [tournamentTeams, teamsMap]);
 
   // index for "R{round}-B{pos}" → row
+  // For two-legged ties (two rows per slot) this keeps the decider (leg 2) so that
+  // pointer/winner reads use the canonical decider row, matching loadFromStore.
   const rowByNodeKey = useMemo(() => {
     const m = new Map<string, MergedMatch>();
     rows.forEach((r) => {
       if ((r.round ?? null) != null && (r.bracket_pos ?? null) != null) {
-        m.set(`R${r.round}-B${r.bracket_pos}`, r);
+        const key = `R${r.round}-B${r.bracket_pos}`;
+        const existing = m.get(key);
+        if (!existing || ((r.leg ?? 0) >= (existing.leg ?? 0))) m.set(key, r);
       }
     });
     return m;
   }, [rows]);
+
+  // All legs for a slot, ordered leg1 → leg2. Empty/single for single-leg slots.
+  const legsByNodeKey = useMemo(() => {
+    const m = new Map<string, MergedMatch[]>();
+    rows.forEach((r) => {
+      if ((r.round ?? null) == null || (r.bracket_pos ?? null) == null) return;
+      const key = `R${r.round}-B${r.bracket_pos}`;
+      const arr = m.get(key) ?? [];
+      arr.push(r);
+      m.set(key, arr);
+    });
+    // order each slot's rows by leg (nulls first)
+    for (const arr of m.values()) {
+      arr.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+    }
+    return m;
+  }, [rows]);
+
+  // Score `teamId` put up in a row (team can be on either side).
+  const scoreForTeam = useCallback((m: MergedMatch, teamId: number | null) => {
+    if (teamId == null) return 0;
+    if (m.team_a_id === teamId) return (m as any).team_a_score ?? 0;
+    if (m.team_b_id === teamId) return (m as any).team_b_score ?? 0;
+    return 0;
+  }, []);
+
+  /**
+   * Two-legged display data for a slot, mirroring KOStageDisplay:
+   * aggregate (only when both legs finished), per-leg breakdown, and penalties.
+   * Returns null for single-leg slots.
+   */
+  const twoLegInfoForNode = useCallback(
+    (id: string) => {
+      const rowsForSlot = legsByNodeKey.get(id) ?? [];
+      const isTwoLegged = rowsForSlot.length > 1 || rowsForSlot.some((m) => m.leg != null);
+      if (!isTwoLegged) return null;
+
+      const leg2 = rowsForSlot.find((m) => m.leg === 2) ?? rowsForSlot[rowsForSlot.length - 1];
+      const leg1 = rowsForSlot.find((m) => m !== leg2) ?? null;
+      const ordered = [leg1, leg2].filter(Boolean) as MergedMatch[];
+
+      const teamA = leg2.team_a_id ?? null;
+      const teamB = leg2.team_b_id ?? null;
+      const allFinished = ordered.length > 0 && ordered.every((m) => (m as any).status === "finished");
+      const aggA = ordered.reduce((s, m) => s + scoreForTeam(m, teamA), 0);
+      const aggB = ordered.reduce((s, m) => s + scoreForTeam(m, teamB), 0);
+
+      return {
+        teamA,
+        teamB,
+        allFinished,
+        aggA: allFinished ? aggA : null,
+        aggB: allFinished ? aggB : null,
+        legScores: ordered.map((m) => ({ a: scoreForTeam(m, teamA), b: scoreForTeam(m, teamB) })),
+        penA: (leg2 as any).penalty_a ?? null,
+        penB: (leg2 as any).penalty_b ?? null,
+        legCount: ordered.length,
+      };
+    },
+    [legsByNodeKey, scoreForTeam]
+  );
 
   // canvas state
   const [nodes, setNodes] = useState<NodeBox[]>([]);
@@ -405,17 +470,32 @@ export default function BracketCanvas({
      finished detection from merged rows (read-only)
      ============================ */
   const finishedNodeIds = useMemo(() => {
-    const done = new Set<string>();
+    // Group rows per slot so two-legged ties only count as finished once BOTH
+    // legs are played (a slot with one finished leg is still in progress).
+    const bySlot = new Map<string, MergedMatch[]>();
     rows.forEach((m) => {
       if ((m.round ?? null) == null || (m.bracket_pos ?? null) == null) return;
       const id = `R${m.round}-B${m.bracket_pos}`;
+      const arr = bySlot.get(id) ?? [];
+      arr.push(m);
+      bySlot.set(id, arr);
+    });
+
+    const rowFinished = (m: MergedMatch) => {
       const st = (m as any).status;
       const a = (m as any).team_a_score;
       const b = (m as any).team_b_score;
       const w = (m as any).winner_team_id;
-      if (st === "finished" || typeof a === "number" || typeof b === "number" || w != null) {
-        done.add(id);
-      }
+      return st === "finished" || typeof a === "number" || typeof b === "number" || w != null;
+    };
+
+    const done = new Set<string>();
+    bySlot.forEach((slotRows, id) => {
+      const isTwoLegged = slotRows.length > 1 || slotRows.some((m) => m.leg != null);
+      const isDone = isTwoLegged
+        ? slotRows.every((m) => (m as any).status === "finished")
+        : slotRows.some(rowFinished);
+      if (isDone) done.add(id);
     });
     return done;
   }, [rows]);
@@ -595,7 +675,14 @@ export default function BracketCanvas({
     const nameA = resolveSideName("home");
     const nameB = resolveSideName("away");
     const topIsDetermined = nameA !== "TBD" && nameB !== "TBD";
-    const topLine = `${nameA} vs ${nameB}`;
+
+    // Two-legged tie display (aggregate + per-leg + pens), mirroring KOStageDisplay.
+    const twoLeg = twoLegInfoForNode(n.id);
+    const scoreLine =
+      twoLeg && twoLeg.allFinished
+        ? ` ${twoLeg.aggA}–${twoLeg.aggB}`
+        : "";
+    const topLine = `${nameA} vs ${nameB}${scoreLine}`;
 
     const sourceLine =
       parents.length > 0
@@ -605,8 +692,11 @@ export default function BracketCanvas({
         : null;
 
     const tag = meta ? `Round ${meta.round} • B${meta.bracket_pos}` : n.id;
+    const tagSuffix = twoLeg ? " • 2 legs" : "";
 
     const finished = (() => {
+      // Two-legged ties are only "finished" once both legs are played.
+      if (twoLeg) return twoLeg.allFinished;
       const r = rowByNodeKey.get(n.id);
       if (!r) return false;
       const st = (r as any).status;
@@ -682,6 +772,29 @@ export default function BracketCanvas({
           </div>
         </div>
 
+        {twoLeg && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-white/60">
+            {twoLeg.allFinished && (
+              <span className="uppercase tracking-wider text-cyan-300/70">agg</span>
+            )}
+            {twoLeg.legScores.length > 0 && (
+              <span className="tabular-nums" title="Per-leg scores (team A – team B, leg 1 then leg 2)">
+                {twoLeg.legScores.map((l) => `${l.a ?? "–"}-${l.b ?? "–"}`).join(" , ")}
+              </span>
+            )}
+            {twoLeg.legCount < 2 && (
+              <span className="text-amber-300/80" title="Second leg not set up yet">
+                leg 2 missing
+              </span>
+            )}
+            {twoLeg.penA != null && twoLeg.penB != null && (
+              <span className="rounded bg-amber-500/15 border border-amber-500/20 px-1.5 py-0.5 text-amber-300 tabular-nums">
+                pens {twoLeg.penA}-{twoLeg.penB}
+              </span>
+            )}
+          </div>
+        )}
+
         {finished && (
           <span
             className="mt-1 inline-flex w-fit items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px]
@@ -694,7 +807,10 @@ export default function BracketCanvas({
           </span>
         )}
 
-        <div className="mt-auto text-[11px] text-white/70">{tag}</div>
+        <div className="mt-auto text-[11px] text-white/70">
+          {tag}
+          {tagSuffix && <span className="text-cyan-300/70">{tagSuffix}</span>}
+        </div>
       </div>
     );
   };
