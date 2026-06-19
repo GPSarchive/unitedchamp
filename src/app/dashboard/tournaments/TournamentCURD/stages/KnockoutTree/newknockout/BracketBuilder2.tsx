@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import BracketEditor, { type NodeBox } from "./BracketEditor";
+import BracketEditor, { type NodeBox, type Edge, type NodeGroup } from "./BracketEditor";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { DraftMatch } from "@/app/dashboard/tournaments/TournamentCURD/TournamentWizard";
@@ -26,7 +26,6 @@ import { expandSelectedToTwoLegs } from "@/app/dashboard/tournaments/TournamentC
 
 /* ============================ Types ============================ */
 type TeamsMap = Record<number | string, { name: string; logo?: string | null; seed?: number | null }>;
-type Connection = [string, string];
 type NodeMeta = { round: number; bracket_pos: number };
 
 /* ============================ Fallbacks ============================ */
@@ -143,22 +142,27 @@ export default function BracketBuilder2({
     return m;
   }, [rows]);
 
-  /* ---- build canvas nodes/edges: ONE BOX PER LEG (like the match planner) ----
-     A two-legged tie shows two stacked cards (Leg 1 / Leg 2). Node id encodes the
-     leg: R{r}-B{p}-L{leg}. Edges run from a parent's DECIDER card (leg 2, or the
-     single card) to each leg of the child, so the tree still reads top-to-bottom. */
-  const colW = 270, legH = 116, legGap = 10, slotGap = 26, x0 = 40, y0 = 40;
+  /* ---- build canvas nodes/edges/groups: ONE BOX PER LEG (like the match planner) ----
+     A two-legged tie shows two stacked cards (Leg 1 / Leg 2) wrapped in a dashed
+     "tie" container, with a cyan dashed connector tying the two legs together.
+     Node id encodes the leg: R{r}-B{p}-L{leg}. Progression edges run from a parent's
+     DECIDER card (leg 2, or the single card) to the child's leg-1 card, so the tree
+     still reads left-to-right; leg edges are vertical, inside each tie box. */
+  const colW = 300, legH = 116, legGap = 18, slotGap = 30, x0 = 40, y0 = 48;
+  const groupPadX = 12, groupPadTop = 22, groupPadBottom = 12; // tie-container insets
 
   const legNodeId = (r: number, p: number, leg: number | null | undefined) => `R${r}-B${p}-L${leg ?? 0}`;
+  const tieGroupId = (r: number, p: number) => `TIE-R${r}-B${p}`;
   const deciderId = (r: number, p: number) => {
     const slot = legsBySlot.get(slotKey(r, p)!) ?? [];
     const dec = slot.find((m) => m.leg === 2) ?? slot[slot.length - 1] ?? slot[0];
     return dec ? legNodeId(r, p, dec.leg) : null;
   };
 
-  const { nodes, connections, nodeByLegId } = useMemo(() => {
+  const { nodes, connections, nodeByLegId, baseGroups } = useMemo(() => {
     const nx: NodeBox[] = [];
-    const edges: Connection[] = [];
+    const edges: Edge[] = [];
+    const grp: Array<NodeGroup & { round: number; bracket_pos: number; legCount: number }> = [];
     const byId: Record<string, { row: DraftMatch; round: number; bracket_pos: number; leg: number | null; legCount: number }> = {};
 
     // sort slots by (round, bracket_pos) for stable vertical packing per column
@@ -167,36 +171,69 @@ export default function BracketBuilder2({
       return (A.round ?? 0) - (B.round ?? 0) || (A.bracket_pos ?? 0) - (B.bracket_pos ?? 0);
     });
 
+    const nodeW = 240;
     // track the running y per column so stacked legs + slots don't overlap
     const colNextY = new Map<number, number>();
-    const slotHeight = (legCount: number) => legCount * legH + (legCount - 1) * legGap;
+    const stackHeight = (legCount: number) => legCount * legH + (legCount - 1) * legGap;
 
-    slotEntries.forEach(([key, slotRows]) => {
+    slotEntries.forEach(([, slotRows]) => {
       const sample = slotRows[0];
       const r = sample.round ?? 1;
       const b = sample.bracket_pos ?? 1;
       const legCount = slotRows.length;
+      const twoLegged = legCount > 1;
+
+      // A two-legged tie reserves extra room for its surrounding container.
+      const stackH = stackHeight(legCount);
+      const blockH = twoLegged ? stackH + groupPadTop + groupPadBottom : stackH;
 
       const startY = colNextY.get(r) ?? y0;
-      const h = slotHeight(legCount);
-      colNextY.set(r, startY + h + slotGap);
+      colNextY.set(r, startY + blockH + slotGap);
+
+      const colX = (r - 1) * colW + x0;
+      // Cards sit inset inside the tie container (when two-legged).
+      const cardX = twoLegged ? colX + groupPadX : colX;
+      const cardsTop = twoLegged ? startY + groupPadTop : startY;
 
       slotRows.forEach((row, li) => {
         const id = legNodeId(r, b, row.leg);
         nx.push({
           id,
-          x: (r - 1) * colW + x0,
-          y: startY + li * (legH + legGap),
-          w: 240,
+          x: cardX,
+          y: cardsTop + li * (legH + legGap),
+          w: nodeW,
           h: legH,
           label: roundLabel(r, maxRound),
         });
         byId[id] = { row, round: r, bracket_pos: b, leg: row.leg ?? null, legCount };
       });
 
-      // edges: parent decider -> each leg card of this slot
-      const hk = slotKey(sample.home_source_round, sample.home_source_bracket_pos);
-      const ak = slotKey(sample.away_source_round, sample.away_source_bracket_pos);
+      if (twoLegged) {
+        // Tie container wrapping both leg cards.
+        grp.push({
+          id: tieGroupId(r, b),
+          x: colX,
+          y: startY,
+          w: nodeW + groupPadX * 2,
+          h: blockH,
+          label: "Tie",
+          round: r,
+          bracket_pos: b,
+          legCount,
+        });
+        // Leg connector: leg-1 card -> leg-2 card (vertical, dashed).
+        const leg1 = slotRows.find((m) => m.leg !== 2) ?? slotRows[0];
+        const leg2 = slotRows.find((m) => m.leg === 2);
+        if (leg2) {
+          edges.push({
+            from: legNodeId(r, b, leg1.leg),
+            to: legNodeId(r, b, leg2.leg),
+            kind: "leg",
+          });
+        }
+      }
+
+      // Progression edges: parent decider -> this slot's leg-1 (or single) card.
       const parentDeciders = [
         sample.home_source_round && sample.home_source_bracket_pos
           ? deciderId(sample.home_source_round, sample.home_source_bracket_pos) : null,
@@ -204,11 +241,10 @@ export default function BracketBuilder2({
           ? deciderId(sample.away_source_round, sample.away_source_bracket_pos) : null,
       ].filter(Boolean) as string[];
       const firstLegId = legNodeId(r, b, slotRows[0].leg);
-      parentDeciders.forEach((pid) => edges.push([pid, firstLegId]));
-      void hk; void ak;
+      parentDeciders.forEach((pid) => edges.push({ from: pid, to: firstLegId, kind: "progress" }));
     });
 
-    return { nodes: nx, connections: edges, nodeByLegId: byId };
+    return { nodes: nx, connections: edges, nodeByLegId: byId, baseGroups: grp };
   }, [legsBySlot, maxRound]);
 
   /* ---- editor needs its own node state for dragging only (positions) ---- */
@@ -260,6 +296,47 @@ export default function BracketBuilder2({
     },
     [legsBySlot]
   );
+
+  /* ---- tie containers, geometry tracked off the (possibly dragged) leg cards ----
+     Recomputed from positionedNodes so the box follows when a leg card is moved,
+     and enriched with the aggregate accent + finished state. */
+  const posById = useMemo(() => {
+    const m = new Map<string, NodeBox>();
+    positionedNodes.forEach((n) => m.set(n.id, n));
+    return m;
+  }, [positionedNodes]);
+
+  const groups = useMemo<NodeGroup[]>(() => {
+    return baseGroups.map((g) => {
+      const slot = legsBySlot.get(slotKey(g.round, g.bracket_pos)!) ?? [];
+      const legNodes = slot
+        .map((row) => posById.get(legNodeId(g.round, g.bracket_pos, row.leg)))
+        .filter(Boolean) as NodeBox[];
+
+      // Fall back to the static geometry if nodes aren't resolvable.
+      const box = legNodes.length
+        ? {
+            x: Math.min(...legNodes.map((n) => n.x)) - groupPadX,
+            y: Math.min(...legNodes.map((n) => n.y)) - groupPadTop,
+            w: Math.max(...legNodes.map((n) => n.w)) + groupPadX * 2,
+            h:
+              Math.max(...legNodes.map((n) => n.y + n.h)) -
+              Math.min(...legNodes.map((n) => n.y)) +
+              groupPadTop +
+              groupPadBottom,
+          }
+        : { x: g.x, y: g.y, w: g.w, h: g.h };
+
+      const agg = slotAggregate(g.round, g.bracket_pos);
+      const accent =
+        agg?.allFinished && agg.aggA != null
+          ? `agg ${agg.aggA}–${agg.aggB}${agg.penA != null && agg.penB != null ? ` · pens ${agg.penA}-${agg.penB}` : ""}`
+          : "2 legs";
+      const finished = legNodes.length > 0 && legNodes.every((n) => finishedLegIds.has(n.id));
+
+      return { id: g.id, ...box, label: "Tie", accent, finished };
+    });
+  }, [baseGroups, legsBySlot, posById, slotAggregate, finishedLegIds]);
 
   /* ============================ GENERATE ============================ */
   const detectedSize = useMemo(() => Math.max(2, participants.length || 2), [participants.length]);
@@ -402,11 +479,22 @@ export default function BracketBuilder2({
 
       return (
         <div className="flex h-full w-full flex-col gap-1">
-          {/* header: round + leg tag + status */}
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
-              {n.label}
-              {legTag && <span className="ml-1 text-cyan-400/80">· {legTag}</span>}
+          {/* header: round + leg pill + status */}
+          <div className="flex items-center justify-between gap-1">
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="truncate text-[10px] font-bold uppercase tracking-widest text-white/40">{n.label}</span>
+              {legTag && (
+                <span
+                  className={[
+                    "shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wider ring-1",
+                    isLeg2
+                      ? "bg-cyan-500/20 text-cyan-200 ring-cyan-400/30"
+                      : "bg-white/5 text-white/55 ring-white/15",
+                  ].join(" ")}
+                >
+                  {legTag}
+                </span>
+              )}
             </span>
             {finished ? (
               <span className="inline-flex items-center rounded-full bg-emerald-500/15 border border-emerald-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">FT</span>
@@ -421,17 +509,11 @@ export default function BracketBuilder2({
             <TeamRow side="B" id={teamB} />
           </div>
 
-          {/* leg-2 footer: aggregate + pens (the tie is decided here) */}
+          {/* leg-2 footer: the tie is decided here. Aggregate lives on the tie
+              container header now, so the card only flags pending / pens. */}
           {isLeg2 && agg && (
             <div className="mt-auto flex flex-wrap items-center gap-x-1.5 text-[9px] text-white/50">
-              {agg.allFinished ? (
-                <>
-                  <span className="uppercase tracking-wider text-cyan-300/70">agg</span>
-                  <span className="tabular-nums text-white/80">{agg.aggA}–{agg.aggB}</span>
-                </>
-              ) : (
-                <span className="text-white/30">aggregate pending</span>
-              )}
+              {!agg.allFinished && <span className="text-white/30">decider · aggregate pending</span>}
               {agg.penA != null && agg.penB != null && (
                 <span className="rounded bg-amber-500/15 border border-amber-500/25 px-1 text-amber-300 tabular-nums">pens {agg.penA}-{agg.penB}</span>
               )}
@@ -532,8 +614,17 @@ export default function BracketBuilder2({
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-white/40">{nodes.length} card{nodes.length === 1 ? "" : "s"} · two-legged ties show as Leg 1 / Leg 2 · drag to reposition</span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-[11px] text-white/40">
+              <span>{nodes.length} card{nodes.length === 1 ? "" : "s"}</span>
+              {groups.length > 0 && (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-0 w-5 border-t-2 border-dashed border-cyan-400/60" />
+                  {groups.length} two-legged tie{groups.length === 1 ? "" : "s"} (Leg 1 ↕ Leg 2)
+                </span>
+              )}
+              <span>· drag to reposition</span>
+            </div>
             <label className="inline-flex items-center gap-1.5 text-[11px] text-white/50 cursor-pointer">
               <input type="checkbox" className="accent-cyan-500" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
               Advanced wiring
@@ -542,6 +633,7 @@ export default function BracketBuilder2({
           <BracketEditor
             nodes={positionedNodes}
             connections={connections}
+            groups={groups}
             onNodesChange={onNodesChange}
             onConnectionsChange={() => { /* wiring edits handled via store in advanced flows */ }}
             nodeContent={nodeContent}

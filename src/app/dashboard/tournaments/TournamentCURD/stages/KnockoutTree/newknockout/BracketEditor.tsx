@@ -14,18 +14,48 @@ export type NodeBox = {
 
 type Connection = [string, string];
 
+/** An edge with a kind so the canvas can style progression vs leg links differently. */
+export type Edge = {
+  from: string;
+  to: string;
+  /** "progress" = winner advances to next round; "leg" = the two legs of one tie. */
+  kind?: "progress" | "leg";
+};
+
+/** A decorative container drawn behind nodes (e.g. a two-legged "tie" box). */
+export type NodeGroup = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
+  /** Optional accent string shown at the right of the header (e.g. "agg 3–2"). */
+  accent?: string;
+  /** Whether the whole group reads as finished (changes the border tint). */
+  finished?: boolean;
+};
+
 type Props = {
   nodes: NodeBox[];
-  connections: Connection[];
+  /** Either legacy [from,to] tuples or typed Edge objects. */
+  connections: Array<Connection | Edge>;
   onNodesChange: (next: NodeBox[]) => void;
   onConnectionsChange: (next: Connection[]) => void;
   nodeContent?: (n: NodeBox) => React.ReactNode;
   isFinished?: (id: string) => boolean; // highlight finished nodes
+  /** Decorative containers (tie boxes) rendered behind the nodes. */
+  groups?: NodeGroup[];
   /** Optional: snap to grid pixels (default 10) */
   snap?: number;
   /** Visual zoom (scales drawing plane), does not change coordinates (default 1) */
   zoom?: number;
 };
+
+/** Normalize a connection (tuple or Edge) into a uniform shape. */
+function asEdge(c: Connection | Edge): Edge {
+  return Array.isArray(c) ? { from: c[0], to: c[1], kind: "progress" } : { kind: "progress", ...c };
+}
 
 export default function BracketEditor({
   nodes,
@@ -34,10 +64,14 @@ export default function BracketEditor({
   onConnectionsChange,
   nodeContent,
   isFinished,
+  groups = [],
   snap = 10,
   zoom = 1,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Normalize edges once: callers may still pass legacy [from,to] tuples.
+  const edges = useMemo(() => connections.map(asEdge), [connections]);
 
   // Drag state
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -111,15 +145,15 @@ export default function BracketEditor({
   const createConnection = useCallback((from: string, to: string) => {
     if (from === to) return; // no self loops
     // prevent duplicates
-    const exists = connections.some(([a, b]) => a === from && b === to);
+    const exists = edges.some((e) => e.from === from && e.to === to);
     if (exists) return;
 
-    const next = [...connections, [from, to] as Connection];
+    const next: Connection[] = [...edges.map((e) => [e.from, e.to] as Connection), [from, to]];
     onConnectionsChange(next);
 
     // eslint-disable-next-line no-console
     console.log("[BracketEditor] Added connection:", { from, to });
-  }, [connections, onConnectionsChange]);
+  }, [edges, onConnectionsChange]);
 
   // Handle node click for connecting
   const handleNodeClick = useCallback((id: string) => {
@@ -132,12 +166,12 @@ export default function BracketEditor({
   }, [pendingFrom, createConnection]);
 
   const removeConnection = useCallback((idx: number) => {
-    const next = connections.slice();
-    const removed = next.splice(idx, 1);
-    onConnectionsChange(next);
+    const tuples: Connection[] = edges.map((e) => [e.from, e.to] as Connection);
+    const removed = tuples.splice(idx, 1);
+    onConnectionsChange(tuples);
     // eslint-disable-next-line no-console
     console.log("[BracketEditor] Removed connection:", removed[0]);
-  }, [connections, onConnectionsChange]);
+  }, [edges, onConnectionsChange]);
 
   // Key handling: press Escape to cancel pending connection
   useEffect(() => {
@@ -159,6 +193,7 @@ export default function BracketEditor({
     mid: { x: number; y: number };
     idx: number;
     rtl: boolean;
+    kind: "progress" | "leg";
   };
 
   const paths = useMemo<PathInfo[]>(() => {
@@ -188,21 +223,40 @@ export default function BracketEditor({
       return { x, y };
     }
 
-    connections.forEach(([from, to], idx) => {
-      const a = nodeById.get(from);
-      const b = nodeById.get(to);
+    edges.forEach((e, idx) => {
+      const a = nodeById.get(e.from);
+      const b = nodeById.get(e.to);
       if (!a || !b) return;
+      const kind = e.kind ?? "progress";
 
+      // ---- Leg link: connect the two stacked leg cards top/bottom (vertical S) ----
+      if (kind === "leg") {
+        const upper = a.y <= b.y ? a : b;
+        const lower = a.y <= b.y ? b : a;
+        const x1 = upper.x + upper.w / 2;
+        const y1 = upper.y + upper.h + OUTSET;
+        const x2 = lower.x + lower.w / 2;
+        const y2 = lower.y - OUTSET;
+        const dy = Math.max(14, (y2 - y1) * 0.5);
+        const c1x = x1, c1y = y1 + dy;
+        const c2x = x2, c2y = y2 - dy;
+        const d = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
+        const mid = cubicPoint(0.5, x1, y1, c1x, c1y, c2x, c2y, x2, y2);
+        list.push({ d, mid, idx, rtl: false, kind });
+        return;
+      }
+
+      // ---- Progression link: side-aware horizontal S-curve (existing behavior) ----
       // Determine direction using node centers
       const axc = a.x + a.w / 2;
       const bxc = b.x + b.w / 2;
       const rtl = axc > bxc; // right-to-left?
 
       // Anchor points on the nearest sides
-      let x1 = rtl ? a.x - OUTSET : a.x + a.w + OUTSET;
-      let y1 = a.y + a.h / 2;
-      let x2 = rtl ? b.x + b.w + OUTSET : b.x - OUTSET;
-      let y2 = b.y + b.h / 2;
+      const x1 = rtl ? a.x - OUTSET : a.x + a.w + OUTSET;
+      const y1 = a.y + a.h / 2;
+      const x2 = rtl ? b.x + b.w + OUTSET : b.x - OUTSET;
+      const y2 = b.y + b.h / 2;
 
       const dx = Math.max(MIN_DX, Math.abs(x2 - x1) * 0.35);
 
@@ -214,21 +268,23 @@ export default function BracketEditor({
 
       const d = `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
       const mid = cubicPoint(0.5, x1, y1, c1x, c1y, c2x, c2y, x2, y2);
-      list.push({ d, mid, idx, rtl });
+      list.push({ d, mid, idx, rtl, kind });
     });
 
     return list;
-  }, [connections, nodeById]);
+  }, [edges, nodeById]);
 
   const width = useMemo(() => {
-    const maxRight = nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 800);
-    return Math.max(800, maxRight + 80);
-  }, [nodes]);
+    const maxRightNodes = nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 800);
+    const maxRightGroups = groups.reduce((mx, g) => Math.max(mx, g.x + g.w), 0);
+    return Math.max(800, Math.max(maxRightNodes, maxRightGroups) + 80);
+  }, [nodes, groups]);
 
   const height = useMemo(() => {
-    const maxBottom = nodes.reduce((my, n) => Math.max(my, n.y + n.h), 400);
-    return Math.max(400, maxBottom + 80);
-  }, [nodes]);
+    const maxBottomNodes = nodes.reduce((my, n) => Math.max(my, n.y + n.h), 400);
+    const maxBottomGroups = groups.reduce((my, g) => Math.max(my, g.y + g.h), 0);
+    return Math.max(400, Math.max(maxBottomNodes, maxBottomGroups) + 80);
+  }, [nodes, groups]);
 
   return (
     <div className="relative w-full overflow-auto rounded-xl border border-white/10 bg-gradient-to-br from-red-950/60 via-[#2a0a0a]/60 to-amber-950/50">
@@ -253,6 +309,42 @@ export default function BracketEditor({
             backgroundSize: `${snap}px ${snap}px, ${snap}px ${snap}px`,
           }}
         >
+          {/* Tie-group containers (drawn behind everything) */}
+          {groups.map((g) => (
+            <div
+              key={g.id}
+              className={[
+                "absolute rounded-2xl border-2 border-dashed pointer-events-none",
+                g.finished
+                  ? "border-amber-400/35 bg-amber-500/[0.04]"
+                  : "border-cyan-400/30 bg-cyan-500/[0.035]",
+              ].join(" ")}
+              style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
+            >
+              {(g.label || g.accent) && (
+                <div className="absolute -top-2.5 left-3 flex items-center gap-2 px-1.5">
+                  {g.label && (
+                    <span
+                      className={[
+                        "rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest",
+                        g.finished
+                          ? "bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/30"
+                          : "bg-cyan-500/20 text-cyan-100 ring-1 ring-cyan-400/30",
+                      ].join(" ")}
+                    >
+                      {g.label}
+                    </span>
+                  )}
+                  {g.accent && (
+                    <span className="rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-semibold tabular-nums text-white/80 ring-1 ring-white/10">
+                      {g.accent}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
           {/* SVG connection layer */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none">
             <defs>
@@ -265,43 +357,63 @@ export default function BracketEditor({
                 <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
                 <stop offset="100%" stopColor="rgba(255,255,255,0.9)" />
               </linearGradient>
+              <linearGradient id="edgeGradLeg" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="rgba(34,211,238,0.85)" />
+                <stop offset="100%" stopColor="rgba(34,211,238,0.45)" />
+              </linearGradient>
             </defs>
 
-            {paths.map((p) => (
-              <g key={p.idx} className="pointer-events-none">
-                {/* Glow / shadow underlay */}
-                <path
-                  d={p.d}
-                  fill="none"
-                  stroke="rgba(255,255,255,0.18)"
-                  strokeWidth={6}
-                  strokeLinecap="round"
-                />
-                {/* Main sleek line */}
-                <path
-                  d={p.d}
-                  fill="none"
-                  stroke={`url(#${p.rtl ? "edgeGradRTL" : "edgeGradLTR"})`}
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                />
-              </g>
-            ))}
+            {paths.map((p) =>
+              p.kind === "leg" ? (
+                <g key={p.idx} className="pointer-events-none">
+                  {/* leg link: thin dashed cyan connector tying the two legs of one tie */}
+                  <path
+                    d={p.d}
+                    fill="none"
+                    stroke="url(#edgeGradLeg)"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeDasharray="3 5"
+                  />
+                </g>
+              ) : (
+                <g key={p.idx} className="pointer-events-none">
+                  {/* Glow / shadow underlay */}
+                  <path
+                    d={p.d}
+                    fill="none"
+                    stroke="rgba(255,255,255,0.18)"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                  />
+                  {/* Main sleek line */}
+                  <path
+                    d={p.d}
+                    fill="none"
+                    stroke={`url(#${p.rtl ? "edgeGradRTL" : "edgeGradLTR"})`}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                  />
+                </g>
+              )
+            )}
 
-            {/* small click targets to remove connections */}
-            {paths.map((p) => (
-              <circle
-                key={`btn-${p.idx}`}
-                cx={p.mid.x}
-                cy={p.mid.y}
-                r={9}
-                fill="rgba(255,255,255,0.08)"
-                stroke="rgba(255,255,255,0.35)"
-                strokeWidth={1}
-                className="pointer-events-auto cursor-pointer"
-                onClick={() => removeConnection(p.idx)}
-              />
-            ))}
+            {/* small click targets to remove connections (progression edges only) */}
+            {paths
+              .filter((p) => p.kind !== "leg")
+              .map((p) => (
+                <circle
+                  key={`btn-${p.idx}`}
+                  cx={p.mid.x}
+                  cy={p.mid.y}
+                  r={9}
+                  fill="rgba(255,255,255,0.08)"
+                  stroke="rgba(255,255,255,0.35)"
+                  strokeWidth={1}
+                  className="pointer-events-auto cursor-pointer"
+                  onClick={() => removeConnection(p.idx)}
+                />
+              ))}
           </svg>
 
           {/* Nodes */}
