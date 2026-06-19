@@ -296,7 +296,7 @@ export default function StatsEditor({
                         value={posVal}
                         placeholder="e.g. FW, MF, DF, GK"
                         onChange={(e) => handleStatChange(p.id, 'position', e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         readOnly={readOnly || !playedOn}
                       />
                     </div>
@@ -314,7 +314,7 @@ export default function StatsEditor({
                         value={playerNumber}
                         placeholder="e.g. 10"
                         onChange={(e) => handleStatChange(p.id, 'player_number', e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         readOnly={readOnly || !playedOn}
                       />
                     </div>
@@ -506,7 +506,7 @@ function StatInput({
         onChange={onChange}
         readOnly={readOnly}
         className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
-          readOnly ? "bg-gray-50 text-gray-500" : ""
+          readOnly ? "bg-gray-50 text-gray-500" : "bg-white text-gray-900"
         }`}
       />
     </div>
