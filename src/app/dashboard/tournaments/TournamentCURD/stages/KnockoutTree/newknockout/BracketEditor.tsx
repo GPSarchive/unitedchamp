@@ -10,6 +10,8 @@ export type NodeBox = {
   w: number;
   h: number;
   label?: string;
+  /** Nodes sharing a group id drag together as one unit (e.g. both legs of a tie). */
+  group?: string;
 };
 
 type Connection = [string, string];
@@ -104,21 +106,52 @@ export default function BracketEditor({
     [zoom]
   );
 
+  // Drag a whole tie container: anchor on one of its member nodes and move the group.
+  const handleGroupPointerDown = useCallback(
+    (e: React.PointerEvent, groupId: string) => {
+      const anchor = nodes.find((n) => n.group === groupId);
+      const container = containerRef.current;
+      if (!anchor || !container) return;
+      const cRect = container.getBoundingClientRect();
+      // Offset = pointer position (in canvas coords) minus the anchor's top-left.
+      dragOffset.current = {
+        dx: (e.clientX - cRect.left) / zoom - anchor.x,
+        dy: (e.clientY - cRect.top) / zoom - anchor.y,
+      };
+      setDraggingId(anchor.id);
+      (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    },
+    [nodes, zoom]
+  );
+
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!draggingId) return;
       const container = containerRef.current;
       if (!container) return;
 
+      const dragged = nodeById.get(draggingId);
+      if (!dragged) return;
+
       const cRect = container.getBoundingClientRect();
       const nx = snapTo((e.clientX - cRect.left) / zoom - dragOffset.current.dx);
       const ny = snapTo((e.clientY - cRect.top) / zoom - dragOffset.current.dy);
 
+      // Whole-group move: shift every node sharing the dragged node's group by the
+      // same delta, so linked cards (e.g. both legs of a tie) move as one unit.
+      const dx = nx - dragged.x;
+      const dy = ny - dragged.y;
+      const grp = dragged.group;
+
       onNodesChange(
-        nodes.map((n) => (n.id === draggingId ? { ...n, x: nx, y: ny } : n))
+        nodes.map((n) => {
+          if (n.id === draggingId) return { ...n, x: nx, y: ny };
+          if (grp && n.group === grp) return { ...n, x: n.x + dx, y: n.y + dy };
+          return n;
+        })
       );
     },
-    [draggingId, nodes, onNodesChange, snapTo, zoom]
+    [draggingId, nodes, nodeById, onNodesChange, snapTo, zoom]
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -309,20 +342,25 @@ export default function BracketEditor({
             backgroundSize: `${snap}px ${snap}px, ${snap}px ${snap}px`,
           }}
         >
-          {/* Tie-group containers (drawn behind everything) */}
+          {/* Tie-group containers (drawn behind the cards). Draggable as a whole:
+              grabbing the box border/padding moves both legs together. The cards
+              sit on top with their own handlers, so card controls still work. */}
           {groups.map((g) => (
             <div
               key={g.id}
               className={[
-                "absolute rounded-2xl border-2 border-dashed pointer-events-none",
+                "absolute rounded-2xl border-2 border-dashed cursor-grab active:cursor-grabbing select-none",
                 g.finished
-                  ? "border-amber-400/35 bg-amber-500/[0.04]"
-                  : "border-cyan-400/30 bg-cyan-500/[0.035]",
+                  ? "border-amber-400/35 bg-amber-500/[0.04] hover:border-amber-400/60"
+                  : "border-cyan-400/30 bg-cyan-500/[0.035] hover:border-cyan-400/60",
               ].join(" ")}
               style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
+              onPointerDown={(e) => handleGroupPointerDown(e, g.id)}
+              onPointerUp={handlePointerUp}
+              title="Drag to move both legs of this tie together"
             >
               {(g.label || g.accent) && (
-                <div className="absolute -top-2.5 left-3 flex items-center gap-2 px-1.5">
+                <div className="absolute -top-2.5 left-3 flex items-center gap-2 px-1.5 pointer-events-none">
                   {g.label && (
                     <span
                       className={[

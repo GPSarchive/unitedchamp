@@ -204,6 +204,8 @@ export default function BracketBuilder2({
           w: nodeW,
           h: legH,
           label: roundLabel(r, maxRound),
+          // Both legs of a tie share a drag group so they move together.
+          group: twoLegged ? tieGroupId(r, b) : undefined,
         });
         byId[id] = { row, round: r, bracket_pos: b, leg: row.leg ?? null, legCount };
       });
