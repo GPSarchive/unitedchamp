@@ -88,6 +88,12 @@ export default function BracketEditor({
     return m;
   }, [nodes]);
 
+  const groupById = useMemo(() => {
+    const m = new Map<string, NodeGroup>();
+    groups.forEach((g) => m.set(g.id, g));
+    return m;
+  }, [groups]);
+
   const snapTo = useCallback(
     (value: number) => Math.round(value / snap) * snap,
     [snap]
@@ -280,16 +286,21 @@ export default function BracketEditor({
       }
 
       // ---- Progression link: side-aware horizontal S-curve (existing behavior) ----
-      // Determine direction using node centers
-      const axc = a.x + a.w / 2;
-      const bxc = b.x + b.w / 2;
+      // Anchor on the tie CONTAINER (not a single leg card) when an endpoint is a
+      // two-legged tie, so the line meets the visual middle/edge of the whole tie.
+      const aBox = (a.group && groupById.get(a.group)) || a;
+      const bBox = (b.group && groupById.get(b.group)) || b;
+
+      // Determine direction using box centers
+      const axc = aBox.x + aBox.w / 2;
+      const bxc = bBox.x + bBox.w / 2;
       const rtl = axc > bxc; // right-to-left?
 
-      // Anchor points on the nearest sides
-      const x1 = rtl ? a.x - OUTSET : a.x + a.w + OUTSET;
-      const y1 = a.y + a.h / 2;
-      const x2 = rtl ? b.x + b.w + OUTSET : b.x - OUTSET;
-      const y2 = b.y + b.h / 2;
+      // Anchor points on the nearest sides, vertically centered on the box
+      const x1 = rtl ? aBox.x - OUTSET : aBox.x + aBox.w + OUTSET;
+      const y1 = aBox.y + aBox.h / 2;
+      const x2 = rtl ? bBox.x + bBox.w + OUTSET : bBox.x - OUTSET;
+      const y2 = bBox.y + bBox.h / 2;
 
       const dx = Math.max(MIN_DX, Math.abs(x2 - x1) * 0.35);
 
@@ -305,7 +316,7 @@ export default function BracketEditor({
     });
 
     return list;
-  }, [edges, nodeById]);
+  }, [edges, nodeById, groupById]);
 
   const width = useMemo(() => {
     const maxRightNodes = nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 800);
