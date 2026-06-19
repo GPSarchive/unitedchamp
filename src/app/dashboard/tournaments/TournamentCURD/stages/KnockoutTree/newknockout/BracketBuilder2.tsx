@@ -147,9 +147,24 @@ export default function BracketBuilder2({
      "tie" container, with a cyan dashed connector tying the two legs together.
      Node id encodes the leg: R{r}-B{p}-L{leg}. Progression edges run from a parent's
      DECIDER card (leg 2, or the single card) to the child's leg-1 card, so the tree
-     still reads left-to-right; leg edges are vertical, inside each tie box. */
-  const colW = 300, legH = 116, legGap = 18, slotGap = 30, x0 = 40, y0 = 48;
+     still reads left-to-right; leg edges are vertical, inside each tie box.
+
+     Layout mirrors the PUBLIC display (KOStageDisplay): each round doubles the
+     vertical spacing and centers a slot midway between its two feeders, so the
+     whole thing reads as a proper binary tree. A slot's leg cards are centered on
+     that slot's tree position. */
+  const colW = 300, legH = 116, legGap = 18, x0 = 40, y0 = 48;
   const groupPadX = 12, groupPadTop = 22, groupPadBottom = 12; // tie-container insets
+
+  // Round-1 vertical pitch: big enough to clear a two-legged tie's full block
+  // (two cards + gap + container padding), with breathing room between slots.
+  const baseGapY =
+    legH * 2 + legGap + groupPadTop + groupPadBottom + 56;
+  // Tree Y for a slot center (same shape as KOStageDisplay.getYPosition).
+  const slotCenterY = (round: number, bracket_pos: number) => {
+    const spacing = baseGapY * Math.pow(2, round - 1);
+    return y0 + spacing / 2 + (bracket_pos - 1) * spacing;
+  };
 
   const legNodeId = (r: number, p: number, leg: number | null | undefined) => `R${r}-B${p}-L${leg ?? 0}`;
   const tieGroupId = (r: number, p: number) => `TIE-R${r}-B${p}`;
@@ -172,8 +187,6 @@ export default function BracketBuilder2({
     });
 
     const nodeW = 240;
-    // track the running y per column so stacked legs + slots don't overlap
-    const colNextY = new Map<number, number>();
     const stackHeight = (legCount: number) => legCount * legH + (legCount - 1) * legGap;
 
     slotEntries.forEach(([, slotRows]) => {
@@ -187,8 +200,10 @@ export default function BracketBuilder2({
       const stackH = stackHeight(legCount);
       const blockH = twoLegged ? stackH + groupPadTop + groupPadBottom : stackH;
 
-      const startY = colNextY.get(r) ?? y0;
-      colNextY.set(r, startY + blockH + slotGap);
+      // Tree placement: center this slot's block on its binary-tree Y position,
+      // so a round-N node sits midway between its two round-(N-1) feeders.
+      const center = slotCenterY(r, b);
+      const startY = center - blockH / 2;
 
       const colX = (r - 1) * colW + x0;
       // Cards sit inset inside the tie container (when two-legged).
