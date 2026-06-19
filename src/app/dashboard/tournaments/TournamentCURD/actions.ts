@@ -316,11 +316,16 @@ export async function createTournamentAction(formData: FormData) {
   }
 
   if (koConfigUpdates.length) {
-    // Batch update all KO stage configs in a single upsert
-    await supabaseAdmin
-      .from('tournament_stages')
-      .upsert(koConfigUpdates, { onConflict: 'id' })
-      .throwOnError();
+    // Update each KO stage's config. These rows already exist (just inserted
+    // above), so this must be an UPDATE — an upsert would attempt an INSERT
+    // with only { id, config } and trip the tournament_id NOT NULL constraint.
+    for (const u of koConfigUpdates) {
+      await supabaseAdmin
+        .from('tournament_stages')
+        .update({ config: u.config })
+        .eq('id', u.id)
+        .throwOnError();
+    }
   }
 
   // 3) Groups per groups-stage
@@ -951,10 +956,15 @@ export async function updateTournamentAction(formData: FormData) {
   }
 
   if (koConfigUpdatesEdit.length) {
-    await supabaseAdmin
-      .from('tournament_stages')
-      .upsert(koConfigUpdatesEdit, { onConflict: 'id' })
-      .throwOnError();
+    // UPDATE, not upsert: these rows already exist, and an upsert would attempt
+    // an INSERT with only { id, config }, violating tournament_id NOT NULL.
+    for (const u of koConfigUpdatesEdit) {
+      await supabaseAdmin
+        .from('tournament_stages')
+        .update({ config: u.config })
+        .eq('id', u.id)
+        .throwOnError();
+    }
   }
 
   type GroupRecord = { id: number; stage_id: number; name: string };
