@@ -549,23 +549,51 @@ if (body.matches?.upsert?.length) {
   const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
   const created: any[] = [];
 
-  // KO Matches - Use (stage_id, round, bracket_pos, leg) as natural keys.
-  // Two-legged ties share (stage,round,bracket_pos) and differ only by leg, so the
-  // conflict target MUST include leg to avoid collapsing both legs into one row —
-  // this matches the partial unique index `unique_ko_match`. `tie_leg1_match_id` is
-  // resolved in a second pass below (we don't have leg-1's id until it's inserted).
+  // KO Matches — natural key is (stage_id, round, bracket_pos, leg). Two-legged
+  // ties share (stage,round,bracket_pos) and differ only by leg, so the leg MUST
+  // be part of the key or both legs collapse into one row.
+  //
+  // We dedup in code + plain INSERT (mirroring the non-KO path below) rather than
+  // upsert-on-conflict: ON CONFLICT against the PARTIAL unique index `unique_ko_match`
+  // (WHERE round IS NOT NULL AND bracket_pos IS NOT NULL) is fragile to infer and
+  // fails outright if that index isn't present in the DB. A pre-fetch dedup is robust
+  // either way. `tie_leg1_match_id` is resolved in the KO-id post-pass below.
   if (koRowsAll.some(r => r.id == null)) {
+    const koKey = (m: any) =>
+      `${m.stage_id}#${m.round ?? "n"}#${m.bracket_pos ?? "n"}#${m.leg ?? "n"}`;
+
     const toCreateKO = koRowsAll
       .filter(r => r.id == null)
       .map(strip)
       // never send a transient/unknown tie link on create
       .map(({ tie_leg1_match_id: _t, ...rest }: any) => rest);
-    const { data, error } = await supabaseAdmin
+
+    // Existing KO rows for the affected stages (so we don't duplicate a slot/leg).
+    const koStageIds = Array.from(new Set(toCreateKO.map((m: any) => m.stage_id).filter(Boolean)));
+    const { data: existingKO } = await supabaseAdmin
       .from("matches")
-      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos,leg" })
-      .select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    created.push(...(data ?? []));
+      .select("stage_id, round, bracket_pos, leg")
+      .in("stage_id", koStageIds)
+      .not("round", "is", null);
+
+    const existingKOKeys = new Set((existingKO ?? []).map(koKey));
+    // Also dedup within this batch itself (e.g. a slot sent twice).
+    const seenInBatch = new Set<string>();
+    const dedupedKO = toCreateKO.filter((m: any) => {
+      const k = koKey(m);
+      if (existingKOKeys.has(k) || seenInBatch.has(k)) return false;
+      seenInBatch.add(k);
+      return true;
+    });
+
+    if (dedupedKO.length) {
+      const { data, error } = await supabaseAdmin
+        .from("matches")
+        .insert(dedupedKO)
+        .select();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      created.push(...(data ?? []));
+    }
   }
 
   // Non-KO Matches - Insert only (no upsert since bracket_pos can be null)
