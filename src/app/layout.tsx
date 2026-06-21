@@ -80,7 +80,14 @@ export default async function RootLayout({
 
   return React.createElement(
     "html",
-    { lang: "el", className: htmlClass, suppressHydrationWarning: true },
+    {
+      lang: "el",
+      className: htmlClass,
+      suppressHydrationWarning: true,
+      // Inline so the dark base paints with the initial HTML, BEFORE the external
+      // CSS chunk loads — otherwise the browser default-white shows as a flash.
+      style: { backgroundColor: "#09090b", colorScheme: "dark" },
+    },
     [
       React.createElement(
         "head",
@@ -110,7 +117,12 @@ export default async function RootLayout({
 
       React.createElement(
         "body",
-        { key: "body", className: "antialiased font-sans", suppressHydrationWarning: true },
+        {
+          key: "body",
+          className: "antialiased font-sans",
+          suppressHydrationWarning: true,
+          style: { backgroundColor: "#09090b" },
+        },
         React.createElement(ConsentProvider, {
           key: "consent-provider",
           children: [
