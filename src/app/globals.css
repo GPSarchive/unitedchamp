@@ -60,7 +60,9 @@ html { /* [CTRL-1] */
 
 /* IMPORTANT: use background-color (not shorthand 'background') so we don't wipe out the dot-grid image */
 body {
-  background-color: var(--background);
+  /* Dark base so the navbar->content gap and any reflow never flash white.
+     Pages render their own backgrounds on top; this only shows through padding/gaps. */
+  background-color: #09090b; /* zinc-950 */
   /* Let Tailwind/next-font control fonts via variables */
   font-family: var(--font-roboto-condensed), system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
