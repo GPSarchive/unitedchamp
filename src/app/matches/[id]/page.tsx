@@ -18,6 +18,7 @@ import {
 import { parseId, extractYouTubeId } from "./utils";
 import { saveAllStatsAction } from "./actions";
 import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
+import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
@@ -122,7 +123,11 @@ export default async function Page({
     return 0;
   };
   const leg1Ready = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
-  const leg2Ready = match.team_a_score != null && match.team_b_score != null;
+
+  // Leg-1 score mapped into leg-2's (team_a/team_b) orientation, for the live
+  // penalty panel. Teams swap home/away between legs, so map by team id.
+  const leg1AScore = leg1Ready ? scoreForTeam(leg1, match.team_a.id) : null;
+  const leg1BScore = leg1Ready ? scoreForTeam(leg1, match.team_b.id) : null;
   const aggA =
     isLeg2Decider && leg1Ready && match.team_a_score != null
       ? (match.team_a_score ?? 0) + scoreForTeam(leg1, match.team_a.id)
@@ -132,35 +137,12 @@ export default async function Page({
       ? (match.team_b_score ?? 0) + scoreForTeam(leg1, match.team_b.id)
       : null;
 
-  // Winner is decided on LEG WINS, not aggregate goals. Penalties are required
-  // when leg wins are level (1–1, or both legs drawn) once both legs have scores.
-  const legWinner = (
-    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
-    teamAId: number | null,
-    teamBId: number | null,
-  ) => {
-    if (!row || teamAId == null || teamBId == null) return null;
-    const sa = scoreForTeam(row, teamAId);
-    const sb = scoreForTeam(row, teamBId);
-    if (sa > sb) return teamAId;
-    if (sb > sa) return teamBId;
-    return null;
-  };
-  const bothLegsReady = isLeg2Decider && leg1Ready && leg2Ready;
-  const leg2Row = {
-    team_a_id: match.team_a.id,
-    team_b_id: match.team_b.id,
-    team_a_score: match.team_a_score,
-    team_b_score: match.team_b_score,
-  };
-  const winsA =
-    (legWinner(leg1, match.team_a.id, match.team_b.id) === match.team_a.id ? 1 : 0) +
-    (legWinner(leg2Row, match.team_a.id, match.team_b.id) === match.team_a.id ? 1 : 0);
-  const winsB =
-    (legWinner(leg1, match.team_a.id, match.team_b.id) === match.team_b.id ? 1 : 0) +
-    (legWinner(leg2Row, match.team_a.id, match.team_b.id) === match.team_b.id ? 1 : 0);
-  // Penalties needed only when both legs are in and leg wins are level (1–1 / 0–0).
-  const penaltiesRequired = bothLegsReady && winsA === winsB;
+  // Penalty requirement + leg-win counting now live in the client
+  // <TwoLeggedPenaltyPanel>, which reacts to the goals the admin is currently
+  // typing (the leg-2 score is recomputed from player stats on submit, so a
+  // server snapshot of the last-saved score would be stale). The server still
+  // enforces the rule in resolveKoFinishPatch. aggA/aggB above feed the public
+  // display only.
 
   const scorers = Array.from(existingStats.values())
     .filter((stat) => stat.goals > 0 || (stat.own_goals && stat.own_goals > 0))
@@ -327,75 +309,17 @@ export default async function Page({
                 </MatchAwardsProvider>
 
                 {isLeg2Decider && (
-                  <div
-                    className={`mt-4 rounded-lg border p-4 ${
-                      penaltiesRequired
-                        ? "border-amber-400/40 bg-amber-400/10"
-                        : "border-cyan-400/25 bg-cyan-400/5"
-                    }`}
-                  >
-                    <p
-                      className={`text-sm font-semibold ${
-                        penaltiesRequired ? "text-amber-200" : "text-cyan-200"
-                      }`}
-                    >
-                      Δεύτερο σκέλος (νοκ-άουτ διπλών αγώνων)
-                    </p>
-                    <p className="mt-1 text-xs text-white/60">
-                      Ο νικητής κρίνεται στις <strong>νίκες σκελών</strong>: όποια ομάδα
-                      κερδίσει περισσότερα σκέλη προκρίνεται. Αν κάθε ομάδα κερδίσει από
-                      ένα σκέλος (1–1), αποφασίζουν τα <strong>πέναλτι</strong>.
-                      {bothLegsReady ? (
-                        <>
-                          {" "}Νίκες σκελών μέχρι τώρα:{" "}
-                          <strong className="text-white/80">
-                            {match.team_a.name} {winsA} – {winsB} {match.team_b.name}
-                          </strong>
-                          {" "}(συνολικό σκορ {aggA ?? "–"}–{aggB ?? "–"}, δεν κρίνει).{" "}
-                          {penaltiesRequired ? (
-                            <strong className="text-amber-200">
-                              Ισοπαλία σε νίκες — συμπλήρωσε υποχρεωτικά τα πέναλτι πριν την αποθήκευση.
-                            </strong>
-                          ) : (
-                            "Υπάρχει νικητής στα σκέλη — τα πέναλτι δεν χρειάζονται."
-                          )}
-                        </>
-                      ) : (
-                        <> Ολοκλήρωσε και τα δύο σκέλη για να κριθεί ο νικητής.</>
-                      )}
-                    </p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="w-28 truncate text-xs text-white/70">
-                        Πέναλτι {match.team_a.name}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        name="penalty_a"
-                        required={penaltiesRequired}
-                        defaultValue={match.penalty_a ?? ""}
-                        aria-required={penaltiesRequired}
-                        className={`w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border ${
-                          penaltiesRequired ? "border-amber-400/60" : "border-white/10"
-                        }`}
-                      />
-                      <span className="text-white/50">–</span>
-                      <input
-                        type="number"
-                        min={0}
-                        name="penalty_b"
-                        required={penaltiesRequired}
-                        defaultValue={match.penalty_b ?? ""}
-                        aria-required={penaltiesRequired}
-                        className={`w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border ${
-                          penaltiesRequired ? "border-amber-400/60" : "border-white/10"
-                        }`}
-                      />
-                      <span className="w-28 truncate text-xs text-white/70">
-                        Πέναλτι {match.team_b.name}
-                      </span>
-                    </div>
-                  </div>
+                  <TwoLeggedPenaltyPanel
+                    teamAId={match.team_a.id}
+                    teamBId={match.team_b.id}
+                    teamAName={match.team_a.name}
+                    teamBName={match.team_b.name}
+                    leg1AScore={leg1AScore}
+                    leg1BScore={leg1BScore}
+                    leg1Ready={leg1Ready}
+                    savedPenaltyA={match.penalty_a ?? null}
+                    savedPenaltyB={match.penalty_b ?? null}
+                  />
                 )}
 
                 <div className="mt-4 flex justify-end gap-2">

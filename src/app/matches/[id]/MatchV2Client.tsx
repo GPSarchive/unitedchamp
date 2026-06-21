@@ -399,14 +399,14 @@ const ScorePanel: React.FC<{
 
           {/* Two-legged KO decider: aggregate + penalties */}
           {isFinished && match.leg === 2 && (match.aggregate_a != null || match.penalty_a != null) && (
-            <div className="flex flex-col items-center gap-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60">
+            <div className="flex flex-col items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60">
               {match.aggregate_a != null && match.aggregate_b != null && (
                 <span>
                   Συνολικό {match.aggregate_a}–{match.aggregate_b}
                 </span>
               )}
               {match.penalty_a != null && match.penalty_b != null && (
-                <span className="text-[#E8B931]">
+                <span className="inline-flex items-center gap-1.5 border-2 border-[#E8B931]/60 bg-[#E8B931]/10 px-2.5 py-1 font-bold text-[#E8B931]">
                   Πέναλτι {match.penalty_a}–{match.penalty_b}
                 </span>
               )}
