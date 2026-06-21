@@ -173,6 +173,38 @@ export default function PlayersPanel({
     }
   }
 
+  async function removeAndArchive(playerId: number) {
+    if (!teamId) return;
+    if (
+      !confirm(
+        "Αρχειοθέτηση παίκτη; Ο παίκτης θα αφαιρεθεί από την ομάδα ΚΑΙ θα αρχειοθετηθεί — θα αποκρυφτεί από τα ρόστερ και τους νέους αγώνες, αλλά τα ιστορικά στατιστικά του διατηρούνται."
+      )
+    )
+      return;
+
+    try {
+      // 1) Αφαίρεση από την ομάδα (disassociate)
+      const res = await fetch(`/api/teams/${teamId}/players/${playerId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const body = await safeJson(res);
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+
+      // 2) Αρχειοθέτηση παίκτη (soft delete) — όπως το admin panel παικτών
+      const archiveRes = await fetch(`/api/players/${playerId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const archiveBody = await safeJson(archiveRes);
+      if (!archiveRes.ok) throw new Error(archiveBody?.error || `HTTP ${archiveRes.status}`);
+
+      setList((xs) => body.playerAssociations ?? xs.filter((a: PlayerAssociation) => a.player.id !== playerId));
+    } catch (e: any) {
+      alert(e?.message ?? String(e));
+    }
+  }
+
   return (
     <div>
       {/* Header with add button */}
@@ -210,14 +242,24 @@ export default function PlayersPanel({
                   key={p.id}
                   className="group relative text-left w-full p-3 border border-orange-400/20 bg-orange-500/5 shadow-md rounded-md hover:border-orange-400/40 transition-all"
                 >
-                  <button
-                    type="button"
-                    onClick={() => removeFromTeam(p.id)}
-                    className="absolute right-2 top-2 text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50 transition-opacity"
-                    title="Αφαίρεση από την ομάδα"
-                  >
-                    Αφαίρεση
-                  </button>
+                  <div className="absolute right-2 top-2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => removeFromTeam(p.id)}
+                      className="text-[11px] px-2 py-0.5 rounded border border-red-400/40 bg-red-900/30 hover:bg-red-900/50 transition-opacity"
+                      title="Αφαίρεση από την ομάδα"
+                    >
+                      Αφαίρεση
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeAndArchive(p.id)}
+                      className="text-[11px] px-2 py-0.5 rounded border border-amber-400/40 bg-amber-900/30 hover:bg-amber-900/50 transition-opacity"
+                      title="Αφαίρεση από την ομάδα και αρχειοθέτηση παίκτη"
+                    >
+                      Αφαίρεση &amp; αρχειοθέτηση
+                    </button>
+                  </div>
 
                   <button
                     type="button"
@@ -225,7 +267,7 @@ export default function PlayersPanel({
                     className="w-full text-left"
                     title="Επεξεργασία παίκτη"
                   >
-                    <p className="text-white font-semibold pr-16">
+                    <p className="text-white font-semibold pr-16 mt-7">
                       {p.first_name} {p.last_name}
                     </p>
                     <p className="text-gray-300 text-sm mt-1">Ηλικία: {ageSafe ?? "—"}</p>
