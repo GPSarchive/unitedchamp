@@ -1,4 +1,5 @@
 import type { DraftMatch } from "../../TournamentWizard";
+import { nextPow2, seedOrder } from "./common";
 
 /**
  * Build a seeded knockout for any N (robust + bye-friendly).
@@ -160,20 +161,4 @@ export function genKnockoutAnyN(
   }
 
   return matches;
-}
-
-/* ---------------- helpers ---------------- */
-
-const nextPow2 = (n: number) => (n <= 1 ? 1 : 1 << Math.ceil(Math.log2(n)));
-
-/** Standard seeded bracket order for size n (n must be power of two). */
-function seedOrder(n: number): number[] {
-  if (n === 1) return [1];
-  const prev = seedOrder(n / 2);
-  const out: number[] = [];
-  for (const s of prev) {
-    out.push(s);
-    out.push(n + 1 - s);
-  }
-  return out;
 }

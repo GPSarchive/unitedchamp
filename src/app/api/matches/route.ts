@@ -24,6 +24,11 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "away_source_bracket_pos",
   "home_source_match_id",
   "away_source_match_id",
+  // ✅ Two-legged KO
+  "leg",
+  "tie_leg1_match_id",
+  "penalty_a",
+  "penalty_b",
 ]);
   
 

@@ -97,6 +97,12 @@ export interface MatchRow {
   team_b_id: Id;
   field?: string | null; // Field/venue where match is played
 
+  // ✅ Two-legged KO fields (added 2026-06-17)
+  leg?: number | null; // 1 or 2 for two-legged ties; NULL = single-leg
+  tie_leg1_match_id?: Id | null; // on the leg-2 decider row, points to leg 1
+  penalty_a?: number | null; // penalty shootout score (leg-2 / decider row)
+  penalty_b?: number | null; // penalty shootout score (leg-2 / decider row)
+
   // ✅ Postponement fields (added 2025-12-01)
   postponement_reason?: string | null; // Reason why match was postponed
   original_match_date?: string | null; // Original date before postponement
@@ -407,6 +413,9 @@ export type StageConfig = {
   standalone_bracket_size?: number;
   groups_signature?: string;
 
+  /** Two-legged KO: every pairing is played twice; tie decided on aggregate, then penalties. */
+  double_round_ko?: boolean;
+
   // ----- Per-stage team selection (overrides tournament-wide pool) -----
   stage_team_ids?: number[];
 
@@ -445,6 +454,12 @@ export interface BracketMatch extends SourcePointers {
   team_a_score: number | null;
   team_b_score: number | null;
   status: MatchStatus;
+
+  // Two-legged KO (NULL/absent for single-leg matches)
+  leg?: number | null;
+  tie_leg1_match_id?: Id | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 }
 
 export type BracketEdge = { fromId: Id; toId: Id };

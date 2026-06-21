@@ -6,22 +6,17 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Calendar, Trophy, Clock } from "lucide-react";
 import { Match } from "@/app/lib/types";
-
-const dtf = new Intl.DateTimeFormat("el-GR", {
-  weekday: 'long',
-  year: 'numeric',
-  month: 'long',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: 'UTC',
-});
+import { formatMatchDateTime } from "@/app/lib/datetime";
 
 function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "—" : dtf.format(d);
+  return (
+    formatMatchDateTime(iso, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "2-digit",
+    }) || "—"
+  );
 }
 
 function timeValue(iso: string | null | undefined) {

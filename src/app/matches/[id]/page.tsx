@@ -13,13 +13,16 @@ import {
   fetchPlayersForTeam,
   fetchMatchStatsMap,
   fetchParticipantsMap,
+  fetchLegOneScores,
 } from "./queries";
 import { parseId, extractYouTubeId } from "./utils";
 import { saveAllStatsAction } from "./actions";
-import StatsEditor from "./StatsEditor";
+import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
+import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
 
@@ -46,9 +49,8 @@ export default async function Page({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = Array.isArray(user?.app_metadata?.roles)
-    ? (user!.app_metadata!.roles as string[]).includes("admin")
-    : false;
+  // Editors and admins both get the full match-editing surface.
+  const isAdmin = canEditContent(user);
 
   const { id: idStr } = await params;
   const { video } = await searchParams;
@@ -102,6 +104,45 @@ export default async function Page({
   const hasParticipants = participants.size > 0;
   const hasScores = match.team_a_score !== null && match.team_b_score !== null;
   const showWelcomeMessage = isScheduled && !hasParticipants && !hasScores;
+
+  // ----- Two-legged KO context (leg-2 decider) -----
+  const isLeg2Decider = match.leg === 2 && match.tie_leg1_match_id != null;
+  const leg1 = isLeg2Decider
+    ? await fetchLegOneScores(match.tie_leg1_match_id as Id)
+    : null;
+
+  // Aggregate per team in leg-2's (team_a/team_b) orientation. Null until both
+  // legs have scores.
+  const scoreForTeam = (
+    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
+    teamId: number | null,
+  ) => {
+    if (!row || teamId == null) return 0;
+    if (row.team_a_id === teamId) return row.team_a_score ?? 0;
+    if (row.team_b_id === teamId) return row.team_b_score ?? 0;
+    return 0;
+  };
+  const leg1Ready = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
+
+  // Leg-1 score mapped into leg-2's (team_a/team_b) orientation, for the live
+  // penalty panel. Teams swap home/away between legs, so map by team id.
+  const leg1AScore = leg1Ready ? scoreForTeam(leg1, match.team_a.id) : null;
+  const leg1BScore = leg1Ready ? scoreForTeam(leg1, match.team_b.id) : null;
+  const aggA =
+    isLeg2Decider && leg1Ready && match.team_a_score != null
+      ? (match.team_a_score ?? 0) + scoreForTeam(leg1, match.team_a.id)
+      : null;
+  const aggB =
+    isLeg2Decider && leg1Ready && match.team_b_score != null
+      ? (match.team_b_score ?? 0) + scoreForTeam(leg1, match.team_b.id)
+      : null;
+
+  // Penalty requirement + leg-win counting now live in the client
+  // <TwoLeggedPenaltyPanel>, which reacts to the goals the admin is currently
+  // typing (the leg-2 score is recomputed from player stats on submit, so a
+  // server snapshot of the last-saved score would be stale). The server still
+  // enforces the rule in resolveKoFinishPatch. aggA/aggB above feed the public
+  // display only.
 
   const scorers = Array.from(existingStats.values())
     .filter((stat) => stat.goals > 0 || (stat.own_goals && stat.own_goals > 0))
@@ -184,6 +225,12 @@ export default async function Page({
               logo: match.tournament.logo ?? null,
             }
           : null,
+        // two-legged KO (leg-2 decider): show penalties + aggregate publicly
+        leg: match.leg ?? null,
+        penalty_a: match.penalty_a ?? null,
+        penalty_b: match.penalty_b ?? null,
+        aggregate_a: aggA,
+        aggregate_b: aggB,
       }}
       scorers={scorers}
       participants={participantsData}
@@ -233,24 +280,47 @@ export default async function Page({
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-6">
-                  <StatsEditor
-                    teamId={match.team_a.id}
-                    teamName={match.team_a.name}
-                    associations={teamAPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
+                <MatchAwardsProvider
+                  initialMvpPlayerId={
+                    [...existingStats.values()].find((s) => s.mvp)?.player_id ?? null
+                  }
+                  initialBestGkPlayerId={
+                    [...existingStats.values()].find((s) => s.best_goalkeeper)?.player_id ?? null
+                  }
+                >
+                  <div className="grid grid-cols-1 gap-6">
+                    <StatsEditor
+                      teamId={match.team_a.id}
+                      teamName={match.team_a.name}
+                      associations={teamAPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                    <StatsEditor
+                      teamId={match.team_b.id}
+                      teamName={match.team_b.name}
+                      associations={teamBPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                  </div>
+                </MatchAwardsProvider>
+
+                {isLeg2Decider && (
+                  <TwoLeggedPenaltyPanel
+                    teamAId={match.team_a.id}
+                    teamBId={match.team_b.id}
+                    teamAName={match.team_a.name}
+                    teamBName={match.team_b.name}
+                    leg1AScore={leg1AScore}
+                    leg1BScore={leg1BScore}
+                    leg1Ready={leg1Ready}
+                    savedPenaltyA={match.penalty_a ?? null}
+                    savedPenaltyB={match.penalty_b ?? null}
                   />
-                  <StatsEditor
-                    teamId={match.team_b.id}
-                    teamName={match.team_b.name}
-                    associations={teamBPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
-                  />
-                </div>
+                )}
 
                 <div className="mt-4 flex justify-end gap-2">
                   <button

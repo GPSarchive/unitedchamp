@@ -26,6 +26,11 @@ export type MatchWithTournament = MatchWithTeams & {
   stage_id: number | null;
   group_id: number | null;
   video_url: string | null; // ✅ NEW: per-match YouTube URL/ID
+  // two-legged KO
+  leg: number | null;
+  tie_leg1_match_id: number | null;
+  penalty_a: number | null;
+  penalty_b: number | null;
 };
 
 export async function fetchMatch(id: Id) {
@@ -43,6 +48,11 @@ export async function fetchMatch(id: Id) {
         "stage_id",
         "group_id",
         "video_url", // ✅ NEW: load from DB
+        // two-legged KO
+        "leg",
+        "tie_leg1_match_id",
+        "penalty_a",
+        "penalty_b",
         // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
@@ -57,6 +67,23 @@ export async function fetchMatch(id: Id) {
 
   if (error || !data) return null;
   return data as unknown as MatchWithTournament;
+}
+
+/** Leg-1 scores for a two-legged tie (used to show aggregate on the leg-2 match). */
+export async function fetchLegOneScores(legOneMatchId: Id) {
+  const { data, error } = await supabaseAdmin
+    .from("matches")
+    .select("team_a_id, team_b_id, team_a_score, team_b_score, status")
+    .eq("id", legOneMatchId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as {
+    team_a_id: number | null;
+    team_b_id: number | null;
+    team_a_score: number | null;
+    team_b_score: number | null;
+    status: string;
+  };
 }
 
 export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation[]> {

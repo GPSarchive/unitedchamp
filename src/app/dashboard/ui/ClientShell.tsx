@@ -17,12 +17,19 @@ const NAV = [
   { href: "/dashboard/articles", label: "Άρθρα" },
 ];
 
+// Editor-only users can reach just these two sections.
+const EDITOR_NAV = NAV.filter((item) =>
+  item.href === "/dashboard/announcements" || item.href === "/dashboard/articles"
+);
+
 export default function ClientShell({
   children,
   userEmail,
-}: { children: React.ReactNode; userEmail: string }) {
+  editorOnly = false,
+}: { children: React.ReactNode; userEmail: string; editorOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const nav = editorOnly ? EDITOR_NAV : NAV;
 
   const LinkItem = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href || (href !== "/dashboard" && pathname?.startsWith(href));
@@ -48,7 +55,7 @@ export default function ClientShell({
       <aside className="hidden md:flex md:w-64 md:flex-col border-r border-white/10 bg-zinc-950 p-4 gap-4">
         <div className="text-xl font-bold">Διαχείριση</div>
         <nav className="flex flex-col gap-1">
-          {NAV.map(item => <LinkItem key={item.href} {...item} />)}
+          {nav.map(item => <LinkItem key={item.href} {...item} />)}
         </nav>
         <div className="mt-auto space-y-3">
           <p className="text-xs text-white/50 break-all">{userEmail}</p>
@@ -90,7 +97,7 @@ export default function ClientShell({
             </button>
           </div>
           <nav className="flex flex-col gap-1">
-            {NAV.map(item => <LinkItem key={item.href} {...item} />)}
+            {nav.map(item => <LinkItem key={item.href} {...item} />)}
           </nav>
           <div className="mt-auto space-y-3">
             <p className="text-xs text-white/50 break-all">{userEmail}</p>

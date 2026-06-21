@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import type { CompRow, Stats } from "./page";
 import ApplyFixButton from "./ApplyFixButton";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 const STAT_KEYS: { key: keyof Stats; label: string }[] = [
   { key: "total_goals", label: "Goals" },
@@ -14,15 +15,9 @@ const STAT_KEYS: { key: keyof Stats; label: string }[] = [
 
 function formatDate(d: string | null) {
   if (!d) return "No date";
-  try {
-    return new Date(d).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return d;
-  }
+  return (
+    formatMatchDate(d, { day: "2-digit", month: "short", year: "numeric" }) || d
+  );
 }
 
 export default function StatsTable({ rows }: { rows: CompRow[] }) {

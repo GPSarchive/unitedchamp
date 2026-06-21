@@ -4,10 +4,13 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
+import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
+import { decideTwoLeggedTie } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
 
 /** =========================
- *  Admin guard (server-side)
+ *  Content-editor guard (server-side)
+ *  Admins and editors may both edit matches.
  *  ========================= */
 async function assertAdmin() {
   const supabase = await createSupabaseRouteClient();
@@ -19,13 +22,99 @@ async function assertAdmin() {
   if (error || !user) {
     throw new Error('Unauthorized');
   }
-  const roles = Array.isArray(user.app_metadata?.roles)
-    ? (user.app_metadata!.roles as string[])
-    : [];
-  if (!roles.includes('admin')) {
+  if (!canEditContent(user)) {
     throw new Error('Forbidden');
   }
   return supabase; // cookie-bound client; RLS applies
+}
+
+/** -------------------------------
+ *  Knockout score/winner resolution (single-leg + two-legged aware)
+ *
+ *  Computes the team scores from player stats upstream; this helper decides the
+ *  winner and whether finishing is allowed, honouring two-legged ties:
+ *   - Leg 1: any result allowed, no winner (the tie is decided after leg 2).
+ *   - Leg 2 decider: winner from LEG WINS (then penalties). Pens are passed in
+ *     and are required when leg wins are level (1–1 or both legs drawn).
+ *   - Single-leg KO: a level result is rejected (unchanged behaviour).
+ *  Returns the patch to apply to the match row (scores + winner) or throws.
+ *  ------------------------------- */
+async function resolveKoFinishPatch(
+  supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
+  opts: {
+    matchId: number;
+    teamAId: number;
+    teamBId: number;
+    aGoals: number;
+    bGoals: number;
+    penA: number | null;
+    penB: number | null;
+  }
+): Promise<{ team_a_score: number; team_b_score: number; winner_team_id: number | null; penalty_a: number | null; penalty_b: number | null }> {
+  const { matchId, teamAId, teamBId, aGoals, bGoals, penA, penB } = opts;
+
+  const { data: m, error } = await supabase
+    .from('matches')
+    .select('is_ko, leg, tie_leg1_match_id')
+    .eq('id', matchId)
+    .single();
+  if (error) throw error;
+
+  const leg = (m?.leg ?? null) as number | null;
+  const tieLeg1Id = (m?.tie_leg1_match_id ?? null) as number | null;
+  const isKo = !!m?.is_ko;
+  const isTie = aGoals === bGoals;
+
+  // Leg 1 of a two-legged tie: store scores, no winner, never reject a level leg.
+  if (leg === 1) {
+    return { team_a_score: aGoals, team_b_score: bGoals, winner_team_id: null, penalty_a: null, penalty_b: null };
+  }
+
+  // Leg 2 decider: winner from aggregate (then penalties).
+  if (leg === 2 && tieLeg1Id != null) {
+    const { data: leg1 } = await supabase
+      .from('matches')
+      .select('team_a_id, team_b_id, team_a_score, team_b_score, status')
+      .eq('id', tieLeg1Id)
+      .maybeSingle();
+
+    if (!leg1 || leg1.team_a_score == null || leg1.team_b_score == null) {
+      throw new Error('Finish leg 1 before finishing leg 2 of this tie.');
+    }
+
+    const res = decideTwoLeggedTie(
+      { team_a_id: teamAId, team_b_id: teamBId, team_a_score: aGoals, team_b_score: bGoals, penalty_a: penA, penalty_b: penB },
+      leg1 as any
+    );
+    if (res.kind === 'undecided') {
+      throw new Error('Leg wins are level (1–1) — enter the penalty shootout result (and it cannot be level).');
+    }
+    if (res.kind !== 'decided') {
+      throw new Error('Could not resolve the two-legged tie.');
+    }
+    // Persist pens only when they were the decider (leg wins level). When a team
+    // advanced on leg wins, clear any stray penalty input.
+    const decidedByPens = res.via === 'penalties';
+    return {
+      team_a_score: aGoals,
+      team_b_score: bGoals,
+      winner_team_id: res.winnerTeamId,
+      penalty_a: decidedByPens ? penA : null,
+      penalty_b: decidedByPens ? penB : null,
+    };
+  }
+
+  // Single-leg KO (or leg-2 whose leg 1 was deleted): unchanged — no ties.
+  if (isKo && isTie) {
+    throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
+  }
+  return {
+    team_a_score: aGoals,
+    team_b_score: bGoals,
+    winner_team_id: isTie ? null : aGoals > bGoals ? teamAId : teamBId,
+    penalty_a: null,
+    penalty_b: null,
+  };
 }
 
 /** -------------------------------
@@ -397,33 +486,27 @@ export async function saveAllStatsAction(formData: FormData) {
     }
   }
 
-  const isTie = aGoals === bGoals;
-  const winner_team_id = isTie
-    ? null
-    : (aGoals > bGoals ? teamAId : teamBId);
+  // Penalty shootout result (two-legged decider only; ignored otherwise).
+  const penAraw = formData.get('penalty_a');
+  const penBraw = formData.get('penalty_b');
+  const penA = penAraw == null || penAraw === '' ? null : Number(penAraw);
+  const penB = penBraw == null || penBraw === '' ? null : Number(penBraw);
 
-  // Check if this is a KO match - ties are not allowed in knockout matches
-  const { data: matchData, error: matchErr } = await supabase
-    .from('matches')
-    .select('is_ko')
-    .eq('id', match_id)
-    .single();
-
-  if (matchErr) throw matchErr;
-
-  if (matchData?.is_ko && isTie) {
-    throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
-  }
+  // Resolve scores + winner with two-legged awareness (handles leg 1 / leg 2 / single-leg).
+  const patch = await resolveKoFinishPatch(supabase, {
+    matchId: match_id,
+    teamAId,
+    teamBId,
+    aGoals,
+    bGoals,
+    penA: penA != null && Number.isFinite(penA) ? penA : null,
+    penB: penB != null && Number.isFinite(penB) ? penB : null,
+  });
 
   // Save scores and mark as finished (ties are still finished matches for non-KO)
   const { error: upErr } = await supabase
     .from('matches')
-    .update({
-      team_a_score: aGoals,
-      team_b_score: bGoals,
-      winner_team_id,
-      status: 'finished',
-    })
+    .update({ ...patch, status: 'finished' })
     .eq('id', match_id);
   if (upErr) throw upErr;
 
@@ -526,20 +609,24 @@ export async function finalizeFromStatsAction(formData: FormData) {
   const { teamA, teamB } = await fetchMatchTeams(supabase, matchId);
   const { aGoals, bGoals } = await computeGoalsByTeam(supabase, matchId, teamA, teamB);
 
-  if (aGoals === bGoals) {
-    throw new Error('Cannot finalize: scores are equal. Resolve tie before finishing.');
-  }
+  const penAraw = formData.get('penalty_a');
+  const penBraw = formData.get('penalty_b');
+  const penA = penAraw == null || penAraw === '' ? null : Number(penAraw);
+  const penB = penBraw == null || penBraw === '' ? null : Number(penBraw);
 
-  const winner_team_id = aGoals > bGoals ? teamA : teamB;
+  const patch = await resolveKoFinishPatch(supabase, {
+    matchId,
+    teamAId: teamA,
+    teamBId: teamB,
+    aGoals,
+    bGoals,
+    penA: penA != null && Number.isFinite(penA) ? penA : null,
+    penB: penB != null && Number.isFinite(penB) ? penB : null,
+  });
 
   const { error } = await supabase
     .from('matches')
-    .update({
-      team_a_score: aGoals,
-      team_b_score: bGoals,
-      winner_team_id,
-      status: 'finished',
-    })
+    .update({ ...patch, status: 'finished' })
     .eq('id', matchId);
 
   if (error) throw error;

@@ -77,14 +77,26 @@ export default async function UsersTable({
                     {roles.length ? roles.join(', ') : 'none'}
                   </td>
                   <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>
-                    <form action={`/api/admin/users/${u.id}/roles`} method="POST" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                      <input type="hidden" name="returnTo" value={returnTo} />
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <input type="checkbox" name="admin" defaultChecked={roles.includes('admin')} />
-                        <span>Admin</span>
-                      </label>
-                      <button type="submit">Save</button>
-                    </form>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <form action={`/api/admin/users/${u.id}/roles`} method="POST" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                        <input type="hidden" name="role" value="admin" />
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <input type="checkbox" name="enabled" defaultChecked={roles.includes('admin')} />
+                          <span>Admin</span>
+                        </label>
+                        <button type="submit">Save</button>
+                      </form>
+                      <form action={`/api/admin/users/${u.id}/roles`} method="POST" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <input type="hidden" name="returnTo" value={returnTo} />
+                        <input type="hidden" name="role" value="editor" />
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <input type="checkbox" name="enabled" defaultChecked={roles.includes('editor')} />
+                          <span>Editor</span>
+                        </label>
+                        <button type="submit">Save</button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               );

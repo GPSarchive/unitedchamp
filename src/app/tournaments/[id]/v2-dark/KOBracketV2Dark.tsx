@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { DraftMatch, Stage, Team } from "@/app/tournaments/useTournamentData";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 // Palette aliases — dark edition (matches site: zinc-950 family + orange-400 accent)
 const INK = "#F3EFE6";             // primary foreground (ivory on dark)
@@ -23,6 +24,8 @@ type Connection = {
   to: string;
   winnerId: number | null;
   sourceTeamId: number | null;
+  /** "leg" connectors tie the two legs of one tie (vertical, dashed). */
+  kind?: "progress" | "leg";
 };
 
 type NodeBox = {
@@ -35,6 +38,24 @@ type NodeBox = {
   bracket_pos: number;
   label: string;
   isFinal: boolean;
+  /** Cards sharing a group id are the two legs of one tie. */
+  group?: string;
+  /** Leg number (1/2) for a leg card; undefined for a single-leg slot. */
+  leg?: number | null;
+  /** Aggregate summary, attached to the leg-2 (decider) card only. */
+  agg?: { a: number; b: number; finished: boolean; penA: number | null; penB: number | null } | null;
+};
+
+/** A tie frame drawn behind the two stacked leg cards of a two-legged tie. */
+type TieFrame = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  isFinal: boolean;
+  finished: boolean;
+  accent: string; // header text, e.g. "ΣΥΝΟΛΟ 3–2 · ΠΕΝ 4-5"
 };
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
@@ -74,8 +95,16 @@ const MatchNode: React.FC<{
   const bWon = isFinished && match.winner_team_id === match.team_b_id;
   const tba = !match.team_a_id && !match.team_b_id;
 
+  // Two-legged leg card: compact, with a leg tag; the aggregate lives on the
+  // tie frame, so a leg card only flags itself (Leg 1 / Leg 2) + leg-2 pens.
+  const isLeg = node.leg != null;
+  const isLeg2 = node.leg === 2;
+  const legTag = isLeg ? (isLeg2 ? "2ος ΑΓΩΝΑΣ" : "1ος ΑΓΩΝΑΣ") : null;
+  const agg = node.agg ?? null;
+  const compact = isLeg;
+
   const dateStr = match.match_date
-    ? new Date(match.match_date).toLocaleDateString("el-GR", {
+    ? formatMatchDate(match.match_date, {
         day: "2-digit",
         month: "short",
       })
@@ -94,21 +123,20 @@ const MatchNode: React.FC<{
         boxShadow: `4px 4px 0 0 ${INK}`,
       }}
     >
-      {/* Header strip — round label + date */}
+      {/* Header strip — round label (or leg tag) + date */}
       <div
-        className="flex items-center justify-between border-b-2 px-3 py-1.5"
+        className={`flex items-center justify-between border-b-2 ${compact ? "px-2.5 py-1" : "px-3 py-1.5"}`}
         style={{
           borderColor: INK,
-          background: node.isFinal ? PANEL : IVORY,
+          background: node.isFinal && !isLeg ? PANEL : IVORY,
           color: INK,
         }}
       >
         <span
           className="font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
-          style={{ color: node.isFinal ? SAFFRON : accent }}
+          style={{ color: isLeg2 ? accent : node.isFinal ? SAFFRON : accent }}
         >
-          {node.isFinal ? "★ " : ""}
-          {node.label}
+          {legTag ? legTag : `${node.isFinal ? "★ " : ""}${node.label}`}
         </span>
         {isFinished ? (
           <span
@@ -145,6 +173,7 @@ const MatchNode: React.FC<{
           isWinner={aWon}
           isLoser={isFinished && bWon}
           isFinal={node.isFinal}
+          compact={compact}
         />
         <div className="h-[2px]" style={{ background: `${INK}1A` }} />
         <TeamRow
@@ -153,27 +182,48 @@ const MatchNode: React.FC<{
           isWinner={bWon}
           isLoser={isFinished && aWon}
           isFinal={node.isFinal}
+          compact={compact}
         />
       </div>
 
-      {/* Bottom coordinate badge */}
+      {/* Bottom badge — coordinate (single) or leg status / pens (two-legged). */}
       <div
-        className="flex items-center justify-between border-t px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em]"
+        className={`flex items-center justify-between border-t font-mono text-[9px] uppercase tracking-[0.25em] ${compact ? "px-2.5 py-0.5" : "px-3 py-1"}`}
         style={{
           borderColor: `${INK}22`,
           color: `${INK}55`,
         }}
       >
-        <span>
-          R{node.round} · B{pad2(node.bracket_pos)}
-        </span>
-        {isFinished && match.winner_team_id && (
-          <span
-            className="font-bold"
-            style={{ color: accent }}
-          >
-            ▶ ΝΙΚΗΤΗΣ
-          </span>
+        {isLeg ? (
+          <>
+            <span>
+              {isLeg2
+                ? agg && !agg.finished
+                  ? "ΚΡΙΣΙΜΟΣ"
+                  : "2ος ΑΓΩΝΑΣ"
+                : "1ος ΑΓΩΝΑΣ"}
+            </span>
+            {isLeg2 && agg && agg.penA != null && agg.penB != null ? (
+              <span className="font-bold" style={{ color: SAFFRON }}>
+                ΠΕΝ {agg.penA}-{agg.penB}
+              </span>
+            ) : isFinished && match.winner_team_id ? (
+              <span className="font-bold" style={{ color: accent }}>
+                ▶
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <span>
+              R{node.round} · B{pad2(node.bracket_pos)}
+            </span>
+            {isFinished && match.winner_team_id && (
+              <span className="font-bold" style={{ color: accent }}>
+                ▶ ΝΙΚΗΤΗΣ
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -186,13 +236,16 @@ const TeamRow: React.FC<{
   isWinner: boolean;
   isLoser: boolean;
   isFinal: boolean;
-}> = ({ team, score, isWinner, isLoser, isFinal }) => {
+  compact?: boolean;
+}> = ({ team, score, isWinner, isLoser, isFinal, compact = false }) => {
   const tbd = !team;
   const accent = isFinal ? SAFFRON : VERMILLION;
+  const av = compact ? "h-7 w-7" : "h-9 w-9";
+  const scoreBox = compact ? "h-7 min-w-[30px] text-base" : "h-9 min-w-[36px] text-lg";
 
   return (
     <div
-      className="flex items-center gap-3 px-3 py-2.5"
+      className={`flex items-center ${compact ? "gap-2 px-2.5 py-1.5" : "gap-3 px-3 py-2.5"}`}
       style={{
         background: isWinner
           ? isFinal
@@ -205,7 +258,7 @@ const TeamRow: React.FC<{
         <img
           src={team.logo}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-full border-2 object-cover"
+          className={`${av} shrink-0 rounded-full border-2 object-cover`}
           style={{
             borderColor: isWinner ? accent : `${INK}55`,
             opacity: isLoser ? 0.45 : 1,
@@ -216,7 +269,7 @@ const TeamRow: React.FC<{
         />
       ) : (
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2"
+          className={`flex ${av} shrink-0 items-center justify-center rounded-full border-2`}
           style={{
             borderColor: tbd ? `${INK}33` : `${INK}55`,
             background: tbd ? "transparent" : `${INK}10`,
@@ -232,7 +285,7 @@ const TeamRow: React.FC<{
       )}
 
       <span
-        className="flex-1 truncate font-[var(--f-display)] text-[15px] font-semibold italic leading-tight"
+        className={`flex-1 truncate font-[var(--f-display)] font-semibold italic leading-tight ${compact ? "text-[13px]" : "text-[15px]"}`}
         style={{
           color: isWinner ? INK : isLoser ? `${INK}55` : tbd ? `${INK}40` : INK,
           fontStyle: tbd ? "italic" : undefined,
@@ -243,7 +296,7 @@ const TeamRow: React.FC<{
 
       {score != null ? (
         <div
-          className="flex h-9 min-w-[36px] shrink-0 items-center justify-center border-2 font-[var(--f-brutal)] text-lg leading-none tabular-nums"
+          className={`flex ${scoreBox} shrink-0 items-center justify-center border-2 font-[var(--f-brutal)] leading-none tabular-nums`}
           style={{
             borderColor: isWinner ? accent : INK,
             background: isWinner ? accent : IVORY,
@@ -254,7 +307,7 @@ const TeamRow: React.FC<{
         </div>
       ) : (
         <div
-          className="flex h-9 min-w-[36px] shrink-0 items-center justify-center border-2 border-dashed font-mono text-xs"
+          className={`flex ${scoreBox} shrink-0 items-center justify-center border-2 border-dashed font-mono text-xs`}
           style={{
             borderColor: `${INK}33`,
             color: `${INK}33`,
@@ -292,16 +345,26 @@ const KOBracketV2: React.FC<{
 
   // ── Layout
   const BOX_W = 280;
-  const BOX_H = 148;
+  const BOX_H = 148;          // single-leg card height
+  const LEG_H = 120;          // each leg card inside a two-legged tie
+  const LEG_GAP = 14;         // gap between the two stacked leg cards
+  const TIE_PAD_X = 12;       // tie frame horizontal inset
+  const TIE_PAD_TOP = 28;     // room for the tie frame header
+  const TIE_PAD_BOTTOM = 12;
   const COL_GAP = 160; // gap between columns (in addition to BOX_W)
   const BASE_GAP_Y = 36; // baseline gap between round-1 siblings
   const X_MARGIN = 40;
   const Y_MARGIN = 40;
 
-  const { nodes, connections, maxRound, baseWidth, baseHeight } = useMemo(() => {
+  const slotKey = (r: number, b: number) => `R${r}-B${b}`;
+  const legNodeId = (r: number, b: number, leg: number | null | undefined) => `R${r}-B${b}-L${leg ?? 0}`;
+  const tieFrameId = (r: number, b: number) => `TIE-R${r}-B${b}`;
+
+  const { nodes, frames, connections, maxRound, baseWidth, baseHeight } = useMemo(() => {
     if (!stageMatches.length) {
       return {
         nodes: [] as NodeBox[],
+        frames: [] as TieFrame[],
         connections: [] as Connection[],
         maxRound: 0,
         baseWidth: 800,
@@ -311,73 +374,181 @@ const KOBracketV2: React.FC<{
 
     const maxR = Math.max(...stageMatches.map((m) => m.round ?? 1));
 
-    const spacingForRound = (r: number) =>
-      (BOX_H + BASE_GAP_Y) * Math.pow(2, r - 1);
+    // Group rows per slot; two-legged ties have two rows per (round, bracket_pos).
+    const bySlot = new Map<string, DraftMatch[]>();
+    stageMatches.forEach((m) => {
+      const k = slotKey(m.round ?? 1, m.bracket_pos ?? 1);
+      (bySlot.get(k) ?? bySlot.set(k, []).get(k)!).push(m);
+    });
+    // Defend against legacy/duplicate data: if a slot has explicit leg markers,
+    // drop stray leg-null rows and keep one row per leg (prefer db id / score).
+    for (const [k, arr] of bySlot) {
+      let kept = arr;
+      if (arr.some((m) => m.leg != null)) {
+        const score = (m: DraftMatch) =>
+          ((m as any).db_id != null ? 2 : 0) + (m.team_a_score != null || m.status === "finished" ? 1 : 0);
+        const byLeg = new Map<number, DraftMatch>();
+        arr.filter((m) => m.leg != null).forEach((m) => {
+          const prev = byLeg.get(m.leg as number);
+          if (!prev || score(m) > score(prev)) byLeg.set(m.leg as number, m);
+        });
+        kept = Array.from(byLeg.values());
+      }
+      kept.sort((a, b) => (a.leg ?? 0) - (b.leg ?? 0));
+      bySlot.set(k, kept);
+    }
 
-    const yFor = (r: number, b: number) => {
+    // Vertical pitch must clear the tallest block: a two-legged tie.
+    const TIE_BLOCK_H = LEG_H * 2 + LEG_GAP + TIE_PAD_TOP + TIE_PAD_BOTTOM;
+    const slotBlockH = Math.max(BOX_H, TIE_BLOCK_H);
+    const spacingForRound = (r: number) => (slotBlockH + BASE_GAP_Y) * Math.pow(2, r - 1);
+    const centerY = (r: number, b: number) => {
       const sp = spacingForRound(r);
-      return Y_MARGIN + (b - 1) * sp + sp / 2 - BOX_H / 2;
+      return Y_MARGIN + (b - 1) * sp + sp / 2; // slot vertical center
     };
-
     const xFor = (r: number) => X_MARGIN + (r - 1) * (BOX_W + COL_GAP);
 
-    const boxes: NodeBox[] = stageMatches.map((m) => {
-      const r = m.round ?? 1;
-      const b = m.bracket_pos ?? 1;
-      return {
-        id: `R${r}-B${b}`,
-        x: xFor(r),
-        y: yFor(r, b),
-        w: BOX_W,
-        h: BOX_H,
-        round: r,
-        bracket_pos: b,
-        label: getRoundLabel(r, maxR),
-        isFinal: r === maxR,
-      };
-    });
+    const scoreFor = (m: DraftMatch, teamId: number | null) => {
+      if (teamId == null) return 0;
+      if (m.team_a_id === teamId) return m.team_a_score ?? 0;
+      if (m.team_b_id === teamId) return m.team_b_score ?? 0;
+      return 0;
+    };
 
-    const matchByKey = new Map<string, DraftMatch>();
-    stageMatches.forEach((m) => {
-      matchByKey.set(`R${m.round}-B${m.bracket_pos}`, m);
-    });
+    // The card a parent advances FROM: leg-2 decider for a tie, else the single card.
+    const deciderNodeId = (r: number, b: number) => {
+      const rows = bySlot.get(slotKey(r, b));
+      if (!rows || !rows.length) return null;
+      const twoLegged = rows.length > 1 || rows.some((m) => m.leg != null);
+      const dec = twoLegged ? rows.find((m) => m.leg === 2) ?? rows[rows.length - 1] : rows[0];
+      return legNodeId(r, b, dec.leg);
+    };
 
+    const boxes: NodeBox[] = [];
+    const tieFrames: TieFrame[] = [];
     const edges: Connection[] = [];
-    stageMatches.forEach((m) => {
-      const toKey = `R${m.round}-B${m.bracket_pos}`;
-      if (m.home_source_round && m.home_source_bracket_pos) {
-        const fromKey = `R${m.home_source_round}-B${m.home_source_bracket_pos}`;
-        const src = matchByKey.get(fromKey);
+
+    bySlot.forEach((rows) => {
+      const sample = rows[0];
+      const r = sample.round ?? 1;
+      const b = sample.bracket_pos ?? 1;
+      const isFinal = r === maxR;
+      const label = getRoundLabel(r, maxR);
+      const colX = xFor(r);
+      const cy = centerY(r, b);
+      const twoLegged = rows.length > 1 || rows.some((m) => m.leg != null);
+
+      // Progression edges: parent decider → this slot's leg-1 / single card.
+      const childAnchor = legNodeId(r, b, rows[0].leg);
+      const addParentEdge = (
+        sr: number | null | undefined,
+        sb: number | null | undefined,
+        sourceTeamId: number | null
+      ) => {
+        if (!sr || !sb) return;
+        const from = deciderNodeId(sr, sb);
+        if (!from) return;
+        const srcRows = bySlot.get(slotKey(sr, sb));
+        const srcDec = srcRows
+          ? (srcRows.length > 1 || srcRows.some((m) => m.leg != null)
+              ? srcRows.find((m) => m.leg === 2) ?? srcRows[srcRows.length - 1]
+              : srcRows[0])
+          : null;
         edges.push({
-          from: fromKey,
-          to: toKey,
-          winnerId: src?.winner_team_id ?? null,
-          sourceTeamId: m.team_a_id ?? null,
+          from,
+          to: childAnchor,
+          winnerId: srcDec?.winner_team_id ?? null,
+          sourceTeamId,
+          kind: "progress",
         });
+      };
+      addParentEdge(sample.home_source_round, sample.home_source_bracket_pos, sample.team_a_id ?? null);
+      addParentEdge(sample.away_source_round, sample.away_source_bracket_pos, sample.team_b_id ?? null);
+
+      if (!twoLegged) {
+        boxes.push({
+          id: legNodeId(r, b, sample.leg),
+          x: colX,
+          y: cy - BOX_H / 2,
+          w: BOX_W,
+          h: BOX_H,
+          round: r,
+          bracket_pos: b,
+          label,
+          isFinal,
+          leg: null,
+        });
+        return;
       }
-      if (m.away_source_round && m.away_source_bracket_pos) {
-        const fromKey = `R${m.away_source_round}-B${m.away_source_bracket_pos}`;
-        const src = matchByKey.get(fromKey);
+
+      // ── Two-legged tie ──
+      const gid = tieFrameId(r, b);
+      const startY = cy - TIE_BLOCK_H / 2;
+      const cardsTop = startY + TIE_PAD_TOP;
+      const cardX = colX + TIE_PAD_X;
+
+      const leg2 = rows.find((m) => m.leg === 2) ?? rows[rows.length - 1];
+      const teamA2 = leg2.team_a_id ?? null;
+      const teamB2 = leg2.team_b_id ?? null;
+      const allFinished = rows.every((m) => m.status === "finished");
+      const aggA = rows.reduce((s, m) => s + scoreFor(m, teamA2), 0);
+      const aggB = rows.reduce((s, m) => s + scoreFor(m, teamB2), 0);
+      const penA = leg2.penalty_a ?? null;
+      const penB = leg2.penalty_b ?? null;
+
+      const accent = allFinished
+        ? `ΣΥΝΟΛΟ ${aggA}–${aggB}${penA != null && penB != null ? ` · ΠΕΝ ${penA}-${penB}` : ""}`
+        : "ΔΙΠΛΟΣ ΑΓΩΝΑΣ";
+
+      tieFrames.push({
+        id: gid,
+        x: colX,
+        y: startY,
+        w: BOX_W + TIE_PAD_X * 2,
+        h: TIE_BLOCK_H,
+        isFinal,
+        finished: allFinished,
+        accent,
+      });
+
+      rows.forEach((row, li) => {
+        const isLeg2 = row.leg === 2;
+        boxes.push({
+          id: legNodeId(r, b, row.leg),
+          x: cardX,
+          y: cardsTop + li * (LEG_H + LEG_GAP),
+          w: BOX_W,
+          h: LEG_H,
+          round: r,
+          bracket_pos: b,
+          label,
+          isFinal,
+          group: gid,
+          leg: row.leg ?? li + 1,
+          agg: isLeg2 ? { a: aggA, b: aggB, finished: allFinished, penA, penB } : null,
+        });
+      });
+
+      // Vertical leg connector: leg 1 → leg 2.
+      const leg1Row = rows.find((m) => m.leg !== 2) ?? rows[0];
+      if (leg2 && leg2 !== leg1Row) {
         edges.push({
-          from: fromKey,
-          to: toKey,
-          winnerId: src?.winner_team_id ?? null,
-          sourceTeamId: m.team_b_id ?? null,
+          from: legNodeId(r, b, leg1Row.leg),
+          to: legNodeId(r, b, leg2.leg),
+          winnerId: null,
+          sourceTeamId: null,
+          kind: "leg",
         });
       }
     });
 
-    const w = Math.max(
-      800,
-      boxes.reduce((mx, n) => Math.max(mx, n.x + n.w), 0) + X_MARGIN
-    );
-    const h = Math.max(
-      320,
-      boxes.reduce((my, n) => Math.max(my, n.y + n.h), 0) + Y_MARGIN
-    );
+    const allBoxesAndFrames = [...boxes, ...tieFrames];
+    const w = Math.max(800, allBoxesAndFrames.reduce((mx, n) => Math.max(mx, n.x + n.w), 0) + X_MARGIN);
+    const h = Math.max(320, allBoxesAndFrames.reduce((my, n) => Math.max(my, n.y + n.h), 0) + Y_MARGIN);
 
     return {
       nodes: boxes,
+      frames: tieFrames,
       connections: edges,
       maxRound: maxR,
       baseWidth: w,
@@ -391,11 +562,18 @@ const KOBracketV2: React.FC<{
     return m;
   }, [nodes]);
 
-  const matchById = useMemo(() => {
+  const frameById = useMemo(() => {
+    const m = new Map<string, TieFrame>();
+    frames.forEach((f) => m.set(f.id, f));
+    return m;
+  }, [frames]);
+
+  // Match row for a leg node id (R{r}-B{b}-L{leg}).
+  const matchByNodeId = useMemo(() => {
     const m = new Map<string, DraftMatch>();
-    stageMatches.forEach((x) =>
-      m.set(`R${x.round}-B${x.bracket_pos}`, x)
-    );
+    stageMatches.forEach((x) => {
+      m.set(legNodeId(x.round ?? 1, x.bracket_pos ?? 1, x.leg), x);
+    });
     return m;
   }, [stageMatches]);
 
@@ -703,13 +881,40 @@ const KOBracketV2: React.FC<{
                 const a = nodeById.get(c.from);
                 const b = nodeById.get(c.to);
                 if (!a || !b) return null;
-                const axc = a.x + a.w / 2;
-                const bxc = b.x + b.w / 2;
+
+                // Leg connector — vertical dashed link tying a tie's two legs.
+                if (c.kind === "leg") {
+                  const upper = a.y <= b.y ? a : b;
+                  const lower = a.y <= b.y ? b : a;
+                  const lx1 = upper.x + upper.w / 2;
+                  const ly1 = upper.y + upper.h;
+                  const lx2 = lower.x + lower.w / 2;
+                  const ly2 = lower.y;
+                  const ld = `M ${lx1} ${ly1} C ${lx1} ${ly1 + 14} ${lx2} ${ly2 - 14} ${lx2} ${ly2}`;
+                  return (
+                    <path
+                      key={idx}
+                      d={ld}
+                      fill="none"
+                      stroke={VERMILLION}
+                      strokeOpacity={0.7}
+                      strokeWidth={2}
+                      strokeDasharray="3 4"
+                      strokeLinecap="round"
+                    />
+                  );
+                }
+
+                // Progression — anchor on the tie FRAME when an endpoint is a tie.
+                const aBox = (a.group && frameById.get(a.group)) || a;
+                const bBox = (b.group && frameById.get(b.group)) || b;
+                const axc = aBox.x + aBox.w / 2;
+                const bxc = bBox.x + bBox.w / 2;
                 const rtl = axc > bxc;
-                const x1 = rtl ? a.x : a.x + a.w;
-                const y1 = a.y + a.h / 2;
-                const x2 = rtl ? b.x + b.w : b.x;
-                const y2 = b.y + b.h / 2;
+                const x1 = rtl ? aBox.x : aBox.x + aBox.w;
+                const y1 = aBox.y + aBox.h / 2;
+                const x2 = rtl ? bBox.x + bBox.w : bBox.x;
+                const y2 = bBox.y + bBox.h / 2;
                 const d = elbowPath(x1, y1, x2, y2);
 
                 const active =
@@ -766,6 +971,32 @@ const KOBracketV2: React.FC<{
               })}
             </svg>
 
+            {/* Tie frames (behind the cards) — a bordered block wrapping both legs. */}
+            {frames.map((f) => (
+              <div
+                key={f.id}
+                className="absolute border-2 border-dashed"
+                style={{
+                  left: f.x,
+                  top: f.y,
+                  width: f.w,
+                  height: f.h,
+                  borderColor: f.finished ? (f.isFinal ? SAFFRON : VERMILLION) : `${INK}66`,
+                  background: `${INK}06`,
+                }}
+              >
+                <span
+                  className="absolute -top-[11px] left-3 px-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em]"
+                  style={{
+                    background: IVORY,
+                    color: f.finished ? (f.isFinal ? SAFFRON : VERMILLION) : `${INK}AA`,
+                  }}
+                >
+                  {f.accent}
+                </span>
+              </div>
+            ))}
+
             {/* Nodes */}
             {nodes.map((n, i) => (
               <motion.div
@@ -783,7 +1014,7 @@ const KOBracketV2: React.FC<{
               >
                 <MatchNode
                   node={n}
-                  match={matchById.get(n.id)}
+                  match={matchByNodeId.get(n.id)}
                   teamById={teamById}
                 />
               </motion.div>
@@ -791,20 +1022,28 @@ const KOBracketV2: React.FC<{
 
             {/* Champion halo — only if there is a confirmed winner in the final */}
             {(() => {
-              const finalBox = nodes.find((n) => n.isFinal);
-              if (!finalBox) return null;
-              const finalMatch = matchById.get(finalBox.id);
+              const finalNodes = nodes.filter((n) => n.isFinal);
+              if (!finalNodes.length) return null;
+              // For a two-legged final, the decider (leg 2) carries the winner;
+              // anchor the halo to the right of the tie frame, not a single leg.
+              const decider =
+                finalNodes.find((n) => n.leg === 2) ?? finalNodes[finalNodes.length - 1];
+              const finalMatch = matchByNodeId.get(decider.id);
+              const finalFinished = decider.agg
+                ? decider.agg.finished
+                : finalMatch?.status === "finished";
               const winnerId =
                 championTeamId ?? finalMatch?.winner_team_id ?? null;
-              if (!winnerId || finalMatch?.status !== "finished") return null;
+              if (!winnerId || !finalFinished) return null;
               const winner = teamById.get(winnerId);
               if (!winner) return null;
+              const anchor = (decider.group && frameById.get(decider.group)) || decider;
               return (
                 <div
                   className="absolute flex items-center gap-2"
                   style={{
-                    left: finalBox.x + finalBox.w + 24,
-                    top: finalBox.y + finalBox.h / 2 - 22,
+                    left: anchor.x + anchor.w + 24,
+                    top: anchor.y + anchor.h / 2 - 22,
                   }}
                 >
                   <div

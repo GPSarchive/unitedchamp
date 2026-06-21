@@ -30,6 +30,7 @@ import {
   GkIcon,
 } from "./StatIcons";
 import type { Id, MatchPlayerStatRow } from "@/app/lib/types";
+import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 import {
   FormerPlayerBadge,
   isFormerPlayer,
@@ -118,6 +119,12 @@ type MatchLite = {
   team_a: Team;
   team_b: Team;
   tournament: { id: number; name: string; logo: string | null } | null;
+  // two-legged KO (leg-2 decider only)
+  leg?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
+  aggregate_a?: number | null;
+  aggregate_b?: number | null;
 };
 
 type Props = {
@@ -139,32 +146,13 @@ type Props = {
 // ───────────────────────────────────────────────────────────────────────
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
-const fmtDay = (iso: string | null) =>
-  iso ? String(new Date(iso).getDate()).padStart(2, "0") : "—";
-
-const fmtMonthShort = (iso: string | null) =>
-  iso
-    ? new Date(iso)
-        .toLocaleDateString("el-GR", { month: "short" })
-        .toUpperCase()
-    : "";
-
-const fmtFullDate = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "";
-
-const fmtTime = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+// Match date/time display goes through @/app/lib/datetime — literal wall-clock
+// digits from the ISO string, NO timezone conversion (see that module's notes).
+const FULL_DATE_OPTS = {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+} as const;
 
 const playerNameOf = (p: { first_name: string | null; last_name: string | null }) =>
   `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "Άγνωστος";
@@ -307,8 +295,10 @@ const TournamentMasthead: React.FC<{
                   </p>
                   {matchDate && (
                     <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/60">
-                      {fmtFullDate(matchDate)}
-                      {fmtTime(matchDate) ? ` · ${fmtTime(matchDate)}` : ""}
+                      {formatMatchDate(matchDate, FULL_DATE_OPTS)}
+                      {formatMatchTime(matchDate)
+                        ? ` · ${formatMatchTime(matchDate)}`
+                        : ""}
                     </p>
                   )}
                 </div>
@@ -405,19 +395,39 @@ const ScorePanel: React.FC<{
               <span className="text-[#F3EFE6]/30">:</span>
               <span>{match.team_b_score ?? 0}</span>
             </motion.div>
-          ) : (
+          ) : null}
+
+          {/* Two-legged KO decider: aggregate + penalties */}
+          {isFinished && match.leg === 2 && (match.aggregate_a != null || match.penalty_a != null) && (
+            <div className="flex flex-col items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60">
+              {match.aggregate_a != null && match.aggregate_b != null && (
+                <span>
+                  Συνολικό {match.aggregate_a}–{match.aggregate_b}
+                </span>
+              )}
+              {match.penalty_a != null && match.penalty_b != null && (
+                <span className="inline-flex items-center gap-1.5 border-2 border-[#E8B931]/60 bg-[#E8B931]/10 px-2.5 py-1 font-bold text-[#E8B931]">
+                  Πέναλτι {match.penalty_a}–{match.penalty_b}
+                </span>
+              )}
+            </div>
+          )}
+
+          {!isFinished && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
               className="border-2 border-dashed border-[#F3EFE6]/30 px-4 py-2 font-mono text-xs uppercase tracking-[0.3em] text-[#F3EFE6]/70 md:text-sm"
             >
-              {match.match_date ? fmtTime(match.match_date) : "TBA"}
+              {match.match_date ? formatMatchTime(match.match_date) : "TBA"}
             </motion.div>
           )}
 
           <div className="mt-1 flex flex-col items-center gap-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
-            {match.match_date && <span>{fmtFullDate(match.match_date)}</span>}
+            {match.match_date && (
+              <span>{formatMatchDate(match.match_date, FULL_DATE_OPTS)}</span>
+            )}
             {match.referee && (
               <span className="text-[#F3EFE6]/45">
                 Διαιτητής · {match.referee}
@@ -538,11 +548,11 @@ const WelcomeKicker: React.FC<{ matchDate: string | null }> = ({
     {matchDate && (
       <div className="mt-5 inline-flex items-center gap-2 border border-[#F3EFE6]/25 bg-[#0a0a14] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/75">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#fb923c]" />
-        <span>{fmtFullDate(matchDate)}</span>
-        {fmtTime(matchDate) && (
+        <span>{formatMatchDate(matchDate, FULL_DATE_OPTS)}</span>
+        {formatMatchTime(matchDate) && (
           <>
             <span className="text-[#F3EFE6]/35">·</span>
-            <span>{fmtTime(matchDate)}</span>
+            <span>{formatMatchTime(matchDate)}</span>
           </>
         )}
       </div>

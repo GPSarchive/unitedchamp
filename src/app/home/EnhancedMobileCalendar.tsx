@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsDown, ChevronsUp, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { formatMatchTime } from '@/app/lib/datetime';
 
 // ===================== Types =====================
 type Match = {
@@ -89,11 +90,6 @@ function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
     grouped.get(dateKey)!.push(match);
   });
   return grouped;
-}
-
-function formatTime(isoString: string): string {
-  const match = /T(\d{2}):(\d{2})/.exec(isoString);
-  return match ? `${match[1]}:${match[2]}` : '';
 }
 
 function formatDate(date: Date): string {
@@ -224,7 +220,7 @@ function MatchCard({
 }) {
   const [teamA, teamB] = match.teams ?? ['Team A', 'Team B'];
   const [logoA, logoB] = match.logos ?? ['/placeholder.png', '/placeholder.png'];
-  const timeRange = `${formatTime(match.start)} - ${formatTime(match.end)}`;
+  const timeRange = `${formatMatchTime(match.start)} - ${formatMatchTime(match.end)}`;
   
   const scoreDisplay = match.status === 'finished' && match.score 
     ? `${match.score[0]} — ${match.score[1]}`

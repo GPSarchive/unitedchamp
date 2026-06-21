@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X, Clock, Calendar, AlertCircle } from "lucide-react";
 import type { MatchRow } from "@/app/lib/types";
+import { formatMatchDateTime } from "@/app/lib/datetime";
 
 interface PostponeDialogProps {
   match: MatchRow & {
@@ -45,14 +46,11 @@ export default function PostponeDialog({
   // Format current date for display
   const formatCurrentDate = () => {
     if (!match.match_date) return "No date set";
-    const d = new Date(match.match_date);
-    return d.toLocaleString("el-GR", {
+    return formatMatchDateTime(match.match_date, {
       weekday: "long",
       day: "2-digit",
       month: "long",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 

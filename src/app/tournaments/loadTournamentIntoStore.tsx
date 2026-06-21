@@ -158,6 +158,11 @@ export const loadTournamentIntoStore = async (
     home_source_bracket_pos: match.home_source_bracket_pos ?? null,
     away_source_round: match.away_source_round ?? null,
     away_source_bracket_pos: match.away_source_bracket_pos ?? null,
+    // two-legged KO
+    leg: match.leg ?? null,
+    tie_leg1_match_id: match.tie_leg1_match_id ?? null,
+    penalty_a: match.penalty_a ?? null,
+    penalty_b: match.penalty_b ?? null,
   }));
 
   // Fetch standings

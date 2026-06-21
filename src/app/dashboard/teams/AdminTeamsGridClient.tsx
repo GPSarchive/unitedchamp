@@ -225,7 +225,7 @@ export default function AdminTeamsGridClient({
       ) : filtered.length === 0 ? (
         <p className="p-3 text-white/70">Δεν βρέθηκαν ομάδες.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-3">
           {filtered.map((r) => {
             const archived = !!(r as TeamRowWithArchived).deleted_at;
             const isExpanded = !!expanded[r.id];

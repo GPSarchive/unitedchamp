@@ -50,6 +50,12 @@ type DraftMatchServer = {
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
 
+  // Two-legged KO
+  leg?: number | null;
+  tie_leg1_match_idx?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
+
   match_date?: string | null;
 };
 
@@ -128,6 +134,10 @@ const DraftMatchSchema = z.object({
   home_source_bracket_pos: z.number().int().nullable().optional(),
   away_source_round: z.number().int().nullable().optional(),
   away_source_bracket_pos: z.number().int().nullable().optional(),
+
+  // two-legged KO
+  leg: z.number().int().nullable().optional(),
+  tie_leg1_match_idx: z.number().int().nullable().optional(),
 
   match_date: z.string().nullable().optional(),
 });
@@ -306,11 +316,16 @@ export async function createTournamentAction(formData: FormData) {
   }
 
   if (koConfigUpdates.length) {
-    // Batch update all KO stage configs in a single upsert
-    await supabaseAdmin
-      .from('tournament_stages')
-      .upsert(koConfigUpdates, { onConflict: 'id' })
-      .throwOnError();
+    // Update each KO stage's config. These rows already exist (just inserted
+    // above), so this must be an UPDATE — an upsert would attempt an INSERT
+    // with only { id, config } and trip the tournament_id NOT NULL constraint.
+    for (const u of koConfigUpdates) {
+      await supabaseAdmin
+        .from('tournament_stages')
+        .update({ config: u.config })
+        .eq('id', u.id)
+        .throwOnError();
+    }
   }
 
   // 3) Groups per groups-stage
@@ -415,6 +430,12 @@ export async function createTournamentAction(formData: FormData) {
       round: m.round ?? null,
       bracket_pos: m.bracket_pos ?? null,
 
+      // two-legged KO (tie_leg1_match_id linked in the second pass)
+      leg: m.leg ?? null,
+      tie_leg1_match_id: null,
+      penalty_a: null,
+      penalty_b: null,
+
       // live fields
       status: m.status ?? 'scheduled',
       team_a_score: m.team_a_score ?? null,
@@ -482,13 +503,20 @@ export async function createTournamentAction(formData: FormData) {
         upd.away_source_round ??= m.away_source_round ?? null;
         upd.away_source_bracket_pos ??= m.away_source_bracket_pos ?? null;
 
+        // two-legged KO: link leg 2 → leg 1
+        if (m.tie_leg1_match_idx != null) {
+          const lid = idByIdx[m.tie_leg1_match_idx];
+          if (Number.isFinite(lid)) upd.tie_leg1_match_id = lid;
+        }
+
         const hasAny =
           upd.home_source_match_id != null ||
           upd.away_source_match_id != null ||
           upd.home_source_round != null ||
           upd.home_source_bracket_pos != null ||
           upd.away_source_round != null ||
-          upd.away_source_bracket_pos != null;
+          upd.away_source_bracket_pos != null ||
+          upd.tie_leg1_match_id != null;
 
         return hasAny ? upd : null;
       })
@@ -502,6 +530,7 @@ export async function createTournamentAction(formData: FormData) {
         home_source_bracket_pos?: number | null;
         away_source_round?: number | null;
         away_source_bracket_pos?: number | null;
+        tie_leg1_match_id?: number | null;
       }>;
 
     if (linkUpdates.length) {
@@ -644,6 +673,7 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
     .select(`
       id, stage_id, group_id, team_a_id, team_b_id, matchday, round, bracket_pos, match_date,
       status, team_a_score, team_b_score, winner_team_id,
+      leg, tie_leg1_match_id, penalty_a, penalty_b,
       home_source_match_id, home_source_outcome, away_source_match_id, away_source_outcome,
       home_source_round, home_source_bracket_pos, away_source_round, away_source_bracket_pos
     `)
@@ -768,6 +798,13 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
       home_source_bracket_pos: m.home_source_bracket_pos ?? null,
       away_source_round: m.away_source_round ?? null,
       away_source_bracket_pos: m.away_source_bracket_pos ?? null,
+
+      // two-legged KO
+      leg: m.leg ?? null,
+      tie_leg1_match_idx:
+        m.tie_leg1_match_id != null ? (indexById.get(m.tie_leg1_match_id) ?? null) : null,
+      penalty_a: m.penalty_a ?? null,
+      penalty_b: m.penalty_b ?? null,
 
       match_date: m.match_date ?? null,
     };
@@ -919,10 +956,15 @@ export async function updateTournamentAction(formData: FormData) {
   }
 
   if (koConfigUpdatesEdit.length) {
-    await supabaseAdmin
-      .from('tournament_stages')
-      .upsert(koConfigUpdatesEdit, { onConflict: 'id' })
-      .throwOnError();
+    // UPDATE, not upsert: these rows already exist, and an upsert would attempt
+    // an INSERT with only { id, config }, violating tournament_id NOT NULL.
+    for (const u of koConfigUpdatesEdit) {
+      await supabaseAdmin
+        .from('tournament_stages')
+        .update({ config: u.config })
+        .eq('id', u.id)
+        .throwOnError();
+    }
   }
 
   type GroupRecord = { id: number; stage_id: number; name: string };
@@ -1027,6 +1069,12 @@ export async function updateTournamentAction(formData: FormData) {
       round: m.round ?? null,
       bracket_pos: m.bracket_pos ?? null,
 
+      // two-legged KO (tie_leg1_match_id linked in the second pass)
+      leg: m.leg ?? null,
+      tie_leg1_match_id: null,
+      penalty_a: null,
+      penalty_b: null,
+
       // live fields
       status: m.status ?? 'scheduled',
       team_a_score: m.team_a_score ?? null,
@@ -1090,13 +1138,20 @@ export async function updateTournamentAction(formData: FormData) {
         upd.away_source_round ??= m.away_source_round ?? null;
         upd.away_source_bracket_pos ??= m.away_source_bracket_pos ?? null;
 
+        // two-legged KO: link leg 2 → leg 1
+        if (m.tie_leg1_match_idx != null) {
+          const lid = idByIdx[m.tie_leg1_match_idx];
+          if (Number.isFinite(lid)) upd.tie_leg1_match_id = lid;
+        }
+
         const hasAny =
           upd.home_source_match_id != null ||
           upd.away_source_match_id != null ||
           upd.home_source_round != null ||
           upd.home_source_bracket_pos != null ||
           upd.away_source_round != null ||
-          upd.away_source_bracket_pos != null;
+          upd.away_source_bracket_pos != null ||
+          upd.tie_leg1_match_id != null;
 
         return hasAny ? upd : null;
       })
@@ -1110,6 +1165,7 @@ export async function updateTournamentAction(formData: FormData) {
         home_source_bracket_pos?: number | null;
         away_source_round?: number | null;
         away_source_bracket_pos?: number | null;
+        tie_leg1_match_id?: number | null;
       }>;
 
     if (linkUpdates.length) {

@@ -18,6 +18,7 @@ import { useStages } from "./useStages";
 import { PlayerStatistics } from "./components/PlayerStatistics";
 import { Trophy, Star, Shield, ChevronRight } from "lucide-react";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 type TournamentClientProps = {
   initialData: {
@@ -267,7 +268,7 @@ const TournamentClient: React.FC<TournamentClientProps> = ({ initialData }) => {
                           <span className="text-sm font-medium text-emerald-400">VS</span>
                           {m.match_date && (
                             <p className="text-[10px] text-white/40 mt-0.5">
-                              {new Date(m.match_date).toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' })}
+                              {formatMatchDate(m.match_date, { day: '2-digit', month: '2-digit' })}
                             </p>
                           )}
                         </div>

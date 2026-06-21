@@ -26,6 +26,7 @@ import type {
   Tournament,
 } from "@/app/tournaments/useTournamentData";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 import KOBracketV2Dark from "./KOBracketV2Dark";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -47,25 +48,9 @@ type Data = {
 // ───────────────────────────────────────────────────────────────────────
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
-const elDate = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-      })
-    : "";
-
-const elTime = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-
 const elDayFull = (iso?: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
+    ? formatMatchDate(iso, {
         weekday: "short",
         day: "2-digit",
         month: "short",
@@ -1335,7 +1320,7 @@ const KOMatchCard: React.FC<{
           </span>
         ) : match.match_date ? (
           <span className="text-[#F3EFE6]/60">
-            {elDate(match.match_date)}
+            {formatMatchDate(match.match_date)}
           </span>
         ) : (
           <span className="text-[#F3EFE6]/40">ΤΒΑ</span>
@@ -1497,7 +1482,7 @@ const MobileMatchCard: React.FC<{
             </div>
           ) : (
             <div className="border-2 border-dashed border-[#F3EFE6]/30 px-2 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
-              {m.match_date ? elTime(m.match_date) : "ΤΒΑ"}
+              {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
         </div>

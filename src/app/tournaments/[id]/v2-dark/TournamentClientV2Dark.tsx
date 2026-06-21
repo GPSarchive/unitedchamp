@@ -27,6 +27,7 @@ import type {
   Tournament,
 } from "@/app/tournaments/useTournamentData";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
+import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 import KOBracketV2Dark from "./KOBracketV2Dark";
 import MobileShell from "./MobileShell";
 
@@ -79,23 +80,6 @@ type Props = {
 // ───────────────────────────────────────────────────────────────────────
 // Utilities
 // ───────────────────────────────────────────────────────────────────────
-const elDate = (iso?: string | null, opts?: Intl.DateTimeFormatOptions) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-        ...opts,
-      })
-    : "";
-
-const elTime = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
-
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
 // Hook: count-up on scroll-into-view
@@ -714,11 +698,11 @@ const MatchRow: React.FC<{
           } px-3 py-2`}
         >
           <span className="font-[var(--f-brutal)] text-2xl leading-none">
-            {m.match_date ? new Date(m.match_date).getDate() : "—"}
+            {m.match_date ? formatMatchDate(m.match_date, { day: "numeric" }) : "—"}
           </span>
           <span className="font-mono text-[9px] uppercase tracking-[0.2em]">
             {m.match_date
-              ? new Date(m.match_date).toLocaleDateString("el-GR", { month: "short" })
+              ? formatMatchDate(m.match_date, { month: "short" })
               : ""}
           </span>
         </div>
@@ -755,7 +739,7 @@ const MatchRow: React.FC<{
             </div>
           ) : (
             <div className="border-2 border-dashed border-[#F3EFE6]/60 px-3 py-1.5 text-center font-mono text-xs uppercase tracking-[0.25em]">
-              {m.match_date ? elTime(m.match_date) : "ΤΒΑ"}
+              {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
         </div>
@@ -1310,7 +1294,7 @@ const FixtureTicker: React.FC<{
                   key={`${m.db_id}-${i}`}
                   className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em]"
                 >
-                  <span>{elDate(m.match_date)}</span>
+                  <span>{formatMatchDate(m.match_date)}</span>
                   <span className="opacity-60">·</span>
                   <span className="font-bold">{a?.name ?? "ΤΒΑ"}</span>
                   <span className="opacity-60">VS</span>

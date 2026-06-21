@@ -1,6 +1,7 @@
 // app/api/announcements/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 // ---- same-origin guard (copy of matches) ----
 function ensureSameOrigin(req: Request) {
@@ -90,8 +91,7 @@ export async function POST(req: Request) {
     // Require authenticated admin (matches your /api/matches logic)
     const { data: { user }, error: userErr } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const payload = await req.json().catch(() => null);
     if (!payload || typeof payload !== "object") {

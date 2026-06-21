@@ -1,6 +1,7 @@
 // app/api/announcements/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -60,8 +61,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       data: { user },
     } = await supa.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const patch = await req.json().catch(() => null);
     if (!patch || typeof patch !== "object") {
@@ -109,8 +109,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       data: { user },
     } = await supa.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { data, error } = await supa
       .from("announcements")

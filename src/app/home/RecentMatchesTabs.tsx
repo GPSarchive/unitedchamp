@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Trophy } from 'lucide-react';
 import { supabase } from '@/app/lib/supabase/supabaseClient';
 import { resolveImageUrl, ImageType } from '@/app/lib/image-config';
+import { wallClockDate } from '@/app/lib/datetime';
 
 type Props = {
   className?: string;
@@ -39,10 +40,10 @@ function nowISO() {
 }
 
 function formatLocal(iso: string | null) {
-  if (!iso) return '';
-  const d = new Date(iso); // Create Date object from the ISO string
+  // Literal wall-clock digits of the stored match_date — no tz conversion.
+  const d = wallClockDate(iso);
+  if (!d) return '';
 
-  // Use toLocaleString to show the date and time in UTC
   return d.toLocaleString('el-GR', {
     weekday: 'long', // Full name of the weekday
     year: 'numeric', // Full year
@@ -52,7 +53,6 @@ function formatLocal(iso: string | null) {
     minute: '2-digit', // Minute in 2-digit format
     second: '2-digit', // Optional, can be removed
     hour12: false, // Use 24-hour format
-    timeZone: 'UTC', // Explicitly display the date in UTC time zone
   });
 }
 

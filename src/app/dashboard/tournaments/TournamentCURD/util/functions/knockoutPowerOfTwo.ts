@@ -1,12 +1,12 @@
 import type { DraftMatch } from "../../TournamentWizard";
-import { buildSeedPositions, pairArray, wireKnockoutSources } from "./common";
+import { seedOrder, pairArray, wireKnockoutSources } from "./common";
 
 /** Proper seed placement for power-of-two brackets, with stable pointers + outcome="W". */
 export function genKnockoutPowerOfTwo(teamIds: number[], stageIdx: number): DraftMatch[] {
   const N = teamIds.length;
   if (N === 0) return [];
 
-  const positions = buildSeedPositions(N);
+  const positions = seedOrder(N);
   const bySeed = teamIds.slice().map((id, i) => ({ seed: i + 1, id }));
   const slotTeams: Array<number | null> = new Array(N).fill(null);
 

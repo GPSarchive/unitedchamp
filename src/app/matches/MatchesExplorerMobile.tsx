@@ -14,6 +14,11 @@ import {
   useScroll,
   useSpring,
 } from "framer-motion";
+import {
+  formatMatchDate,
+  formatMatchTime,
+  parseIsoPreserveClock,
+} from "@/app/lib/datetime";
 
 // ───────────────────────────────────────────────────────────────────────
 // Types (local mirror — kept minimal for props)
@@ -45,46 +50,11 @@ const pad2 = (n: number | string) => String(n).padStart(2, "0");
 const one = <T,>(v: T | T[] | null): T | null =>
   Array.isArray(v) ? v[0] ?? null : v;
 
-// Parse the wall-clock parts from the DB ISO string without applying any
-// timezone conversion. Supabase stores the kickoff as the intended local
-// time; using `new Date(iso)` would shift it by the viewer's offset.
-const ISO_RE =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
-const parseWallClock = (iso: string) => {
-  const m = ISO_RE.exec(iso);
-  if (!m) return null;
-  const [, y, M, d, h, min] = m;
-  return { y: +y, M: +M, d: +d, h: +h, min: +min };
-};
-
-const wallClockDate = (iso: string) => {
-  const p = parseWallClock(iso);
-  if (!p) return null;
-  return new Date(p.y, p.M - 1, p.d, p.h, p.min, 0);
-};
-
+// Match date/time display goes through @/app/lib/datetime — literal wall-clock
+// digits from the ISO string, NO timezone conversion (see that module's notes).
 const elDay = (iso?: string | null) => {
-  if (!iso) return "—";
-  const p = parseWallClock(iso);
+  const p = parseIsoPreserveClock(iso);
   return p ? String(p.d) : "—";
-};
-
-const elMonthShort = (iso?: string | null) => {
-  if (!iso) return "";
-  const d = wallClockDate(iso);
-  return d ? d.toLocaleDateString("el-GR", { month: "short" }) : "";
-};
-
-const elWeekday = (iso?: string | null) => {
-  if (!iso) return "";
-  const d = wallClockDate(iso);
-  return d ? d.toLocaleDateString("el-GR", { weekday: "short" }) : "";
-};
-
-const elTime = (iso?: string | null) => {
-  if (!iso) return "";
-  const p = parseWallClock(iso);
-  return p ? `${pad2(p.h)}:${pad2(p.min)}` : "";
 };
 
 // ───────────────────────────────────────────────────────────────────────
@@ -465,16 +435,16 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
         <div className="flex items-center justify-between gap-2 border-b border-[#F3EFE6]/10 bg-[#13131d] px-3 py-1.5 pl-4 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
           <span className="flex items-center gap-1.5">
             <span className="text-[#F3EFE6]/45">
-              {elWeekday(m.match_date)}
+              {formatMatchDate(m.match_date, { weekday: "short" })}
             </span>
             <span>{elDay(m.match_date)}</span>
             <span className="text-[#F3EFE6]/45">
-              {elMonthShort(m.match_date)}
+              {formatMatchDate(m.match_date, { month: "short" })}
             </span>
             {m.match_date && (
               <>
                 <span className="text-[#F3EFE6]/25">·</span>
-                <span>{elTime(m.match_date)}</span>
+                <span>{formatMatchTime(m.match_date)}</span>
               </>
             )}
           </span>
@@ -522,7 +492,7 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
               </div>
             ) : (
               <div className="border-2 border-dashed border-[#F3EFE6]/30 px-2.5 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
-                {m.match_date ? elTime(m.match_date) : "ΤΒΑ"}
+                {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
               </div>
             )}
           </div>
