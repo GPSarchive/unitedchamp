@@ -15,7 +15,20 @@ export type TieLegLite = {
   team_b_score: number | null;
   penalty_a?: number | null;
   penalty_b?: number | null;
+  /**
+   * Optional: whether this leg has actually been played. When provided, an
+   * unfinished/unscored leg makes the tie `pending` instead of being misread as
+   * a real 0–0 draw (scoreForTeam coerces null scores to 0). Pass it whenever
+   * you have it — see the note in `decideTwoLeggedTie`.
+   */
+  status?: "scheduled" | "finished" | null;
 };
+
+/** A leg counts as played only when finished (if status known) and both scores are present. */
+function legPlayed(m: TieLegLite): boolean {
+  if (m.status != null && m.status !== "finished") return false;
+  return m.team_a_score != null && m.team_b_score != null;
+}
 
 /**
  * Result of deciding a two-legged tie:
@@ -64,6 +77,14 @@ export function decideTwoLeggedTie(leg2: TieLegLite, leg1: TieLegLite): TieResol
   const teamB = leg2.team_b_id;
   if (teamA == null || teamB == null) return { kind: "single" };
 
+  // Both legs must be played before the tie can be decided. `scoreForTeam`
+  // coerces a missing score to 0, so without this guard an unplayed leg would be
+  // silently treated as a real 0–0 draw — wrongly demanding penalties, or, with
+  // stray penalty data, advancing a team that never actually played. Callers
+  // still pre-check leg-1 status, but enforcing it here keeps any future caller
+  // (e.g. a display recompute) from tripping over the coercion.
+  if (!legPlayed(leg1) || !legPlayed(leg2)) return { kind: "pending" };
+
   const winners = [legWinner(leg1, teamA, teamB), legWinner(leg2, teamA, teamB)];
   const winsA = winners.filter((w) => w === teamA).length;
   const winsB = winners.filter((w) => w === teamB).length;
@@ -71,7 +92,14 @@ export function decideTwoLeggedTie(leg2: TieLegLite, leg1: TieLegLite): TieResol
   if (winsA > winsB) return { kind: "decided", winnerTeamId: teamA, via: "wins" };
   if (winsB > winsA) return { kind: "decided", winnerTeamId: teamB, via: "wins" };
 
-  // Leg wins are level (1–1 or 0–0) → penalties (recorded on the leg-2 row).
+  // Leg wins are level (1–1 or 0–0) → penalties decide.
+  //
+  // INVARIANT: penalties are read from the *leg-2* row and `penalty_a` belongs to
+  // `leg2.team_a_id` (= teamA), `penalty_b` to `leg2.team_b_id` (= teamB). Every
+  // write path stores pens on the leg-2 row in this orientation, so we map pa→teamA
+  // / pb→teamB directly. Do NOT pass leg-1 here for pens: teams are swapped between
+  // legs, so leg-1's penalty_a would belong to the *other* team and invert the
+  // winner. (Pens are only ever entered on the decider, i.e. leg 2.)
   const pa = leg2.penalty_a;
   const pb = leg2.penalty_b;
   if (pa == null || pb == null || pa === pb) return { kind: "undecided" };

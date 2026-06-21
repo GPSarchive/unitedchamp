@@ -322,9 +322,24 @@ async function insertKnockoutRowsWithLegs(
    Public APIs
    ========================================================= */
 
-/** One-call finalize (optional) */
-export async function finalizeMatch(input: { matchId: Id; teamAScore: number; teamBScore: number; }) {
-  const { matchId, teamAScore, teamBScore } = input;
+/**
+ * One-call finalize (optional).
+ *
+ * For two-legged KO deciders (leg 2) the per-row score never decides the tie —
+ * the winner is resolved from leg wins (+penalties when level) inside
+ * applyKnockoutPropagation. Pass `penaltyA`/`penaltyB` here so a level tie can
+ * actually be decided; without them a 1–1 (or 0–0) leg-wins tie resolves to
+ * `undecided` and propagation silently bails. Penalties are stored on the leg-2
+ * row in its own team_a/team_b orientation.
+ */
+export async function finalizeMatch(input: {
+  matchId: Id;
+  teamAScore: number;
+  teamBScore: number;
+  penaltyA?: number | null;
+  penaltyB?: number | null;
+}) {
+  const { matchId, teamAScore, teamBScore, penaltyA = null, penaltyB = null } = input;
 
   const { data: m, error: mErr } = await supabase
     .from("matches")
@@ -344,9 +359,14 @@ export async function finalizeMatch(input: { matchId: Id; teamAScore: number; te
   else winner_team_id = null; // draw
 
   // Two-legged KO: the per-row score never decides the winner. Leg 1 carries no
-  // winner; leg 2's winner is derived from the aggregate (+penalties) inside
+  // winner; leg 2's winner is derived from leg wins (+penalties) inside
   // applyKnockoutPropagation. Persist scores but leave winner null here.
   if (m.leg != null) winner_team_id = null;
+
+  // Penalties only mean anything on a leg-2 decider; ignore them otherwise.
+  const isLeg2Decider = m.leg === 2 && m.tie_leg1_match_id != null;
+  const penalty_a = isLeg2Decider ? penaltyA : null;
+  const penalty_b = isLeg2Decider ? penaltyB : null;
 
   const { error: upErr } = await supabase
     .from("matches")
@@ -354,6 +374,8 @@ export async function finalizeMatch(input: { matchId: Id; teamAScore: number; te
       team_a_score: teamAScore,
       team_b_score: teamBScore,
       winner_team_id,
+      penalty_a,
+      penalty_b,
       status: "finished",
     })
     .eq("id", matchId);
@@ -451,12 +473,21 @@ async function applyKnockoutPropagation(m: MatchRow) {
   if (m.leg === 2 && m.tie_leg1_match_id != null) {
     const res = await resolveTwoLeggedTie(m);
     if (res.kind === "pending" || res.kind === "undecided") return; // not decided yet
-    if (res.kind === "decided" && m.winner_team_id !== res.winnerTeamId) {
-      await supabase
-        .from("matches")
-        .update({ winner_team_id: res.winnerTeamId })
-        .eq("id", m.id);
-      m = { ...m, winner_team_id: res.winnerTeamId };
+    if (res.kind === "decided") {
+      // When the tie was decided on leg wins, any stored penalties are stray and
+      // must be cleared (mirrors the score-write paths). Penalties only persist
+      // when they were the decider. Re-stamp the winner if it changed.
+      const clearStrayPens = res.via === "wins" && (m.penalty_a != null || m.penalty_b != null);
+      const winnerChanged = m.winner_team_id !== res.winnerTeamId;
+      if (winnerChanged || clearStrayPens) {
+        const patch: Partial<MatchRow> = { winner_team_id: res.winnerTeamId };
+        if (clearStrayPens) {
+          patch.penalty_a = null;
+          patch.penalty_b = null;
+        }
+        await supabase.from("matches").update(patch).eq("id", m.id);
+        m = { ...m, ...patch };
+      }
     }
   }
 

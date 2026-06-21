@@ -74,7 +74,7 @@ async function resolveKoFinishPatch(
   if (leg === 2 && tieLeg1Id != null) {
     const { data: leg1 } = await supabase
       .from('matches')
-      .select('team_a_id, team_b_id, team_a_score, team_b_score')
+      .select('team_a_id, team_b_id, team_a_score, team_b_score, status')
       .eq('id', tieLeg1Id)
       .maybeSingle();
 

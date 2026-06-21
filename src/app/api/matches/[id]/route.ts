@@ -335,7 +335,7 @@ export async function PATCH(
         // or 0–0) require a penalty shootout. Shared with progression + actions.
         const { data: leg1 } = await supa
           .from("matches")
-          .select("team_a_id, team_b_id, team_a_score, team_b_score")
+          .select("team_a_id, team_b_id, team_a_score, team_b_score, status")
           .eq("id", current.tie_leg1_match_id)
           .maybeSingle();
 
