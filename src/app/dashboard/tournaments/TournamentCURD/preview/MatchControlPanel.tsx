@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Save, X, AlertCircle, RotateCcw, Award } from "lucide-react";
-import { useTournamentStore } from "../submit/tournamentStore";
+import { useTournamentStore, matchSig } from "../submit/tournamentStore";
 import type { DraftMatch } from "../TournamentWizard";
 import type { TeamDraft } from "../TournamentWizard";
 import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinAction } from "./actions";
@@ -38,16 +38,9 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
      Utilities
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   
-  function matchSig(m: DraftMatch): string {
-    const isKO = m.round != null && m.bracket_pos != null;
-    if (isKO) {
-      return `KO|S${m.stageIdx ?? -1}|R${m.round ?? 0}|B${m.bracket_pos ?? 0}`;
-    }
-    const pairA = Math.min(m.team_a_id ?? 0, m.team_b_id ?? 0);
-    const pairB = Math.max(m.team_a_id ?? 0, m.team_b_id ?? 0);
-    return `RR|S${m.stageIdx ?? -1}|G${m.groupIdx ?? -1}|MD${m.matchday ?? 0}|${pairA}-${pairB}`;
-  }
-  
+  // matchSig is imported from the store (leg-aware canonical signature) so the two
+  // legs of a two-legged KO tie never collide on the same overlay key.
+
   function isoToLocalInput(iso?: string | null) {
     if (!iso) return "";
     const d = new Date(iso);
