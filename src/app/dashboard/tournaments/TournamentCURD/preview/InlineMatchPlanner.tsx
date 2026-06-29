@@ -17,7 +17,9 @@ function rrPairKey(a?: number | null, b?: number | null) {
 
 function rowSignature(m: DraftMatch) {
   if (m.round != null && m.bracket_pos != null) {
-    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}`;
+    // Include leg so the two legs of a two-legged tie (same round/bracket_pos)
+    // don't collapse to one overlay key. Single-leg rows are L0.
+    return `KO|S${m.stageIdx ?? -1}|R${m.round}|B${m.bracket_pos}|L${m.leg ?? 0}`;
   }
   const g = m.groupIdx ?? -1;
   const md = m.matchday ?? 0;
@@ -38,6 +40,7 @@ function legacyRowSignature(m: DraftMatch) {
     m.matchday ?? "",
     m.round ?? "",
     m.bracket_pos ?? "",
+    m.leg ?? "", // keep the two legs of a two-legged tie distinct
     m.team_a_id ?? "",
     m.team_b_id ?? "",
     m.match_date ?? "",
