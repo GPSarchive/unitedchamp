@@ -31,9 +31,9 @@ const CAUSE_INFO: Record<Cause, { title: string; explain: string; cls: string }>
     cls: "bg-amber-900/50 text-amber-300 border-amber-700",
   },
   truncation: {
-    title: "Undercounted (truncated read)",
+    title: "Undercounted (edit not propagated)",
     explain:
-      "The stored value is too low, but no specific match explains the gap. This matches the known bug where the sync reads match stats without pagination and Supabase silently cuts the response at ~1000 rows, so totals are computed from incomplete data.",
+      "The stored value is too low, but the match itself is already counted — only some of its fields are missing. This happens when a match is RE-saved with corrections (added assists, changed MVP/Best GK awards) and the refresh after that edit never ran. The truncated-read bug can produce the same shape.",
     cls: "bg-orange-900/50 text-orange-300 border-orange-700",
   },
   stale_data: {
