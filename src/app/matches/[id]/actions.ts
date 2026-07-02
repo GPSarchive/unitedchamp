@@ -3,9 +3,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
+import {
+  syncPlayerStatisticsForPlayers,
+  refreshCareerStatsForPlayers,
+  refreshTournamentStatsForPlayers,
+} from '@/app/lib/refreshPlayerStats';
 import { decideTwoLeggedTie } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
 
 /** =========================
@@ -388,6 +394,8 @@ export async function saveAllStatsAction(formData: FormData) {
   }
 
   // --- Sync player_statistics from match_player_stats for affected players ---
+  // Uses the shared paginated helper: the previous inline read was silently
+  // truncated at ~1000 rows by PostgREST, undercounting long careers.
   const affectedPlayerIds = Array.from(
     new Set([
       ...statUpserts.map((r) => r.player_id),
@@ -396,62 +404,17 @@ export async function saveAllStatsAction(formData: FormData) {
   );
 
   if (affectedPlayerIds.length > 0) {
-    // Aggregate all-time totals from match_player_stats for each affected player
-    const { data: allMps, error: mpsAggErr } = await supabase
-      .from('match_player_stats')
-      .select('player_id, goals, assists, yellow_cards, red_cards, blue_cards')
-      .in('player_id', affectedPlayerIds);
-
-    if (mpsAggErr) {
-      console.error('Error fetching match_player_stats for sync:', mpsAggErr);
-    } else {
-      const totals = new Map<number, {
-        total_goals: number;
-        total_assists: number;
-        yellow_cards: number;
-        red_cards: number;
-        blue_cards: number;
-      }>();
-
-      // Initialize all affected players (some may now have 0 stats after deletion)
-      for (const pid of affectedPlayerIds) {
-        totals.set(pid, {
-          total_goals: 0,
-          total_assists: 0,
-          yellow_cards: 0,
-          red_cards: 0,
-          blue_cards: 0,
-        });
-      }
-
-      for (const row of allMps ?? []) {
-        const t = totals.get(row.player_id)!;
-        t.total_goals += Number(row.goals) || 0;
-        t.total_assists += Number(row.assists) || 0;
-        t.yellow_cards += Number(row.yellow_cards) || 0;
-        t.red_cards += Number(row.red_cards) || 0;
-        t.blue_cards += Number(row.blue_cards) || 0;
-      }
-
-      const statsUpserts = Array.from(totals.entries()).map(([pid, t]) => ({
-        player_id: pid,
-        ...t,
-      }));
-
-      const { error: syncErr } = await supabase
-        .from('player_statistics')
-        .upsert(statsUpserts, { onConflict: 'player_id' });
-
-      if (syncErr) {
-        console.error('Error syncing player_statistics:', syncErr);
-      }
+    try {
+      await syncPlayerStatisticsForPlayers(affectedPlayerIds);
+    } catch (err) {
+      console.error('Error syncing player_statistics:', err);
     }
   }
 
   // --- Auto-finalize from the just-saved stats ---
   const { data: mt, error: mErr } = await supabase
     .from('matches')
-    .select('team_a_id, team_b_id')
+    .select('team_a_id, team_b_id, tournament_id')
     .eq('id', match_id)
     .single();
   if (mErr || !mt) throw new Error('Match not found');
@@ -513,7 +476,32 @@ export async function saveAllStatsAction(formData: FormData) {
   // Always run progression (handles KO and non-KO stages appropriately)
   // For non-KO rounds (groups/league), ties need progression to update standings
   // For KO rounds, progression logic internally handles ties (no winner to propagate)
-  progressAfterMatch(match_id).catch(console.error);
+  //
+  // Scheduled via after(): the previous fire-and-forget promise was killed when
+  // the redirect ended the request, so the player-stats cache refresh inside
+  // progressAfterMatch often never ran. after() keeps the redirect fast while
+  // guaranteeing the work completes once the response is sent.
+  const removedPlayerIds = [...new Set(statDeletes)];
+  const tournamentId = mt.tournament_id ? Number(mt.tournament_id) : null;
+  after(async () => {
+    try {
+      await progressAfterMatch(match_id);
+    } catch (err) {
+      console.error('[saveAllStats] progressAfterMatch error:', err);
+    }
+    // progressAfterMatch only refreshes players still present in the match;
+    // players whose stats were removed need an explicit cache refresh too.
+    if (removedPlayerIds.length > 0) {
+      try {
+        await refreshCareerStatsForPlayers(removedPlayerIds);
+        if (tournamentId) {
+          await refreshTournamentStatsForPlayers(removedPlayerIds, tournamentId);
+        }
+      } catch (err) {
+        console.error('[saveAllStats] removed-player cache refresh error:', err);
+      }
+    }
+  });
 
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);
