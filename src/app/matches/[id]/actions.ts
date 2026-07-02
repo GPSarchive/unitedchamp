@@ -513,7 +513,11 @@ export async function saveAllStatsAction(formData: FormData) {
   // Always run progression (handles KO and non-KO stages appropriately)
   // For non-KO rounds (groups/league), ties need progression to update standings
   // For KO rounds, progression logic internally handles ties (no winner to propagate)
-  progressAfterMatch(match_id).catch(console.error);
+  // Must be awaited: on serverless the runtime freezes once the response is
+  // sent, so a fire-and-forget call intermittently never ran — standings and
+  // the player-stat cache tables were left stale ("stats not saved" reports).
+  // Failures stay non-fatal: the match itself is already saved.
+  await progressAfterMatch(match_id).catch(console.error);
 
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);

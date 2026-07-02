@@ -274,8 +274,8 @@ export default function StatsEditor({
               <div className={`transition-all duration-300 ${isExpanded ? 'block' : 'hidden'}`}>
                 <div className="border-t border-gray-200 bg-white p-4">
                   {/* Hidden inputs */}
-                  <input type="hidden" name={`${baseStats}[team_id}`} defaultValue={String(teamId)} />
-                  <input type="hidden" name={`${baseStats}[player_id}`} defaultValue={String(p.id)} />
+                  <input type="hidden" name={`${baseStats}[team_id]`} defaultValue={String(teamId)} />
+                  <input type="hidden" name={`${baseStats}[player_id]`} defaultValue={String(p.id)} />
                   <input type="hidden" name={`${baseStats}[goals]`} value="0" />
                   <input type="hidden" name={`${baseStats}[assists]`} value="0" />
                   <input type="hidden" name={`${baseStats}[own_goals]`} value="0" />

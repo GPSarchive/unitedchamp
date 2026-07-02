@@ -263,6 +263,26 @@ export default async function Page({
                 αποθήκευση.
               </p>
 
+              {/* If any of the roster/stats/participants queries failed, the
+                  editor below would render seeded from empty fallbacks — and
+                  saving it would delete every participant and overwrite all
+                  stats with zeros. Refuse to render the form in that state. */}
+              {dataLoadErrors.length > 0 ? (
+                <div className="rounded-lg border border-red-400/40 bg-red-500/10 p-4">
+                  <p className="font-semibold text-red-200 text-sm">
+                    Η φόρτωση των στοιχείων του αγώνα απέτυχε — η επεξεργασία
+                    απενεργοποιήθηκε για να μη χαθούν αποθηκευμένα στατιστικά.
+                  </p>
+                  <ul className="mt-2 list-disc pl-5 text-xs text-red-200/80">
+                    {dataLoadErrors.map((e) => (
+                      <li key={e}>{e}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-red-200/80">
+                    Ανανέωσε τη σελίδα και δοκίμασε ξανά.
+                  </p>
+                </div>
+              ) : (
               <form id="stats-form" action={saveAllStatsAction}>
                 <input type="hidden" name="match_id" value={String(match.id)} />
 
@@ -331,6 +351,7 @@ export default async function Page({
                   </button>
                 </div>
               </form>
+              )}
             </section>
 
             {/* Admin: Match video CRUD, at the very bottom */}
