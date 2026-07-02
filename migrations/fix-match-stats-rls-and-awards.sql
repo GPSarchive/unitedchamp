@@ -62,7 +62,9 @@ BEGIN
     AS $body$
     BEGIN
       -- SECURITY DEFINER bypasses RLS, so gate explicitly on the caller's JWT.
-      IF NOT public.can_edit_content() THEN
+      -- service_role (supabaseAdmin) is trusted server-side and bypasses the check.
+      IF coalesce(auth.jwt() ->> 'role', '') <> 'service_role'
+         AND NOT public.can_edit_content() THEN
         RAISE EXCEPTION 'Forbidden: admin or editor role required'
           USING ERRCODE = '42501';
       END IF;
@@ -92,6 +94,9 @@ BEGIN
   EXECUTE format('REVOKE ALL ON FUNCTION public.update_match_awards(%s) FROM PUBLIC', fn_args);
   EXECUTE format('REVOKE ALL ON FUNCTION public.update_match_awards(%s) FROM anon', fn_args);
   EXECUTE format('GRANT EXECUTE ON FUNCTION public.update_match_awards(%s) TO authenticated', fn_args);
+  -- Revoking PUBLIC also strips service_role's implicit EXECUTE; re-grant so
+  -- supabaseAdmin-based callers keep working if one is ever added.
+  EXECUTE format('GRANT EXECUTE ON FUNCTION public.update_match_awards(%s) TO service_role', fn_args);
 END
 $mig$;
 
