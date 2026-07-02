@@ -2,7 +2,11 @@
 
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { progressAfterMatch, recomputeStandingsNow } from '../progression';
-import { refreshCareerStatsForPlayers, refreshTournamentStatsForPlayers } from '@/app/lib/refreshPlayerStats';
+import {
+  refreshCareerStatsForPlayers,
+  refreshTournamentStatsForPlayers,
+  syncPlayerStatisticsForPlayers,
+} from '@/app/lib/refreshPlayerStats';
 
 type PlayerStatInput = {
   player_id: number;
@@ -126,13 +130,14 @@ export async function revertMatchToScheduledAction(matchId: number) {
       }
     }
 
-    // 6. Refresh pre-computed player stats cache for affected players
+    // 6. Refresh pre-computed player stats cache + legacy totals for affected players
     if (affectedPlayerIds.length > 0) {
       try {
         await refreshCareerStatsForPlayers(affectedPlayerIds);
         if (match.tournament_id) {
           await refreshTournamentStatsForPlayers(affectedPlayerIds, match.tournament_id);
         }
+        await syncPlayerStatisticsForPlayers(affectedPlayerIds);
       } catch (err) {
         console.error('Failed to refresh player stats cache:', err);
       }
@@ -225,6 +230,14 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
     const allStats = [...teamAStats, ...teamBStats];
     const participatedPlayers = allStats.filter(s => s.played);
 
+    // Capture who had stats BEFORE this save, so players removed below still
+    // get their aggregates refreshed (deletes are otherwise invisible later).
+    const { data: prevStatRows } = await supabase
+      .from('match_player_stats')
+      .select('player_id')
+      .eq('match_id', matchId);
+    const prevPlayerIds = [...new Set((prevStatRows ?? []).map((r: { player_id: number }) => r.player_id))];
+
     // 1. Save participation (match_participants)
     const participantRows = participatedPlayers.map(s => ({
       match_id: matchId,
@@ -315,7 +328,7 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
     // 4. Calculate scores with own goals logic
     const { data: match } = await supabase
       .from('matches')
-      .select('team_a_id, team_b_id')
+      .select('team_a_id, team_b_id, tournament_id')
       .eq('id', matchId)
       .single();
 
@@ -394,6 +407,30 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
       } catch (progError) {
         console.error('Progression error (non-fatal):', progError);
         // Don't fail the save if progression fails
+      }
+    }
+
+    // 7. Keep aggregates in sync. progressAfterMatch only refreshes the cache
+    //    tables, and only for players still in the match — so the legacy
+    //    player_statistics table and any players removed by this save need
+    //    explicit handling.
+    const affectedPlayerIds = [...new Set([...prevPlayerIds, ...participatedIds])];
+    if (affectedPlayerIds.length > 0) {
+      try {
+        await syncPlayerStatisticsForPlayers(affectedPlayerIds);
+
+        // Removed players always need a cache refresh; when progression didn't
+        // run (match left 'scheduled'), current players do too.
+        const removedPlayerIds = prevPlayerIds.filter(id => !participatedIds.includes(id));
+        const needCacheRefresh = status === 'finished' ? removedPlayerIds : affectedPlayerIds;
+        if (needCacheRefresh.length > 0) {
+          await refreshCareerStatsForPlayers(needCacheRefresh);
+          if (match.tournament_id) {
+            await refreshTournamentStatsForPlayers(needCacheRefresh, Number(match.tournament_id));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync player aggregates (non-fatal):', err);
       }
     }
 

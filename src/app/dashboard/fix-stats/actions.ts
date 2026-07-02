@@ -1,15 +1,21 @@
 "use server";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { fetchAllRows } from "@/app/lib/refreshPlayerStats";
 import { revalidatePath } from "next/cache";
 
 export async function applySyncFix() {
-  // 1. Aggregate all-time stats from match_player_stats
-  const { data: mpsRows, error: mpsErr } = await supabaseAdmin
-    .from("match_player_stats")
-    .select("player_id, goals, assists, yellow_cards, red_cards, blue_cards");
-
-  if (mpsErr) throw new Error(`Failed to read match_player_stats: ${mpsErr.message}`);
+  // 1. Aggregate all-time stats from match_player_stats.
+  //    Paginated: a plain .select() is capped at ~1000 rows by PostgREST and
+  //    would silently write truncated (undercounted) totals.
+  const mpsRows = await fetchAllRows<{
+    player_id: number;
+    goals: number | null;
+    assists: number | null;
+    yellow_cards: number | null;
+    red_cards: number | null;
+    blue_cards: number | null;
+  }>("match_player_stats", "player_id, goals, assists, yellow_cards, red_cards, blue_cards");
 
   const totals = new Map<
     number,
@@ -22,7 +28,7 @@ export async function applySyncFix() {
     }
   >();
 
-  for (const r of mpsRows ?? []) {
+  for (const r of mpsRows) {
     if (!totals.has(r.player_id)) {
       totals.set(r.player_id, {
         total_goals: 0,

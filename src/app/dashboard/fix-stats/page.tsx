@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { fetchAllRows } from "@/app/lib/refreshPlayerStats";
 import StatsTable from "./StatsTable";
 
 export const dynamic = "force-dynamic";
@@ -37,20 +38,22 @@ export type Stats = {
 };
 
 export default async function FixStatsPage() {
-  // 1. Current player_statistics
-  const { data: currentRows } = await supabaseAdmin
-    .from("player_statistics")
-    .select("player_id, total_goals, total_assists, yellow_cards, red_cards, blue_cards");
+  // 1. Current player_statistics (paginated — PostgREST caps plain selects at ~1000 rows)
+  const currentRows = await fetchAllRows<Stats & { player_id: number }>(
+    "player_statistics",
+    "player_id, total_goals, total_assists, yellow_cards, red_cards, blue_cards",
+    "player_id",
+  );
 
   const current = new Map<number, Stats & { player_id: number }>();
-  for (const r of (currentRows ?? []) as (Stats & { player_id: number })[]) {
+  for (const r of currentRows) {
     current.set(r.player_id, r);
   }
 
-  // 2. Match-level data with match info (joined)
-  const { data: mpsRows } = await supabaseAdmin
-    .from("match_player_stats")
-    .select(`
+  // 2. Match-level data with match info (joined, paginated)
+  const mpsRows = await fetchAllRows<any>(
+    "match_player_stats",
+    `
       player_id,
       match_id,
       goals,
@@ -68,13 +71,14 @@ export default async function FixStatsPage() {
         team_a:teams!matches_team_a_id_fkey(name),
         team_b:teams!matches_team_b_id_fkey(name)
       )
-    `);
+    `,
+  );
 
   // 3. Aggregate + collect per-player match details
   const recalc = new Map<number, Stats>();
   const matchDetails = new Map<number, MatchDetail[]>();
 
-  for (const r of (mpsRows ?? []) as any[]) {
+  for (const r of mpsRows as any[]) {
     const pid: number = r.player_id;
 
     // Aggregate totals
