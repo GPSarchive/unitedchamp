@@ -421,6 +421,16 @@ export default function InlineMatchPlanner({
   // the admin to pick which group the new match belongs to (avoids orphaning).
   const [pendingAddGroup, setPendingAddGroup] = useState(false);
 
+  // Dismiss the group picker on Escape (proper dialog behaviour).
+  useEffect(() => {
+    if (!pendingAddGroup) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPendingAddGroup(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingAddGroup]);
+
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
     const q2 = teamQuery2.trim().toLowerCase();
@@ -812,44 +822,62 @@ export default function InlineMatchPlanner({
           >
             Regenerate stage
           </button>
-          <div className="relative">
-            <button
-              className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-              onClick={() => addRow()}
-            >
-              + Add match
-            </button>
-            {pendingAddGroup && (
-              <div className="absolute right-0 z-20 mt-1 w-56 rounded-md border border-white/15 bg-slate-950 p-2 shadow-lg">
-                <div className="mb-1.5 text-xs text-white/70">
-                  Add match to which group?
-                </div>
-                <div className="flex flex-col gap-1">
-                  {storeGroups.map((g) => (
-                    <button
-                      key={g.idx}
-                      className="rounded border border-white/15 px-2 py-1 text-left text-xs text-white hover:bg-white/10"
-                      onClick={() => {
-                        setPendingAddGroup(false);
-                        setGroupIdx(g.idx);
-                        addRow(g.idx);
-                      }}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                  <button
-                    className="mt-1 rounded px-2 py-1 text-left text-xs text-white/50 hover:bg-white/5"
-                    onClick={() => setPendingAddGroup(false)}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
+            onClick={() => addRow()}
+          >
+            + Add match
+          </button>
         </div>
       </header>
+
+      {/* Group picker — bottom sheet on mobile, centered modal on desktop.
+          Rendered at section level (not anchored to the button) so it never
+          clips off-screen when the header controls wrap on narrow viewports. */}
+      {pendingAddGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add match to which group"
+        >
+          {/* backdrop — tap outside to dismiss */}
+          <button
+            type="button"
+            aria-label="Cancel"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPendingAddGroup(false)}
+          />
+          <div
+            className="relative w-full rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-80 sm:rounded-2xl sm:p-5"
+          >
+            <div className="mb-3 text-sm font-medium text-white/90">
+              Add match to which group?
+            </div>
+            <div className="flex flex-col gap-2">
+              {storeGroups.map((g) => (
+                <button
+                  key={g.idx}
+                  className="min-h-[48px] w-full rounded-lg border border-white/15 px-4 text-left text-sm text-white hover:bg-white/10 active:bg-white/15"
+                  onClick={() => {
+                    setPendingAddGroup(false);
+                    setGroupIdx(g.idx);
+                    addRow(g.idx);
+                  }}
+                >
+                  {g.name}
+                </button>
+              ))}
+              <button
+                className="mt-1 min-h-[44px] w-full rounded-lg px-4 text-sm text-white/60 hover:bg-white/5"
+                onClick={() => setPendingAddGroup(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
