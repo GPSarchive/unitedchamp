@@ -458,6 +458,43 @@ if (body.matches?.deleteIds?.length) {
 if (body.matches?.upsert?.length) {
   const rows = body.matches.upsert.map(m => ({ ...m, tournament_id: tournamentId }));
 
+  // Guard: a match in a GROUPS stage must carry a group_id. A null here means the
+  // client failed to assign the match to a group (e.g. added from the "All groups"
+  // view), which silently orphans it — the standings recompute buckets by
+  // (group_id ?? 0) and it never counts toward its group. league/knockout stages
+  // legitimately have null group_id, so this only applies to kind === 'groups'.
+  {
+    const stageIds = Array.from(
+      new Set(rows.map(r => r.stage_id).filter((x): x is number => x != null))
+    );
+    if (stageIds.length) {
+      const { data: stageKinds, error: kindErr } = await supabaseAdmin
+        .from("tournament_stages")
+        .select("id, kind")
+        .in("id", stageIds);
+      if (kindErr) return NextResponse.json({ error: kindErr.message }, { status: 500 });
+
+      const kindByStage = new Map((stageKinds ?? []).map(s => [s.id, s.kind]));
+      const orphaned = rows.filter(
+        r => kindByStage.get(r.stage_id) === "groups" && r.group_id == null
+      );
+      if (orphaned.length) {
+        return NextResponse.json(
+          {
+            error:
+              "A match in a groups stage is missing its group. Assign every group " +
+              "match to a group before saving (select a specific όμιλος rather than " +
+              "the “All groups” view when adding matches).",
+            entity: "matches",
+            stage_ids: Array.from(new Set(orphaned.map(r => r.stage_id))),
+            count: orphaned.length,
+          },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   // Split by type based on is_ko column
   const koRowsAll = rows.filter(r => r.is_ko);  // KO matches where is_ko = true
   const lgRowsAll = rows.filter(r => !r.is_ko); // Non-KO matches where is_ko = false

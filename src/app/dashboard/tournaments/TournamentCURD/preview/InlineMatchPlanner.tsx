@@ -417,6 +417,9 @@ export default function InlineMatchPlanner({
   const [teamQuery1, setTeamQuery1] = useState("");
   const [teamQuery2, setTeamQuery2] = useState("");
   const [editingMatch, setEditingMatch] = useState<DraftMatch | null>(null);
+  // When adding a match from the "All groups" view of a groups stage, we prompt
+  // the admin to pick which group the new match belongs to (avoids orphaning).
+  const [pendingAddGroup, setPendingAddGroup] = useState(false);
 
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
@@ -592,7 +595,31 @@ export default function InlineMatchPlanner({
     });
   };
 
-  const addRow = () => {
+  // When adding a match in a groups stage, a concrete group MUST be chosen —
+  // otherwise the row is created with groupIdx=null and gets silently orphaned
+  // (never counts toward any group's standings). If the planner is on the
+  // "All groups" view, prompt the admin to pick a group first instead of
+  // creating an ambiguous, un-assignable match.
+  const addRow = (forcedGroupIdx?: number) => {
+    if (isGroups && storeGroups.length > 0) {
+      const chosen =
+        forcedGroupIdx != null
+          ? forcedGroupIdx
+          : useAllGroups
+          ? null
+          : groupIdx;
+      if (chosen == null || chosen < 0) {
+        // Ask which group this match belongs to before creating it.
+        setPendingAddGroup(true);
+        return;
+      }
+      addRowForGroup(chosen);
+      return;
+    }
+    addRowForGroup(null);
+  };
+
+  const addRowForGroup = (forcedGroupIdx: number | null) => {
     if (isKO) {
       const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
       const round = 1;
@@ -603,7 +630,11 @@ export default function InlineMatchPlanner({
       ensureRowExists(effectiveStageIdx, round, nextPos);
       reindexKOPointers(effectiveStageIdx);
     } else {
-      const effectiveGroup = isGroups && !useAllGroups ? (groupIdx ?? 0) : null;
+      // A groups stage always resolves to a concrete group here (the addRow guard
+      // guarantees forcedGroupIdx is set for groups stages); league/KO stays null.
+      const effectiveGroup = isGroups
+        ? forcedGroupIdx ?? (useAllGroups ? null : groupIdx ?? 0)
+        : null;
       const teamIds =
         effectiveGroup !== null
           ? listGroupTeamIds(effectiveStageIdx, effectiveGroup)
@@ -781,12 +812,42 @@ export default function InlineMatchPlanner({
           >
             Regenerate stage
           </button>
-          <button
-            className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
-            onClick={addRow}
-          >
-            + Add match
-          </button>
+          <div className="relative">
+            <button
+              className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
+              onClick={() => addRow()}
+            >
+              + Add match
+            </button>
+            {pendingAddGroup && (
+              <div className="absolute right-0 z-20 mt-1 w-56 rounded-md border border-white/15 bg-slate-950 p-2 shadow-lg">
+                <div className="mb-1.5 text-xs text-white/70">
+                  Add match to which group?
+                </div>
+                <div className="flex flex-col gap-1">
+                  {storeGroups.map((g) => (
+                    <button
+                      key={g.idx}
+                      className="rounded border border-white/15 px-2 py-1 text-left text-xs text-white hover:bg-white/10"
+                      onClick={() => {
+                        setPendingAddGroup(false);
+                        setGroupIdx(g.idx);
+                        addRow(g.idx);
+                      }}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                  <button
+                    className="mt-1 rounded px-2 py-1 text-left text-xs text-white/50 hover:bg-white/5"
+                    onClick={() => setPendingAddGroup(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

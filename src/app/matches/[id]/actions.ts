@@ -297,6 +297,49 @@ export async function saveAllStatsAction(formData: FormData) {
     throw new Error(`Validation error: A player cannot participate for both teams in the same match. ${errors}`);
   }
 
+  // -----------------------
+  // Guard against silent stat loss (must run BEFORE any DB write)
+  // -----------------------
+  // A row carries real data if any tracked stat is non-zero or any descriptive
+  // field is set. Empty rows (all zeros, no position/number/role) are safe to
+  // drop silently — that's the normal "remove player" path.
+  const hasMeaningfulStats = (r: Row): boolean =>
+    (Number(r.goals) || 0) > 0 ||
+    (Number(r.assists) || 0) > 0 ||
+    (Number(r.own_goals) || 0) > 0 ||
+    (Number(r.yellow_cards) || 0) > 0 ||
+    (Number(r.red_cards) || 0) > 0 ||
+    (Number(r.blue_cards) || 0) > 0 ||
+    !!r.is_captain ||
+    !!r.gk ||
+    (r.position != null && String(r.position).trim() !== '') ||
+    (r.player_number != null);
+
+  // A player with stats entered but NOT marked "played" (and not explicitly
+  // cleared) would otherwise be routed to delete and lost, while the action
+  // still reports success. Reject up front — before participation or stats are
+  // written — so the admin either ticks Συμμετοχή or clears the stats
+  // deliberately, and we never leave a half-saved match.
+  const participatedKeysForGuard = new Set<string>(
+    toUpsertParticipants.map((r) => `${r.team_id}:${r.player_id}`)
+  );
+  const orphanedStats = [...statsRows.values()].filter(
+    (r) =>
+      !(r as any)._delete &&
+      !participatedKeysForGuard.has(`${r.team_id}:${r.player_id}`) &&
+      hasMeaningfulStats(r)
+  );
+  if (orphanedStats.length > 0) {
+    const who = orphanedStats
+      .map((r) => `player ${r.player_id} (team ${r.team_id})`)
+      .join(', ');
+    throw new Error(
+      `Δεν αποθηκεύτηκαν στατιστικά: οι παρακάτω παίκτες έχουν στατιστικά αλλά ` +
+        `δεν έχουν επισημανθεί ως «Συμμετοχή». Ενεργοποίησε τη Συμμετοχή τους ή ` +
+        `μηδένισε τα στατιστικά και αποθήκευσε ξανά. (${who})`
+    );
+  }
+
   if (toUpsertParticipants.length) {
     // Strip UI-only 'played' before upsert
     const clean = toUpsertParticipants.map(({ played, ...r }) => r);
@@ -316,20 +359,19 @@ export async function saveAllStatsAction(formData: FormData) {
   }
 
   // -----------------------
-  // Guard stats by participation (NO awards applied here - will use RPC)
+  // Route stats by participation (NO awards applied here - will use RPC)
   // -----------------------
-  // ✅ FIXED: Track (team_id, player_id) pairs instead of just player_id
-  // This prevents stats from being saved for a player on Team B when they only played for Team A
-  const participatedKeys = new Set<string>(
-    toUpsertParticipants.map((r) => `${r.team_id}:${r.player_id}`)
-  );
+  // Tracks (team_id, player_id) pairs (computed above as participatedKeysForGuard)
+  // so a player on Team B isn't saved when they only played for Team A. Rows that
+  // aren't participants here are all-empty (meaningful-stat orphans were already
+  // rejected up front), so routing them to delete is a safe clear.
   const statUpserts: Row[] = [];
   const statDeletes: number[] = [];
 
   for (const r of statsRows.values()) {
     const markedDelete = (r as any)._delete;
     const participantKey = `${r.team_id}:${r.player_id}`;
-    const isParticipant = participatedKeys.has(participantKey);
+    const isParticipant = participatedKeysForGuard.has(participantKey);
 
     if (markedDelete || !isParticipant) {
       statDeletes.push(r.player_id);
