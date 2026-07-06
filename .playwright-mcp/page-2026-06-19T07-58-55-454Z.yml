@@ -1,0 +1,408 @@
+- generic [active] [ref=e1]:
+  - banner "Site header" [ref=e2]:
+    - navigation "Main" [ref=e3]:
+      - generic:
+        - img
+      - generic [ref=e4]:
+        - button "Μενού" [ref=e5]:
+          - generic [ref=e10]: Μενού
+        - link "Ultra Champ Ultra Champ Mini Football Organization" [ref=e11] [cursor=pointer]:
+          - /url: /home
+          - img "Ultra Champ" [ref=e12]
+          - generic [ref=e13]:
+            - generic [ref=e14]: Ultra Champ
+            - generic [ref=e15]: Mini Football Organization
+      - link "Σύνδεση" [ref=e18] [cursor=pointer]:
+        - /url: /login?next=%2Ftournaments%2F48
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - generic:
+        - img
+        - img
+      - generic [ref=e21]:
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]: Ενημέρωση N°48
+            - generic [ref=e26]: /
+            - generic [ref=e27]: Σεζόν —
+          - generic [ref=e28]:
+            - generic [ref=e29]: ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΟ
+            - generic [ref=e30]: ·
+            - generic [ref=e31]: MIXED
+        - generic [ref=e32]:
+          - generic:
+            - generic: test
+          - generic [ref=e33]:
+            - navigation [ref=e34]:
+              - link "Αρχική" [ref=e35] [cursor=pointer]:
+                - /url: /
+              - generic [ref=e36]: /
+              - link "Διοργανώσεις" [ref=e37] [cursor=pointer]:
+                - /url: /tournaments
+              - generic [ref=e38]: /
+              - generic [ref=e39]: test
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e43]: mixed
+                - heading "test" [level=1] [ref=e44]:
+                  - generic [ref=e45]: test
+                - paragraph [ref=e48]:
+                  - text: Πλήρες χρονικό αγώνων, βαθμολογιών, τιμών και ηρώων — κάθε πάσα, κάθε γκολ, κάθε κρίσιμη στιγμή του
+                  - generic [ref=e49]: test
+                  - text: .
+              - complementary [ref=e50]:
+                - generic [ref=e51]:
+                  - generic [ref=e52]:
+                    - generic [ref=e53]: "04"
+                    - generic [ref=e54]: Ομάδες
+                  - generic [ref=e55]:
+                    - generic [ref=e56]: "01"
+                    - generic [ref=e57]: Φάσεις
+                  - generic [ref=e58]:
+                    - generic [ref=e59]: "06"
+                    - generic [ref=e60]: Αγώνες
+        - generic [ref=e62]:
+          - generic [ref=e65]:
+            - generic [ref=e66]: / 01 · Ομάδες
+            - generic [ref=e67]: "0"
+          - generic [ref=e70]:
+            - generic [ref=e71]: / 02 · Φάσεις
+            - generic [ref=e72]: "0"
+            - generic [ref=e73]: Stage 1
+          - generic [ref=e76]:
+            - generic [ref=e77]: / 03 · Αγώνες
+            - generic [ref=e78]: "0"
+            - generic [ref=e79]: από 6 προγραμματισμένους
+          - generic [ref=e82]:
+            - generic [ref=e83]: / 04 · Γκολ
+            - generic [ref=e84]: "0"
+            - generic [ref=e85]: Μ.Ο. 0.00/αγώνα
+        - generic [ref=e87]:
+          - generic [ref=e88]: ▲ Επόμενοι
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - generic [ref=e92]: ·
+              - generic [ref=e93]: ZZZ Dummy Team E
+              - generic [ref=e94]: VS
+              - generic [ref=e95]: ZZZ Dummy Team H
+              - generic [ref=e96]: ◆
+            - generic [ref=e97]:
+              - generic [ref=e98]: ·
+              - generic [ref=e99]: ZZZ Dummy Team F
+              - generic [ref=e100]: VS
+              - generic [ref=e101]: ZZZ Dummy Team G
+              - generic [ref=e102]: ◆
+            - generic [ref=e103]:
+              - generic [ref=e104]: ·
+              - generic [ref=e105]: ZZZ Dummy Team H
+              - generic [ref=e106]: VS
+              - generic [ref=e107]: ZZZ Dummy Team E
+              - generic [ref=e108]: ◆
+            - generic [ref=e109]:
+              - generic [ref=e110]: ·
+              - generic [ref=e111]: ZZZ Dummy Team G
+              - generic [ref=e112]: VS
+              - generic [ref=e113]: ZZZ Dummy Team F
+              - generic [ref=e114]: ◆
+            - generic [ref=e115]:
+              - generic [ref=e116]: ·
+              - generic [ref=e117]: ΤΒΑ
+              - generic [ref=e118]: VS
+              - generic [ref=e119]: ΤΒΑ
+              - generic [ref=e120]: ◆
+            - generic [ref=e121]:
+              - generic [ref=e122]: ·
+              - generic [ref=e123]: ΤΒΑ
+              - generic [ref=e124]: VS
+              - generic [ref=e125]: ΤΒΑ
+              - generic [ref=e126]: ◆
+            - generic [ref=e127]:
+              - generic [ref=e128]: ·
+              - generic [ref=e129]: ZZZ Dummy Team E
+              - generic [ref=e130]: VS
+              - generic [ref=e131]: ZZZ Dummy Team H
+              - generic [ref=e132]: ◆
+            - generic [ref=e133]:
+              - generic [ref=e134]: ·
+              - generic [ref=e135]: ZZZ Dummy Team F
+              - generic [ref=e136]: VS
+              - generic [ref=e137]: ZZZ Dummy Team G
+              - generic [ref=e138]: ◆
+            - generic [ref=e139]:
+              - generic [ref=e140]: ·
+              - generic [ref=e141]: ZZZ Dummy Team H
+              - generic [ref=e142]: VS
+              - generic [ref=e143]: ZZZ Dummy Team E
+              - generic [ref=e144]: ◆
+            - generic [ref=e145]:
+              - generic [ref=e146]: ·
+              - generic [ref=e147]: ZZZ Dummy Team G
+              - generic [ref=e148]: VS
+              - generic [ref=e149]: ZZZ Dummy Team F
+              - generic [ref=e150]: ◆
+            - generic [ref=e151]:
+              - generic [ref=e152]: ·
+              - generic [ref=e153]: ΤΒΑ
+              - generic [ref=e154]: VS
+              - generic [ref=e155]: ΤΒΑ
+              - generic [ref=e156]: ◆
+            - generic [ref=e157]:
+              - generic [ref=e158]: ·
+              - generic [ref=e159]: ΤΒΑ
+              - generic [ref=e160]: VS
+              - generic [ref=e161]: ΤΒΑ
+              - generic [ref=e162]: ◆
+        - generic [ref=e164]:
+          - generic [ref=e165]:
+            - generic [ref=e166]: Ιστορικό
+            - generic [ref=e168]:
+              - heading "Φάσεις & Αγώνες" [level=2] [ref=e169]
+              - generic [ref=e170]: 1 κεφάλαια
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - generic [ref=e174]: "01"
+              - generic [ref=e175]:
+                - paragraph [ref=e176]: 1 · Νοκ Άουτ
+                - heading "Stage 1" [level=3] [ref=e177]
+              - generic [ref=e178]:
+                - button "Δέντρο" [ref=e179]
+                - button "Αποτελέσματα (0)" [ref=e180]
+                - button "Πρόγραμμα (6)" [ref=e181]
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - generic [ref=e187]: ★ Δέντρο Νοκ Άουτ
+                - generic [ref=e188]:
+                  - generic [ref=e189]: 6 αγώνες · 2 γύροι
+                  - generic [ref=e190]:
+                    - button "Σμίκρυνση" [ref=e191]: −
+                    - generic [ref=e192]: 78%
+                    - button "Μεγέθυνση" [ref=e193]: +
+                    - button "Προσαρμογή" [ref=e194]: Fit
+              - generic [ref=e197]:
+                - generic [ref=e201]: Ημιτελικά
+                - generic [ref=e204]:
+                  - generic [ref=e206]: Τελικός
+                  - generic [ref=e207]: ★
+              - generic [ref=e211]:
+                - img
+                - generic [ref=e213]: ΔΙΠΛΟΣ ΑΓΩΝΑΣ
+                - generic [ref=e215]: ΔΙΠΛΟΣ ΑΓΩΝΑΣ
+                - generic [ref=e217]: ΔΙΠΛΟΣ ΑΓΩΝΑΣ
+                - generic [ref=e219]:
+                  - generic [ref=e220]:
+                    - generic [ref=e221]: 1ος ΑΓΩΝΑΣ
+                    - generic [ref=e222]: ΤΒΑ
+                  - generic [ref=e223]:
+                    - generic [ref=e224]:
+                      - generic [ref=e225]: ZZZ Dummy Team E
+                      - generic [ref=e226]: —
+                    - generic [ref=e228]:
+                      - generic [ref=e229]: ZZZ Dummy Team H
+                      - generic [ref=e230]: —
+                  - generic [ref=e232]: 1ος ΑΓΩΝΑΣ
+                - generic [ref=e234]:
+                  - generic [ref=e235]:
+                    - generic [ref=e236]: 2ος ΑΓΩΝΑΣ
+                    - generic [ref=e237]: ΤΒΑ
+                  - generic [ref=e238]:
+                    - generic [ref=e239]:
+                      - generic [ref=e240]: ZZZ Dummy Team H
+                      - generic [ref=e241]: —
+                    - generic [ref=e243]:
+                      - generic [ref=e244]: ZZZ Dummy Team E
+                      - generic [ref=e245]: —
+                  - generic [ref=e247]: ΚΡΙΣΙΜΟΣ
+                - generic [ref=e249]:
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: 1ος ΑΓΩΝΑΣ
+                    - generic [ref=e252]: ΤΒΑ
+                  - generic [ref=e253]:
+                    - generic [ref=e254]:
+                      - generic [ref=e255]: ZZZ Dummy Team F
+                      - generic [ref=e256]: —
+                    - generic [ref=e258]:
+                      - generic [ref=e259]: ZZZ Dummy Team G
+                      - generic [ref=e260]: —
+                  - generic [ref=e262]: 1ος ΑΓΩΝΑΣ
+                - generic [ref=e264]:
+                  - generic [ref=e265]:
+                    - generic [ref=e266]: 2ος ΑΓΩΝΑΣ
+                    - generic [ref=e267]: ΤΒΑ
+                  - generic [ref=e268]:
+                    - generic [ref=e269]:
+                      - generic [ref=e270]: ZZZ Dummy Team G
+                      - generic [ref=e271]: —
+                    - generic [ref=e273]:
+                      - generic [ref=e274]: ZZZ Dummy Team F
+                      - generic [ref=e275]: —
+                  - generic [ref=e277]: ΚΡΙΣΙΜΟΣ
+                - generic [ref=e279]:
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: 1ος ΑΓΩΝΑΣ
+                    - generic [ref=e282]: ΤΒΑ
+                  - generic [ref=e283]:
+                    - generic [ref=e284]:
+                      - generic [ref=e286]: "?"
+                      - generic [ref=e287]: ΤΒΑ
+                      - generic [ref=e288]: —
+                    - generic [ref=e290]:
+                      - generic [ref=e292]: "?"
+                      - generic [ref=e293]: ΤΒΑ
+                      - generic [ref=e294]: —
+                  - generic [ref=e296]: 1ος ΑΓΩΝΑΣ
+                - generic [ref=e298]:
+                  - generic [ref=e299]:
+                    - generic [ref=e300]: 2ος ΑΓΩΝΑΣ
+                    - generic [ref=e301]: ΤΒΑ
+                  - generic [ref=e302]:
+                    - generic [ref=e303]:
+                      - generic [ref=e305]: "?"
+                      - generic [ref=e306]: ΤΒΑ
+                      - generic [ref=e307]: —
+                    - generic [ref=e309]:
+                      - generic [ref=e311]: "?"
+                      - generic [ref=e312]: ΤΒΑ
+                      - generic [ref=e313]: —
+                  - generic [ref=e315]: ΚΡΙΣΙΜΟΣ
+              - generic [ref=e316]:
+                - generic [ref=e317]: Σύρετε για περιήγηση · Ctrl + scroll για ζουμ
+                - generic [ref=e318]:
+                  - generic [ref=e319]: προχώρησε
+                  - generic [ref=e321]: εκκρεμεί
+        - generic [ref=e324]:
+          - generic [ref=e325]:
+            - generic [ref=e326]: Ρόστερ
+            - generic [ref=e328]:
+              - heading "Οι Ομάδες" [level=2] [ref=e329]
+              - generic [ref=e330]: 4 ομάδες
+          - generic [ref=e331]:
+            - generic [ref=e332]:
+              - generic [ref=e334]:
+                - img "ZZZ Dummy Team E" [ref=e335]
+                - generic [ref=e336]:
+                  - paragraph [ref=e337]: ZZZ Dummy Team E
+                  - paragraph [ref=e338]: 0Ν · 0Ι · 0Η
+                - generic [ref=e339]:
+                  - generic [ref=e340]: "0"
+                  - generic [ref=e341]: ΒΑΘ
+              - generic [ref=e342]:
+                - generic [ref=e343]:
+                  - generic [ref=e344]: "0"
+                  - generic [ref=e345]: Υπέρ
+                - generic [ref=e346]:
+                  - generic [ref=e347]: "0"
+                  - generic [ref=e348]: Κατά
+                - generic [ref=e349]:
+                  - generic [ref=e350]: "0"
+                  - generic [ref=e351]: Διαφορά
+                - generic [ref=e352]:
+                  - generic [ref=e353]: "0"
+                  - generic [ref=e354]: Αγώνες
+            - generic [ref=e355]:
+              - generic [ref=e357]:
+                - img "ZZZ Dummy Team F" [ref=e358]
+                - generic [ref=e359]:
+                  - paragraph [ref=e360]: ZZZ Dummy Team F
+                  - paragraph [ref=e361]: 0Ν · 0Ι · 0Η
+                - generic [ref=e362]:
+                  - generic [ref=e363]: "0"
+                  - generic [ref=e364]: ΒΑΘ
+              - generic [ref=e365]:
+                - generic [ref=e366]:
+                  - generic [ref=e367]: "0"
+                  - generic [ref=e368]: Υπέρ
+                - generic [ref=e369]:
+                  - generic [ref=e370]: "0"
+                  - generic [ref=e371]: Κατά
+                - generic [ref=e372]:
+                  - generic [ref=e373]: "0"
+                  - generic [ref=e374]: Διαφορά
+                - generic [ref=e375]:
+                  - generic [ref=e376]: "0"
+                  - generic [ref=e377]: Αγώνες
+            - generic [ref=e378]:
+              - generic [ref=e380]:
+                - img "ZZZ Dummy Team G" [ref=e381]
+                - generic [ref=e382]:
+                  - paragraph [ref=e383]: ZZZ Dummy Team G
+                  - paragraph [ref=e384]: 0Ν · 0Ι · 0Η
+                - generic [ref=e385]:
+                  - generic [ref=e386]: "0"
+                  - generic [ref=e387]: ΒΑΘ
+              - generic [ref=e388]:
+                - generic [ref=e389]:
+                  - generic [ref=e390]: "0"
+                  - generic [ref=e391]: Υπέρ
+                - generic [ref=e392]:
+                  - generic [ref=e393]: "0"
+                  - generic [ref=e394]: Κατά
+                - generic [ref=e395]:
+                  - generic [ref=e396]: "0"
+                  - generic [ref=e397]: Διαφορά
+                - generic [ref=e398]:
+                  - generic [ref=e399]: "0"
+                  - generic [ref=e400]: Αγώνες
+            - generic [ref=e401]:
+              - generic [ref=e403]:
+                - img "ZZZ Dummy Team H" [ref=e404]
+                - generic [ref=e405]:
+                  - paragraph [ref=e406]: ZZZ Dummy Team H
+                  - paragraph [ref=e407]: 0Ν · 0Ι · 0Η
+                - generic [ref=e408]:
+                  - generic [ref=e409]: "0"
+                  - generic [ref=e410]: ΒΑΘ
+              - generic [ref=e411]:
+                - generic [ref=e412]:
+                  - generic [ref=e413]: "0"
+                  - generic [ref=e414]: Υπέρ
+                - generic [ref=e415]:
+                  - generic [ref=e416]: "0"
+                  - generic [ref=e417]: Κατά
+                - generic [ref=e418]:
+                  - generic [ref=e419]: "0"
+                  - generic [ref=e420]: Διαφορά
+                - generic [ref=e421]:
+                  - generic [ref=e422]: "0"
+                  - generic [ref=e423]: Αγώνες
+        - generic [ref=e425]:
+          - generic [ref=e426]:
+            - heading "test" [level=3] [ref=e427]
+            - paragraph [ref=e428]: Από τις γραμμές του γηπέδου. Όλοι οι αγώνες, βαθμολογίες και βραβεύσεις αντικατοπτρίζουν την τρέχουσα κατάσταση.
+          - generic [ref=e429]:
+            - generic [ref=e430]: Εκδ. 48 · Σεζόν —
+            - generic [ref=e431]: Μορφή · mixed
+            - link "← Όλες οι Διοργανώσεις" [ref=e432] [cursor=pointer]:
+              - /url: /tournaments
+  - contentinfo [ref=e433]:
+    - generic [ref=e434]:
+      - paragraph [ref=e435]: © 2025 Ultra Champ.
+      - navigation "Legal" [ref=e436]:
+        - link "Πολιτική Απορρήτου" [ref=e437] [cursor=pointer]:
+          - /url: /privacy
+        - link "Όροι Χρήσης" [ref=e438] [cursor=pointer]:
+          - /url: /terms
+        - link "Cookies" [ref=e439] [cursor=pointer]:
+          - /url: /cookies
+        - link "Επικοινωνία" [ref=e440] [cursor=pointer]:
+          - /url: /epikoinonia
+        - button "Ρυθμίσεις Cookies" [ref=e441]
+      - generic [ref=e442]:
+        - text: Κατασκευή ιστοσελίδας από
+        - link "Digital Footprint" [ref=e443] [cursor=pointer]:
+          - /url: https://www.digitalfootprint.gr
+  - alert [ref=e444]
+  - dialog "Ρυθμίσεις Cookies" [ref=e445]:
+    - generic [ref=e446]:
+      - heading "Χρήση Cookies" [level=2] [ref=e447]
+      - paragraph [ref=e448]:
+        - text: Χρησιμοποιούμε απαραίτητα cookies για τη λειτουργία της πλατφόρμας και, με τη συγκατάθεσή σας, αναλυτικά cookies (Vercel Analytics) και ενσωματώσεις YouTube. Περισσότερα στην
+        - link "Πολιτική Απορρήτου" [ref=e449] [cursor=pointer]:
+          - /url: /privacy
+        - text: και στη σελίδα
+        - link "Cookies" [ref=e450] [cursor=pointer]:
+          - /url: /cookies
+        - text: .
+      - generic [ref=e451]:
+        - button "Αποδοχή όλων" [ref=e452]
+        - button "Απόρριψη" [ref=e453]
+        - button "Ρυθμίσεις" [ref=e454]

@@ -47,7 +47,7 @@ const selStageIdByIndex    = (s: TournamentState) => (s.ids?.stageIdByIndex ?? {
 const selTournamentTeams   = (s: TournamentState) =>
   (s.entities?.tournamentTeams ?? EMPTY_ARR) as ReadonlyArray<{ team_id: number }>;
 const selDraftMatches      = (s: TournamentState) => s.draftMatches as DraftMatch[];
-const selDbOverlayBySig    = (s: TournamentState) => s.dbOverlayBySig as Record<string, Partial<DbOverlay>>;
+const selDbOverlayByUid    = (s: TournamentState) => s.dbOverlayByUid as Record<string, Partial<DbOverlay>>;
 
 /* ============================
    Utilities
@@ -217,7 +217,7 @@ export default function BracketCanvas({
 
   // Raw slices + local merge (show overlay without a save)
   const draftMatches   = useTournamentStore(selDraftMatches);
-  const dbOverlayBySig = useTournamentStore(selDbOverlayBySig);
+  const dbOverlayByUid = useTournamentStore(selDbOverlayByUid);
 
   // Kind derive
   const isKO = useMemo(() => {
@@ -241,10 +241,10 @@ export default function BracketCanvas({
   // Merge overlay → show status/score/db_id without needing a save
   const rows = useMemo<MergedMatch[]>(() => {
     return baseRows.map((r) => {
-      const ov = dbOverlayBySig[rowSignature(r)] as DbOverlay | undefined;
+      const ov = (r.uid ? dbOverlayByUid[r.uid] : undefined) as DbOverlay | undefined;
       return ov ? ({ ...r, ...ov } as MergedMatch) : (r as MergedMatch);
     });
-  }, [baseRows, dbOverlayBySig]);
+  }, [baseRows, dbOverlayByUid]);
 
   // Participants (ids only)
   const participantIds = useMemo(() => {

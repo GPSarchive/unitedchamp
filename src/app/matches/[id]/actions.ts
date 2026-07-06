@@ -552,155 +552,21 @@ export async function saveAllStatsAction(formData: FormData) {
     .eq('id', match_id);
   if (upErr) throw upErr;
 
-  // Always run progression (handles KO and non-KO stages appropriately)
-  // For non-KO rounds (groups/league), ties need progression to update standings
-  // For KO rounds, progression logic internally handles ties (no winner to propagate)
-  progressAfterMatch(match_id).catch(console.error);
+  // Always run progression (handles KO and non-KO stages appropriately).
+  // Must be AWAITED: on serverless the function instance can be frozen as soon
+  // as the redirect response is sent, so a fire-and-forget cascade may simply
+  // never run. Failures are logged, not surfaced — the stats save itself
+  // succeeded, and re-finishing the match (or the reseed endpoint) re-runs the
+  // cascade, which is idempotent.
+  try {
+    await progressAfterMatch(match_id);
+  } catch (err) {
+    console.error('[saveAllStatsAction] progression failed for match', match_id, err);
+  }
 
   // Refresh page and show success flag
   revalidatePath(`/matches/${match_id}`);
   redirect(`/matches/${match_id}?saved=1`);
-}
-
-/** -------------------------------
- *  Helpers for result actions (kept for compatibility)
- *  ------------------------------- */
-async function fetchMatchTeams(
-  supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
-  matchId: number
-) {
-  const { data, error } = await supabase
-    .from('matches')
-    .select('id, team_a_id, team_b_id')
-    .eq('id', matchId)
-    .single();
-  if (error || !data) throw new Error('Match not found');
-  return { teamA: Number(data.team_a_id), teamB: Number(data.team_b_id) };
-}
-
-/** ✅ UPDATED: Compute goals with own goals logic */
-async function computeGoalsByTeam(
-  supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
-  matchId: number,
-  teamAId: number,
-  teamBId: number
-): Promise<{ aGoals: number; bGoals: number }> {
-  // ✅ UPDATED: select own_goals too
-  const { data, error } = await supabase
-    .from('match_player_stats')
-    .select('team_id, goals, own_goals')
-    .eq('match_id', matchId);
-
-  if (error) throw error;
-
-  let aGoals = 0;
-  let bGoals = 0;
-
-  // ✅ UPDATED: Apply own goals logic
-  for (const row of data ?? []) {
-    const tid = Number(row.team_id);
-    const g = Number(row.goals) || 0;
-    const og = Number(row.own_goals) || 0;
-
-    if (tid === teamAId) {
-      aGoals += g;   // Team A's goals
-      bGoals += og;  // Team A's own goals count for Team B
-    } else if (tid === teamBId) {
-      bGoals += g;   // Team B's goals
-      aGoals += og;  // Team B's own goals count for Team A
-    }
-  }
-
-  return { aGoals, bGoals };
-}
-
-/** -------------------------------
- *  Action: Recalc scores from stats (optional)
- *  ------------------------------- */
-export async function recalcScoresFromStatsAction(formData: FormData) {
-  const supabase = await assertAdmin();
-
-  const matchId = Number(formData.get('match_id'));
-  if (!Number.isFinite(matchId)) throw new Error('Bad match id');
-
-  const { teamA, teamB } = await fetchMatchTeams(supabase, matchId);
-  const { aGoals, bGoals } = await computeGoalsByTeam(supabase, matchId, teamA, teamB);
-
-  const { error } = await supabase
-    .from('matches')
-    .update({
-      team_a_score: aGoals,
-      team_b_score: bGoals,
-      // status/winner unchanged here
-    })
-    .eq('id', matchId);
-
-  if (error) throw error;
-  revalidatePath(`/matches/${matchId}`);
-}
-
-/** -------------------------------------------
- *  Action: Finalize match (compute + set winner) (optional)
- *  ------------------------------------------- */
-export async function finalizeFromStatsAction(formData: FormData) {
-  const supabase = await assertAdmin();
-
-  const matchId = Number(formData.get('match_id'));
-  if (!Number.isFinite(matchId)) throw new Error('Bad match id');
-
-  const { teamA, teamB } = await fetchMatchTeams(supabase, matchId);
-  const { aGoals, bGoals } = await computeGoalsByTeam(supabase, matchId, teamA, teamB);
-
-  const penAraw = formData.get('penalty_a');
-  const penBraw = formData.get('penalty_b');
-  const penA = penAraw == null || penAraw === '' ? null : Number(penAraw);
-  const penB = penBraw == null || penBraw === '' ? null : Number(penBraw);
-
-  const patch = await resolveKoFinishPatch(supabase, {
-    matchId,
-    teamAId: teamA,
-    teamBId: teamB,
-    aGoals,
-    bGoals,
-    penA: penA != null && Number.isFinite(penA) ? penA : null,
-    penB: penB != null && Number.isFinite(penB) ? penB : null,
-  });
-
-  const { error } = await supabase
-    .from('matches')
-    .update({ ...patch, status: 'finished' })
-    .eq('id', matchId);
-
-  if (error) throw error;
-
-  // If you trigger tournament progression here instead of Save All:
-  // await progressAfterMatch(matchId).catch(console.error);
-
-  revalidatePath(`/matches/${matchId}`);
-}
-
-/** --------------------------------
- *  Action: Mark back to 'scheduled'
- *  -------------------------------- */
-export async function markScheduledAction(formData: FormData) {
-  const supabase = await assertAdmin();
-
-  const matchId = Number(formData.get('match_id'));
-  if (!Number.isFinite(matchId)) throw new Error('Bad match id');
-
-  const { error } = await supabase
-    .from('matches')
-    .update({
-      status: 'scheduled',
-      winner_team_id: null,
-      // If you prefer clearing the score, uncomment:
-      // team_a_score: 0,
-      // team_b_score: 0,
-    })
-    .eq('id', matchId);
-
-  if (error) throw error;
-  revalidatePath(`/matches/${matchId}`);
 }
 
 /** --------------------------------

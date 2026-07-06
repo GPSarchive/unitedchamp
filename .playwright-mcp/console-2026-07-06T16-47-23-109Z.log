@@ -1,0 +1,557 @@
+[    3793ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[    4224ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[    4350ms] [ERROR] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/geniki-ka..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="unitedcham...">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="el" className="roboto_con..." suppressHydrationWarning={true} style={{...}}>
+                          <head>
+                            <style
++                             nonce="2wTI1H13mO1JWnE5wqc+OQ=="
+-                             nonce=""
+                            >
++                             :root { --brand-h: 220 }
+                          ...
+                  ...
+ @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:3272
+[    4684ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-2wTI1H13mO1JWnE5wqc+OQ==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_analytics_dist_next_index_mjs_0-jiqfn._.js:135
+[    4686ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/speed-insights/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-2wTI1H13mO1JWnE5wqc+OQ==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_speed-insights_dist_next_index_mjs_0xgpi97._.js:152
+[    4759ms] [LOG] [Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[    4760ms] [LOG] [Vercel Speed Insights] Failed to load script from https://va.vercel-scripts.com/v1/speed-insights/script.debug.js. Please check if any content blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   13468ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   13501ms] [LOG] [Fast Refresh] done in 133ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   17508ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   17517ms] [LOG] [Fast Refresh] done in 112ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   18402ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   19137ms] [LOG] [Fast Refresh] done in 843ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  117157ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  118678ms] [LOG] [Fast Refresh] done in 1622ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  708390ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  709698ms] [LOG] [Fast Refresh] done in 1413ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  711858ms] [ERROR] Loading the image 'https://www.ultrachamp.gr/api/public/team-logo/brodios/918d934f-fe9b-461b-9e78-8f4ff381fbe9.png' violates the following Content Security Policy directive: "img-src 'self' data: blob: https://vesmywcppylbhjizytca.supabase.co https://images.ultrachamp.gr https://lh3.googleusercontent.com https://avatars.githubusercontent.com". The action has been blocked. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  712055ms] [ERROR] Loading the image 'https://www.ultrachamp.gr/api/public/team-logo/brodios/918d934f-fe9b-461b-9e78-8f4ff381fbe9.png' violates the following Content Security Policy directive: "img-src 'self' data: blob: https://vesmywcppylbhjizytca.supabase.co https://images.ultrachamp.gr https://lh3.googleusercontent.com https://avatars.githubusercontent.com". The action has been blocked. @ http://localhost:3000/OMADA/99:0
+[  712441ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:3000/_next/image?url=https%3A%2F%2Fvesmywcppylbhjizytca.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2FGPSarchive%27s%2520Project%2Fplayer-placeholder.jpg&w=640&q=75:0
+[  712744ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:3000/_next/image?url=https%3A%2F%2Fvesmywcppylbhjizytca.supabase.co%2Fstorage%2Fv1%2Fobject%2Fpublic%2FGPSarchive%27s%2520Project%2Fplayer-placeholder.jpg&w=640&q=75:0
+[  735680ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  735766ms] [LOG] [Fast Refresh] done in 186ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  891511ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  892798ms] [LOG] [Fast Refresh] done in 1390ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  892917ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  892925ms] [LOG] [Fast Refresh] done in 109ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  893025ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  894442ms] [LOG] [Fast Refresh] done in 1505ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  894782ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  895273ms] [LOG] [Fast Refresh] done in 597ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  903840ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  905092ms] [LOG] [Fast Refresh] done in 1350ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  905349ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  905634ms] [LOG] [Fast Refresh] done in 387ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  905915ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?156:180:25)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?157:1225:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:150)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[  925700ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  926842ms] [LOG] [Fast Refresh] done in 1254ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  926967ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  927027ms] [LOG] [Fast Refresh] done in 162ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  927136ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  927524ms] [LOG] [Fast Refresh] done in 496ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  927955ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  928078ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  928165ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[  928255ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:232:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1222:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[  928299ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[  931314ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1016762ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1018844ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1019004ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1019091ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1019197ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:232:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1222:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022234ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022235ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1022235ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1044304ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1045384ms] [LOG] [Fast Refresh] done in 1188ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1045656ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1046052ms] [LOG] [Fast Refresh] done in 498ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1046510ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1046619ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1046680ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1046744ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:286:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1276:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049769ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1049770ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1055486ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1056486ms] [LOG] [Fast Refresh] done in 1104ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1057407ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1058373ms] [LOG] [Fast Refresh] done in 1075ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1058636ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1059030ms] [LOG] [Fast Refresh] done in 503ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1059430ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1059513ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1059544ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1059625ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:286:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1276:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1062662ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1072025ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1073057ms] [LOG] [Fast Refresh] done in 1138ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1073316ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1073679ms] [LOG] [Fast Refresh] done in 466ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1074149ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1074212ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1074242ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1074310ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:287:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1277:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1074683ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1075680ms] [LOG] [Fast Refresh] done in 1098ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1075943ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1076253ms] [LOG] [Fast Refresh] done in 426ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1076550ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1076611ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1076645ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1076724ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:288:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1278:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079758ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079759ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079759ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1079759ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1082464ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1083375ms] [LOG] [Fast Refresh] done in 1006ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1083606ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1084016ms] [LOG] [Fast Refresh] done in 511ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1084444ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1084512ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1084541ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1084605ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:298:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1288:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1086057ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1086937ms] [LOG] [Fast Refresh] done in 989ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1087242ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1087634ms] [LOG] [Fast Refresh] done in 503ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1088066ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1088149ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1088182ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1088265ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:308:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1298:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1091293ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1108448ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1109465ms] [LOG] [Fast Refresh] done in 1121ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1109705ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1110011ms] [LOG] [Fast Refresh] done in 408ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1110453ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1110540ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1110614ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1110716ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:360:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1350:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1113755ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1113756ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1128293ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1129217ms] [LOG] [Fast Refresh] done in 1025ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1129513ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1129885ms] [LOG] [Fast Refresh] done in 472ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1130324ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1130432ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1130489ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1130568ms] ReferenceError: tStages is not defined
+    at computeGeneralStandings (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?0:360:30)
+    at  GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0w90d5x._.js?1:1350:35)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:105)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/7e7f32a39836f228-s.p.0bmyfaahigzds.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/b35b0dbffda7f2c4-s.p.0fu677rwbv-.g.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/chunks/%5Bnext%5D_internal_font_google_06prc4i._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/b887d91685b8c137-s.p.0z~ry.rim0raw.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/051742360c26797e-s.p.0f97p8c3305p~.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/5e4d537aaa9e154b-s.p.0g9-.3zp53cup.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/f7aa21714c1c53f8-s.p.0bhxxck2.9j91.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/400bf8aa837fcb7e-s.p.0end3qt1tw3rz.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/03bda585a99c6450-s.p.0zzh68k1~whtc.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/3c7c6164b2587822-s.p.0duriy8536ewt.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1133592ms] [WARNING] The resource http://localhost:3000/_next/static/media/316b6682b406c2db-s.p.0m_cefwpdo931.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3000/geniki-katataxi?season=2026:0
+[ 1148857ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1149855ms] [LOG] [Fast Refresh] done in 1102ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1150085ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1150456ms] [LOG] [Fast Refresh] done in 478ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1151465ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1151533ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1151744ms] [ERROR] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/geniki-ka..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="unitedcham...">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="el" className="roboto_con..." suppressHydrationWarning={true} style={{...}}>
+                          <head>
+                            <style
++                             nonce="bifeAuSKvvU6SnGCKHqIrQ=="
+-                             nonce=""
+                            >
++                             :root { --brand-h: 220 }
+                          ...
+                  ...
+ @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:3272
+[ 1152078ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-bifeAuSKvvU6SnGCKHqIrQ==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_analytics_dist_next_index_mjs_0-jiqfn._.js:135
+[ 1152081ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/speed-insights/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-bifeAuSKvvU6SnGCKHqIrQ==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_speed-insights_dist_next_index_mjs_0xgpi97._.js:152
+[ 1152087ms] [LOG] [Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1152087ms] [LOG] [Vercel Speed Insights] Failed to load script from https://va.vercel-scripts.com/v1/speed-insights/script.debug.js. Please check if any content blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1163503ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1164703ms] [LOG] [Fast Refresh] done in 1301ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1165006ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1166442ms] [LOG] [Fast Refresh] done in 1490ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1166595ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1166729ms] [LOG] [Fast Refresh] done in 235ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1166988ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1167038ms] [LOG] [Fast Refresh] done in 152ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1167147ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1167157ms] [LOG] [Fast Refresh] done in 119ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1200047ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1201414ms] [LOG] [Fast Refresh] done in 1470ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1234562ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1235903ms] [LOG] [Fast Refresh] done in 1391ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1255106ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1256329ms] [LOG] [Fast Refresh] done in 1323ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1276656ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1278559ms] [LOG] [Fast Refresh] done in 2006ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1278897ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1279244ms] [LOG] [Fast Refresh] done in 455ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1279474ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1279484ms] [LOG] [Fast Refresh] done in 117ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1286232ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1287562ms] [LOG] [Fast Refresh] done in 1438ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1301118ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1302376ms] [LOG] [Fast Refresh] done in 1356ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1302662ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1302947ms] [LOG] [Fast Refresh] done in 392ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1303105ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1304798ms] [LOG] [Fast Refresh] done in 1736ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1304947ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1305006ms] [LOG] [Fast Refresh] done in 165ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1305124ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1305183ms] [LOG] [Fast Refresh] done in 159ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1314113ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1315774ms] [LOG] [Fast Refresh] done in 1760ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316037ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316296ms] [LOG] [Fast Refresh] done in 365ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316565ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316665ms] [LOG] [Fast Refresh] done in 210ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316776ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1316971ms] ReferenceError: seasonEvents is not defined
+    at GenikiKataxiPage (about://React/Server/C:%5CUsers%5Cnader%5Cunitedchamp%5Cunitedchamp%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0rku7-b._.js?412:1516:45)
+    at resolveErrorDev (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:1919:150)
+    at processFullStringRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2393:9)
+    at processBinaryChunk (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2502:221)
+    at progress (http://localhost:3000/_next/static/chunks/0i.d_next_dist_compiled_react-server-dom-turbopack_08srqap._.js:2689:13)
+[ 1317821ms] [LOG] [Fast Refresh] done in 1144ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1318072ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1318392ms] [LOG] [Fast Refresh] done in 428ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1319403ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1319449ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1319734ms] [ERROR] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/geniki-ka..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="unitedcham...">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="el" className="roboto_con..." suppressHydrationWarning={true} style={{...}}>
+                          <head>
+                            <style
++                             nonce="oiVq90tRktelP4agrjay9Q=="
+-                             nonce=""
+                            >
++                             :root { --brand-h: 220 }
+                          ...
+                  ...
+ @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:3272
+[ 1320069ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-oiVq90tRktelP4agrjay9Q==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_analytics_dist_next_index_mjs_0-jiqfn._.js:135
+[ 1320070ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/speed-insights/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-oiVq90tRktelP4agrjay9Q==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_speed-insights_dist_next_index_mjs_0xgpi97._.js:152
+[ 1320073ms] [LOG] [Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1320073ms] [LOG] [Vercel Speed Insights] Failed to load script from https://va.vercel-scripts.com/v1/speed-insights/script.debug.js. Please check if any content blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1354735ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1356053ms] [LOG] [Fast Refresh] done in 1426ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1368960ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1370863ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1370865ms] [LOG] [Fast Refresh] done in 2003ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1371001ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1371089ms] [LOG] [Fast Refresh] done in 190ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1371201ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1371574ms] [LOG] [Fast Refresh] done in 480ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1372187ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1372362ms] [LOG] [Fast Refresh] done in 276ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1373927ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1374008ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1374314ms] [ERROR] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/geniki-ka..." notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="unitedcham...">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="el" className="roboto_con..." suppressHydrationWarning={true} style={{...}}>
+                          <head>
+                            <style
++                             nonce="MvE8CDlHrLDtPe9w4gf74A=="
+-                             nonce=""
+                            >
++                             :root { --brand-h: 220 }
+                          ...
+                  ...
+ @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:3272
+[ 1374648ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-MvE8CDlHrLDtPe9w4gf74A==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_analytics_dist_next_index_mjs_0-jiqfn._.js:135
+[ 1374649ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/speed-insights/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-MvE8CDlHrLDtPe9w4gf74A==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_speed-insights_dist_next_index_mjs_0xgpi97._.js:152
+[ 1374656ms] [LOG] [Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1374656ms] [LOG] [Vercel Speed Insights] Failed to load script from https://va.vercel-scripts.com/v1/speed-insights/script.debug.js. Please check if any content blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1389256ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1390746ms] [LOG] [Fast Refresh] done in 1592ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1438431ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[ 1440069ms] [LOG] [Fast Refresh] done in 1638ms @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431

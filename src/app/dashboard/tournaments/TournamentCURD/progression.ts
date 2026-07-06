@@ -1,16 +1,16 @@
-// app/dashboard/tournaments/TournamentCURD/util/functions/progression.ts
-"use server";
+// app/dashboard/tournaments/TournamentCURD/progression.ts
+//
+// Server-only progression engine. Deliberately NOT a "use server" module:
+// these functions run with the service-role key (RLS bypassed) and perform no
+// auth checks of their own, so they must never be compiled into publicly
+// invokable Server Action endpoints. Auth lives in the API routes / server
+// actions that call into this module.
+import "server-only";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin as supabase } from "@/app/lib/supabase/supabaseAdmin";
 import { refreshStatsForMatch } from "@/app/lib/refreshPlayerStats";
 import { nextPow2, seedOrder, roundRobinRounds } from "./util/functions/common";
 import { decideTwoLeggedTie, type TieResolution } from "./util/functions/twoLeggedTie";
-
-/** Service role key (server only) */
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 type Id = number;
 
@@ -75,30 +75,45 @@ type IntakeMapping = {
    Small helpers
    ========================================================= */
 
+/**
+ * Throw with context when a query the cascade depends on fails. Without this,
+ * a transient DB/network error reads as a business state ("no standings",
+ * "no children") and the cascade silently does the wrong thing.
+ */
+function must(error: { message?: string } | null, ctx: string): void {
+  if (error) throw new Error(`[progression] ${ctx}: ${error.message ?? "unknown error"}`);
+}
+
+/** Postgres unique_violation — benign for idempotent "ensure exists" inserts. */
+const UNIQUE_VIOLATION = "23505";
+
 async function hasStandings(stageId: Id): Promise<boolean> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("stage_standings")
     .select("stage_id")
     .eq("stage_id", stageId)
     .limit(1);
+  must(error, `checking standings for stage ${stageId}`);
   return !!(data && data.length);
 }
 
 async function getStage(stageId: Id): Promise<StageRow | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tournament_stages")
     .select("*")
     .eq("id", stageId)
-    .single<StageRow>();
+    .maybeSingle<StageRow>();
+  must(error, `loading stage ${stageId}`);
   return data ?? null;
 }
 
 async function listGroups(stageId: Id): Promise<GroupRow[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tournament_groups")
     .select("*")
     .eq("stage_id", stageId)
     .order("ordering", { ascending: true });
+  must(error, `listing groups for stage ${stageId}`);
   return (data ?? []) as GroupRow[];
 }
 
@@ -112,19 +127,21 @@ async function listParticipantsForStage(stage: StageRow): Promise<
   { team_id: Id; group_id: number | null }[]
 > {
   if (stage.kind === "groups") {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("tournament_teams")
       .select("team_id, group_id")
       .eq("stage_id", stage.id);
+    must(error, `listing participants for groups stage ${stage.id}`);
     return (data ?? []) as any;
   }
 
   // league (dedupe to be safe)
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tournament_teams")
     .select("team_id")
     .eq("tournament_id", stage.tournament_id)
     .is("stage_id", null);
+  must(error, `listing participants for league stage ${stage.id}`);
   const rows = (data ?? []) as Array<{ team_id: Id }>;
   const uniq = Array.from(new Set(rows.map((r) => r.team_id)));
   return uniq.map((team_id) => ({ team_id, group_id: null }));
@@ -231,7 +248,10 @@ async function ensureBaselineStandings(stageId: Id): Promise<boolean> {
 
   if (toInsert.length) {
     const { error } = await supabase.from("stage_standings").insert(toInsert as any);
-    if (error) return false;
+    if (error) {
+      console.error("[progression] baseline standings insert failed:", error.message);
+      return false;
+    }
     return true;
   }
   return false;
@@ -277,7 +297,8 @@ async function insertKnockoutRowsWithLegs(
   if (!rows.length) return;
 
   if (!doubleRound) {
-    await supabase.from("matches").insert(rows as any);
+    const { error } = await supabase.from("matches").insert(rows as any);
+    must(error, "inserting KO matches");
     return;
   }
 
@@ -308,82 +329,27 @@ async function insertKnockoutRowsWithLegs(
     .select("id");
   if (error || !inserted) throw new Error(error?.message || "Failed to insert KO legs");
 
+  // Link each leg-2 row back to its leg-1 sibling. If a link write fails we
+  // throw: an unlinked leg-2 row silently degrades to single-match logic, which
+  // would decide the tie from one leg only.
   const idByIdx = (inserted as { id: Id }[]).map((r) => r.id);
-  const links = pairs
-    .map(({ leg1, leg2 }) => ({ id: idByIdx[leg2], tie_leg1_match_id: idByIdx[leg1] }))
-    .filter((u) => u.id != null && u.tie_leg1_match_id != null);
-
-  if (links.length) {
-    await supabase.from("matches").upsert(links as any, { onConflict: "id" });
+  for (const { leg1, leg2 } of pairs) {
+    const leg2Id = idByIdx[leg2];
+    const leg1Id = idByIdx[leg1];
+    if (leg2Id == null || leg1Id == null) {
+      throw new Error("[progression] KO leg insert returned fewer ids than rows");
+    }
+    const { error: linkErr } = await supabase
+      .from("matches")
+      .update({ tie_leg1_match_id: leg1Id })
+      .eq("id", leg2Id);
+    must(linkErr, `linking KO leg 2 (match ${leg2Id}) to its leg 1 (match ${leg1Id})`);
   }
 }
 
 /* =========================================================
    Public APIs
    ========================================================= */
-
-/**
- * One-call finalize (optional).
- *
- * For two-legged KO deciders (leg 2) the per-row score never decides the tie —
- * the winner is resolved from leg wins (+penalties when level) inside
- * applyKnockoutPropagation. Pass `penaltyA`/`penaltyB` here so a level tie can
- * actually be decided; without them a 1–1 (or 0–0) leg-wins tie resolves to
- * `undecided` and propagation silently bails. Penalties are stored on the leg-2
- * row in its own team_a/team_b orientation.
- */
-export async function finalizeMatch(input: {
-  matchId: Id;
-  teamAScore: number;
-  teamBScore: number;
-  penaltyA?: number | null;
-  penaltyB?: number | null;
-}) {
-  const { matchId, teamAScore, teamBScore, penaltyA = null, penaltyB = null } = input;
-
-  const { data: m, error: mErr } = await supabase
-    .from("matches")
-    .select("*")
-    .eq("id", matchId)
-    .single<MatchRow>();
-  if (mErr || !m) throw new Error(mErr?.message || "Match not found");
-
-  if (m.status === "finished") {
-    await progressAfterMatch(matchId);
-    return { ok: true, alreadyFinished: true };
-  }
-
-  let winner_team_id: Id | null = null;
-  if (teamAScore > teamBScore) winner_team_id = m.team_a_id!;
-  else if (teamBScore > teamAScore) winner_team_id = m.team_b_id!;
-  else winner_team_id = null; // draw
-
-  // Two-legged KO: the per-row score never decides the winner. Leg 1 carries no
-  // winner; leg 2's winner is derived from leg wins (+penalties) inside
-  // applyKnockoutPropagation. Persist scores but leave winner null here.
-  if (m.leg != null) winner_team_id = null;
-
-  // Penalties only mean anything on a leg-2 decider; ignore them otherwise.
-  const isLeg2Decider = m.leg === 2 && m.tie_leg1_match_id != null;
-  const penalty_a = isLeg2Decider ? penaltyA : null;
-  const penalty_b = isLeg2Decider ? penaltyB : null;
-
-  const { error: upErr } = await supabase
-    .from("matches")
-    .update({
-      team_a_score: teamAScore,
-      team_b_score: teamBScore,
-      winner_team_id,
-      penalty_a,
-      penalty_b,
-      status: "finished",
-    })
-    .eq("id", matchId);
-  if (upErr) throw upErr;
-
-  await progressAfterMatch(matchId);
-  return { ok: true };
-}
 
 /** Entry point the PATCH route calls after a match becomes 'finished' */
 export async function progressAfterMatch(matchId: Id) {
@@ -392,50 +358,56 @@ export async function progressAfterMatch(matchId: Id) {
   if (mErr || !m) throw new Error(mErr?.message || "Match not found");
   if (m.status !== "finished") return { ok: true, skipped: "not finished" };
 
-  // KO-only work (propagation + KO→Groups intake mapping creation)
+  // Groups stages touched by KO→Groups intake; hydrated once at the end.
+  const touchedGroupsStages = new Set<Id>();
+
+  // 1) KO-only work: propagation, then intake mapping creation + application.
+  //    (Non-KO matches have no (round, bracket_pos), so intake no-ops for them.)
   if (m.stage_id) {
     const st = await getStage(m.stage_id);
     if (st?.kind === "knockout") {
-      // 1) KO child propagation (same stage)
-      await applyKnockoutPropagation(m);
+      await runKnockoutPostFinish(m, touchedGroupsStages);
 
       // 1b) Two-legged KO: if THIS was leg 1, its leg-2 decider may already be
-      // finished (legs entered out of order). Re-run propagation on that decider
-      // so the tie resolves now that both legs exist.
+      // finished (legs entered out of order). Re-run the decider's full
+      // post-finish steps — propagation AND intake — so the tie resolves and
+      // its winner/loser reach any next groups stage now that both legs exist.
       if (m.leg === 1) {
-        const { data: leg2 } = await supabase
+        const { data: leg2, error: leg2Err } = await supabase
           .from("matches")
           .select("*")
           .eq("tie_leg1_match_id", m.id)
           .eq("status", "finished")
           .maybeSingle<MatchRow>();
-        if (leg2) await applyKnockoutPropagation(leg2);
+        must(leg2Err, `loading leg-2 decider for leg-1 match ${m.id}`);
+        if (leg2) await runKnockoutPostFinish(leg2, touchedGroupsStages);
       }
-
-      // 2) Ensure intake mappings exist (if you have a KO → next groups edge)
-      await ensureIntakeMappingsForFinishedMatch(m);
+    } else {
+      // Non-KO stages never auto-create intake mappings, but a manually
+      // configured mapping from this stage's coords still applies (legacy
+      // behaviour: intake ran for every finished match).
+      for (const gid of await applyIntakeMappings(m)) touchedGroupsStages.add(gid);
     }
   }
 
-  // 3) Apply KO → Groups intake (writes into stage_slots) and then hydrate those Groups stages
-  const targetGroupsStages = await applyIntakeMappings(m);
-  for (const gid of targetGroupsStages) {
+  // 2) Hydrate every groups stage that received intake
+  for (const gid of touchedGroupsStages) {
     await applyGroupIntakeToMatches(gid);
   }
 
-  // 4) Recompute standings for groups/league stages
+  // 3) Recompute standings for groups/league stages
   if (m.stage_id) await recomputeStandingsIfNeeded(m.stage_id);
 
-  // 5) If a groups/league stage is now fully finished, seed next KO (if configured)
+  // 4) If a groups/league stage is now fully finished, seed next KO (if configured)
   if (m.stage_id) {
     await seedNextKnockoutFromGroupsIfConfigured(m.stage_id);
     await seedNextKnockoutFromLeagueIfConfigured(m.stage_id);
   }
 
-  // 6) Tournament completion (all matches finished)
+  // 5) Tournament completion (all matches finished)
   if (m.tournament_id) await maybeCompleteTournament(m.tournament_id);
 
-  // 7) Refresh pre-computed player stats cache
+  // 6) Refresh pre-computed player stats cache
   await refreshStatsForMatch(matchId).catch((err) =>
     console.error("[progressAfterMatch] refreshStatsForMatch error:", err)
   );
@@ -452,27 +424,44 @@ export async function recomputeStandingsNow(stageId: Id) {
    Internals
    ========================================================= */
 
-/** Propagate W/L to KO child matches within the same stage */
-async function applyKnockoutPropagation(m: MatchRow) {
-  if (!m.stage_id) return;
+/**
+ * Everything that must happen for a FINISHED KO match:
+ *  1) resolve two-legged tie + stamp winner, propagate W/L to child matches
+ *  2) ensure + apply KO→Groups intake mappings using the UP-TO-DATE row.
+ *
+ * Step 2 must see the row returned by propagation: for a two-legged decider the
+ * winner is stamped *inside* applyKnockoutPropagation, so using the row that
+ * was read at the start of progressAfterMatch would apply intake with a stale
+ * null winner and silently skip the slot write.
+ */
+async function runKnockoutPostFinish(m: MatchRow, touchedGroupsStages: Set<Id>): Promise<void> {
+  const fresh = await applyKnockoutPropagation(m);
+  await ensureIntakeMappingsForFinishedMatch(fresh);
+  for (const gid of await applyIntakeMappings(fresh)) touchedGroupsStages.add(gid);
+}
+
+/** Propagate W/L to KO child matches within the same stage.
+ *  Returns the match row including any winner/penalty fields stamped here. */
+async function applyKnockoutPropagation(m: MatchRow): Promise<MatchRow> {
+  if (!m.stage_id) return m;
 
   // Only propagate inside KO stages
   const stage = await getStage(m.stage_id);
-  if (!stage || stage.kind !== "knockout") return;
+  if (!stage || stage.kind !== "knockout") return m;
 
   // KO propagation only makes sense when the source match has stable coords
-  if (m.round == null || m.bracket_pos == null) return;
+  if (m.round == null || m.bracket_pos == null) return m;
 
   // ----- Two-legged KO handling -----
   // Leg 1 never propagates on its own — the tie is decided when leg 2 finishes.
-  if (m.leg === 1) return;
+  if (m.leg === 1) return m;
 
   // Leg 2 (decider): resolve leg wins (+penalties when level) and stamp the tie
   // winner onto this row before propagating. Single-leg rows (leg null, or leg 1
   // deleted) skip this.
   if (m.leg === 2 && m.tie_leg1_match_id != null) {
     const res = await resolveTwoLeggedTie(m);
-    if (res.kind === "pending" || res.kind === "undecided") return; // not decided yet
+    if (res.kind === "pending" || res.kind === "undecided") return m; // not decided yet
     if (res.kind === "decided") {
       // When the tie was decided on leg wins, any stored penalties are stray and
       // must be cleared (mirrors the score-write paths). Penalties only persist
@@ -485,7 +474,8 @@ async function applyKnockoutPropagation(m: MatchRow) {
           patch.penalty_a = null;
           patch.penalty_b = null;
         }
-        await supabase.from("matches").update(patch).eq("id", m.id);
+        const { error: stampErr } = await supabase.from("matches").update(patch).eq("id", m.id);
+        must(stampErr, `stamping tie winner on decider match ${m.id}`);
         m = { ...m, ...patch };
       }
     }
@@ -496,8 +486,8 @@ async function applyKnockoutPropagation(m: MatchRow) {
     .from("matches")
     .select("*")
     .eq("stage_id", m.stage_id);
-
-  if (error || !allChildren) return;
+  must(error, `reading KO children in stage ${m.stage_id}`);
+  if (!allChildren) return m;
 
   // A non-null source_match_id is authoritative; stable (round, bracket_pos)
   // pointers are only a fallback for rows whose id link was never set (or was
@@ -550,9 +540,12 @@ async function applyKnockoutPropagation(m: MatchRow) {
     }
 
     if (Object.keys(patch).length > 0) {
-      await supabase.from("matches").update(patch).eq("id", child.id);
+      const { error: childErr } = await supabase.from("matches").update(patch).eq("id", child.id);
+      must(childErr, `advancing team into KO child match ${child.id}`);
     }
   }
+
+  return m;
 }
 
 /**
@@ -567,13 +560,14 @@ async function ensureIntakeMappingsForFinishedMatch(m: MatchRow) {
   if (m.round == null || m.bracket_pos == null) return;
 
   // Already mapped?
-  const { data: existing } = await supabase
+  const { data: existing, error: existErr } = await supabase
     .from("intake_mappings")
     .select("id")
     .eq("from_stage_id", m.stage_id)
     .eq("round", m.round)
     .eq("bracket_pos", m.bracket_pos)
     .limit(1);
+  must(existErr, `checking intake mappings for match ${m.id}`);
   if (existing && existing.length > 0) return;
 
   // Figure out the *next* groups stage in this tournament (or one that config explicitly points to)
@@ -616,7 +610,13 @@ async function ensureIntakeMappingsForFinishedMatch(m: MatchRow) {
   }
 
   if (inserts.length) {
-    await supabase.from("intake_mappings").insert(inserts as any);
+    // Concurrent finishes can race the check-then-insert above; with the unique
+    // index from migrations/add-progression-integrity.sql the loser gets a
+    // unique violation, which is the correct outcome — ignore it.
+    const { error } = await supabase.from("intake_mappings").insert(inserts as any);
+    if (error && (error as any).code !== UNIQUE_VIOLATION) {
+      must(error, `creating intake mappings for match ${m.id}`);
+    }
   }
 }
 
@@ -631,10 +631,7 @@ async function applyIntakeMappings(m: MatchRow): Promise<Id[]> {
     .eq("round", m.round)
     .eq("bracket_pos", m.bracket_pos);
 
-  if (mapsErr) {
-    console.error("applyIntakeMappings: failed to read intake_mappings", mapsErr);
-    return [];
-  }
+  must(mapsErr, `reading intake mappings for match ${m.id}`);
   if (!maps || maps.length === 0) return [];
 
   const winnerId = m.winner_team_id ?? null;
@@ -670,10 +667,7 @@ async function applyIntakeMappings(m: MatchRow): Promise<Id[]> {
     const { error: upsertErr } = await supabase
       .from("stage_slots")
       .upsert(upserts, { onConflict: "stage_id,group_id,slot_id" });
-    if (upsertErr) {
-      console.error("applyIntakeMappings: stage_slots upsert failed", upsertErr);
-      // still return touched stages so hydration could be retried manually if needed
-    }
+    must(upsertErr, `writing stage_slots intake for match ${m.id}`);
   }
 
   return Array.from(touchedStages);
@@ -685,12 +679,14 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
   if (!stage) return;
   if (stage.kind === "knockout") return;
 
-  // Pull all finished matches in this stage
-  const { data: ms } = await supabase
+  // Pull all finished matches in this stage. A failed read MUST abort: treating
+  // it as "no matches" would silently recompute every team's standings to zero.
+  const { data: ms, error: msErr } = await supabase
     .from("matches")
     .select("*")
     .eq("stage_id", stageId)
     .eq("status", "finished");
+  must(msErr, `reading finished matches for stage ${stageId}`);
 
   // Fetch declared participants for this stage
   const parts = await listParticipantsForStage(stage);
@@ -774,7 +770,8 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
       disciplinaryQuery = disciplinaryQuery.eq("group_id", gid);
     }
 
-    const { data: disciplinaryActions } = await disciplinaryQuery;
+    const { data: disciplinaryActions, error: daErr } = await disciplinaryQuery;
+    must(daErr, `reading disciplinary actions for stage ${stageId} group ${gid}`);
 
     if (disciplinaryActions && disciplinaryActions.length > 0) {
       // Sum all adjustments per team
@@ -804,20 +801,116 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
       )
       .map((r, i) => ({ ...r, rank: i + 1 }));
 
-    // reset & insert
-    await supabase.from("stage_standings").delete().eq("stage_id", stageId).eq("group_id", gid);
-    if (ranked.length) {
-      await supabase.from("stage_standings").insert(
-        ranked.map(r => ({
-          stage_id: stageId,
-          group_id: gid,
-          team_id: r.team_id,
-          played: r.played, won: r.won, drawn: r.drawn, lost: r.lost,
-          gf: r.gf, ga: r.ga, gd: r.gd, points: r.points, rank: r.rank,
-        }))
-      );
-    }
+    await replaceStandings(
+      stageId,
+      gid,
+      ranked.map(r => ({
+        stage_id: stageId,
+        group_id: gid,
+        team_id: r.team_id,
+        played: r.played, won: r.won, drawn: r.drawn, lost: r.lost,
+        gf: r.gf, ga: r.ga, gd: r.gd, points: r.points, rank: r.rank,
+      }))
+    );
   }
+}
+
+type StandingInsertRow = {
+  stage_id: Id; group_id: number; team_id: Id;
+  played: number; won: number; drawn: number; lost: number;
+  gf: number; ga: number; gd: number; points: number; rank: number;
+};
+
+/**
+ * Replace one group's standings rows. Prefers the atomic
+ * `replace_stage_standings` RPC (migrations/add-progression-integrity.sql);
+ * falls back to delete-then-insert when the function isn't installed yet. The
+ * fallback is NOT atomic — a crash between the two writes leaves the group's
+ * standings empty until the next recompute — which is exactly why the RPC
+ * exists. Both paths throw on failure so a broken write is never silent.
+ */
+async function replaceStandings(stageId: Id, groupId: number, rows: StandingInsertRow[]) {
+  const { error: rpcErr } = await supabase.rpc("replace_stage_standings", {
+    p_stage_id: stageId,
+    p_group_id: groupId,
+    p_rows: rows,
+  });
+  if (!rpcErr) return;
+
+  // 42883 = Postgres undefined_function, PGRST202 = PostgREST unknown function
+  const rpcMissing = (rpcErr as any).code === "42883" || (rpcErr as any).code === "PGRST202";
+  if (!rpcMissing) {
+    must(rpcErr, `replacing standings for stage ${stageId} group ${groupId}`);
+  }
+
+  const { error: delErr } = await supabase
+    .from("stage_standings").delete().eq("stage_id", stageId).eq("group_id", groupId);
+  must(delErr, `clearing standings for stage ${stageId} group ${groupId}`);
+  if (rows.length) {
+    const { error: insErr } = await supabase.from("stage_standings").insert(rows);
+    must(insErr, `inserting standings for stage ${stageId} group ${groupId}`);
+  }
+}
+
+/**
+ * Shared preamble for seeding a later KO from a groups/league stage:
+ * optionally require every source match finished, then make sure standings
+ * rows exist (recompute from finished matches, else baseline ranked by seed).
+ * Returns false when seeding cannot proceed.
+ */
+async function standingsReadyForSeeding(sourceStageId: Id, allowEarly: boolean): Promise<boolean> {
+  if (!allowEarly) {
+    const { data: all, error } = await supabase
+      .from("matches").select("status").eq("stage_id", sourceStageId);
+    must(error, `reading matches for source stage ${sourceStageId}`);
+    const allFinished = (all ?? []).every((r: any) => r.status === "finished");
+    if (!allFinished) return false;
+  }
+
+  await recomputeStandingsIfNeeded(sourceStageId);
+  if (!(await hasStandings(sourceStageId))) {
+    // no fixtures at all → baseline ranked by seed; without participants we can't seed
+    return await ensureBaselineStandings(sourceStageId);
+  }
+  return true;
+}
+
+/**
+ * Find the first later KO stage whose config points at `src` and verify it can
+ * be (re)seeded. Never touches a KO that has started (finished match or winner
+ * present); clears existing unstarted matches only when `reseed` is set.
+ * Returns the target stage, or null when there is nothing to (re)seed.
+ */
+async function findSeedableNextKO(src: StageRow, reseed: boolean): Promise<StageRow | null> {
+  const { data: laterStages, error } = await supabase
+    .from("tournament_stages")
+    .select("*")
+    .eq("tournament_id", src.tournament_id)
+    .gt("ordering", src.ordering)
+    .order("ordering", { ascending: true });
+  must(error, `reading stages after stage ${src.id}`);
+
+  const nextKO = ((laterStages ?? []) as StageRow[]).find(
+    (s) =>
+      s.kind === "knockout" &&
+      (s.config?.from_stage_id === src.id || s.config?.fromStageId === src.id)
+  );
+  if (!nextKO) return null;
+
+  const { data: existingMatches, error: exErr } = await supabase
+    .from("matches")
+    .select("id,status,winner_team_id")
+    .eq("stage_id", nextKO.id);
+  must(exErr, `reading existing matches in KO stage ${nextKO.id}`);
+
+  if (existingMatches && existingMatches.length > 0) {
+    const hasFinished = existingMatches.some((m: any) => m.status === "finished" || m.winner_team_id != null);
+    if (hasFinished) return null; // never reseed once KO started / winner exists
+    if (!reseed) return null;     // keep idempotent by default unless caller asks to reseed
+    const { error: delErr } = await supabase.from("matches").delete().eq("stage_id", nextKO.id);
+    must(delErr, `clearing KO stage ${nextKO.id} for reseed`);
+  }
+  return nextKO;
 }
 
 /** If a GROUPS stage is fully finished and a later KO stage config points to it → seed KO */
@@ -828,60 +921,21 @@ export async function seedNextKnockoutFromGroupsIfConfigured(
   const src = await getStage(sourceStageId);
   if (!src || src.kind !== "groups") return;
 
-  // If we aren’t allowed to seed early, fall back to the old “all finished” check.
-  if (!allowEarly) {
-    const { data: all } = await supabase.from("matches").select("status").eq("stage_id", sourceStageId);
-    const allFinished = (all ?? []).every((r: any) => r.status === "finished");
-    if (!allFinished) return;
-  }
+  if (!(await standingsReadyForSeeding(sourceStageId, allowEarly))) return;
 
-  // Always ensure standings exist & are current:
-  // 1) recompute from whatever finished matches we have
-  await recomputeStandingsIfNeeded(sourceStageId);
-  // 2) if still no rows (e.g. no fixtures at all), create a baseline ranked by seed
-  if (!(await hasStandings(sourceStageId))) {
-    const ok = await ensureBaselineStandings(sourceStageId);
-    if (!ok) return; // cannot seed without knowing participants
-  }
-
-  // Find the first later KO stage that explicitly references this groups stage
-  const { data: laterStages } = await supabase
-    .from("tournament_stages")
-    .select("*")
-    .eq("tournament_id", src.tournament_id)
-    .gt("ordering", src.ordering)
-    .order("ordering", { ascending: true });
-  if (!laterStages) return;
-
-  const nextKO = (laterStages as StageRow[]).find(
-    (s) =>
-      s.kind === "knockout" &&
-      (s.config?.from_stage_id === sourceStageId || s.config?.fromStageId === sourceStageId)
-  );
+  const nextKO = await findSeedableNextKO(src, reseed);
   if (!nextKO) return;
-
-  // KO “already has matches?” guard
-  const { data: existingMatches } = await supabase
-    .from("matches")
-    .select("id,status,winner_team_id")
-    .eq("stage_id", nextKO.id);
-
-  if (existingMatches && existingMatches.length > 0) {
-    const hasFinished = existingMatches.some((m: any) => m.status === "finished" || m.winner_team_id != null);
-    if (hasFinished) return; // never reseed once KO started / winner exists
-    if (!reseed) return;     // keep idempotent by default unless caller asks to reseed
-    await supabase.from("matches").delete().eq("stage_id", nextKO.id);
-  }
 
   // Config knobs
   const advancersPerGroup = Math.max(1, Number(nextKO.config?.advancers_per_group ?? 2));
   const semisCross: "A1-B2" | "A1-B1" = nextKO.config?.semis_cross === "A1-B1" ? "A1-B1" : "A1-B2";
 
   // Read CURRENT standings
-  const { data: standings } = await supabase
+  const { data: standings, error: stErr } = await supabase
     .from("stage_standings")
     .select("*")
     .eq("stage_id", sourceStageId);
+  must(stErr, `reading standings for stage ${sourceStageId}`);
   if (!standings || standings.length === 0) return;
 
   // Group them by (DB) group id and take top-N by rank
@@ -1007,47 +1061,10 @@ export async function seedNextKnockoutFromLeagueIfConfigured(
   const src = await getStage(sourceStageId);
   if (!src || src.kind !== "league") return;
 
-  if (!allowEarly) {
-    const { data: all } = await supabase.from("matches").select("status").eq("stage_id", sourceStageId);
-    const allFinished = (all ?? []).every((r: any) => r.status === "finished");
-    if (!allFinished) return;
-  }
+  if (!(await standingsReadyForSeeding(sourceStageId, allowEarly))) return;
 
-  // Ensure standings exist now
-  await recomputeStandingsIfNeeded(sourceStageId);
-  if (!(await hasStandings(sourceStageId))) {
-    const ok = await ensureBaselineStandings(sourceStageId);
-    if (!ok) return;
-  }
-
-  // Find the first later KO stage that references this league stage
-  const { data: laterStages } = await supabase
-    .from("tournament_stages")
-    .select("*")
-    .eq("tournament_id", src.tournament_id)
-    .gt("ordering", src.ordering)
-    .order("ordering", { ascending: true });
-  if (!laterStages) return;
-
-  const nextKO = (laterStages as StageRow[]).find(
-    (s) =>
-      s.kind === "knockout" &&
-      (s.config?.from_stage_id === sourceStageId || s.config?.fromStageId === sourceStageId)
-  );
+  const nextKO = await findSeedableNextKO(src, reseed);
   if (!nextKO) return;
-
-  // KO “already has matches?” guard
-  const { data: existingMatches } = await supabase
-    .from("matches")
-    .select("id,status,winner_team_id")
-    .eq("stage_id", nextKO.id);
-
-  if (existingMatches && existingMatches.length > 0) {
-    const hasFinished = existingMatches.some((m: any) => m.status === "finished" || m.winner_team_id != null);
-    if (hasFinished) return;
-    if (!reseed) return;
-    await supabase.from("matches").delete().eq("stage_id", nextKO.id);
-  }
 
   // How many advance? prefer explicit total; fallback to bracket size; else 8.
   const advancersTotal = Math.max(
@@ -1056,10 +1073,11 @@ export async function seedNextKnockoutFromLeagueIfConfigured(
   );
 
   // Read CURRENT standings (league is single table)
-  const { data: standings } = await supabase
+  const { data: standings, error: stErr } = await supabase
     .from("stage_standings")
     .select("*")
     .eq("stage_id", sourceStageId);
+  must(stErr, `reading standings for stage ${sourceStageId}`);
   if (!standings || standings.length === 0) return;
 
   const entrantTeamIds: Id[] = (standings as any[])
@@ -1081,12 +1099,15 @@ export async function seedNextKnockoutFromLeagueIfConfigured(
 
 /** Tournament completion: mark tournaments.status='completed' if all its matches are finished */
 async function maybeCompleteTournament(tournamentId: Id) {
-  const { data: ms } = await supabase
+  const { data: ms, error } = await supabase
     .from("matches").select("status").eq("tournament_id", tournamentId);
+  must(error, `reading matches for tournament ${tournamentId}`);
   if (!ms || ms.length === 0) return;
   const done = ms.every((r: any) => r.status === "finished");
   if (done) {
-    await supabase.from("tournaments").update({ status: "completed" }).eq("id", tournamentId);
+    const { error: upErr } = await supabase
+      .from("tournaments").update({ status: "completed" }).eq("id", tournamentId);
+    must(upErr, `marking tournament ${tournamentId} completed`);
   }
 }
 
@@ -1243,8 +1264,9 @@ async function applyGroupIntakeToMatches(groupsStageId: Id) {
       }
     }
 
-    if (updates.length) {
-      await supabase.from("matches").upsert(updates as any, { onConflict: "id" });
+    for (const { id, ...patch } of updates) {
+      const { error: hydrateErr } = await supabase.from("matches").update(patch).eq("id", id);
+      must(hydrateErr, `hydrating group match ${id} from intake slots`);
     }
   }
 }

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.18",
@@ -77,6 +79,8 @@
     "@types/sanitize-html": "^2.16.0",
     "@types/three": "^0.180.0",
     "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "tsx": "^4.23.0",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
   }
 }

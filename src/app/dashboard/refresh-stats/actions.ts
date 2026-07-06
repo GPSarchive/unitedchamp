@@ -2,6 +2,8 @@
 
 import { refreshAllPlayerStats } from "@/app/lib/refreshPlayerStats";
 import { revalidatePath } from "next/cache";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 export async function runFullBackfill(): Promise<{
   success: boolean;
@@ -11,6 +13,17 @@ export async function runFullBackfill(): Promise<{
   error?: string;
 }> {
   try {
+    // Server Actions are public POST endpoints — verify the caller is an
+    // admin/editor before wiping and rebuilding the stat caches.
+    const supabase = await createSupabaseRouteClient();
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
+    if (authErr || !user || !canEditContent(user)) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const result = await refreshAllPlayerStats();
     revalidatePath("/paiktes");
     revalidatePath("/dashboard/refresh-stats");

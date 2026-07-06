@@ -1,0 +1,65 @@
+[     787ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[     841ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:3000/login?next=%2Fdashboard%2Ftournaments%2FTournamentCURD%2Fedit%2F35:0
+[     842ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[     871ms] [ERROR] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+%s%s https://react.dev/link/hydration-mismatch 
+
+  ...
+    <HotReload globalError={[...]} webSocket={WebSocket} staticIndicatorState={{pathname:null, ...}}>
+      <AppDevOverlayErrorBoundary globalError={[...]}>
+        <ReplaySsrOnlyErrors>
+        <DevRootHTTPAccessFallbackBoundary>
+          <HTTPAccessFallbackBoundary notFound={<NotAllowedRootHTTPFallbackError>}>
+            <HTTPAccessFallbackErrorBoundary pathname="/login" notFound={<NotAllowedRootHTTPFallbackError>} ...>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <Head>
+                  <__next_root_layout_boundary__>
+                    <SegmentViewNode type="layout" pagePath="unitedcham...">
+                      <SegmentTrieNode>
+                      <link>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <script>
+                      <RootLayout>
+                        <html lang="el" className="roboto_con..." suppressHydrationWarning={true} style={{...}}>
+                          <head>
+                            <style
++                             nonce="fo+RKgIG1nnMr8ahlPccKw=="
+-                             nonce=""
+                            >
++                             :root { --brand-h: 220 }
+                          ...
+                  ...
+ @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:3272
+[     885ms] [ERROR] Loading the image 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?q=80&w=1960&auto=format&fit=crop' violates the following Content Security Policy directive: "img-src 'self' data: blob: https://vesmywcppylbhjizytca.supabase.co https://images.ultrachamp.gr https://lh3.googleusercontent.com https://avatars.githubusercontent.com". The action has been blocked. @ http://localhost:3000/login?next=%2Fdashboard%2Ftournaments%2FTournamentCURD%2Fedit%2F35:0
+[    1220ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-fo+RKgIG1nnMr8ahlPccKw==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_analytics_dist_next_index_mjs_0-jiqfn._.js:135
+[    1221ms] [ERROR] Loading the script 'https://va.vercel-scripts.com/v1/speed-insights/script.debug.js' violates the following Content Security Policy directive: "script-src 'self' 'nonce-fo+RKgIG1nnMr8ahlPccKw==' https://cdnjs.cloudflare.com 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked. @ http://localhost:3000/_next/static/chunks/0i.d_%40vercel_speed-insights_dist_next_index_mjs_0xgpi97._.js:152
+[    1245ms] [LOG] [Vercel Web Analytics] Failed to load script from https://va.vercel-scripts.com/v1/script.debug.js. Please check if any ad blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[    1246ms] [LOG] [Vercel Speed Insights] Failed to load script from https://va.vercel-scripts.com/v1/speed-insights/script.debug.js. Please check if any content blockers are enabled and try again. @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_12dseuv._.js:2431
+[   44292ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   47642ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   50999ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   54347ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   57708ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   65075ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   72423ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   79781ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   87149ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[   94507ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[  101883ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
+[  109255ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=O007pVQ-QnNYAC5oPUCIA' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/0i.d_next_dist_client_09n~~wt._.js:13299
