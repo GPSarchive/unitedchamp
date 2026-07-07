@@ -1,5 +1,4 @@
-// app/standings/page.tsx
-// or app/tournoua/[slug]/standings/page.tsx (works the same)
+// app/geniki-katataxi/page.tsx (Γενική Κατάταξη — formerly /standings)
 import Image from "next/image";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";

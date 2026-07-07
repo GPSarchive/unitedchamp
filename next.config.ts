@@ -159,6 +159,14 @@ const nextConfig: NextConfig = {
 
   poweredByHeader: false,
 
+  async redirects() {
+    return [
+      // Γενική Κατάταξη was formerly served at /standings. Keep old links
+      // and the sitemap history working after the route rename.
+      { source: "/standings", destination: "/geniki-katataxi", permanent: true },
+    ];
+  },
+
   async headers() {
     const baseHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
