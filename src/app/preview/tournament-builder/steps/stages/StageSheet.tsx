@@ -15,6 +15,7 @@ import { field as fieldCls, select as selectCls, helperText } from "../../ui/tok
 import { useEffectiveStageIdx } from "../../hooks/useEffectiveStageIdx";
 import type { CatalogRow } from "../../hooks/useTeamCatalog";
 import GroupListEditor from "./GroupListEditor";
+import StageFixturesPanel from "../fixtures/StageFixturesPanel";
 
 type Stage = NewTournamentPayload["stages"][number];
 const asCfg = (x: unknown): StageConfig => (x ?? {}) as StageConfig;
@@ -57,6 +58,32 @@ export default function StageSheet({
   const draftMatches = useTournamentStore((s) => s.draftMatches);
   const effectiveStageIdx = useEffectiveStageIdx(allStages, index);
   const payloadStageId = (allStages as any)?.[index]?.id as number | undefined;
+  const [matchesOpen, setMatchesOpen] = useState(false);
+
+  const stageMatchCount = useMemo(
+    () => draftMatches.filter((m) => m.stageIdx === effectiveStageIdx).length,
+    [draftMatches, effectiveStageIdx]
+  );
+
+  // Payload shim for the fixtures panel — useStageFixtures reads only .stages
+  const fixturesPayload: NewTournamentPayload = useMemo(
+    () => ({
+      tournament: {
+        name: "",
+        slug: null,
+        season: null,
+        status: "scheduled",
+        format: "league",
+        logo: null,
+        start_date: null,
+        end_date: null,
+        winner_team_id: null,
+      },
+      stages: allStages as any,
+      tournament_team_ids: teams.map((t) => t.id),
+    }),
+    [allStages, teams]
+  );
 
   const cfg = asCfg(stage.config);
   const setCfg = (patch: Partial<StageConfig>) =>
@@ -351,6 +378,25 @@ export default function StageSheet({
             Επιλέξτε ποιες ομάδες συμμετέχουν στο στάδιο. Μετά πατήστε «Αναδημιουργία» στο βήμα
             «Αγώνες».
           </p>
+        </div>
+
+        {/* Matches of this stage (stage → group → matches; KO → rounds) */}
+        <div className="overflow-hidden rounded-xl border border-white/8 bg-zinc-900/40">
+          <button
+            onClick={() => setMatchesOpen((v) => !v)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-white/4 transition-colors"
+          >
+            <span className="text-sm font-semibold text-zinc-200">
+              Αγώνες σταδίου{" "}
+              <span className="font-normal text-zinc-500">({stageMatchCount})</span>
+            </span>
+            <span className="text-xs text-zinc-500">{matchesOpen ? "▲" : "▼"}</span>
+          </button>
+          {matchesOpen && (
+            <div className="border-t border-white/8 p-3">
+              <StageFixturesPanel payload={fixturesPayload} teams={teams} index={index} />
+            </div>
+          )}
         </div>
 
         {/* Kind-specific config (existing components, unchanged) */}

@@ -21,18 +21,15 @@ const KIND_LABEL: Record<string, string> = {
   knockout: "Knockout",
 };
 
-const selectDirtyDetail = (s: any) => {
-  const d = s.dirty ?? {};
-  return {
-    matches: d.matches?.size ?? 0,
-    deletedMatches: d.deletedMatchIds?.size ?? 0,
-    tournament: !!d.tournament,
-    stages: !!d.stages,
-    groups: !!d.groups,
-    teams: !!d.tournamentTeams,
-    intake: !!d.intakeMappings,
-  };
-};
+// One primitive selector per value — an object-returning selector re-creates
+// its result every call and sends useSyncExternalStore into an infinite loop.
+const selDirtyMatches = (s: any) => s.dirty?.matches?.size ?? 0;
+const selDeletedMatches = (s: any) => s.dirty?.deletedMatchIds?.size ?? 0;
+const selDirtyTournament = (s: any) => !!s.dirty?.tournament;
+const selDirtyStages = (s: any) => !!s.dirty?.stages;
+const selDirtyGroups = (s: any) => !!s.dirty?.groups;
+const selDirtyTeams = (s: any) => !!s.dirty?.tournamentTeams;
+const selDirtyIntake = (s: any) => !!s.dirty?.intakeMappings;
 
 export default function StepReview({
   mode,
@@ -51,7 +48,15 @@ export default function StepReview({
   errors: string[];
   onBack: () => void;
 }) {
-  const dirty = useTournamentStore(selectDirtyDetail);
+  const dirty = {
+    matches: useTournamentStore(selDirtyMatches),
+    deletedMatches: useTournamentStore(selDeletedMatches),
+    tournament: useTournamentStore(selDirtyTournament),
+    stages: useTournamentStore(selDirtyStages),
+    groups: useTournamentStore(selDirtyGroups),
+    teams: useTournamentStore(selDirtyTeams),
+    intake: useTournamentStore(selDirtyIntake),
+  };
 
   const matchesPerStage = useMemo(() => {
     const map = new Map<number, number>();
