@@ -439,7 +439,9 @@ export function useStageFixtures({
     });
     const freshHere = fresh.filter((m) => m.stageIdx === effectiveStageIdx);
     const key = (m: DraftMatch) => {
-      if (m.round != null && m.bracket_pos != null) return `KO|R${m.round}|B${m.bracket_pos}`;
+      // Include leg so the two legs of a two-legged tie aren't collapsed to one key.
+      if (m.round != null && m.bracket_pos != null)
+        return `KO|R${m.round}|B${m.bracket_pos}|L${(m as any).leg ?? 0}`;
       return `RR|G${m.groupIdx ?? -1}|MD${m.matchday ?? 0}|${rrPairKey(
         m.team_a_id,
         m.team_b_id

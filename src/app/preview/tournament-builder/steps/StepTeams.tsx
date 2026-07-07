@@ -73,9 +73,6 @@ export default function StepTeams({
   const removeOne = (id: number) => onChange(teams.filter((t) => t.id !== id));
   const toggleOne = (id: number) => (isSelected(teams, id) ? removeOne(id) : addOne(id));
 
-  const setSeed = (id: number, seed: number | null) =>
-    onChange(teams.map((t) => (t.id === id ? { ...t, seed } : t)));
-
   // Rehydrate missing name/logo metadata from catalog (same as TeamPicker)
   useEffect(() => {
     if (teams.length === 0 || catalog.length === 0) return;
@@ -133,18 +130,6 @@ export default function StepTeams({
                       <span className="min-w-0 flex-1 truncate text-sm text-white/90">
                         {name} <span className="text-xs text-white/40">#{t.id}</span>
                       </span>
-                      <label className="flex items-center gap-1.5 text-xs text-zinc-500">
-                        Seed
-                        <input
-                          type="number"
-                          min={1}
-                          className="w-14 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-white"
-                          value={t.seed ?? ""}
-                          onChange={(e) =>
-                            setSeed(t.id, e.target.value ? Number(e.target.value) : null)
-                          }
-                        />
-                      </label>
                       <button
                         onClick={() => removeOne(t.id)}
                         aria-label={`Αφαίρεση ${name}`}

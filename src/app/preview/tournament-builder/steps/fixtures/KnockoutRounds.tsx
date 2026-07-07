@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, RefreshCw, GitBranch } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import type { DraftMatch } from "@/app/dashboard/tournaments/TournamentCURD/TournamentWizard";
 import ConfirmDialog from "@/app/dashboard/tournaments/TournamentCURD/stages/ConfirmDialog";
 
@@ -39,13 +39,9 @@ export function koSourceLabel(
 export default function KnockoutRounds({
   fx,
   onOpenMatch,
-  onToggleCanvas,
-  showCanvasToggle,
 }: {
   fx: Fixtures;
   onOpenMatch: (m: DraftMatch) => void;
-  onToggleCanvas?: () => void;
-  showCanvasToggle?: boolean;
 }) {
   const [confirmRegen, setConfirmRegen] = useState(false);
   const { koRounds, nameOf, addKoRowInRound, regenerateStage } = fx;
@@ -61,12 +57,6 @@ export default function KnockoutRounds({
           <RefreshCw size={15} />
           <span className="hidden sm:inline">Αναδημιουργία</span>
         </Button>
-        {showCanvasToggle && (
-          <Button variant="ghost" className="hidden lg:inline-flex" onClick={onToggleCanvas}>
-            <GitBranch size={15} />
-            Προηγμένη προβολή
-          </Button>
-        )}
         <Button variant="primary" className="ml-auto" onClick={() => addKoRowInRound(1)}>
           <Plus size={15} />
           Αγώνας (Γύρος 1)
@@ -103,7 +93,9 @@ export default function KnockoutRounds({
                   onOpen={() => onOpenMatch(m)}
                   homeSourceLabel={koSourceLabel(m, "home", roundLabel)}
                   awaySourceLabel={koSourceLabel(m, "away", roundLabel)}
-                  subtitle={`Θέση ${m.bracket_pos ?? "—"}`}
+                  subtitle={`Θέση ${m.bracket_pos ?? "—"}${
+                    (m as any).leg != null ? ` · ${(m as any).leg}ος αγώνας` : ""
+                  }`}
                 />
               ))}
             </div>

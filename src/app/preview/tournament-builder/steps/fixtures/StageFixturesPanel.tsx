@@ -58,7 +58,9 @@ export default function StageFixturesPanel({
     });
   };
 
-  const [showCanvas, setShowCanvas] = useState(false);
+  // KO view: the Bracket Builder panel (generate-first, leg-aware — the
+  // "latest KO builder") is the default; the mobile rounds list is secondary.
+  const [koView, setKoView] = useState<"builder" | "rounds">("builder");
 
   if (fx.isKO) {
     const maxRound = fx.koRounds.length ? Math.max(...fx.koRounds.map((r) => r.round)) : 1;
@@ -71,25 +73,35 @@ export default function StageFixturesPanel({
     );
     return (
       <>
-        {showCanvas ? (
-          <div className="space-y-3">
+        <div className="mb-3 flex gap-1.5" role="tablist" aria-label="Προβολή knockout">
+          {(
+            [
+              { id: "builder", label: "Bracket Builder" },
+              { id: "rounds", label: "Λίστα γύρων" },
+            ] as const
+          ).map((v) => (
             <button
-              onClick={() => setShowCanvas(false)}
-              className="text-sm text-indigo-300 hover:text-indigo-200"
+              key={v.id}
+              role="tab"
+              aria-selected={koView === v.id}
+              onClick={() => setKoView(v.id)}
+              className={[
+                "rounded-lg border px-3 py-2 text-sm font-medium min-h-10 transition-colors",
+                koView === v.id
+                  ? "border-indigo-500/50 bg-indigo-500/15 text-indigo-200"
+                  : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800",
+              ].join(" ")}
             >
-              ← Πίσω στη λίστα γύρων
+              {v.label}
             </button>
-            <div className="overflow-x-auto">
-              <KnockoutBoard stageIdx={fx.effectiveStageIdx} teamsMap={teamsMap} />
-            </div>
+          ))}
+        </div>
+        {koView === "builder" ? (
+          <div className="overflow-x-auto">
+            <KnockoutBoard stageIdx={fx.effectiveStageIdx} teamsMap={teamsMap} />
           </div>
         ) : (
-          <KnockoutRounds
-            fx={fx}
-            onOpenMatch={openMatch}
-            showCanvasToggle
-            onToggleCanvas={() => setShowCanvas(true)}
-          />
+          <KnockoutRounds fx={fx} onOpenMatch={openMatch} />
         )}
         <KoMatchSheet
           open={editingMatch != null}
