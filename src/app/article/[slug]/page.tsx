@@ -6,6 +6,7 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
+import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import RelatedArticles from '@/components/RelatedArticles';
 import ArticleNavigation from '@/components/ArticleNavigation';
 
@@ -26,11 +27,10 @@ async function getArticle(slug: string) {
     return null;
   }
 
-  // Only show published articles to non-admin users
+  // Drafts are visible only to content editors (admins/editors)
   if (data.status !== 'published') {
     const { data: { user } } = await supabase.auth.getUser();
-    const roles = Array.isArray(user?.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes('admin')) {
+    if (!canEditContent(user)) {
       return null;
     }
   }

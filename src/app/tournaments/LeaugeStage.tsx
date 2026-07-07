@@ -3,6 +3,7 @@
 import React from "react";
 import type { Stage } from "./useTournamentData";
 import { useTournamentData } from "./useTournamentData";
+import { formatMatchDate, formatMatchDateTime } from "@/app/lib/datetime";
 
 const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
   const stageIdx = useTournamentData((s) => s.ids.stageIndexById[stage.id]);
@@ -191,12 +192,10 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                   
                   {match.match_date && (
                     <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                      {new Date(match.match_date).toLocaleString('el-GR', {
+                      {formatMatchDateTime(match.match_date, {
                         weekday: 'long',
                         day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        month: '2-digit'
                       })}
                     </div>
                   )}
@@ -273,7 +272,7 @@ const LeagueStage: React.FC<{ stage: Stage }> = ({ stage }) => {
                   
                   {match.match_date && (
                     <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 text-center">
-                      {new Date(match.match_date).toLocaleString('el-GR', {
+                      {formatMatchDate(match.match_date, {
                         weekday: 'short',
                         day: '2-digit',
                         month: '2-digit'

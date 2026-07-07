@@ -18,20 +18,44 @@ type MaskStyle = CSSProperties & {
   maskMode?: "match-source" | "luminance" | "alpha";
 };
 
-// Optional: lightweight alpha detection
-function useHasAlpha(imageUrl: string | null) {
-  const [hasAlpha, setHasAlpha] = useState<boolean | null>(null);
-  
+// Cache alpha-detection results across mounts, keyed by resolved image URL, so
+// re-selecting a previously-viewed player never re-decodes/rasterizes the PNG.
+const alphaCache = new Map<string, boolean>();
+
+// Optional: lightweight alpha detection.
+// `skip` short-circuits the canvas pass entirely (used under reduced motion,
+// where the sweep doesn't animate anyway). A cached result is still honored so
+// the `disableIfOpaque` decision stays consistent across motion settings.
+function useHasAlpha(imageUrl: string | null, skip = false) {
+  const [hasAlpha, setHasAlpha] = useState<boolean | null>(() =>
+    imageUrl && alphaCache.has(imageUrl) ? alphaCache.get(imageUrl)! : null
+  );
+
   useEffect(() => {
     if (!imageUrl) {
       setHasAlpha(null);
       return;
     }
-    
+
+    // Cache hit: synchronous, no canvas work.
+    const cached = alphaCache.get(imageUrl);
+    if (cached !== undefined) {
+      setHasAlpha(cached);
+      return;
+    }
+
+    // Reduced motion (or otherwise skipped): don't pay for the canvas pass.
+    // Leave hasAlpha null so the gloss renders (matches the pre-resolution
+    // default); the sweep is static under reduced motion regardless.
+    if (skip) {
+      setHasAlpha(null);
+      return;
+    }
+
     let cancelled = false;
     const img = new Image();
     img.crossOrigin = "anonymous";
-    
+
     img.onload = () => {
       try {
         const w = img.naturalWidth || 1;
@@ -41,10 +65,10 @@ function useHasAlpha(imageUrl: string | null) {
         cv.height = h;
         const ctx = cv.getContext("2d");
         if (!ctx) throw new Error("no ctx");
-        
+
         ctx.drawImage(img, 0, 0);
         const { data } = ctx.getImageData(0, 0, w, h);
-        
+
         // Sample every 16th pixel for performance
         let transparent = false;
         for (let i = 3; i < data.length; i += 64) {
@@ -53,21 +77,23 @@ function useHasAlpha(imageUrl: string | null) {
             break;
           }
         }
+        alphaCache.set(imageUrl, transparent);
         if (!cancelled) setHasAlpha(transparent);
       } catch {
         // CORS or other error - assume it has alpha to be safe
+        alphaCache.set(imageUrl, true);
         if (!cancelled) setHasAlpha(true);
       }
     };
-    
+
     img.onerror = () => !cancelled && setHasAlpha(null);
     img.src = imageUrl;
-    
+
     return () => {
       cancelled = true;
     };
-  }, [imageUrl]);
-  
+  }, [imageUrl, skip]);
+
   return hasAlpha;
 }
 
@@ -97,7 +123,8 @@ export default function GlossOverlay({
   const maskUrl = maskSrc || src ? resolvedMaskSrc : null;
 
   const reduce = useReducedMotion();
-  const hasAlpha = useHasAlpha(maskUrl);
+  // Under reduced motion the sweep is static, so skip the canvas alpha pass.
+  const hasAlpha = useHasAlpha(maskUrl, !!reduce);
 
   const active = run && !reduce;
   const clamp = (v: number, min = 0, max = 1.5) => Math.min(Math.max(v, min), max);

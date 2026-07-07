@@ -16,6 +16,12 @@ import {
   Figtree,
 } from "next/font/google";
 import type { Team, PlayerAssociation, Match } from "@/app/lib/types";
+import {
+  formatInstant,
+  formatMatchDate,
+  formatMatchTime,
+  wallClockDate,
+} from "@/app/lib/datetime";
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 import {
   FaUser,
@@ -94,46 +100,6 @@ type Props = {
 };
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
-
-const ISO_RE =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
-
-function parseIsoWallClock(iso: string) {
-  const m = ISO_RE.exec(iso);
-  if (!m) return null;
-  return { y: +m[1], M: +m[2], d: +m[3], h: +m[4], min: +m[5], s: +m[6] };
-}
-
-const wallClockDate = (iso?: string | null): Date | null => {
-  if (!iso) return null;
-  const p = parseIsoWallClock(iso);
-  if (!p) {
-    const d = new Date(iso);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  return new Date(p.y, p.M - 1, p.d, p.h, p.min, p.s);
-};
-
-const elDate = (iso?: string | null, opts?: Intl.DateTimeFormatOptions) => {
-  const d = wallClockDate(iso);
-  return d
-    ? d.toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-        ...opts,
-      })
-    : "";
-};
-
-const elTime = (iso?: string | null) => {
-  if (!iso) return "";
-  const p = parseIsoWallClock(iso);
-  if (p) return `${pad2(p.h)}:${pad2(p.min)}`;
-  const d = new Date(iso);
-  return isNaN(d.getTime())
-    ? ""
-    : d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
-};
 
 const hexIsLight = (hex: string | null | undefined) => {
   if (!hex) return false;
@@ -265,7 +231,7 @@ const Masthead: React.FC<{
               {team.created_at && (
                 <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 text-[#F3EFE6]/70">
                   Μέλος από{" "}
-                  {new Date(team.created_at).toLocaleDateString("el-GR", {
+                  {formatInstant(team.created_at, {
                     month: "short",
                     year: "numeric",
                   })}
@@ -1144,9 +1110,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
         {wallClockDate(m.match_date)?.getDate() ?? "—"}
       </span>
       <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-[#F3EFE6]/60">
-        {wallClockDate(m.match_date)?.toLocaleDateString("el-GR", {
-          month: "short",
-        }) ?? ""}
+        {formatMatchDate(m.match_date, { month: "short" })}
       </span>
     </div>
   );
@@ -1169,8 +1133,13 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ delay: Math.min(index * 0.03, 0.3) }}
-      className="group p-4 transition-colors hover:bg-[#13131d] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
+      className="group relative p-4 transition-colors hover:bg-[#13131d] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
     >
+      <Link
+        href={`/matches/${m.id}`}
+        aria-label={`Λεπτομέρειες αγώνα: ${mine?.name ?? "—"} εναντίον ${opp?.name ?? "ΤΒΑ"}`}
+        className="absolute inset-0 z-0"
+      />
       {/* Mobile-only top row: date + outcome */}
       <div className="mb-3 flex items-center justify-between gap-2 sm:hidden">
         {datePill}
@@ -1233,7 +1202,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
             </div>
           ) : (
             <div className="border-2 border-dashed border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
-              {m.match_date ? elTime(m.match_date) : "ΤΒΑ"}
+              {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
         </div>
@@ -1275,7 +1244,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
         {m.tournament?.name && (
           <Link
             href={`/tournaments/${m.tournament.id}`}
-            className="truncate text-[#F3EFE6]/55 hover:text-[#fb923c] transition-colors max-w-[160px]"
+            className="relative z-10 truncate text-[#F3EFE6]/55 hover:text-[#fb923c] transition-colors max-w-[160px]"
             title={m.tournament.name}
           >
             {m.tournament.name}

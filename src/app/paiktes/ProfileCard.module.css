@@ -1045,6 +1045,29 @@
 }
 
 /* ========================================
+  MOTION GATING
+  The card runs three always-on infinite animations (glow-bg on .pc-card,
+  holo-bg on .pc-shine, metallic-shine on the centered name). These churn the
+  compositor/main thread continuously even while idle. Pause them when the tab
+  is hidden (.paused on the wrapper, toggled from ProfileCard.tsx) and disable
+  them entirely under prefers-reduced-motion.
+  ======================================== */
+
+.pc-card-wrapper.paused .pc-card,
+.pc-card-wrapper.paused .pc-shine,
+.pc-card-wrapper.paused .pc-player-name-centered {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-card,
+  .pc-shine,
+  .pc-player-name-centered {
+    animation: none !important;
+  }
+}
+
+/* ========================================
   FLOATING PANEL - FULLY TRANSPARENT, NO BORDER
   ======================================== */
 

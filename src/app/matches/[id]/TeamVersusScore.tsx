@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import { GoalIcon, OwnGoalIcon } from "./StatIcons";
 import type { Id } from "@/app/lib/types";
+import { formatMatchDateTime } from "@/app/lib/datetime";
 
 type Team = {
   id: Id;
@@ -51,13 +52,10 @@ export default function TeamVersusScore({
   const isFinished = status === "finished";
 
   const dateLabel = matchDate
-    ? new Date(matchDate).toLocaleString("el-GR", {
+    ? formatMatchDateTime(matchDate, {
         year: "numeric",
         month: "short",
         day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "UTC",
       })
     : "TBD";
 

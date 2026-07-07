@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
+import { safeNextUrl } from '@/app/lib/safe-redirect';
 
 type Ctx = { params: Promise<{ id: string }> }; // ← params is a Promise
 
@@ -20,19 +21,35 @@ export async function POST(req: Request, ctx: Ctx) {
   }
 
   // 3) Read payload (form or JSON)
+  //    `role` selects which role to toggle ('admin' | 'editor'), defaulting to
+  //    'admin' for backward compatibility. `enabled` (JSON) / checkbox presence
+  //    (form) decides whether to grant or revoke it.
+  const ASSIGNABLE_ROLES = ['admin', 'editor'] as const;
+  type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
   const ct = req.headers.get('content-type') || '';
-  let makeAdmin: boolean | null = null;
+  let targetRole: AssignableRole = 'admin';
+  let enable: boolean | null = null;
   let returnTo: string | null = null;
 
   if (ct.includes('application/json')) {
-    const body = await req.json().catch(() => ({}));
-    if ('admin' in body) makeAdmin = !!(body as any).admin;
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (typeof body.role === 'string' && (ASSIGNABLE_ROLES as readonly string[]).includes(body.role)) {
+      targetRole = body.role as AssignableRole;
+    }
+    // Back-compat: { admin: boolean } still toggles the admin role.
+    if ('admin' in body) { targetRole = 'admin'; enable = !!body.admin; }
+    else if ('enabled' in body) { enable = !!body.enabled; }
   } else {
     const form = await req.formData();
-    makeAdmin = form.has('admin');                // checkbox present → true
+    const formRole = String(form.get('role') || '');
+    if ((ASSIGNABLE_ROLES as readonly string[]).includes(formRole)) {
+      targetRole = formRole as AssignableRole;
+    }
+    enable = form.has('enabled');                 // checkbox present → grant
     returnTo = String(form.get('returnTo') || '');
   }
-  if (makeAdmin === null) return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
+  if (enable === null) return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
 
   // 4) Get current roles for target user
   const { data: target, error: getErr } = await supabaseAdmin.auth.admin.getUserById(id);
@@ -43,9 +60,9 @@ export async function POST(req: Request, ctx: Ctx) {
   const currentRoles: string[] = Array.isArray(target.user.app_metadata?.roles)
     ? (target.user.app_metadata!.roles as string[])
     : [];
-  const newRoles = makeAdmin
-    ? Array.from(new Set([...currentRoles, 'admin']))
-    : currentRoles.filter((r) => r !== 'admin');
+  const newRoles = enable
+    ? Array.from(new Set([...currentRoles, targetRole]))
+    : currentRoles.filter((r) => r !== targetRole);
 
   // 5) Persist roles
   const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(id, {
@@ -55,7 +72,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
   // 6) Redirect for form posts; JSON for programmatic calls
   if (!ct.includes('application/json')) {
-    const location = returnTo && returnTo.startsWith('/') ? returnTo : '/dashboard';
+    const location = safeNextUrl(returnTo ?? '', '/dashboard');
     return NextResponse.redirect(new URL(location, req.url), { status: 303 });
   }
   return NextResponse.json({ ok: true, roles: newRoles });

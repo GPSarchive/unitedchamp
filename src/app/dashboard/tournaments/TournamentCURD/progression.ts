@@ -3,6 +3,8 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { refreshStatsForMatch } from "@/app/lib/refreshPlayerStats";
+import { nextPow2, seedOrder, roundRobinRounds } from "./util/functions/common";
+import { decideTwoLeggedTie, type TieResolution } from "./util/functions/twoLeggedTie";
 
 /** Service role key (server only) */
 const supabase = createClient(
@@ -35,6 +37,11 @@ type MatchRow = {
   home_source_bracket_pos: number | null;
   away_source_round: number | null;
   away_source_bracket_pos: number | null;
+  // two-legged KO
+  leg: number | null;
+  tie_leg1_match_id: Id | null;
+  penalty_a: number | null;
+  penalty_b: number | null;
 };
 
 type StageRow = {
@@ -231,12 +238,108 @@ async function ensureBaselineStandings(stageId: Id): Promise<boolean> {
 }
 
 /* =========================================================
+   Two-legged KO resolution
+   (pure helpers live in ./util/functions/twoLeggedTie — a "use server" module
+    may only export async Server Actions, so they cannot be defined here)
+   ========================================================= */
+
+/** Server-side resolution that loads leg 1 from the DB for a finished leg-2 row. */
+async function resolveTwoLeggedTie(leg2: MatchRow): Promise<TieResolution> {
+  // leg null, or leg 1 deleted (tie link cleared by ON DELETE SET NULL) → single-match logic
+  if (leg2.leg !== 2 || leg2.tie_leg1_match_id == null) return { kind: "single" };
+
+  const { data: leg1, error } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("id", leg2.tie_leg1_match_id)
+    .maybeSingle<MatchRow>();
+
+  if (error || !leg1) return { kind: "single" }; // leg 1 vanished → fall back
+  if (leg1.status !== "finished") return { kind: "pending" };
+
+  return decideTwoLeggedTie(leg2, leg1);
+}
+
+/**
+ * Insert KO match rows for a stage, optionally expanding each into two legs.
+ *
+ * Single-leg (doubleRound=false): inserts rows unchanged.
+ * Two-legged (doubleRound=true): for each row emit leg 1 (as-is) + leg 2
+ * (teams + source pointers swapped), insert all, then link each leg-2 row's
+ * tie_leg1_match_id back to its leg-1 sibling. Children reference parents by
+ * (round, bracket_pos); only the leg-2 decider propagates (see applyKnockoutPropagation),
+ * so source pointers are simply carried on both legs.
+ */
+async function insertKnockoutRowsWithLegs(
+  doubleRound: boolean,
+  rows: Partial<MatchRow>[]
+) {
+  if (!rows.length) return;
+
+  if (!doubleRound) {
+    await supabase.from("matches").insert(rows as any);
+    return;
+  }
+
+  // Build paired legs; remember which output indices are (leg1, leg2) per tie.
+  const expanded: Partial<MatchRow>[] = [];
+  const pairs: { leg1: number; leg2: number }[] = [];
+
+  for (const row of rows) {
+    const leg1: Partial<MatchRow> = { ...row, leg: 1 };
+    const leg2: Partial<MatchRow> = {
+      ...row,
+      leg: 2,
+      team_a_id: row.team_b_id ?? null,
+      team_b_id: row.team_a_id ?? null,
+      home_source_round: row.away_source_round ?? null,
+      home_source_bracket_pos: row.away_source_bracket_pos ?? null,
+      away_source_round: row.home_source_round ?? null,
+      away_source_bracket_pos: row.home_source_bracket_pos ?? null,
+    };
+    const i1 = expanded.push(leg1) - 1;
+    const i2 = expanded.push(leg2) - 1;
+    pairs.push({ leg1: i1, leg2: i2 });
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("matches")
+    .insert(expanded as any)
+    .select("id");
+  if (error || !inserted) throw new Error(error?.message || "Failed to insert KO legs");
+
+  const idByIdx = (inserted as { id: Id }[]).map((r) => r.id);
+  const links = pairs
+    .map(({ leg1, leg2 }) => ({ id: idByIdx[leg2], tie_leg1_match_id: idByIdx[leg1] }))
+    .filter((u) => u.id != null && u.tie_leg1_match_id != null);
+
+  if (links.length) {
+    await supabase.from("matches").upsert(links as any, { onConflict: "id" });
+  }
+}
+
+/* =========================================================
    Public APIs
    ========================================================= */
 
-/** One-call finalize (optional) */
-export async function finalizeMatch(input: { matchId: Id; teamAScore: number; teamBScore: number; }) {
-  const { matchId, teamAScore, teamBScore } = input;
+/**
+ * One-call finalize (optional).
+ *
+ * For two-legged KO deciders (leg 2) the per-row score never decides the tie —
+ * the winner is resolved from leg wins (+penalties when level) inside
+ * applyKnockoutPropagation. Pass `penaltyA`/`penaltyB` here so a level tie can
+ * actually be decided; without them a 1–1 (or 0–0) leg-wins tie resolves to
+ * `undecided` and propagation silently bails. Penalties are stored on the leg-2
+ * row in its own team_a/team_b orientation.
+ */
+export async function finalizeMatch(input: {
+  matchId: Id;
+  teamAScore: number;
+  teamBScore: number;
+  penaltyA?: number | null;
+  penaltyB?: number | null;
+}) {
+  const { matchId, teamAScore, teamBScore, penaltyA = null, penaltyB = null } = input;
 
   const { data: m, error: mErr } = await supabase
     .from("matches")
@@ -255,12 +358,24 @@ export async function finalizeMatch(input: { matchId: Id; teamAScore: number; te
   else if (teamBScore > teamAScore) winner_team_id = m.team_b_id!;
   else winner_team_id = null; // draw
 
+  // Two-legged KO: the per-row score never decides the winner. Leg 1 carries no
+  // winner; leg 2's winner is derived from leg wins (+penalties) inside
+  // applyKnockoutPropagation. Persist scores but leave winner null here.
+  if (m.leg != null) winner_team_id = null;
+
+  // Penalties only mean anything on a leg-2 decider; ignore them otherwise.
+  const isLeg2Decider = m.leg === 2 && m.tie_leg1_match_id != null;
+  const penalty_a = isLeg2Decider ? penaltyA : null;
+  const penalty_b = isLeg2Decider ? penaltyB : null;
+
   const { error: upErr } = await supabase
     .from("matches")
     .update({
       team_a_score: teamAScore,
       team_b_score: teamBScore,
       winner_team_id,
+      penalty_a,
+      penalty_b,
       status: "finished",
     })
     .eq("id", matchId);
@@ -283,6 +398,20 @@ export async function progressAfterMatch(matchId: Id) {
     if (st?.kind === "knockout") {
       // 1) KO child propagation (same stage)
       await applyKnockoutPropagation(m);
+
+      // 1b) Two-legged KO: if THIS was leg 1, its leg-2 decider may already be
+      // finished (legs entered out of order). Re-run propagation on that decider
+      // so the tie resolves now that both legs exist.
+      if (m.leg === 1) {
+        const { data: leg2 } = await supabase
+          .from("matches")
+          .select("*")
+          .eq("tie_leg1_match_id", m.id)
+          .eq("status", "finished")
+          .maybeSingle<MatchRow>();
+        if (leg2) await applyKnockoutPropagation(leg2);
+      }
+
       // 2) Ensure intake mappings exist (if you have a KO → next groups edge)
       await ensureIntakeMappingsForFinishedMatch(m);
     }
@@ -334,7 +463,35 @@ async function applyKnockoutPropagation(m: MatchRow) {
   // KO propagation only makes sense when the source match has stable coords
   if (m.round == null || m.bracket_pos == null) return;
 
-  // Pull children in same stage; filter in code to support BOTH id + stable pointers
+  // ----- Two-legged KO handling -----
+  // Leg 1 never propagates on its own — the tie is decided when leg 2 finishes.
+  if (m.leg === 1) return;
+
+  // Leg 2 (decider): resolve leg wins (+penalties when level) and stamp the tie
+  // winner onto this row before propagating. Single-leg rows (leg null, or leg 1
+  // deleted) skip this.
+  if (m.leg === 2 && m.tie_leg1_match_id != null) {
+    const res = await resolveTwoLeggedTie(m);
+    if (res.kind === "pending" || res.kind === "undecided") return; // not decided yet
+    if (res.kind === "decided") {
+      // When the tie was decided on leg wins, any stored penalties are stray and
+      // must be cleared (mirrors the score-write paths). Penalties only persist
+      // when they were the decider. Re-stamp the winner if it changed.
+      const clearStrayPens = res.via === "wins" && (m.penalty_a != null || m.penalty_b != null);
+      const winnerChanged = m.winner_team_id !== res.winnerTeamId;
+      if (winnerChanged || clearStrayPens) {
+        const patch: Partial<MatchRow> = { winner_team_id: res.winnerTeamId };
+        if (clearStrayPens) {
+          patch.penalty_a = null;
+          patch.penalty_b = null;
+        }
+        await supabase.from("matches").update(patch).eq("id", m.id);
+        m = { ...m, ...patch };
+      }
+    }
+  }
+
+  // Pull children in same stage; filter in code to support BOTH id + stable pointers.
   const { data: allChildren, error } = await supabase
     .from("matches")
     .select("*")
@@ -342,26 +499,28 @@ async function applyKnockoutPropagation(m: MatchRow) {
 
   if (error || !allChildren) return;
 
-  const children = (allChildren as MatchRow[]).filter((child) => {
-    const byId =
-      child.home_source_match_id === m.id ||
-      child.away_source_match_id === m.id;
+  // A non-null source_match_id is authoritative; stable (round, bracket_pos)
+  // pointers are only a fallback for rows whose id link was never set (or was
+  // cleared when the source match got deleted/recreated). Without this
+  // precedence, a stale id and a stable pointer can name DIFFERENT parents and
+  // whichever finishes first would fill the slot.
+  const feedsFrom = (
+    srcId: Id | null,
+    srcRound: number | null,
+    srcPos: number | null
+  ) =>
+    srcId != null
+      ? srcId === m.id
+      : srcRound === m.round && srcPos === m.bracket_pos;
 
-    // Only consider stable pointers when BOTH sides are non-null
-    const homeStable =
-      child.home_source_round != null &&
-      child.home_source_bracket_pos != null &&
-      child.home_source_round === m.round &&
-      child.home_source_bracket_pos === m.bracket_pos;
-    const awayStable =
-      child.away_source_round != null &&
-      child.away_source_bracket_pos != null &&
-      child.away_source_round === m.round &&
-      child.away_source_bracket_pos === m.bracket_pos;
-    const byStable = homeStable || awayStable;
+  const feedsHomeOf = (child: MatchRow) =>
+    feedsFrom(child.home_source_match_id, child.home_source_round, child.home_source_bracket_pos);
+  const feedsAwayOf = (child: MatchRow) =>
+    feedsFrom(child.away_source_match_id, child.away_source_round, child.away_source_bracket_pos);
 
-    return byId || byStable;
-  });
+  const children = (allChildren as MatchRow[]).filter(
+    (child) => feedsHomeOf(child) || feedsAwayOf(child)
+  );
 
   // Winner / loser from source match (null if not decided)
   const W = m.winner_team_id ?? null;
@@ -374,15 +533,8 @@ async function applyKnockoutPropagation(m: MatchRow) {
     const patch: Partial<MatchRow> = {};
     const childFinished = child.status === "finished";
 
-    const feedsHome =
-      child.home_source_match_id === m.id ||
-      (child.home_source_round === m.round &&
-        child.home_source_bracket_pos === m.bracket_pos);
-
-    const feedsAway =
-      child.away_source_match_id === m.id ||
-      (child.away_source_round === m.round &&
-        child.away_source_bracket_pos === m.bracket_pos);
+    const feedsHome = feedsHomeOf(child);
+    const feedsAway = feedsAwayOf(child);
 
     // Default to single-elim "winner advances" if not specified
     const homeOutcome = (child.home_source_outcome ?? "W") as "W" | "L";
@@ -820,7 +972,7 @@ export async function seedNextKnockoutFromGroupsIfConfigured(
       } as any,
     ];
 
-    await supabase.from("matches").insert(inserts as any);
+    await insertKnockoutRowsWithLegs(!!nextKO.config?.double_round_ko, inserts);
     return;
   }
 
@@ -840,9 +992,7 @@ export async function seedNextKnockoutFromGroupsIfConfigured(
     stageId: nextKO.id,
     entrantTeamIds,
   });
-  if (inserts.length) {
-    await supabase.from("matches").insert(inserts as any);
-  }
+  await insertKnockoutRowsWithLegs(!!nextKO.config?.double_round_ko, inserts);
 }
 
 
@@ -926,9 +1076,7 @@ export async function seedNextKnockoutFromLeagueIfConfigured(
     stageId: nextKO.id,
     entrantTeamIds,
   });
-  if (inserts.length) {
-    await supabase.from("matches").insert(inserts as any);
-  }
+  await insertKnockoutRowsWithLegs(!!nextKO.config?.double_round_ko, inserts);
 }
 
 /** Tournament completion: mark tournaments.status='completed' if all its matches are finished */
@@ -1109,41 +1257,19 @@ function generateRoundRobinPairsByMatchday(
   teamIds: number[],
   repeats: number
 ): Map<number, [number, number][]> {
-  const n = teamIds.length;
-  const hasBye = n % 2 === 1;
-  const m = hasBye ? n + 1 : n;
-  const rounds = m - 1;
-  const half = m / 2;
-
-  // 0..m-1, last acts as BYE if odd
-  let arr = Array.from({ length: m }, (_v, i) => i);
+  const base = roundRobinRounds(teamIds);
+  const rounds = base.length;
   const out = new Map<number, [number, number][]>();
 
-  const pushRound = (baseMd: number) => {
-    const list: [number, number][] = [];
-    for (let i = 0; i < half; i++) {
-      const a = arr[i];
-      const b = arr[m - 1 - i];
-      if (hasBye && (a === m - 1 || b === m - 1)) continue;
-      list.push([teamIds[a], teamIds[b]]);
-    }
-    out.set(baseMd, list);
-  };
-
-  // Base single round
-  for (let r = 0; r < rounds; r++) {
-    pushRound(r + 1);
-    // rotate (keep first fixed)
-    arr = [arr[0], ...arr.slice(-1), ...arr.slice(1, -1)];
-  }
-
-  // Extra repeats → duplicate base with matchday offset
-  for (let rep = 2; rep <= Math.max(1, repeats); rep++) {
+  for (let rep = 1; rep <= Math.max(1, repeats); rep++) {
+    // Even repeats flip home/away, matching the wizard's genRoundRobin
+    const flip = rep % 2 === 0;
     for (let r = 0; r < rounds; r++) {
-      const baseMd = r + 1;
-      const md = (rep - 1) * rounds + baseMd;
-      const basePairs = out.get(baseMd) ?? [];
-      out.set(md, basePairs.slice());
+      const md = (rep - 1) * rounds + r + 1;
+      out.set(
+        md,
+        base[r].map(([a, b]) => (flip ? [b, a] : [a, b]) as [number, number])
+      );
     }
   }
 
@@ -1153,22 +1279,6 @@ function generateRoundRobinPairsByMatchday(
 /* =========================================================
    Any-N knockout builder (server) — stable pointers
    ========================================================= */
-
-function nextPow2(n: number) {
-  return n <= 1 ? 1 : 1 << Math.ceil(Math.log2(n));
-}
-
-/** Standard seeded bracket order for size n (n must be power of two). */
-function seedOrder(n: number): number[] {
-  if (n === 1) return [1];
-  const prev = seedOrder(n / 2);
-  const out: number[] = [];
-  for (const s of prev) {
-    out.push(s);
-    out.push(n + 1 - s);
-  }
-  return out;
-}
 
 /**
  * Build insert rows for a seeded knockout for any N (with byes).

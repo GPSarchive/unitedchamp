@@ -24,7 +24,7 @@ export default function HomeHero({
   return (
     <section
       className="
-        relative isolate overflow-hidden
+        relative isolate overflow-hidden bg-zinc-950
         min-h-[60svh] sm:min-h-[70dvh] md:min-h-[80dvh] /* responsive hero height */
       "
       aria-label="Ultra Champ hero"

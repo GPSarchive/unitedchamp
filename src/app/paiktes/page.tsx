@@ -1,10 +1,12 @@
 // src/app/paiktes/page.tsx — reads from pre-computed player_career_stats / player_tournament_stats
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import PlayersClient from "./PlayersClient";
-import type { PlayerLite } from "./types";
+import type { PlayerLite, ScopableStatKey } from "./types";
+import { resolveStat } from "./types";
 import {
   parseSearchQuery,
   normalizeForSearch,
+  removeGreekDiacritics,
 } from "@/app/lib/searchUtils";
 
 export const revalidate = 300;
@@ -31,7 +33,16 @@ async function fetchInBatches<T>(
         .select(selectColumns)
         .in(idColumn, chunk)
         .limit(10000)
-        .then(({ data }) => (data ?? []) as T[]),
+        .then(({ data }) => {
+          const rows = (data ?? []) as T[];
+          if (rows.length >= 10000) {
+            console.error(
+              `[paiktes] fetchInBatches truncated at 10000 for table "${table}" ` +
+                `(${chunk.length} ids) — results incomplete`,
+            );
+          }
+          return rows;
+        }),
     ),
   );
   return results.flat();
@@ -99,7 +110,15 @@ export default async function PaiktesPage({
 }) {
   const sp = await searchParams;
   const sortMode = (sp?.sort ?? "alpha").toLowerCase();
-  const tournamentId = sp?.tournament_id ? Number(sp.tournament_id) : null;
+  // Canonical tournament id: finite AND positive, else null. Computed once so
+  // every downstream check agrees (no mixed `Number.isFinite()` vs truthiness).
+  // `?tournament_id=abc` (NaN), `?tournament_id=` (absent) and `?tournament_id=0`
+  // all cleanly mean "no tournament".
+  const rawTournamentId = sp?.tournament_id ? Number(sp.tournament_id) : NaN;
+  const activeTournamentId: number | null =
+    Number.isFinite(rawTournamentId) && rawTournamentId > 0
+      ? rawTournamentId
+      : null;
   const parsedTop = sp?.top ? Number(sp.top) : NaN;
   const topN =
     Number.isFinite(parsedTop) && parsedTop > 0 ? Math.floor(parsedTop) : null;
@@ -156,26 +175,71 @@ export default async function PaiktesPage({
 
   // ── TOURNAMENT FILTER → player ids (from pre-computed table) ──────
   let tournamentPlayerIds: number[] | null = null;
-  if (Number.isFinite(tournamentId)) {
+  if (activeTournamentId !== null) {
     const { data: tStatsRows } = await supabaseAdmin
       .from("player_tournament_stats")
       .select("player_id")
-      .eq("tournament_id", tournamentId as number);
+      .eq("tournament_id", activeTournamentId);
 
     tournamentPlayerIds = (tStatsRows ?? []).map((r) => r.player_id);
     if (tournamentPlayerIds.length === 0) tournamentPlayerIds = [];
   }
 
-  // ── Combine filters ───────────────────────────────────────────────
-  let combinedPlayerIds: number[] | null = null;
+  // ── STAT FILTERS (goals:>N / matches:>N / assists:>N) ─────────────
+  // Scoped-stat semantics (decision, 2026-06): when a tournament is selected,
+  // these filter on the *tournament* value — matching the number displayed in
+  // the list/card (PlayersClient sets isTournamentScoped = !!tournament_id, so
+  // the UI shows tournament stats). The filter and the visible stat agree.
+  //
+  // - No tournament  → push the filter into SQL against player_career_stats
+  //   (a real WHERE), so the DB returns only matching players AND an accurate
+  //   count. No 10k-bounded JS recompute for this case.
+  // - Tournament set → values live in player_tournament_stats and the tournament
+  //   path already defers pagination, so the filter runs in JS over `enriched`
+  //   (see the scoped stat-filter step below), using the tournament values.
+  const hasStatFilter =
+    parsedSearch.minGoals !== undefined ||
+    parsedSearch.minMatches !== undefined ||
+    parsedSearch.minAssists !== undefined;
 
-  if (teamFilteredPlayerIds !== null && tournamentPlayerIds !== null) {
-    const teamSet = new Set(teamFilteredPlayerIds);
-    combinedPlayerIds = tournamentPlayerIds.filter((id) => teamSet.has(id));
-  } else if (teamFilteredPlayerIds !== null) {
-    combinedPlayerIds = teamFilteredPlayerIds;
-  } else if (tournamentPlayerIds !== null) {
-    combinedPlayerIds = tournamentPlayerIds;
+  let statFilteredPlayerIds: number[] | null = null;
+  if (hasStatFilter && activeTournamentId === null) {
+    let careerStatQuery = supabaseAdmin
+      .from("player_career_stats")
+      .select("player_id")
+      .limit(10000);
+    if (parsedSearch.minGoals !== undefined) {
+      careerStatQuery = careerStatQuery.gte("total_goals", parsedSearch.minGoals);
+    }
+    if (parsedSearch.minMatches !== undefined) {
+      careerStatQuery = careerStatQuery.gte("total_matches", parsedSearch.minMatches);
+    }
+    if (parsedSearch.minAssists !== undefined) {
+      careerStatQuery = careerStatQuery.gte("total_assists", parsedSearch.minAssists);
+    }
+    const { data: statRows } = await careerStatQuery;
+    if (statRows && statRows.length >= 10000) {
+      console.error(
+        "[paiktes] career stat-filter result truncated at 10000 — counts may be wrong",
+      );
+    }
+    statFilteredPlayerIds = (statRows ?? []).map((r) => r.player_id);
+  }
+
+  // ── Combine filters ───────────────────────────────────────────────
+  // Intersection of every active id-set (team / tournament / career stats).
+  const idSets = [
+    teamFilteredPlayerIds,
+    tournamentPlayerIds,
+    statFilteredPlayerIds,
+  ].filter((s): s is number[] => s !== null);
+
+  let combinedPlayerIds: number[] | null = null;
+  if (idSets.length > 0) {
+    combinedPlayerIds = idSets.reduce((acc, set) => {
+      const setIds = new Set(set);
+      return acc.filter((id) => setIds.has(id));
+    });
   }
 
   // ── Fetch players ─────────────────────────────────────────────────
@@ -194,15 +258,25 @@ export default async function PaiktesPage({
     }
   }
 
-  // Position filter
+  // Position filter.
+  // Positions are vocabulary words ("Forward" / "Επιθετικός"), not names, so the
+  // Greek↔Latin transliteration that normalizeForSearch adds is pure noise here:
+  // transliterating "Forward" yields phonetic Greek letters that never match the
+  // Greek *translation*. We only want the original + diacritic-stripped form, so
+  // we normalize positions ourselves (case-folded, deduped) instead.
   if (parsedSearch.position && parsedSearch.position.length > 0) {
-    const posFilters = parsedSearch.position
-      .flatMap((pos) => normalizeForSearch(pos))
-      .map((variant) => variant.toLowerCase());
+    const posFilters = Array.from(
+      new Set(
+        parsedSearch.position.flatMap((pos) => {
+          const lower = pos.trim().toLowerCase();
+          return [lower, removeGreekDiacritics(lower)];
+        }),
+      ),
+    ).filter((f) => f.length > 0);
 
     if (posFilters.length === 1) {
       playersQuery = playersQuery.ilike("position", `%${posFilters[0]}%`);
-    } else {
+    } else if (posFilters.length > 1) {
       const positionConditions = posFilters
         .map((f) => `position.ilike.%${f}%`)
         .join(",");
@@ -227,27 +301,83 @@ export default async function PaiktesPage({
     }
   }
 
-  // Deferred pagination when sorting by stats (can't paginate before sorting)
-  const shouldDeferPagination = !!tournamentId || sortMode !== "alpha";
+  // Defer pagination when we can't paginate at the DB level: a non-alpha sort
+  // (the stat sort runs in JS after enrichment) or any tournament scope (stats
+  // are overlaid and may be JS-filtered post-fetch). Non-scoped stat filters do
+  // NOT defer — they're pushed into SQL above, so the DB count + .range() are
+  // already correct for the filtered set.
+  const shouldDeferPagination =
+    activeTournamentId !== null || sortMode !== "alpha";
 
-  let playersQueryWithOrder = playersQuery
-    .order("last_name", { ascending: true })
-    .order("first_name", { ascending: true });
+  const orderedQuery = () =>
+    playersQuery
+      .order("last_name", { ascending: true })
+      .order("first_name", { ascending: true });
 
-  if (!shouldDeferPagination) {
-    playersQueryWithOrder = playersQueryWithOrder.range(offset, offset + pageSize - 1);
+  // Helper: clamp `page` into [1, totalPages]. `top=N` is a HARD CAP on the
+  // whole result set (decision 2026-06), so the effective total is
+  // min(topN, rawTotal) and pagination only ranges within that cap.
+  const effectiveTotal = (rawTotal: number) =>
+    topN != null ? Math.min(topN, rawTotal) : rawTotal;
+  const lastPage = (rawTotal: number) =>
+    Math.max(1, Math.ceil(effectiveTotal(rawTotal) / pageSize));
+
+  let p: PlayerRow[];
+  // DB count for the non-deferred path only. The deferred path derives its total
+  // from `enriched.length` after the JS sort/filter, so this stays 0 there.
+  let rawTotalCount = 0;
+  let clampedPage = page;
+
+  if (shouldDeferPagination) {
+    // Fetch the full (filtered) set. The top-cap and page-slice happen in JS
+    // AFTER the sort step (see Pagination below), because `top=N` means "the N
+    // best by the active sort", not the N alphabetically-first rows — so we must
+    // sort the whole set before capping. Bounded only by the 10k ceiling here.
+    const { data, error: pErr } = await orderedQuery().limit(10000);
+    if (pErr) console.error("[paiktes] players query error:", pErr.message);
+    p = (data ?? []) as PlayerRow[];
+    if (p.length >= 10000) {
+      console.error(
+        "[paiktes] deferred players query truncated at 10000 — pagination/count will be wrong",
+      );
+    }
   } else {
-    playersQueryWithOrder = playersQueryWithOrder.limit(10000);
+    // DB-paginated path. `top` caps the window's upper bound; `page` is clamped
+    // to the last page once the count is known (re-fetching only if the first
+    // window landed past the cap, e.g. a deep-linked ?page=999).
+    const capExclusive = topN != null ? topN : Infinity; // row index cap
+    const windowEnd = Math.min(offset + pageSize, capExclusive) - 1;
+    let data: PlayerRow[] | null = null;
+    let count: number | null = null;
+    if (windowEnd >= offset) {
+      const res = await orderedQuery().range(offset, windowEnd);
+      if (res.error) console.error("[paiktes] players query error:", res.error.message);
+      data = res.data as PlayerRow[] | null;
+      count = res.count ?? 0;
+    } else {
+      // Requested page is entirely past the top cap — fetch count only.
+      const res = await orderedQuery().range(0, 0);
+      if (res.error) console.error("[paiktes] players query error:", res.error.message);
+      count = res.count ?? 0;
+    }
+    rawTotalCount = count ?? 0;
+    clampedPage = Math.min(page, lastPage(rawTotalCount));
+
+    if (clampedPage !== page || data === null) {
+      // Re-fetch the correct (clamped) window. Rare: over-range page or a page
+      // that fell past the top cap.
+      const clampedOffset = (clampedPage - 1) * pageSize;
+      const clampedEnd = Math.min(clampedOffset + pageSize, capExclusive) - 1;
+      const res =
+        clampedEnd >= clampedOffset
+          ? await orderedQuery().range(clampedOffset, clampedEnd)
+          : { data: [] as PlayerRow[] };
+      p = (res.data ?? []) as PlayerRow[];
+    } else {
+      p = (data ?? []) as PlayerRow[];
+    }
   }
 
-  const {
-    data: players,
-    error: pErr,
-    count: totalCount,
-  } = await playersQueryWithOrder;
-
-  if (pErr) console.error("[paiktes] players query error:", pErr.message);
-  const p = (players ?? []) as PlayerRow[];
   const playerIds = p.map((x) => x.id);
 
   // ── Fetch pre-computed career stats (1 row per player) ────────────
@@ -260,8 +390,8 @@ export default async function PaiktesPage({
   const careerByPlayer = new Map(careerRows.map((r) => [r.player_id, r]));
 
   // ── Fetch pre-computed tournament stats (if tournament filter active) ──
-  let tourneyByPlayer = new Map<number, TournamentStatsRow>();
-  if (tournamentId && playerIds.length > 0) {
+  const tourneyByPlayer = new Map<number, TournamentStatsRow>();
+  if (activeTournamentId !== null && playerIds.length > 0) {
     const tRows = await fetchInBatches<TournamentStatsRow>(
       "player_tournament_stats",
       "player_id",
@@ -270,7 +400,7 @@ export default async function PaiktesPage({
     );
     // Filter to the active tournament (in case a player has stats in multiple)
     for (const r of tRows) {
-      if (r.tournament_id === tournamentId) {
+      if (r.tournament_id === activeTournamentId) {
         tourneyByPlayer.set(r.player_id, r);
       }
     }
@@ -355,7 +485,7 @@ export default async function PaiktesPage({
     };
 
     // Overlay tournament-scoped stats when tournament filter is active
-    if (tournamentId) {
+    if (activeTournamentId !== null) {
       const ts = tourneyByPlayer.get(pl.id);
       if (ts) {
         result.tournament_matches = ts.matches;
@@ -373,84 +503,72 @@ export default async function PaiktesPage({
     return result;
   });
 
-  // ── Stats filters ─────────────────────────────────────────────────
-  if (parsedSearch.minGoals !== undefined) {
-    enriched = enriched.filter((p) => p.goals >= parsedSearch.minGoals!);
-  }
-  if (parsedSearch.minMatches !== undefined) {
-    enriched = enriched.filter((p) => p.matches >= parsedSearch.minMatches!);
-  }
-  if (parsedSearch.minAssists !== undefined) {
-    enriched = enriched.filter((p) => p.assists >= parsedSearch.minAssists!);
+  // ── Stat filters (tournament-scoped path only) ────────────────────
+  // Non-scoped stat filters were pushed into SQL (see above) so `enriched`
+  // already contains only matching players and the count is accurate.
+  // When a tournament is scoped, pagination is deferred and we filter here on
+  // the *tournament* values via resolveStat — agreeing with the displayed stat.
+  if (hasStatFilter && activeTournamentId !== null) {
+    if (parsedSearch.minGoals !== undefined) {
+      enriched = enriched.filter(
+        (p) => resolveStat(p, "goals", true) >= parsedSearch.minGoals!,
+      );
+    }
+    if (parsedSearch.minMatches !== undefined) {
+      enriched = enriched.filter(
+        (p) => resolveStat(p, "matches", true) >= parsedSearch.minMatches!,
+      );
+    }
+    if (parsedSearch.minAssists !== undefined) {
+      enriched = enriched.filter(
+        (p) => resolveStat(p, "assists", true) >= parsedSearch.minAssists!,
+      );
+    }
   }
 
   // ── Sorting ───────────────────────────────────────────────────────
-  const hasTournament = !!tournamentId;
-
-  function metric(
-    p: PLWithTGoals,
-    globalKey: keyof PLWithTGoals,
-    tournamentKey: keyof PLWithTGoals
-  ): number {
-    if (hasTournament) {
-      const t = p[tournamentKey];
-      if (typeof t === "number") return t;
-    }
-    const g = p[globalKey];
-    return typeof g === "number" ? g : 0;
-  }
+  const hasTournament = activeTournamentId !== null;
+  // resolveStat picks the tournament_* twin when scoped & defined, else career.
+  const metric = (p: PLWithTGoals, key: ScopableStatKey): number =>
+    resolveStat(p, key, hasTournament);
 
   switch (sortMode) {
     case "goals":
     case "tournament_goals":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "goals", "tournament_goals") -
-          metric(a, "goals", "tournament_goals")
-      );
+      enriched.sort((a, b) => metric(b, "goals") - metric(a, "goals"));
       break;
     case "matches":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "matches", "tournament_matches") -
-          metric(a, "matches", "tournament_matches")
-      );
+      enriched.sort((a, b) => metric(b, "matches") - metric(a, "matches"));
       break;
     case "wins":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "wins", "tournament_wins") -
-          metric(a, "wins", "tournament_wins")
-      );
+      enriched.sort((a, b) => metric(b, "wins") - metric(a, "wins"));
       break;
     case "assists":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "assists", "tournament_assists") -
-          metric(a, "assists", "tournament_assists")
-      );
+      enriched.sort((a, b) => metric(b, "assists") - metric(a, "assists"));
       break;
     case "mvp":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "mvp", "tournament_mvp") -
-          metric(a, "mvp", "tournament_mvp")
-      );
+      enriched.sort((a, b) => metric(b, "mvp") - metric(a, "mvp"));
       break;
     case "bestgk":
-      enriched.sort(
-        (a, b) =>
-          metric(b, "best_gk", "tournament_best_gk") -
-          metric(a, "best_gk", "tournament_best_gk")
-      );
+      enriched.sort((a, b) => metric(b, "best_gk") - metric(a, "best_gk"));
       break;
   }
 
   // ── Pagination ────────────────────────────────────────────────────
-  let finalTotalCount = totalCount ?? 0;
+  // Apply the top=N hard cap and page clamp so the header count, the page
+  // window, and the visible rows all agree (no client-side re-slicing needed).
+  let finalTotalCount: number;
   if (shouldDeferPagination) {
+    // `enriched` is now fully sorted/filtered. Cap to the top N, then page.
+    if (topN != null) enriched = enriched.slice(0, topN);
     finalTotalCount = enriched.length;
-    enriched = enriched.slice(offset, offset + pageSize);
+    clampedPage = Math.min(page, Math.max(1, Math.ceil(finalTotalCount / pageSize)));
+    const start = (clampedPage - 1) * pageSize;
+    enriched = enriched.slice(start, start + pageSize);
+  } else {
+    // Non-deferred: rawTotalCount is the DB count; the top cap shrinks the
+    // effective total and the window was already fetched + clamped above.
+    finalTotalCount = effectiveTotal(rawTotalCount);
   }
 
   return (
@@ -458,7 +576,7 @@ export default async function PaiktesPage({
       initialPlayers={enriched}
       tournaments={tournaments}
       totalCount={finalTotalCount}
-      currentPage={page}
+      currentPage={clampedPage}
       pageSize={pageSize}
       usePagination={true}
       initialSearchQuery={rawSearchTerm}

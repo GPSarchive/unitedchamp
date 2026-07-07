@@ -53,6 +53,13 @@ export type DraftMatch = {
   home_source_bracket_pos?: number | null;
   away_source_round?: number | null;
   away_source_bracket_pos?: number | null;
+
+  // ✅ Two-legged KO
+  leg?: number | null; // 1 or 2; absent = single-leg
+  /** Transient: index into the draft array of this tie's leg-1 row; resolved to tie_leg1_match_id at persist time. */
+  tie_leg1_match_idx?: number | null;
+  penalty_a?: number | null; // penalty shootout score (leg-2 / decider row)
+  penalty_b?: number | null; // penalty shootout score (leg-2 / decider row)
 };
 
 
@@ -108,6 +115,7 @@ export default function TournamentWizard({
   const setTournamentTeamIdsFromPicker = useTournamentStore(
     (s) => s.setTournamentTeamIdsFromPicker
   );
+  const assignTeamToGroup = useTournamentStore((s) => s.assignTeamToGroup);
 
   // hydrate the store once from incoming props (payload + initial matches + teams)
   // BUT skip in edit mode - the snapshot load below will handle it
@@ -195,6 +203,22 @@ export default function TournamentWizard({
           : t
       )
     );
+
+    // In edit mode, also feed the change into the store so saveAll's Phase 3
+    // persists it and the Save button registers as dirty. Resolve the stage/
+    // group *indices* into real DB ids via the store's hydrated maps.
+    if (mode === "edit") {
+      const { stageIdByIndex, groupIdByStage } = useTournamentStore.getState().ids;
+      const stageId = stageIdByIndex[stageIdx];
+      const groupId =
+        groupIdx == null ? null : (groupIdByStage[stageIdx]?.[groupIdx] ?? null);
+      // Only write when we have a real stage id, and either a genuine unassign
+      // (groupIdx == null) or a resolved real group id. Skip newly-added stages/
+      // groups whose temp ids aren't in the maps yet — they need a save first.
+      if (typeof stageId === "number" && (groupIdx == null || groupId != null)) {
+        assignTeamToGroup(teamId, stageId, groupId);
+      }
+    }
   };
 
   // --- validation summary (advisory; does not block saving) ----------------

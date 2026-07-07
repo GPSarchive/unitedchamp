@@ -2,6 +2,8 @@
 
 import React from "react";
 
+type TeamLite = { id: number; name: string };
+
 type Props = {
   q: string;
   onChangeQ: (v: string) => void;
@@ -9,17 +11,30 @@ type Props = {
   onNew: () => void;
   showArchived: boolean;
   onToggleArchived: (v: boolean) => void;
+  teams: TeamLite[];
+  teamId: number | null;
+  onTeamChange: (id: number | null) => void;
 };
 
-export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew, showArchived, onToggleArchived }: Props) {
+export default function PlayersToolbar({
+  q,
+  onChangeQ,
+  onSearch,
+  onNew,
+  showArchived,
+  onToggleArchived,
+  teams,
+  teamId,
+  onTeamChange,
+}: Props) {
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex flex-wrap items-center gap-2 mb-4">
       <input
         value={q}
         onChange={(e) => onChangeQ(e.target.value)}
         onKeyDown={(e) => (e.key === "Enter" ? onSearch() : undefined)}
         placeholder="Αναζητηση παικτων"
-        className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+        className="flex-1 min-w-[180px] px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
       />
       <button
         type="button"
@@ -28,6 +43,20 @@ export default function PlayersToolbar({ q, onChangeQ, onSearch, onNew, showArch
       >
         Αναζητηση
       </button>
+
+      <select
+        value={teamId ?? ""}
+        onChange={(e) => onTeamChange(e.target.value ? Number(e.target.value) : null)}
+        className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 max-w-[220px]"
+        title="Φίλτρο ομάδας"
+      >
+        <option value="">Όλες οι ομάδες</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
 
       <label className="flex items-center gap-1.5 text-sm text-white/70 cursor-pointer select-none">
         <input

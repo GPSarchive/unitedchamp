@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
+import { formatMatchTime } from "@/app/lib/datetime";
 
 // ===================== Types =====================
 type Match = {
@@ -116,11 +117,6 @@ function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
     grouped.get(key)!.push(m);
   });
   return grouped;
-}
-
-function formatTime(iso: string) {
-  const m = /T(\d{2}):(\d{2})/.exec(iso);
-  return m ? `${m[1]}:${m[2]}` : "";
 }
 
 function pad2(n: number) {
@@ -282,7 +278,7 @@ function DayCell({
 function ModalMatchRow({ match, isHighlighted }: { match: Match; isHighlighted: boolean }) {
   const [teamA, teamB] = match.teams ?? ["Ομάδα Α", "Ομάδα Β"];
   const [logoA, logoB] = match.logos ?? ["/placeholder.png", "/placeholder.png"];
-  const time = formatTime(match.start);
+  const time = formatMatchTime(match.start);
   const isLive = match.status === "live";
   const isFinished = match.status === "finished";
   const score =
@@ -751,7 +747,7 @@ export default function EditorialCalendar({
                 className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-3"
                 style={{
                   height: 110,
-                  background: "linear-gradient(to bottom, transparent 0%, #0a0a14 65%)",
+                  background: "linear-gradient(to bottom, transparent 0%, rgba(10,10,20,0.55) 85%)",
                 }}
               >
                 <motion.button

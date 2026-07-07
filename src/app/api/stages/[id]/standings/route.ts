@@ -1,16 +1,11 @@
 // app/api/stages/[id]/standings/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 
 // Make sure this runs on the Node runtime, not Edge
 export const runtime = "nodejs";
 // Always fresh (no ISR cache)
 export const revalidate = 0;
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // server-only
-);
 
 type Row = { group_id: number | null; team_id: number; rank: number };
 
@@ -24,6 +19,9 @@ export async function GET(
     if (!Number.isFinite(stageId) || stageId <= 0) {
       return NextResponse.json({ error: "Invalid stage id" }, { status: 400 });
     }
+
+    // Cookie-bound client honors RLS — no service-role bypass on a public endpoint.
+    const supabase = await createSupabaseRouteClient();
 
     const { data, error } = await supabase
       .from("stage_standings")

@@ -5,6 +5,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useTournamentData } from './useTournamentData'; // Adjust path to your store
+import { formatMatchDateTime } from '@/app/lib/datetime';
 
 type Props = {
   className?: string;
@@ -26,15 +27,10 @@ function startOfTodayISO() {
 }
 
 function formatLocal(iso: string | null) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleString('el-GR', {
+  return formatMatchDateTime(iso, {
     weekday: 'long',
     day: '2-digit',
     month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
   });
 }
 

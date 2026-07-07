@@ -15,6 +15,11 @@ import {
   Figtree,
 } from "next/font/google";
 import { supabase } from "@/app/lib/supabase/supabaseClient";
+import {
+  formatMatchDate,
+  formatMatchTime,
+  parseIsoPreserveClock,
+} from "@/app/lib/datetime";
 import MatchesExplorerMobile from "./MatchesExplorerMobile";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -80,29 +85,12 @@ const pad2 = (n: number | string) => String(n).padStart(2, "0");
 const one = <T,>(v: T | T[] | null): T | null =>
   Array.isArray(v) ? v[0] ?? null : v;
 
-const elDate = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", {
-        day: "2-digit",
-        month: "short",
-      })
-    : "";
-
-const elDay = (iso?: string | null) =>
-  iso ? String(new Date(iso).getDate()) : "—";
-
-const elMonthShort = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("el-GR", { month: "short" })
-    : "";
-
-const elTime = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleTimeString("el-GR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+// Match date/time display goes through @/app/lib/datetime — literal wall-clock
+// digits from the ISO string, NO timezone conversion (see that module's notes).
+const elDay = (iso?: string | null) => {
+  const p = parseIsoPreserveClock(iso);
+  return p ? String(p.d) : "—";
+};
 
 // ───────────────────────────────────────────────────────────────────────
 // Atmosphere
@@ -247,8 +235,10 @@ export default function MatchesExplorer({ tournaments }: Props) {
 
         const isUpcoming = tab === "upcoming";
         q = isUpcoming
-          ? q.gte("match_date", currentISO)
-          : q.lt("match_date", currentISO);
+          ? q
+              .gte("match_date", currentISO)
+              .or("status.is.null,status.neq.finished")
+          : q.eq("status", "finished");
 
         q = q.order("match_date", { ascending: isUpcoming });
 
@@ -519,7 +509,7 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
                 {elDay(m.match_date)}
               </span>
               <span className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.22em] text-[#F3EFE6]/60">
-                {elMonthShort(m.match_date)}
+                {formatMatchDate(m.match_date, { month: "short" })}
               </span>
             </div>
           </div>
@@ -552,7 +542,7 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
-                  {m.match_date ? elTime(m.match_date) : "ΤΒΑ"}
+                  {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
                 </div>
               )}
             </div>
@@ -603,7 +593,7 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
 
           {/* Date line (mobile) */}
           <div className="col-span-12 flex items-center justify-between gap-2 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/45 sm:hidden">
-            <span>{elDate(m.match_date)}</span>
+            <span>{formatMatchDate(m.match_date)}</span>
             {matchdayLabel && <span>{matchdayLabel}</span>}
           </div>
         </div>

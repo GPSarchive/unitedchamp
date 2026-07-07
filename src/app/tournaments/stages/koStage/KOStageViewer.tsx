@@ -5,28 +5,69 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BracketBackground } from "./BracketBackground";
 import { generateElbowPath } from "./BracketLineStyles";
 
-export type NodeBox = { id: string; x: number; y: number; w: number; h: number; label?: string };
+export type NodeBox = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
+  /** Cards sharing a group id belong to the same tie container (both legs). */
+  group?: string;
+};
 
 type Connection = [string, string];
 
+/** A typed edge so the viewer can style progression vs leg links differently. */
+export type Edge = {
+  from: string;
+  to: string;
+  /** "progress" = winner advances to next round; "leg" = the two legs of one tie. */
+  kind?: "progress" | "leg";
+};
+
+/** A decorative container drawn behind the cards (a two-legged "tie" box). */
+export type NodeGroup = {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
+  /** Optional accent shown at the right of the header (e.g. "agg 3–2 · pens 4-5"). */
+  accent?: string;
+  /** Whether the whole tie reads as decided (changes the border tint). */
+  finished?: boolean;
+};
+
 type Props = {
   nodes: NodeBox[];
-  connections: Connection[];
+  connections: Array<Connection | Edge>;
+  /** Decorative tie containers rendered behind the cards (two-legged ties). */
+  groups?: NodeGroup[];
   nodeContent?: (n: NodeBox) => React.ReactNode;
   minZoom?: number;
   maxZoom?: number;
 };
+
+/** Normalize a connection (tuple or Edge) into a uniform shape. */
+function asEdge(c: Connection | Edge): Edge {
+  return Array.isArray(c) ? { from: c[0], to: c[1], kind: "progress" } : { kind: "progress", ...c };
+}
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 const KOStageViewer = ({
   nodes,
   connections,
+  groups = [],
   nodeContent,
   minZoom = 0.3,
   maxZoom = 2.5,
 }: Props) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const edges = useMemo(() => connections.map(asEdge), [connections]);
 
   const nodeById = useMemo(() => {
     const m = new Map<string, NodeBox>();
@@ -34,14 +75,22 @@ const KOStageViewer = ({
     return m;
   }, [nodes]);
 
-  const baseWidth = useMemo(
-    () => Math.max(800, nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 0) + 100),
-    [nodes]
-  );
-  const baseHeight = useMemo(
-    () => Math.max(400, nodes.reduce((my, n) => Math.max(my, n.y + n.h), 0) + 100),
-    [nodes]
-  );
+  const groupById = useMemo(() => {
+    const m = new Map<string, NodeGroup>();
+    groups.forEach((g) => m.set(g.id, g));
+    return m;
+  }, [groups]);
+
+  const baseWidth = useMemo(() => {
+    const maxNodes = nodes.reduce((mx, n) => Math.max(mx, n.x + n.w), 0);
+    const maxGroups = groups.reduce((mx, g) => Math.max(mx, g.x + g.w), 0);
+    return Math.max(800, Math.max(maxNodes, maxGroups) + 100);
+  }, [nodes, groups]);
+  const baseHeight = useMemo(() => {
+    const maxNodes = nodes.reduce((my, n) => Math.max(my, n.y + n.h), 0);
+    const maxGroups = groups.reduce((my, g) => Math.max(my, g.y + g.h), 0);
+    return Math.max(400, Math.max(maxNodes, maxGroups) + 100);
+  }, [nodes, groups]);
 
   const [zoom, setZoom] = useState(1);
 
@@ -236,6 +285,43 @@ const KOStageViewer = ({
               transformOrigin: "top left",
             }}
           >
+            {/* Tie containers (drawn behind the cards) — a dashed box wrapping the
+                two legs of one tie, with the aggregate/pens accent on its header. */}
+            {groups.map((g) => (
+              <div
+                key={g.id}
+                className={[
+                  "absolute rounded-2xl border-2 border-dashed pointer-events-none",
+                  g.finished
+                    ? "border-emerald-400/35 bg-emerald-500/[0.04]"
+                    : "border-cyan-400/30 bg-cyan-500/[0.035]",
+                ].join(" ")}
+                style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
+              >
+                {(g.label || g.accent) && (
+                  <div className="absolute -top-3 left-3 flex items-center gap-2 px-1.5">
+                    {g.label && (
+                      <span
+                        className={[
+                          "rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                          g.finished
+                            ? "bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-400/30"
+                            : "bg-cyan-500/20 text-cyan-100 ring-1 ring-cyan-400/30",
+                        ].join(" ")}
+                      >
+                        {g.label}
+                      </span>
+                    )}
+                    {g.accent && (
+                      <span className="rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-white/80 ring-1 ring-white/10">
+                        {g.accent}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
             {/* SVG connections */}
             <svg className="absolute inset-0 h-full w-full pointer-events-none">
               <defs>
@@ -247,21 +333,53 @@ const KOStageViewer = ({
                   <stop offset="0%" stopColor="rgba(16,185,129,0.6)" />
                   <stop offset="100%" stopColor="rgba(52,211,153,0.25)" />
                 </linearGradient>
+                <linearGradient id="bracketLeg" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(34,211,238,0.85)" />
+                  <stop offset="100%" stopColor="rgba(34,211,238,0.45)" />
+                </linearGradient>
               </defs>
 
-              {connections.map(([from, to], idx) => {
-                const a = nodeById.get(from);
-                const b = nodeById.get(to);
+              {edges.map((e, idx) => {
+                const a = nodeById.get(e.from);
+                const b = nodeById.get(e.to);
                 if (!a || !b) return null;
 
-                const axc = a.x + a.w / 2;
-                const bxc = b.x + b.w / 2;
+                // Leg link: vertical dashed cyan connector tying a tie's two legs.
+                if (e.kind === "leg") {
+                  const upper = a.y <= b.y ? a : b;
+                  const lower = a.y <= b.y ? b : a;
+                  const x1 = upper.x + upper.w / 2;
+                  const y1 = upper.y + upper.h;
+                  const x2 = lower.x + lower.w / 2;
+                  const y2 = lower.y;
+                  const dy = Math.max(14, (y2 - y1) * 0.5);
+                  const d = `M ${x1} ${y1} C ${x1} ${y1 + dy} ${x2} ${y2 - dy} ${x2} ${y2}`;
+                  return (
+                    <path
+                      key={idx}
+                      d={d}
+                      fill="none"
+                      stroke="url(#bracketLeg)"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeDasharray="3 5"
+                    />
+                  );
+                }
+
+                // Progression link: anchor on the tie CONTAINER when an endpoint is a
+                // two-legged tie, so the curve meets the whole tie's edge/center.
+                const aBox = (a.group && groupById.get(a.group)) || a;
+                const bBox = (b.group && groupById.get(b.group)) || b;
+
+                const axc = aBox.x + aBox.w / 2;
+                const bxc = bBox.x + bBox.w / 2;
                 const rtl = axc > bxc;
 
-                const x1 = rtl ? a.x : a.x + a.w;
-                const y1 = a.y + a.h / 2;
-                const x2 = rtl ? b.x + b.w : b.x;
-                const y2 = b.y + b.h / 2;
+                const x1 = rtl ? aBox.x : aBox.x + aBox.w;
+                const y1 = aBox.y + aBox.h / 2;
+                const x2 = rtl ? bBox.x + bBox.w : bBox.x;
+                const y2 = bBox.y + bBox.h / 2;
 
                 const d = generateElbowPath({ x1, y1, x2, y2 });
 

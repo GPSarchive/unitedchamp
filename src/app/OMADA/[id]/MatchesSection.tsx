@@ -2,6 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Match } from "@/app/lib/types";
+import { formatMatchDate } from "@/app/lib/datetime";
 import { FaCalendarAlt, FaTrophy, FaClock } from "react-icons/fa";
 
 interface MatchesSectionProps {
@@ -11,15 +12,11 @@ interface MatchesSectionProps {
 }
 
 /** Stable date formatting (no hydration mismatches) */
-const dtf = new Intl.DateTimeFormat("el-GR", {
-  dateStyle: "medium",
-  timeZone: "Europe/Athens",
-});
 function formatDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return dtf.format(d);
+  return (
+    formatMatchDate(iso, { day: "2-digit", month: "short", year: "numeric" }) ||
+    "—"
+  );
 }
 
 function isFiniteNumber(n: unknown): n is number {

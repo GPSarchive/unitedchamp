@@ -107,7 +107,7 @@ function PlayersFilterHeaderComponent({
   const hasAnyFilter = summaryParts.length > 0;
 
   return (
-    <div className="z-20 bg-[#0a0a14]/90 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
+    <div className="bg-[#0a0a14]/90 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
       {/* ── Row 1: Search + Count ─────────────────────────────────── */}
       <div className="px-4 md:px-6 py-3 md:py-4 border-b border-[#F3EFE6]/10">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

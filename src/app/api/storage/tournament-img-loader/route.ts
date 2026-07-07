@@ -96,6 +96,12 @@ export async function GET(req: Request) {
     key = `leagues/${slug}/logo/${file}`; // singular "logo" per your convention
   }
 
+  // Reject path traversal in either branch — `key` is sent to Supabase storage and
+  // a key containing `..` could traverse into unrelated bucket paths.
+  if (key.includes("..") || key.includes("\0")) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+
   // Sign and return
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

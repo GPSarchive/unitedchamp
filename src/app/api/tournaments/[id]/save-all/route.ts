@@ -84,6 +84,11 @@ type MatchRow = {
   away_source_bracket_pos?: number | null;
   updated_at?: string | null; // optimistic lock token
   is_ko?: boolean; // Add this line to include 'is_ko' property
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: number | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 };
 
 
@@ -218,10 +223,9 @@ if (body.matches?.deleteIds?.length) {
     return NextResponse.json({ error: "No valid match ids to delete" }, { status: 400 });
   }
 
-  // optional: clear KO pointers first
-  const idList = deleteIds.join(",");
-  await supabaseAdmin.from("matches").update({ home_source_match_id: null }).or(`home_source_match_id.in.(${idList})`);
-  await supabaseAdmin.from("matches").update({ away_source_match_id: null }).or(`away_source_match_id.in.(${idList})`);
+  // optional: clear KO pointers first — use typed .in() to avoid string-templated filters
+  await supabaseAdmin.from("matches").update({ home_source_match_id: null }).in("home_source_match_id", deleteIds);
+  await supabaseAdmin.from("matches").update({ away_source_match_id: null }).in("away_source_match_id", deleteIds);
 
   // fetch stages for KO resolution
   const { data: delRows, error: delFetchErr } = await supabaseAdmin
@@ -454,6 +458,43 @@ if (body.matches?.deleteIds?.length) {
 if (body.matches?.upsert?.length) {
   const rows = body.matches.upsert.map(m => ({ ...m, tournament_id: tournamentId }));
 
+  // Guard: a match in a GROUPS stage must carry a group_id. A null here means the
+  // client failed to assign the match to a group (e.g. added from the "All groups"
+  // view), which silently orphans it — the standings recompute buckets by
+  // (group_id ?? 0) and it never counts toward its group. league/knockout stages
+  // legitimately have null group_id, so this only applies to kind === 'groups'.
+  {
+    const stageIds = Array.from(
+      new Set(rows.map(r => r.stage_id).filter((x): x is number => x != null))
+    );
+    if (stageIds.length) {
+      const { data: stageKinds, error: kindErr } = await supabaseAdmin
+        .from("tournament_stages")
+        .select("id, kind")
+        .in("id", stageIds);
+      if (kindErr) return NextResponse.json({ error: kindErr.message }, { status: 500 });
+
+      const kindByStage = new Map((stageKinds ?? []).map(s => [s.id, s.kind]));
+      const orphaned = rows.filter(
+        r => kindByStage.get(r.stage_id) === "groups" && r.group_id == null
+      );
+      if (orphaned.length) {
+        return NextResponse.json(
+          {
+            error:
+              "A match in a groups stage is missing its group. Assign every group " +
+              "match to a group before saving (select a specific όμιλος rather than " +
+              "the “All groups” view when adding matches).",
+            entity: "matches",
+            stage_ids: Array.from(new Set(orphaned.map(r => r.stage_id))),
+            count: orphaned.length,
+          },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   // Split by type based on is_ko column
   const koRowsAll = rows.filter(r => r.is_ko);  // KO matches where is_ko = true
   const lgRowsAll = rows.filter(r => !r.is_ko); // Non-KO matches where is_ko = false
@@ -486,6 +527,9 @@ if (body.matches?.upsert?.length) {
       away_source_round: r.away_source_round ?? null,
       away_source_bracket_pos: r.away_source_bracket_pos ?? null,
       is_ko: r.is_ko ?? false,
+      leg: r.leg ?? null,
+      penalty_a: r.penalty_a ?? null,
+      penalty_b: r.penalty_b ?? null,
     }));
     const { data, error } = await supabaseAdmin
       .from("matches")
@@ -515,6 +559,9 @@ if (body.matches?.upsert?.length) {
         away_source_round: r.away_source_round ?? null,
         away_source_bracket_pos: r.away_source_bracket_pos ?? null,
         is_ko: r.is_ko ?? false,
+        leg: r.leg ?? null,
+        penalty_a: r.penalty_a ?? null,
+        penalty_b: r.penalty_b ?? null,
       }).eq("id", r.id as number);
 
       if (r.updated_at) q = q.eq("updated_at", r.updated_at);
@@ -539,15 +586,51 @@ if (body.matches?.upsert?.length) {
   const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
   const created: any[] = [];
 
-  // KO Matches - Use (stage_id, round, bracket_pos) as natural keys
+  // KO Matches — natural key is (stage_id, round, bracket_pos, leg). Two-legged
+  // ties share (stage,round,bracket_pos) and differ only by leg, so the leg MUST
+  // be part of the key or both legs collapse into one row.
+  //
+  // We dedup in code + plain INSERT (mirroring the non-KO path below) rather than
+  // upsert-on-conflict: ON CONFLICT against the PARTIAL unique index `unique_ko_match`
+  // (WHERE round IS NOT NULL AND bracket_pos IS NOT NULL) is fragile to infer and
+  // fails outright if that index isn't present in the DB. A pre-fetch dedup is robust
+  // either way. `tie_leg1_match_id` is resolved in the KO-id post-pass below.
   if (koRowsAll.some(r => r.id == null)) {
-    const toCreateKO = koRowsAll.filter(r => r.id == null).map(strip);
-    const { data, error } = await supabaseAdmin
+    const koKey = (m: any) =>
+      `${m.stage_id}#${m.round ?? "n"}#${m.bracket_pos ?? "n"}#${m.leg ?? "n"}`;
+
+    const toCreateKO = koRowsAll
+      .filter(r => r.id == null)
+      .map(strip)
+      // never send a transient/unknown tie link on create
+      .map(({ tie_leg1_match_id: _t, ...rest }: any) => rest);
+
+    // Existing KO rows for the affected stages (so we don't duplicate a slot/leg).
+    const koStageIds = Array.from(new Set(toCreateKO.map((m: any) => m.stage_id).filter(Boolean)));
+    const { data: existingKO } = await supabaseAdmin
       .from("matches")
-      .upsert(toCreateKO, { onConflict: "stage_id,round,bracket_pos" })
-      .select();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    created.push(...(data ?? []));
+      .select("stage_id, round, bracket_pos, leg")
+      .in("stage_id", koStageIds)
+      .not("round", "is", null);
+
+    const existingKOKeys = new Set((existingKO ?? []).map(koKey));
+    // Also dedup within this batch itself (e.g. a slot sent twice).
+    const seenInBatch = new Set<string>();
+    const dedupedKO = toCreateKO.filter((m: any) => {
+      const k = koKey(m);
+      if (existingKOKeys.has(k) || seenInBatch.has(k)) return false;
+      seenInBatch.add(k);
+      return true;
+    });
+
+    if (dedupedKO.length) {
+      const { data, error } = await supabaseAdmin
+        .from("matches")
+        .insert(dedupedKO)
+        .select();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      created.push(...(data ?? []));
+    }
   }
 
   // Non-KO Matches - Insert only (no upsert since bracket_pos can be null)
@@ -596,6 +679,8 @@ if (body.matches?.upsert?.length) {
           stage_id,
           round,
           bracket_pos,
+          leg,
+          tie_leg1_match_id,
           home_source_round,
           home_source_bracket_pos,
           away_source_round,
@@ -613,9 +698,12 @@ if (body.matches?.upsert?.length) {
         `${s}#${r ?? "n"}#${p ?? "n"}`;
 
       const idByPos = new Map<Key, number>();
+      // Leg-1 id per slot, so leg-2 deciders can be linked via tie_leg1_match_id.
+      const leg1IdByPos = new Map<Key, number>();
       for (const m of allStageMatches ?? []) {
         if (m.round != null && m.bracket_pos != null) {
           idByPos.set(keyOf(m.stage_id, m.round, m.bracket_pos), m.id);
+          if ((m as any).leg === 1) leg1IdByPos.set(keyOf(m.stage_id, m.round, m.bracket_pos), m.id);
         }
       }
 
@@ -634,6 +722,19 @@ if (body.matches?.upsert?.length) {
           const changes: any = { id: m.id };
           if (homeId !== (m.home_source_match_id ?? null)) changes.home_source_match_id = homeId;
           if (awayId !== (m.away_source_match_id ?? null)) changes.away_source_match_id = awayId;
+
+          // Two-legged KO: link a leg-2 decider to its leg-1 sibling (same slot).
+          // Leg-1 rows get their FK cleared (only the decider carries the link).
+          if ((m as any).leg === 2) {
+            const leg1Id =
+              m.round != null && m.bracket_pos != null
+                ? leg1IdByPos.get(keyOf(m.stage_id, m.round, m.bracket_pos)) ?? null
+                : null;
+            if (leg1Id !== ((m as any).tie_leg1_match_id ?? null)) changes.tie_leg1_match_id = leg1Id;
+          } else if ((m as any).tie_leg1_match_id != null) {
+            changes.tie_leg1_match_id = null;
+          }
+
           return changes;
         })
         .filter((p) => Object.keys(p).length > 1);

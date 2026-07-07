@@ -7,6 +7,7 @@ import { Calendar, Clock, MapPin, ChevronRight, Trophy, Search } from "lucide-re
 import { motion } from "framer-motion";
 import TeamFilter from "@/components/TeamFilter";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
+import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 
 // =========================================================
 // Types
@@ -37,17 +38,11 @@ export type TeamDashboardProps = {
 // Utilities
 // =========================================================
 function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString("el-GR", {
+  return formatMatchDate(isoString, {
     weekday: "long",
     day: "numeric",
     month: "long",
   });
-}
-
-function formatTime(isoString: string): string {
-  const match = /T(\d{2}):(\d{2})/.exec(isoString);
-  return match ? `${match[1]}:${match[2]}` : "";
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -80,7 +75,7 @@ function NextMatchHero({ match }: { match: Match }) {
 
   const relativeTime = formatRelativeTime(match.start);
   const dateText = formatDate(match.start);
-  const timeText = formatTime(match.start);
+  const timeText = formatMatchTime(match.start);
 
   const isLive = match.status === "live";
   const scoreDisplay =
@@ -201,7 +196,7 @@ function CompactMatchRow({ match }: { match: Match }) {
   const [logoA, logoB] = match.logos ?? ["/placeholder.png", "/placeholder.png"];
 
   const dateText = formatDate(match.start).split(" ").slice(0, 2).join(" "); // "Τετάρτη 3"
-  const timeText = formatTime(match.start);
+  const timeText = formatMatchTime(match.start);
 
   // Tournament and matchday/round info
   const matchdayRound = match.round

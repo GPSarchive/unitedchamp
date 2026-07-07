@@ -24,6 +24,11 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "away_source_bracket_pos",
   "home_source_match_id",
   "away_source_match_id",
+  // ✅ Two-legged KO
+  "leg",
+  "tie_leg1_match_id",
+  "penalty_a",
+  "penalty_b",
 ]);
   
 
@@ -42,15 +47,18 @@ function ensureSameOrigin(req: Request) {
   const m = req.method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS") return;
 
-  const whitelist = new Set(allowedOrigins);
-  try {
-    whitelist.add(new URL(req.url).origin);
-  } catch {}
+  // Do NOT add req.url origin to the whitelist — the Host header can be spoofed,
+  // which would let an attacker self-whitelist their own origin.
+  // Only trust explicitly configured ALLOWED_ORIGINS.
+  if (allowedOrigins.size === 0) {
+    // No allowed origins configured — block all mutating cross-origin requests
+    throw new Error("bad-origin");
+  }
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
   const ok = [origin, referer].some((val) => {
     try {
-      return !!val && whitelist.has(new URL(val).origin);
+      return !!val && allowedOrigins.has(new URL(val).origin);
     } catch {
       return false;
     }

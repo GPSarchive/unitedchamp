@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, X, Trophy, CalendarClock, Flag, Users2 } from "lucide-react";
+import { Check, X, Trophy, CalendarClock, Flag, Users2, Repeat2 } from "lucide-react";
 import type { Id, TeamLite, MatchRow } from "@/app/lib/types";
+import { formatMatchDateTime } from "@/app/lib/datetime";
+import { supabase } from "@/app/lib/supabase/supabaseClient";
 
 // Only two statuses
 const STATUSES: MatchRow["status"][] = ["scheduled", "finished"];
@@ -36,7 +38,13 @@ function isoToLabelUTC(iso: string | null): string {
 }
 function isoToLabelLocal(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString();
+  return (
+    formatMatchDateTime(iso, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }) || "—"
+  );
 }
 
 function teamLabel(t: TeamLite | null, fallbackId?: Id) {
@@ -50,6 +58,11 @@ type MatchRowWithStage = MatchRow & {
   bracket_pos?: number | null;
   stage_name?: string | null;
   group_idx?: number | null;
+  // two-legged KO
+  leg?: number | null;
+  tie_leg1_match_id?: Id | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 };
 
 // Utility-first atoms (subtle, high-contrast on black backgrounds)
@@ -88,7 +101,7 @@ export default function RowEditor({
   stageText?: string | null;
   allowDraws?: boolean;
 }) {
-  const [form, setForm] = useState<Partial<MatchRow>>(() => ({
+  const [form, setForm] = useState<Partial<MatchRowWithStage>>(() => ({
     id: initial.id,
     match_date: isoToDTString(initial.match_date ?? null), // populate input from saved ISO
     status: (initial.status as MatchRow["status"]) ?? "scheduled",
@@ -97,9 +110,50 @@ export default function RowEditor({
     team_a_score: initial.team_a_score ?? 0,
     team_b_score: initial.team_b_score ?? 0,
     winner_team_id: initial.winner_team_id ?? null,
+    penalty_a: initial.penalty_a ?? null,
+    penalty_b: initial.penalty_b ?? null,
   }));
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(initial.id);
+
+  // ----- Two-legged KO context -----
+  const leg = initial.leg ?? null;
+  const isLeg1 = leg === 1;
+  const isLeg2Decider = leg === 2 && initial.tie_leg1_match_id != null;
+
+  // For a leg-2 decider, load leg 1's scores so we can show/validate the aggregate.
+  const [leg1, setLeg1] = useState<
+    { team_a_id: Id | null; team_b_id: Id | null; team_a_score: number | null; team_b_score: number | null } | null
+  >(null);
+  useEffect(() => {
+    let alive = true;
+    if (!isLeg2Decider || initial.tie_leg1_match_id == null) {
+      setLeg1(null);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("matches")
+        .select("team_a_id, team_b_id, team_a_score, team_b_score")
+        .eq("id", initial.tie_leg1_match_id)
+        .maybeSingle();
+      if (alive) setLeg1((data as any) ?? null);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isLeg2Decider, initial.tie_leg1_match_id]);
+
+  // Aggregate per team id (teams swap home/away between legs).
+  const scoreFor = (
+    row: { team_a_id: Id | null; team_b_id: Id | null; team_a_score: number | null; team_b_score: number | null } | null,
+    teamId: Id | null | undefined
+  ) => {
+    if (!row || teamId == null) return 0;
+    if (row.team_a_id === teamId) return row.team_a_score ?? 0;
+    if (row.team_b_id === teamId) return row.team_b_score ?? 0;
+    return 0;
+  };
 
   function set<K extends keyof MatchRow>(k: K, v: MatchRow[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -120,7 +174,44 @@ export default function RowEditor({
   const aScore = form.team_a_score ?? 0;
   const bScore = form.team_b_score ?? 0;
   const scoresEqual = aScore === bScore;
-  const isDraw = isFinished && allowDraws && scoresEqual;
+
+  // A two-legged row never decides a winner via the manual winner dropdown:
+  // leg 1 carries none; leg 2's winner is derived server-side from the aggregate
+  // (+penalties). Treat both as "draws allowed" for the winner UI.
+  const twoLegged = isLeg1 || isLeg2Decider;
+  const isDraw = isFinished && (allowDraws || twoLegged) && scoresEqual;
+
+  // Leg-2 decider row (current edits, in team_a/team_b orientation).
+  const leg2Row = { team_a_id: form.team_a_id ?? null, team_b_id: form.team_b_id ?? null, team_a_score: aScore, team_b_score: bScore };
+
+  // Aggregate (info only — does NOT decide the tie anymore).
+  const aggA = isLeg2Decider ? scoreFor(leg2Row, form.team_a_id) + scoreFor(leg1, form.team_a_id) : null;
+  const aggB = isLeg2Decider ? scoreFor(leg2Row, form.team_b_id) + scoreFor(leg1, form.team_b_id) : null;
+
+  // The tie is decided on LEG WINS: more wins advances; level wins (1–1 / 0–0) → penalties.
+  const legWinnerId = (
+    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
+  ): Id | null => {
+    if (!row || form.team_a_id == null || form.team_b_id == null) return null;
+    const sa = scoreFor(row, form.team_a_id);
+    const sb = scoreFor(row, form.team_b_id);
+    if (sa > sb) return form.team_a_id as Id;
+    if (sb > sa) return form.team_b_id as Id;
+    return null;
+  };
+  const leg1HasScore = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
+  const winsA = isLeg2Decider
+    ? (legWinnerId(leg1) === form.team_a_id ? 1 : 0) + (legWinnerId(leg2Row) === form.team_a_id ? 1 : 0)
+    : 0;
+  const winsB = isLeg2Decider
+    ? (legWinnerId(leg1) === form.team_b_id ? 1 : 0) + (legWinnerId(leg2Row) === form.team_b_id ? 1 : 0)
+    : 0;
+  const winsLevel = isLeg2Decider && leg1HasScore && winsA === winsB;
+  const winsWinnerId = isLeg2Decider && leg1HasScore && winsA !== winsB
+    ? (winsA > winsB ? (form.team_a_id as Id) : (form.team_b_id as Id))
+    : null;
+  const penA = form.penalty_a ?? null;
+  const penB = form.penalty_b ?? null;
 
   // Auto-clear winner for draws (finished + equal + draws allowed)
   useEffect(() => {
@@ -135,6 +226,22 @@ export default function RowEditor({
     if (aScore < 0 || bScore < 0) return "Scores cannot be negative";
 
     if (isFinished) {
+      // Two-legged leg 1: any result is fine, no winner needed.
+      if (isLeg1) return null;
+
+      // Two-legged leg 2 (decider): winner comes from LEG WINS; require pens only
+      // when leg wins are level (1–1 or both legs drawn).
+      if (isLeg2Decider) {
+        if (!leg1 || leg1.team_a_score == null || leg1.team_b_score == null)
+          return "Finish leg 1 before finishing leg 2.";
+        if (winsLevel) {
+          if (penA == null || penB == null) return "Leg wins are level — enter the penalty result.";
+          if (penA < 0 || penB < 0) return "Penalty scores cannot be negative.";
+          if (penA === penB) return "Penalty shootout cannot end level.";
+        }
+        return null;
+      }
+
       if (allowDraws && scoresEqual) {
         // Draw is valid → winner must be empty
         if (form.winner_team_id != null) return "Winner must be empty for a draw.";
@@ -146,7 +253,7 @@ export default function RowEditor({
       }
     }
     return null;
-  }, [form.team_a_id, form.team_b_id, aScore, bScore, isFinished, scoresEqual, allowDraws, form.winner_team_id]);
+  }, [form.team_a_id, form.team_b_id, aScore, bScore, isFinished, scoresEqual, allowDraws, form.winner_team_id, isLeg1, isLeg2Decider, leg1, winsLevel, penA, penB]);
 
   // Show what will be saved if date/time was changed
   const pendingSaveUtc = useMemo(() => {
@@ -160,16 +267,23 @@ export default function RowEditor({
     if (validationError) return;
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         match_date: dtStringToIso((form.match_date as string | null) ?? null),
         status: form.status,
         team_a_id: form.team_a_id,
         team_b_id: form.team_b_id,
         team_a_score: form.team_a_score,
         team_b_score: form.team_b_score,
-        // For draws, persist winner as null even when finished
-        winner_team_id: isFinished ? (isDraw ? null : form.winner_team_id) : null,
+        // For draws, persist winner as null even when finished.
+        // Two-legged rows let the server derive the winner (aggregate/pens).
+        winner_team_id: twoLegged ? null : isFinished ? (isDraw ? null : form.winner_team_id) : null,
       };
+
+      // Penalties only matter on a leg-2 decider when leg wins are level.
+      if (isLeg2Decider) {
+        payload.penalty_a = winsLevel ? form.penalty_a ?? null : null;
+        payload.penalty_b = winsLevel ? form.penalty_b ?? null : null;
+      }
 
       const res = await fetch(isEdit ? `/api/matches/${form.id}` : `/api/matches`, {
         method: isEdit ? "PATCH" : "POST",
@@ -212,10 +326,19 @@ export default function RowEditor({
             <Badge>
               <Users2 className="h-3.5 w-3.5 opacity-80" />
               <span className="opacity-80">Draws:</span>
-              <span className={`font-medium ${allowDraws ? "text-emerald-200" : "text-rose-200"}`}>
-                {allowDraws ? "Allowed" : "Not allowed"}
+              <span className={`font-medium ${allowDraws || twoLegged ? "text-emerald-200" : "text-rose-200"}`}>
+                {allowDraws || twoLegged ? "Allowed" : "Not allowed"}
               </span>
             </Badge>
+            {leg != null && (
+              <Badge>
+                <Repeat2 className="h-3.5 w-3.5 opacity-80" />
+                <span className="opacity-80">Leg:</span>
+                <span className="text-white/95 font-medium">
+                  {leg}{isLeg2Decider ? " (decider)" : ""}
+                </span>
+              </Badge>
+            )}
           </div>
 
           {/* SCOREBOARD */}
@@ -272,6 +395,85 @@ export default function RowEditor({
             </div>
           </div>
 
+          {/* TWO-LEGGED KO: aggregate + penalties (leg-2 decider only) */}
+          {isLeg2Decider && (
+            <div className="rounded-md border border-cyan-400/20 bg-cyan-400/5 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-cyan-200/80">
+                <Repeat2 className="h-4 w-4" />
+                <span>Two-legged tie — decider (leg 2)</span>
+              </div>
+
+              {!leg1 ? (
+                <p className="text-xs text-amber-300">Loading leg 1…</p>
+              ) : leg1.team_a_score == null || leg1.team_b_score == null ? (
+                <p className="text-xs text-rose-300">
+                  Leg 1 is not finished yet. Finish leg 1 before deciding this tie.
+                </p>
+              ) : (
+                <>
+                  <div className="text-sm text-white/85">
+                    Leg wins:{" "}
+                    <span className="font-semibold text-white">
+                      {teamLabel(teams.find((t) => t.id === form.team_a_id) ?? null, form.team_a_id as Id)} {winsA}
+                    </span>
+                    <span className="mx-1 opacity-60">—</span>
+                    <span className="font-semibold text-white">
+                      {winsB} {teamLabel(teams.find((t) => t.id === form.team_b_id) ?? null, form.team_b_id as Id)}
+                    </span>
+                    <span className="ml-2 text-white/45">(agg {aggA}–{aggB}, not decisive)</span>
+                  </div>
+
+                  {winsLevel ? (
+                    <div className="space-y-2">
+                      <p className="text-xs text-amber-300">
+                        Leg wins are level — penalties are required to decide the tie.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/70 w-20 truncate">Pens (A)</span>
+                        <input
+                          aria-label="Penalty A"
+                          type="number"
+                          min={0}
+                          value={form.penalty_a ?? ""}
+                          onChange={(e) =>
+                            set("penalty_a" as any, e.target.value === "" ? null : Number(e.target.value))
+                          }
+                          className="w-16 h-10 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        />
+                        <span className="text-white/60">—</span>
+                        <input
+                          aria-label="Penalty B"
+                          type="number"
+                          min={0}
+                          value={form.penalty_b ?? ""}
+                          onChange={(e) =>
+                            set("penalty_b" as any, e.target.value === "" ? null : Number(e.target.value))
+                          }
+                          className="w-16 h-10 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                        />
+                        <span className="text-xs text-white/60">Pens (B)</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-emerald-300">
+                      Winner on legs:{" "}
+                      {teamLabel(
+                        teams.find((t) => t.id === winsWinnerId) ?? null,
+                        winsWinnerId as Id
+                      )}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {isLeg1 && (
+            <p className="text-xs text-cyan-200/80">
+              This is leg 1 of a two-legged tie — record the score; the winner is decided after leg 2.
+            </p>
+          )}
+
           {/* STATUS + TIME */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Section title="Match timing" icon={<CalendarClock className="h-4 w-4" />}> 
@@ -327,13 +529,13 @@ export default function RowEditor({
 
               <label className="flex flex-col gap-1 lg:col-span-2">
                 <span className="text-xs text-white/70">
-                  Winner {allowDraws ? "(required when finished and not a draw)" : "(required when finished)"}
+                  Winner {twoLegged ? "(decided automatically from the tie)" : allowDraws ? "(required when finished and not a draw)" : "(required when finished)"}
                 </span>
                 <select
                   value={form.winner_team_id ?? ""}
                   onChange={(e) => set("winner_team_id", e.target.value === "" ? null : (Number(e.target.value) as Id))}
                   className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-white/20"
-                  disabled={isDraw}
+                  disabled={isDraw || twoLegged}
                 >
                   <option value="">— none —</option>
                   {[form.team_a_id, form.team_b_id]
@@ -345,10 +547,17 @@ export default function RowEditor({
                       );
                     })}
                 </select>
-                {isFinished && allowDraws && scoresEqual && (
+                {twoLegged && (
+                  <span className="mt-1 text-xs text-cyan-200">
+                    {isLeg1
+                      ? "Leg 1 carries no winner — the tie is decided after leg 2."
+                      : "Winner is derived from the aggregate (then penalties) when you save."}
+                  </span>
+                )}
+                {!twoLegged && isFinished && allowDraws && scoresEqual && (
                   <span className="mt-1 text-xs text-emerald-300">Scores are equal and draws are allowed — winner will be saved as empty.</span>
                 )}
-                {isFinished && !allowDraws && scoresEqual && !form.winner_team_id && (
+                {!twoLegged && isFinished && !allowDraws && scoresEqual && !form.winner_team_id && (
                   <span className="mt-1 text-xs text-rose-300">Draws are not allowed for this stage — pick a winner.</span>
                 )}
               </label>

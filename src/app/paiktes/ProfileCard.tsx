@@ -8,6 +8,7 @@ import React, {
   useMemo,
   CSSProperties,
 } from "react";
+import { useReducedMotion } from "framer-motion";
 import type { PlayerLite } from "./types";
 import GlossOverlay from "./GlossOverlay";
 import styles from "./ProfileCard.module.css";
@@ -55,6 +56,12 @@ type AnimationHandlers = {
     card: HTMLElement,
     wrap: HTMLElement
   ) => void;
+  scheduleCardTransform: (
+    offsetX: number,
+    offsetY: number,
+    card: HTMLElement,
+    wrap: HTMLElement
+  ) => void;
   createSmoothAnimation: (
     duration: number,
     startX: number,
@@ -95,6 +102,9 @@ export type ProfileCardProps = {
   matchesPlayed?: number;
 
   showStats?: boolean;
+
+  /** Pause the always-on background animations (e.g. when the tab is hidden). */
+  paused?: boolean;
 };
 
 function ProfileCardComponent({
@@ -123,9 +133,25 @@ function ProfileCardComponent({
   bestGkAwards = 0,
   matchesPlayed = 0,
   showStats = true,
+  paused = false,
 }: ProfileCardProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
+  // The 1500ms intro sweep should play once per mounted card, not every time
+  // the tilt effect re-subscribes (the handlers are stable, but this guard
+  // makes the intent explicit and survives incidental re-runs).
+  const hasPlayedIntroRef = useRef(false);
+
+  const reduceMotion = useReducedMotion();
+  // Tilt (and its intro animation + pointer listeners) is fully disabled under
+  // reduced motion — the card renders flat. enableTilt already short-circuits
+  // every handler when false, so this is the single switch.
+  const tiltEnabled = enableTilt && !reduceMotion;
+
+  // Background animations (SportyBackground sweep, GlossOverlay sweep, and the
+  // CSS glow/holo/metallic loops via the .paused class) stop when the tab is
+  // hidden or the user prefers reduced motion.
+  const animateBackgrounds = !paused && !reduceMotion;
 
   const activeClass = (styles as Record<string, string>)["active"] ?? "active";
 
@@ -140,9 +166,17 @@ function ProfileCardComponent({
 
   /** ---- animation handlers ---- */
   const animationHandlers = useMemo<AnimationHandlers | null>(() => {
-    if (!enableTilt) return null;
+    if (!tiltEnabled) return null;
 
     let rafId: number | null = null;
+    // Coalesce pointermove updates: at most one CSS-var write per frame.
+    let moveRafId: number | null = null;
+    let pendingMove: {
+      offsetX: number;
+      offsetY: number;
+      card: HTMLElement;
+      wrap: HTMLElement;
+    } | null = null;
 
     const updateCardTransform = (
       offsetX: number,
@@ -180,6 +214,25 @@ function ProfileCardComponent({
       });
     };
 
+    // rAF-throttled variant for high-frequency pointermove events. Keeps only
+    // the latest pointer position and flushes one write per frame.
+    const scheduleCardTransform = (
+      offsetX: number,
+      offsetY: number,
+      card: HTMLElement,
+      wrap: HTMLElement
+    ) => {
+      pendingMove = { offsetX, offsetY, card, wrap };
+      if (moveRafId !== null) return;
+      moveRafId = requestAnimationFrame(() => {
+        moveRafId = null;
+        if (!pendingMove) return;
+        const { offsetX: x, offsetY: y, card: c, wrap: w } = pendingMove;
+        pendingMove = null;
+        updateCardTransform(x, y, c, w);
+      });
+    };
+
     const createSmoothAnimation = (
       duration: number,
       startX: number,
@@ -211,16 +264,22 @@ function ProfileCardComponent({
 
     return {
       updateCardTransform,
+      scheduleCardTransform,
       createSmoothAnimation,
       cancelAnimation: () => {
         if (rafId) cancelAnimationFrame(rafId);
+        if (moveRafId !== null) {
+          cancelAnimationFrame(moveRafId);
+          moveRafId = null;
+          pendingMove = null;
+        }
       },
     };
-  }, [enableTilt]);
+  }, [tiltEnabled]);
 
   const handlePointerEnter = useCallback(
     (e: PointerEvent) => {
-      if (!enableTilt || !animationHandlers) return;
+      if (!tiltEnabled || !animationHandlers) return;
 
       const card = cardRef.current!;
       const wrap = wrapRef.current!;
@@ -241,12 +300,12 @@ function ProfileCardComponent({
         wrap
       );
     },
-    [enableTilt, animationHandlers, activeClass]
+    [tiltEnabled, animationHandlers, activeClass]
   );
 
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
-      if (!enableTilt || !animationHandlers) return;
+      if (!tiltEnabled || !animationHandlers) return;
 
       const card = cardRef.current!;
       const wrap = wrapRef.current!;
@@ -255,13 +314,14 @@ function ProfileCardComponent({
       const offsetX = clientX - bounds.left;
       const offsetY = clientY - bounds.top;
 
-      animationHandlers.updateCardTransform(offsetX, offsetY, card, wrap);
+      // rAF-coalesced: one CSS-var write per frame regardless of event rate.
+      animationHandlers.scheduleCardTransform(offsetX, offsetY, card, wrap);
     },
-    [enableTilt, animationHandlers]
+    [tiltEnabled, animationHandlers]
   );
 
   const handlePointerLeave = useCallback(() => {
-    if (!enableTilt || !animationHandlers) return;
+    if (!tiltEnabled || !animationHandlers) return;
 
     const card = cardRef.current!;
     const wrap = wrapRef.current!;
@@ -270,11 +330,11 @@ function ProfileCardComponent({
     wrap.style.setProperty("--card-opacity", "0");
 
     animationHandlers.cancelAnimation();
-  }, [enableTilt, animationHandlers, activeClass]);
+  }, [tiltEnabled, animationHandlers, activeClass]);
 
   const handleDeviceOrientation = useCallback(
     (e: DeviceOrientationEvent) => {
-      if (!enableTilt || !animationHandlers) return;
+      if (!tiltEnabled || !animationHandlers) return;
 
       const card = cardRef.current!;
       const wrap = wrapRef.current!;
@@ -291,11 +351,11 @@ function ProfileCardComponent({
 
       animationHandlers.updateCardTransform(offsetX, offsetY, card, wrap);
     },
-    [enableTilt, animationHandlers]
+    [tiltEnabled, animationHandlers]
   );
 
   useEffect(() => {
-    if (!enableTilt || !animationHandlers) return;
+    if (!tiltEnabled || !animationHandlers) return;
 
     const card = cardRef.current!;
     const wrap = wrapRef.current!;
@@ -332,14 +392,18 @@ function ProfileCardComponent({
     const initialX = wrap.clientWidth - ANIMATION_CONFIG.INITIAL_X_OFFSET;
     const initialY = ANIMATION_CONFIG.INITIAL_Y_OFFSET;
 
+    // Always set the resting position; only play the sweeping intro once.
     animationHandlers.updateCardTransform(initialX, initialY, card, wrap);
-    animationHandlers.createSmoothAnimation(
-      ANIMATION_CONFIG.INITIAL_DURATION,
-      initialX,
-      initialY,
-      card,
-      wrap
-    );
+    if (!hasPlayedIntroRef.current) {
+      hasPlayedIntroRef.current = true;
+      animationHandlers.createSmoothAnimation(
+        ANIMATION_CONFIG.INITIAL_DURATION,
+        initialX,
+        initialY,
+        card,
+        wrap
+      );
+    }
 
     return () => {
       card.removeEventListener("pointerenter", pointerEnterHandler);
@@ -350,7 +414,7 @@ function ProfileCardComponent({
       animationHandlers.cancelAnimation();
     };
   }, [
-    enableTilt,
+    tiltEnabled,
     enableMobileTilt,
     animationHandlers,
     handlePointerMove,
@@ -375,20 +439,24 @@ function ProfileCardComponent({
     onContactClick?.();
   }, [onContactClick]);
 
+  // Stop the always-on CSS loops (glow-bg/holo-bg/metallic-shine) when the tab
+  // is hidden; reduced motion is handled by the stylesheet's media query.
+  const pausedClass = paused ? (styles["paused"] ?? "paused") : "";
+
   return (
     <div
       ref={wrapRef}
-      className={`${styles["pc-card-wrapper"]} ${className}`.trim()}
+      className={`${styles["pc-card-wrapper"]} ${pausedClass} ${className}`.trim()}
       style={cardStyle}
     >
       <section ref={cardRef} className={styles["pc-card"]}>
         <div className={styles["pc-inside"]}>
           <div className={styles["pc-shine"]} />
           {/* Sporty background pattern */}
-          <SportyBackground 
-            variant="pitch" 
-            opacity={0.12} 
-            animate={true}
+          <SportyBackground
+            variant="pitch"
+            opacity={0.12}
+            animate={animateBackgrounds}
           />
 
           <div className={styles["pc-glare"]} />
@@ -405,12 +473,14 @@ function ProfileCardComponent({
               height={512}
               className={styles["avatar"]}
               priority
+              animate={false}
             />
 
             {/* Specular gloss, clipped to the PNG alpha */}
             <GlossOverlay
               src={displayImage}
               maskSrc={displayImage}
+              run={animateBackgrounds}
               angle={18}
               thickness={120}
               intensity={1}
@@ -439,6 +509,7 @@ function ProfileCardComponent({
                             width={80}
                             height={80}
                             className={styles["pc-team-logo-img"]}
+                            animate={false}
                           />
                         ) : (
                           <div className={styles["pc-team-logo-placeholder"]} />

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useConsent } from "@/app/lib/consent/use-consent";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 type VideoMatch = {
   id: number;
@@ -15,6 +16,7 @@ type VideoMatch = {
   team_a_score: number | null;
   team_b_score: number | null;
   match_date: string | null;
+  created_at: string | null;
   tournament_name: string | null;
 };
 
@@ -61,9 +63,10 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
   );
   const [nextCursor, setNextCursor] = useState<Cursor>(
     // The server sends exactly 20 items when there may be more; assume there can be
-    // more if we received a full page of 20.
+    // more if we received a full page of 20. Cursor must use the same key the
+    // server orders by (created_at), or pagination would skip/repeat rows.
     initialVideos.length === 20
-      ? { cursorDate: initialVideos[19].match_date ?? '', cursorId: initialVideos[19].id }
+      ? { cursorDate: initialVideos[19].created_at ?? '', cursorId: initialVideos[19].id }
       : null
   );
   const [loadingMore, setLoadingMore] = useState(false);
@@ -159,7 +162,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
 
             const isPlaying = playingId === videoId;
             const matchDate = match.match_date
-              ? new Date(match.match_date).toLocaleDateString("el-GR", {
+              ? formatMatchDate(match.match_date, {
                   year: "numeric",
                   month: "short",
                   day: "numeric",

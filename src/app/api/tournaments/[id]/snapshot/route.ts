@@ -69,6 +69,7 @@ export async function GET(
        round, bracket_pos,
        home_source_round, home_source_bracket_pos,
        away_source_round, away_source_bracket_pos,
+       leg, tie_leg1_match_id, penalty_a, penalty_b,
        updated_at`
     )
     .eq("tournament_id", num)
@@ -206,6 +207,12 @@ export async function GET(
       home_source_bracket_pos: m.home_source_bracket_pos == null ? null : Number(m.home_source_bracket_pos),
       away_source_round: m.away_source_round == null ? null : Number(m.away_source_round),
       away_source_bracket_pos: m.away_source_bracket_pos == null ? null : Number(m.away_source_bracket_pos),
+      // two-legged KO: carry the leg marker + tie link + pens, else both legs of a
+      // tie collapse to one matchSig on hydrate (lost match / orphan card on reload).
+      leg: (m as any).leg == null ? null : Number((m as any).leg),
+      tie_leg1_match_id: (m as any).tie_leg1_match_id == null ? null : Number((m as any).tie_leg1_match_id),
+      penalty_a: (m as any).penalty_a == null ? null : Number((m as any).penalty_a),
+      penalty_b: (m as any).penalty_b == null ? null : Number((m as any).penalty_b),
       updated_at: (m as any).updated_at ?? null,
     })),
     stageSlots: (stageSlots ?? []).map((s) => ({

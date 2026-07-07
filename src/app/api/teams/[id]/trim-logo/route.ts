@@ -57,9 +57,16 @@ export async function POST(
   
   // If it starts with http but isn't our proxy, we can't trim it
   if (storagePath.startsWith("http")) {
-    return NextResponse.json({ 
-      error: "Cannot trim external URLs, only storage logos" 
+    return NextResponse.json({
+      error: "Cannot trim external URLs, only storage logos"
     }, { status: 400 });
+  }
+
+  // Defense-in-depth: the path was extracted from `teams.logo` in the DB and
+  // should never contain traversal sequences, but a corrupted upload pipeline
+  // or stale row could put `..` into it. Reject before passing to storage.
+  if (storagePath.includes("..") || storagePath.includes("\0")) {
+    return NextResponse.json({ error: "Invalid logo path" }, { status: 400 });
   }
 
   try {

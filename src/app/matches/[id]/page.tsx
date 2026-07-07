@@ -1,33 +1,34 @@
-// src/app/matches/[id]/page.tsx (OPTIMIZED - No Signing)
+// Match detail page — editorial broadsheet aesthetic, shared with /OMADA/[id]
+// (Fraunces/Archivo/JetBrains/Figtree, #0a0a14 ground, #F3EFE6 ink, #fb923c
+// orange, #E8B931 saffron, 2px borders + hard shadow).
+//
+// Carries the full admin surface (stats editor, video CRUD, postpone action,
+// duplicate-player warning), gated behind isAdmin and reusing the shared
+// server actions and components.
 export const revalidate = 0;
 
-import StatsEditor from "./StatsEditor";
-import MatchVideoAdminForm from "./MatchVideoAdminForm";
-import { saveAllStatsAction } from "./actions";
+import { notFound } from "next/navigation";
 import {
   fetchMatch,
   fetchPlayersForTeam,
   fetchMatchStatsMap,
   fetchParticipantsMap,
-  fetchStandingsByStage,
+  fetchLegOneScores,
 } from "./queries";
-import { parseId, extractYouTubeId, formatStatus } from "./utils";
-import { notFound } from "next/navigation";
-import type { Id, PlayerAssociation } from "@/app/lib/types";
-import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
-
-import StadiumBg from "./StadiumBg";
-import ShinyText from "./ShinyText";
-import { TournamentImage } from "@/app/lib/OptimizedImage";
-
-// NEW COMPONENTS
-import WelcomeMessage from "./WelcomeMessage";
-import TournamentHeader from "./TournamentHeader";
-import TeamVersusScore from "./TeamVersusScore";
-import MatchEventsTimeline from "./MatchEventsTimeline";
-import TeamRostersDisplay from "./TeamRostersDisplay";
-import TournamentStandings from "./TournamentStandings";
+import { parseId, extractYouTubeId } from "./utils";
+import { saveAllStatsAction } from "./actions";
+import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
+import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
+import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
+import type { Id, PlayerAssociation } from "@/app/lib/types";
+import MatchV2Client from "./MatchV2Client";
+
+export const metadata = {
+  title: "Αγώνας",
+};
 
 function errMsg(e: unknown) {
   if (!e) return "Unknown error";
@@ -48,9 +49,8 @@ export default async function Page({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = Array.isArray(user?.app_metadata?.roles)
-    ? (user!.app_metadata!.roles as string[]).includes("admin")
-    : false;
+  // Editors and admins both get the full match-editing surface.
+  const isAdmin = canEditContent(user);
 
   const { id: idStr } = await params;
   const { video } = await searchParams;
@@ -60,17 +60,11 @@ export default async function Page({
   const match = await fetchMatch(id);
   if (!match) return notFound();
 
-  // NO SIGNING - Keep raw path
-  const tournamentLogo = match.tournament?.logo ?? null;
-
-  const [aRes, bRes, statsRes, partsRes, standingsRes] = await Promise.allSettled([
+  const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
-    match.stage_id
-      ? fetchStandingsByStage(match.stage_id)
-      : Promise.resolve({ standings: [], stageKind: null, stageName: null } as import("./queries").StandingsResult),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -81,14 +75,10 @@ export default async function Page({
     statsRes.status === "fulfilled" ? statsRes.value : new Map();
   const participants =
     partsRes.status === "fulfilled" ? partsRes.value : new Map();
-  const { standings, stageKind, stageName } =
-    standingsRes.status === "fulfilled"
-      ? standingsRes.value
-      : { standings: [] as import("./queries").StandingRow[], stageKind: null, stageName: null };
 
-  // ✅ Detect players who appear on both rosters
-  const teamAPlayerIds = new Set(teamAPlayers.map(p => p.player.id));
-  const teamBPlayerIds = new Set(teamBPlayers.map(p => p.player.id));
+  // Detect players who appear on both rosters (admin warning).
+  const teamAPlayerIds = new Set(teamAPlayers.map((p) => p.player.id));
+  const teamBPlayerIds = new Set(teamBPlayers.map((p) => p.player.id));
   const duplicatePlayerIds = new Set<number>();
   for (const playerId of teamAPlayerIds) {
     if (teamBPlayerIds.has(playerId)) {
@@ -105,36 +95,60 @@ export default async function Page({
     dataLoadErrors.push(`Match stats: ${errMsg(statsRes.reason)}`);
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
-  if (standingsRes.status === "rejected")
-    dataLoadErrors.push(`Standings: ${errMsg(standingsRes.reason)}`);
 
-  // Video: prefer query param override, else DB column, and hide section when none
   const dbVideoRaw = match.video_url ?? null;
   const effectiveVideoInput = video ?? dbVideoRaw;
   const videoId = effectiveVideoInput ? extractYouTubeId(effectiveVideoInput) : null;
 
-  const dateLabel = match.match_date
-    ? new Date(match.match_date).toLocaleString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "TBD";
-
-  // Prepare data for new components
   const isScheduled = match.status === "scheduled";
   const hasParticipants = participants.size > 0;
   const hasScores = match.team_a_score !== null && match.team_b_score !== null;
   const showWelcomeMessage = isScheduled && !hasParticipants && !hasScores;
 
-  // Prepare scorers data
+  // ----- Two-legged KO context (leg-2 decider) -----
+  const isLeg2Decider = match.leg === 2 && match.tie_leg1_match_id != null;
+  const leg1 = isLeg2Decider
+    ? await fetchLegOneScores(match.tie_leg1_match_id as Id)
+    : null;
+
+  // Aggregate per team in leg-2's (team_a/team_b) orientation. Null until both
+  // legs have scores.
+  const scoreForTeam = (
+    row: { team_a_id: number | null; team_b_id: number | null; team_a_score: number | null; team_b_score: number | null } | null,
+    teamId: number | null,
+  ) => {
+    if (!row || teamId == null) return 0;
+    if (row.team_a_id === teamId) return row.team_a_score ?? 0;
+    if (row.team_b_id === teamId) return row.team_b_score ?? 0;
+    return 0;
+  };
+  const leg1Ready = !!leg1 && leg1.team_a_score != null && leg1.team_b_score != null;
+
+  // Leg-1 score mapped into leg-2's (team_a/team_b) orientation, for the live
+  // penalty panel. Teams swap home/away between legs, so map by team id.
+  const leg1AScore = leg1Ready ? scoreForTeam(leg1, match.team_a.id) : null;
+  const leg1BScore = leg1Ready ? scoreForTeam(leg1, match.team_b.id) : null;
+  const aggA =
+    isLeg2Decider && leg1Ready && match.team_a_score != null
+      ? (match.team_a_score ?? 0) + scoreForTeam(leg1, match.team_a.id)
+      : null;
+  const aggB =
+    isLeg2Decider && leg1Ready && match.team_b_score != null
+      ? (match.team_b_score ?? 0) + scoreForTeam(leg1, match.team_b.id)
+      : null;
+
+  // Penalty requirement + leg-win counting now live in the client
+  // <TwoLeggedPenaltyPanel>, which reacts to the goals the admin is currently
+  // typing (the leg-2 score is recomputed from player stats on submit, so a
+  // server snapshot of the last-saved score would be stale). The server still
+  // enforces the rule in resolveKoFinishPatch. aggA/aggB above feed the public
+  // display only.
+
   const scorers = Array.from(existingStats.values())
     .filter((stat) => stat.goals > 0 || (stat.own_goals && stat.own_goals > 0))
     .map((stat) => {
       const player = [...teamAPlayers, ...teamBPlayers].find(
-        (p) => p.player.id === stat.player_id
+        (p) => p.player.id === stat.player_id,
       )?.player;
       return {
         player: player || {
@@ -148,11 +162,10 @@ export default async function Page({
       };
     });
 
-  // Prepare participants data with full stats for the unified timeline
   const participantsData = Array.from(participants.values())
     .map((part) => {
       const player = [...teamAPlayers, ...teamBPlayers].find(
-        (p) => p.player.id === part.player_id
+        (p) => p.player.id === part.player_id,
       )?.player;
       if (!player) return null;
       const stats = existingStats.get(part.player_id) ?? null;
@@ -171,7 +184,6 @@ export default async function Page({
     })
     .filter((p) => p !== null);
 
-  // Prepare full roster data for scheduled matches
   const rosterData = [
     ...teamAPlayers.map((pa) => ({
       player: {
@@ -196,160 +208,119 @@ export default async function Page({
   ];
 
   return (
-    <div className="relative min-h-dvh overflow-x-visible">
-      {/* Fixed stadium background that stays in place while content scrolls */}
-      <StadiumBg className="fixed inset-0 -z-10" />
-
-      <div className="container mx-auto max-w-6xl px-4 pt-6">
-        {match.tournament && (
-          <TournamentHeader
-            logo={match.tournament.logo}
-            name={match.tournament.name}
-          />
-        )}
-      </div>
-
-      <div className="container mx-auto max-w-6xl space-y-8 px-4 py-6">
-        {dataLoadErrors.length > 0 && (
-          <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-amber-200 text-sm">
-            <p className="font-medium">Some data failed to load:</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5">
-              {dataLoadErrors.map((m, i) => (
-                <li key={i}>{m}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Welcome Message for Unplayed Matches */}
-        {showWelcomeMessage && <WelcomeMessage matchDate={match.match_date} />}
-
-        {/* Admin Actions (Postpone Match) */}
-        {isAdmin && (
-          <MatchAdminActions
-            match={{
-              id: match.id,
-              status: match.status,
-              match_date: match.match_date,
-              teamA: match.team_a,
-              teamB: match.team_b,
-            }}
-          />
-        )}
-
-        {/* Team vs Score Display with Scorers */}
-        <TeamVersusScore
-          teamA={match.team_a}
-          teamB={match.team_b}
-          scoreA={match.team_a_score}
-          scoreB={match.team_b_score}
-          status={match.status}
-          matchDate={match.match_date}
-          referee={match.referee ?? null}
-          scorers={scorers}
-        />
-
-        {/* Show full rosters for scheduled matches, unified events timeline for finished matches */}
-        {isScheduled && rosterData.length > 0 ? (
-          <TeamRostersDisplay
-            teamAId={match.team_a.id}
-            teamBId={match.team_b.id}
-            teamAName={match.team_a.name}
-            teamBName={match.team_b.name}
-            teamALogo={match.team_a.logo ?? null}
-            teamBLogo={match.team_b.logo ?? null}
-            rosterPlayers={rosterData}
-          />
-        ) : participantsData.length > 0 ? (
-          <MatchEventsTimeline
-            teamAId={match.team_a.id}
-            teamBId={match.team_b.id}
-            teamAName={match.team_a.name}
-            teamBName={match.team_b.name}
-            teamALogo={match.team_a.logo ?? null}
-            teamBLogo={match.team_b.logo ?? null}
-            participants={participantsData}
-          />
-        ) : null}
-
-        {/* Match Video - only show if there is a valid videoId (DB or ?video= override) */}
-        {videoId && (
-          <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
-            <h2
-              className="mb-3 text-lg font-semibold text-white"
-              style={{
-                textShadow:
-                  "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-              }}
-            >
-              Match Video
-            </h2>
-            <div className="aspect-video w-full overflow-hidden rounded-xl">
-              <iframe
-                className="h-full w-full"
-                src={`https://www.youtube.com/embed/${videoId}`}
-                title="YouTube video player"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            </div>
-          </section>
-        )}
-
-        {/* Tournament Standings - After Video - Always shows, displays empty state if no data */}
-        <TournamentStandings standings={standings} stageKind={stageKind} stageName={stageName} />
-
-        {isAdmin ? (
+    <MatchV2Client
+      match={{
+        id: match.id,
+        status: match.status,
+        match_date: match.match_date,
+        team_a_score: match.team_a_score,
+        team_b_score: match.team_b_score,
+        referee: match.referee ?? null,
+        team_a: match.team_a,
+        team_b: match.team_b,
+        tournament: match.tournament
+          ? {
+              id: match.tournament.id,
+              name: match.tournament.name,
+              logo: match.tournament.logo ?? null,
+            }
+          : null,
+        // two-legged KO (leg-2 decider): show penalties + aggregate publicly
+        leg: match.leg ?? null,
+        penalty_a: match.penalty_a ?? null,
+        penalty_b: match.penalty_b ?? null,
+        aggregate_a: aggA,
+        aggregate_b: aggB,
+      }}
+      scorers={scorers}
+      participants={participantsData}
+      roster={rosterData}
+      showWelcomeMessage={showWelcomeMessage}
+      isScheduled={isScheduled}
+      videoId={videoId}
+      dataLoadErrors={dataLoadErrors}
+      adminSlot={
+        isAdmin ? (
           <>
+            {/* Admin Actions (Postpone Match) */}
+            <MatchAdminActions
+              match={{
+                id: match.id,
+                status: match.status,
+                match_date: match.match_date,
+                teamA: match.team_a,
+                teamB: match.team_b,
+              }}
+            />
+
             <section className="rounded-2xl border border-white/20 bg-black/50 p-5 shadow-lg backdrop-blur-sm">
-              <h2
-                className="mb-3 text-lg font-semibold text-white"
-                style={{
-                  textShadow:
-                    "2px 2px 4px rgba(0,0,0,0.9), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
-                }}
-              >
+              <h2 className="mb-3 text-lg font-semibold text-white">
                 Admin: Match Player Stats
               </h2>
               <p className="mb-4 text-xs text-white/70">
-                Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και συμπλήρωσε
-                στατιστικά. Πάτησε <strong>Save all</strong> για αποθήκευση.
+                Ενεργοποίησε <strong>Συμμετοχή</strong>, δήλωσε θέση/αρχηγό/GK και
+                συμπλήρωσε στατιστικά. Πάτησε <strong>Save all</strong> για
+                αποθήκευση.
               </p>
 
               <form id="stats-form" action={saveAllStatsAction}>
                 <input type="hidden" name="match_id" value={String(match.id)} />
 
-                {/* Warning banner for players on both rosters */}
                 {duplicatePlayerIds.size > 0 && (
                   <div className="mb-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-4">
                     <p className="font-semibold text-amber-200 text-sm">
-                      ⚠️ Προσοχή: {duplicatePlayerIds.size} παίκτης/παίκτες βρίσκονται και στις δύο ομάδες
+                      ⚠️ Προσοχή: {duplicatePlayerIds.size} παίκτης/παίκτες
+                      βρίσκονται και στις δύο ομάδες
                     </p>
                     <p className="mt-1 text-xs text-amber-200/80">
-                      Βεβαιωθείτε ότι επισημαίνετε κάθε παίκτη ως "συμμετοχή" μόνο σε ΜΙΑ ομάδα.
-                      Η επισήμανση παίκτη στις δύο ομάδες θα προκαλέσει σφάλμα.
+                      Βεβαιωθείτε ότι επισημαίνετε κάθε παίκτη ως "συμμετοχή" μόνο
+                      σε ΜΙΑ ομάδα. Η επισήμανση παίκτη στις δύο ομάδες θα
+                      προκαλέσει σφάλμα.
                     </p>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-6">
-                  <StatsEditor
-                    teamId={match.team_a.id}
-                    teamName={match.team_a.name}
-                    associations={teamAPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
+                <MatchAwardsProvider
+                  initialMvpPlayerId={
+                    [...existingStats.values()].find((s) => s.mvp)?.player_id ?? null
+                  }
+                  initialBestGkPlayerId={
+                    [...existingStats.values()].find((s) => s.best_goalkeeper)?.player_id ?? null
+                  }
+                >
+                  <div className="grid grid-cols-1 gap-6">
+                    <StatsEditor
+                      teamId={match.team_a.id}
+                      teamName={match.team_a.name}
+                      associations={teamAPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                    <StatsEditor
+                      teamId={match.team_b.id}
+                      teamName={match.team_b.name}
+                      associations={teamBPlayers}
+                      existing={existingStats}
+                      participants={participants}
+                      duplicatePlayerIds={duplicatePlayerIds}
+                    />
+                  </div>
+                </MatchAwardsProvider>
+
+                {isLeg2Decider && (
+                  <TwoLeggedPenaltyPanel
+                    teamAId={match.team_a.id}
+                    teamBId={match.team_b.id}
+                    teamAName={match.team_a.name}
+                    teamBName={match.team_b.name}
+                    leg1AScore={leg1AScore}
+                    leg1BScore={leg1BScore}
+                    leg1Ready={leg1Ready}
+                    savedPenaltyA={match.penalty_a ?? null}
+                    savedPenaltyB={match.penalty_b ?? null}
                   />
-                  <StatsEditor
-                    teamId={match.team_b.id}
-                    teamName={match.team_b.name}
-                    associations={teamBPlayers}
-                    existing={existingStats}
-                    participants={participants}
-                    duplicatePlayerIds={duplicatePlayerIds}
-                  />
-                </div>
+                )}
 
                 <div className="mt-4 flex justify-end gap-2">
                   <button
@@ -368,8 +339,8 @@ export default async function Page({
               initialVideoUrl={match.video_url ?? null}
             />
           </>
-        ) : null}
-      </div>
-    </div>
+        ) : null
+      }
+    />
   );
 }

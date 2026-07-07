@@ -32,6 +32,7 @@ export default async function MatchesPage({
       `
       id, match_date, status, team_a_id, team_b_id, team_a_score, team_b_score, winner_team_id,
       tournament_id, stage_id, group_id, matchday, round, bracket_pos, updated_at,
+      leg, tie_leg1_match_id, penalty_a, penalty_b,
       team_a:team_a_id (id, name, logo),
       team_b:team_b_id (id, name, logo),
       tournament:tournament_id (id, name),

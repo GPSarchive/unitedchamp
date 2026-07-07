@@ -4,6 +4,10 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 const BATCH_SIZE = 300;
 
+// PostgREST caps every response at ~1000 rows (server max-rows setting); a
+// large .limit() does NOT override it. All reads here must paginate.
+const PAGE_SIZE = 500;
+
 /** Split an array into chunks */
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -11,7 +15,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-/** Fetch rows in batches to avoid Supabase's 1000-row default limit */
+/** Fetch all rows matching `idColumn IN ids`, paginating past the row cap */
 async function fetchInBatches<T>(
   table: string,
   idColumn: string,
@@ -19,17 +23,24 @@ async function fetchInBatches<T>(
   selectColumns: string,
 ): Promise<T[]> {
   if (ids.length === 0) return [];
-  const results = await Promise.all(
-    chunk(ids, BATCH_SIZE).map((batch) =>
-      supabaseAdmin
+  const out: T[] = [];
+  for (const batch of chunk(ids, BATCH_SIZE)) {
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabaseAdmin
         .from(table)
         .select(selectColumns)
         .in(idColumn, batch)
-        .limit(10000)
-        .then(({ data }) => (data ?? []) as T[]),
-    ),
-  );
-  return results.flat();
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
+      if (!data || data.length === 0) break;
+      out.push(...(data as T[]));
+      if (data.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
+  }
+  return out;
 }
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -279,6 +290,53 @@ export async function refreshTournamentStatsForPlayers(
   }
 }
 
+// ─── Core: sync the legacy player_statistics table for a set of players ──
+// Recomputes all-time totals from match_player_stats (paginated) and upserts.
+// Players left with no stats rows get zeroed, not deleted.
+
+export async function syncPlayerStatisticsForPlayers(playerIds: number[]) {
+  if (playerIds.length === 0) return;
+
+  const rows = await fetchInBatches<{
+    player_id: number;
+    goals: number | null;
+    assists: number | null;
+    yellow_cards: number | null;
+    red_cards: number | null;
+    blue_cards: number | null;
+  }>(
+    "match_player_stats",
+    "player_id",
+    playerIds,
+    "player_id, goals, assists, yellow_cards, red_cards, blue_cards",
+  );
+
+  const totals = new Map<
+    number,
+    { total_goals: number; total_assists: number; yellow_cards: number; red_cards: number; blue_cards: number }
+  >();
+  for (const pid of playerIds) {
+    totals.set(pid, { total_goals: 0, total_assists: 0, yellow_cards: 0, red_cards: 0, blue_cards: 0 });
+  }
+  for (const r of rows) {
+    const t = totals.get(r.player_id);
+    if (!t) continue;
+    t.total_goals += r.goals ?? 0;
+    t.total_assists += r.assists ?? 0;
+    t.yellow_cards += r.yellow_cards ?? 0;
+    t.red_cards += r.red_cards ?? 0;
+    t.blue_cards += r.blue_cards ?? 0;
+  }
+
+  const upserts = Array.from(totals.entries()).map(([pid, t]) => ({ player_id: pid, ...t }));
+  for (const batch of chunk(upserts, BATCH_SIZE)) {
+    const { error } = await supabaseAdmin
+      .from("player_statistics")
+      .upsert(batch, { onConflict: "player_id" });
+    if (error) throw new Error(`Failed upserting player_statistics: ${error.message}`);
+  }
+}
+
 // ─── Public: refresh stats for all players involved in a single match ──
 
 export async function refreshStatsForMatch(matchId: number) {
@@ -312,9 +370,7 @@ export async function refreshStatsForMatch(matchId: number) {
 // Supabase PostgREST caps responses at ~1000 rows (server max-rows setting).
 // A single .limit(100000) does NOT override this. We must paginate with .range().
 
-const PAGE_SIZE = 500;
-
-async function fetchAllRows<T>(
+export async function fetchAllRows<T>(
   table: string,
   selectColumns: string,
   orderColumn = "id",
