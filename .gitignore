@@ -42,3 +42,8 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# playwright mcp scratch output + local screenshots (never commit)
+.playwright-mcp/
+/*.jpeg
+/*.png

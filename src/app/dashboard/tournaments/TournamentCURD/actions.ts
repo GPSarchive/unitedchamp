@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin'; // service role for writes (bypass RLS)
+import { seasonLabelFromDate } from '@/app/geniki-katataxi/rules'; // date → "YYYY-YYYY" season
 
 /* =========================================================
    Local server-only types (avoid importing from Client code)
@@ -99,6 +100,27 @@ const PayloadSchema = z.object({
   })).min(1),
   tournament_team_ids: z.array(z.number().int()).optional(),
 });
+
+/**
+ * The season label ("YYYY-YYYY") a tournament belongs to, derived from its
+ * date via the Sept 30 cutoff. Prefers the tournament's start_date, then the
+ * earliest dated draft match (matches are the real dated records; start_date
+ * is often left blank). Returns null when no date is available anywhere — in
+ * that case we keep whatever the form supplied rather than blanking it.
+ */
+function deriveSeason(
+  tournament: { season?: string | null; start_date?: string | null },
+  draftMatches: DraftMatchServer[]
+): string | null {
+  const fromStart = seasonLabelFromDate(tournament.start_date ?? null);
+  if (fromStart) return fromStart;
+  const earliest = draftMatches.reduce<string | null>((min, m) => {
+    const d = m.match_date ?? null;
+    if (!d) return min;
+    return min == null || d < min ? d : min;
+  }, null);
+  return seasonLabelFromDate(earliest) ?? tournament.season ?? null;
+}
 
 const TeamDraftSchema = z.object({
   id: z.number().int(),
@@ -251,7 +273,7 @@ export async function createTournamentAction(formData: FormData) {
       name: payload.tournament.name,
       slug: payload.tournament.slug,
       logo: payload.tournament.logo || null,
-      season: payload.tournament.season,
+      season: deriveSeason(payload.tournament, draftMatches),
       status: payload.tournament.status ?? 'scheduled',
       format: payload.tournament.format ?? 'mixed',
       start_date: (payload as any).tournament?.start_date ?? null,
@@ -874,7 +896,7 @@ export async function updateTournamentAction(formData: FormData) {
         name: payload.tournament.name,
         slug: payload.tournament.slug,
         logo: payload.tournament.logo || null,
-        season: payload.tournament.season,
+        season: deriveSeason(payload.tournament, draftMatches),
         status: payload.tournament.status ?? 'scheduled',
         format: payload.tournament.format ?? 'mixed',
         start_date: (payload as any).tournament?.start_date ?? null,

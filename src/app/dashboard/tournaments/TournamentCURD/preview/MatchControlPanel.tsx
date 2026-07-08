@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp, Save, X, AlertCircle, RotateCcw, Award } from "lucide-react";
-import { useTournamentStore, matchSig } from "../submit/tournamentStore";
+import { useTournamentStore } from "../submit/tournamentStore";
 import type { DraftMatch } from "../TournamentWizard";
 import type { TeamDraft } from "../TournamentWizard";
 import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinAction } from "./actions";
@@ -37,9 +37,9 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      Utilities
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-  
-  // matchSig is imported from the store (leg-aware canonical signature) so the two
-  // legs of a two-legged KO tie never collide on the same overlay key.
+
+  // Overlays are keyed by the row's client uid (unique per row, never changes),
+  // so no signature computation is needed here anymore.
 
   function isoToLocalInput(iso?: string | null) {
     if (!iso) return "";
@@ -69,12 +69,12 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
   
     // Store hooks
     const updateMatches = useTournamentStore(s => s.updateMatches);
-    const dbOverlayBySig = useTournamentStore(s => s.dbOverlayBySig);
+    const dbOverlayByUid = useTournamentStore(s => s.dbOverlayByUid);
     const getTeamName = useTournamentStore(s => s.getTeamName);
-  
-    // Get DB overlay for this match
-    const sig = matchSig(match);
-    const overlay = dbOverlayBySig[sig] || {};
+
+    // Get DB overlay for this match (keyed by the row's client uid)
+    const uid = match.uid ?? null;
+    const overlay = (uid ? dbOverlayByUid[uid] : undefined) || {};
     const dbId = overlay.db_id || (match as any).db_id;
   
     // Track actual DB status (not just dropdown selection)
@@ -333,15 +333,17 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
         }
   
         // Update overlay to reflect new scores/status (progression already ran)
-        const nextOverlay = { ...dbOverlayBySig };
-        nextOverlay[sig] = {
-          ...nextOverlay[sig],
-          team_a_score: calculatedScores.team_a_score,
-          team_b_score: calculatedScores.team_b_score,
-          winner_team_id: autoWinner,
-          status: effectiveStatus,
-        };
-        useTournamentStore.setState({ dbOverlayBySig: nextOverlay });
+        if (uid) {
+          const nextOverlay = { ...dbOverlayByUid };
+          nextOverlay[uid] = {
+            ...nextOverlay[uid],
+            team_a_score: calculatedScores.team_a_score,
+            team_b_score: calculatedScores.team_b_score,
+            winner_team_id: autoWinner,
+            status: effectiveStatus,
+          };
+          useTournamentStore.setState({ dbOverlayByUid: nextOverlay });
+        }
   
         onSave?.();
         onClose();
@@ -385,15 +387,17 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
         }
   
         // Update overlay to reflect reverted status
-        const nextOverlay = { ...dbOverlayBySig };
-        nextOverlay[sig] = {
-          ...nextOverlay[sig],
-          team_a_score: null,
-          team_b_score: null,
-          winner_team_id: null,
-          status: "scheduled",
-        };
-        useTournamentStore.setState({ dbOverlayBySig: nextOverlay });
+        if (uid) {
+          const nextOverlay = { ...dbOverlayByUid };
+          nextOverlay[uid] = {
+            ...nextOverlay[uid],
+            team_a_score: null,
+            team_b_score: null,
+            winner_team_id: null,
+            status: "scheduled",
+          };
+          useTournamentStore.setState({ dbOverlayByUid: nextOverlay });
+        }
   
         // Clear local state
         setTeamAPlayers(prev => prev.map(p => ({
@@ -473,15 +477,17 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
         }
   
         // Update overlay to reflect new scores/status
-        const nextOverlay = { ...dbOverlayBySig };
-        nextOverlay[sig] = {
-          ...nextOverlay[sig],
-          team_a_score: result.team_a_score,
-          team_b_score: result.team_b_score,
-          winner_team_id: winningTeam === 'A' ? formData.team_a_id : formData.team_b_id,
-          status: "finished",
-        };
-        useTournamentStore.setState({ dbOverlayBySig: nextOverlay });
+        if (uid) {
+          const nextOverlay = { ...dbOverlayByUid };
+          nextOverlay[uid] = {
+            ...nextOverlay[uid],
+            team_a_score: result.team_a_score,
+            team_b_score: result.team_b_score,
+            winner_team_id: winningTeam === 'A' ? formData.team_a_id : formData.team_b_id,
+            status: "finished",
+          };
+          useTournamentStore.setState({ dbOverlayByUid: nextOverlay });
+        }
   
         onSave?.();
         onClose();

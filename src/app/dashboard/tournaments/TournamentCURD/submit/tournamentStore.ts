@@ -136,6 +136,37 @@ type LayoutByKoKey = Record<string, Frame>; // KO|{round}|{bracket_pos}
 let __tmpId = -1;
 const nextTempId = () => __tmpId--; // negative client-only IDs
 
+/* =========================================================
+   Row identity (uid)
+   =========================================================
+   Every draft row gets a client-side uid the moment it enters the store.
+   Overlays and dirty-tracking are keyed by it. matchSig (below) remains a
+   *fingerprint* used to match rows against DB rows that don't know the uid
+   (hydration/save reconcile) — it is NOT identity: two TBD skeleton fixtures
+   on the same matchday share a sig but never a uid. */
+
+let __uidSeq = 0;
+const newUid = () => `m${++__uidSeq}.${Math.random().toString(36).slice(2, 8)}`;
+
+/**
+ * Guarantee every row carries a UNIQUE uid. Missing uids are assigned; a
+ * duplicated uid (rows are routinely built by spreading an existing row, e.g.
+ * two-leg expansion) keeps the first occurrence and re-mints the copy.
+ * Rows that already satisfy both conditions are returned as-is.
+ */
+function ensureUids(rows: DraftMatch[]): DraftMatch[] {
+  const seen = new Set<string>();
+  return rows.map((m) => {
+    if (m.uid && !seen.has(m.uid)) {
+      seen.add(m.uid);
+      return m;
+    }
+    const uid = newUid();
+    seen.add(uid);
+    return { ...m, uid };
+  });
+}
+
 /**
  * Canonical, stable match signature.
  * DOES NOT include match_date or other frequently edited fields.
@@ -157,9 +188,6 @@ export function matchSig(m: DraftMatch): string {
   const pairA = Math.min(m.team_a_id ?? 0, m.team_b_id ?? 0);
   const pairB = Math.max(m.team_a_id ?? 0, m.team_b_id ?? 0);
   return `RR|S${m.stageIdx ?? -1}|G${m.groupIdx ?? -1}|MD${m.matchday ?? 0}|${pairA}-${pairB}`;
-}
-function makeKoKey(m: { round?: number | null; bracket_pos?: number | null }) {
-  return `KO|${m.round ?? 0}|${m.bracket_pos ?? 0}`;
 }
 function sortKO(a: DraftMatch, b: DraftMatch) {
   return (a.round ?? 0) - (b.round ?? 0) || (a.bracket_pos ?? 0) - (b.bracket_pos ?? 0);
@@ -233,24 +261,22 @@ function buildGroupIndexFallbackFromMatches(
 }
 
 /* =========================================================
-   Defensive overlay resolver (handles key drift/legacy keys)
+   Defensive overlay resolver
    ========================================================= */
 /**
- * Resolves overlay data for a row, trying multiple strategies:
- * 1. Current canonical key (matchSig)
- * 2. db_id lookup (for rows that have persisted IDs)
+ * Resolves overlay data for a row:
+ * 1. by the row's uid (canonical)
+ * 2. by db_id (safety net for rows rebuilt outside the store that lost
+ *    their uid but kept the persisted id)
  */
 function resolveOverlayForRow(
   r: DraftMatch,
   map: Record<string, DbOverlay>
 ): DbOverlay | undefined {
-  // Try canonical key first
-  const k1 = matchSig(r);
-  if (map[k1]) return map[k1];
+  if (r.uid && map[r.uid]) return map[r.uid];
 
-  // Fallback: find by db_id if present
-  const dbId = (r as any).db_id;
-  if (dbId != null && typeof dbId === "number" && dbId > 0) {
+  const dbId = r.db_id;
+  if (typeof dbId === "number" && dbId > 0) {
     const hit = Object.values(map).find((ov) => ov?.db_id === dbId);
     if (hit) return hit;
   }
@@ -277,7 +303,7 @@ export type TournamentState = {
   /* ---------- Legacy/Editor working sets (kept for compatibility) ---------- */
   payload: NewTournamentPayload | null; // optional helper for builders
   draftMatches: DraftMatch[];           // editor truth
-  dbOverlayBySig: Record<string, DbOverlay>;
+  dbOverlayByUid: Record<string, DbOverlay>;
 
   /* ---------- UI-only ---------- */
   ui: { knockoutLayout: Record<number, LayoutByKoKey> };
@@ -308,9 +334,6 @@ export type TournamentState = {
 
   busy: boolean;
 
-  /* ---------- Snapshot cache (for reset) ---------- */
-  lastSnapshot?: FullTournamentSnapshot;
-
   /* -------------------- Selectors -------------------- */
   selectStageRows: (stageIdx: number) => DraftMatch[];
   selectStageRowsMerged: (stageIdx: number) => (DraftMatch & DbOverlay & { db_id?: number | null })[];
@@ -329,8 +352,6 @@ export type TournamentState = {
 
   /* -------------------- Actions -------------------- */
   hydrateFromSnapshot: (snap: FullTournamentSnapshot) => void; // preferred full import
-  hydrateFromServer: (payload: NewTournamentPayload, dbMatches: DbMatchRow[]) => void; // legacy/compat
-  resetUnsavedChanges: () => void;
   setStageSlotByIndex: (
     stageIdx: number,
     groupIdx: number,
@@ -425,7 +446,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   payload: null,
   draftMatches: [],
-  dbOverlayBySig: {},
+  dbOverlayByUid: {},
 
   ui: { knockoutLayout: {} },
 
@@ -468,9 +489,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   selectStageRowsMerged: (stageIdx) => {
     const rows = get().selectStageRows(stageIdx);
-    const overlay = get().dbOverlayBySig;
+    const overlay = get().dbOverlayByUid;
     return rows.map((r) => {
-      const ov = overlay[matchSig(r)];
+      const ov = resolveOverlayForRow(r, overlay);
       if (!ov) return r as any;
       // Only carry DB/result fields
       const { db_id, updated_at, status, team_a_score, team_b_score, winner_team_id } = ov as any;
@@ -615,13 +636,14 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
 
       const uiRow: DraftMatch = {
+        uid: newUid(),
         db_id: m.id ?? null,
         updated_at: m.updated_at ?? null,
         stageIdx: sIdx,
         groupIdx,
         round: m.round ?? null,
         bracket_pos: m.bracket_pos ?? null,
-        matchday: m.matchday ?? (m.round == null ? null : null),
+        matchday: m.matchday ?? null,
         match_date: m.match_date ?? null,
         team_a_id: m.team_a_id ?? null,
         team_b_id: m.team_b_id ?? null,
@@ -637,8 +659,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         penalty_a: (m as any).penalty_a ?? null,
         penalty_b: (m as any).penalty_b ?? null,
       };
-      const sig = matchSig(uiRow);
-      overlay[sig] = {
+      // Keyed by uid: two identical TBD skeleton fixtures used to collapse to
+      // one sig-keyed entry here (second overwrote the first, losing a db_id).
+      overlay[uiRow.uid!] = {
         db_id: m.id ?? null,
         updated_at: m.updated_at ?? null,
         status: (m.status as any) ?? null,
@@ -666,7 +689,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       },
       payload: null,
       draftMatches,
-      dbOverlayBySig: overlay,
+      dbOverlayByUid: overlay,
       ids: {
         tournamentId: snap.tournament.id,
         stageIdByIndex,
@@ -687,143 +710,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         deletedMatchIds: new Set(),
         deletedTournamentTeamIds: new Set(),
       },
-      lastSnapshot: JSON.parse(JSON.stringify(snap)),
     });
-  },
-
-  // Backward-compat hydration (payload + matches)
-  hydrateFromServer: (payload, dbMatches) => {
-    const stageIdByIndex: Record<number, number | undefined> = {};
-    const groupIdByStage: Record<number, Record<number, number | undefined>> = {};
-    const stageIndexById: Record<number, number | undefined> = {};
-    const groupIndexByStageAndId: Record<number, Record<number, number | undefined>> = {};
-
-    // --- Build stage map from payload
-    (payload.stages as any)?.forEach((s: any, i: number) => {
-      if (typeof s?.id === "number") {
-        stageIdByIndex[i] = s.id;
-        stageIndexById[s.id] = i;
-      }
-      if (Array.isArray(s?.groups)) {
-        groupIdByStage[i] = {};
-        groupIndexByStageAndId[s.id ?? -1] = {};
-        s.groups.forEach((g: any, gi: number) => {
-          if (typeof g?.id === "number") {
-            groupIdByStage[i][gi] = g.id;
-            groupIndexByStageAndId[s.id ?? -1][g.id] = gi;
-          }
-        });
-      }
-    });
-
-    // --- NEW: derive fallback group maps from actual DB matches and merge
-    const built = buildGroupIndexFallbackFromMatches(
-      dbMatches ?? [],
-      stageIndexById as Record<number, number>
-    );
-
-    Object.entries(built.groupIdByStage).forEach(([sIdxStr, m]) => {
-      const sIdx = Number(sIdxStr);
-      const dst = (groupIdByStage[sIdx] ??= {});
-      Object.entries(m).forEach(([giStr, gid]) => {
-        const gi = Number(giStr);
-        if (dst[gi] == null) dst[gi] = gid;
-      });
-    });
-
-    Object.entries(built.groupIndexByStageAndId).forEach(([sidStr, m]) => {
-      const sid = Number(sidStr);
-      const dst = (groupIndexByStageAndId[sid] ??= {});
-      Object.entries(m).forEach(([gidStr, gi]) => {
-        const gid = Number(gidStr);
-        if (dst[gid] == null) dst[gid] = gi;
-      });
-    });
-
-    // Convert DB matches → DraftMatch + overlay
-    const draftMatches: DraftMatch[] = [];
-    const overlay: Record<string, DbOverlay> = {};
-    (dbMatches ?? []).forEach((m) => {
-      const sIdx = stageIndexById[m.stage_id ?? -1];
-      if (!Number.isFinite(sIdx)) return;
-
-      let groupIdx: number | null = null;
-      if (m.group_id != null) {
-        const gi = groupIndexByStageAndId[m.stage_id ?? -1]?.[m.group_id];
-        if (typeof gi === "number") groupIdx = gi;
-      }
-
-      const uiRow: DraftMatch = {
-        db_id: m.id ?? null,
-        updated_at: (m as any).updated_at ?? null,
-        stageIdx: sIdx as number,
-        groupIdx,
-        round: m.round ?? null,
-        bracket_pos: m.bracket_pos ?? null,
-        matchday: m.matchday ?? (m.round == null ? null : null),
-        match_date: m.match_date ?? null,
-        team_a_id: m.team_a_id ?? null,
-        team_b_id: m.team_b_id ?? null,
-        home_source_round: m.home_source_round ?? null,
-        home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-        away_source_round: m.away_source_round ?? null,
-        away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-        is_ko: m.round != null && m.bracket_pos != null, // Set based on KO logic
-        // two-legged KO: keep the leg marker + pens so a tie hydrates as two
-        // distinct rows (without `leg`, both legs collapse to the same matchSig
-        // and the bracket renders an orphan card / loses matches on reload).
-        leg: (m as any).leg ?? null,
-        penalty_a: (m as any).penalty_a ?? null,
-        penalty_b: (m as any).penalty_b ?? null,
-      };
-      const sig = matchSig(uiRow);
-      overlay[sig] = {
-        db_id: m.id ?? null,
-        updated_at: (m as any).updated_at ?? null,
-        status: (m.status as any) ?? null,
-        team_a_score: m.team_a_score ?? null,
-        team_b_score: m.team_b_score ?? null,
-        winner_team_id: m.winner_team_id ?? null,
-        home_source_round: m.home_source_round ?? null,
-        home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-        away_source_round: m.away_source_round ?? null,
-        away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-      };
-      draftMatches.push(uiRow);
-    });
-
-    set((st) => ({
-      ...st,
-      payload,
-      draftMatches,
-      dbOverlayBySig: overlay,
-      ids: {
-        ...st.ids,
-        tournamentId: (payload as any)?.tournament?.id,
-        stageIdByIndex,
-        stageIndexById,
-        groupIdByStage,
-        groupIndexByStageAndId,
-      },
-      dirty: {
-        tournament: false,
-        stages: false,
-        groups: false,
-        tournamentTeams: false,
-        matches: new Set(),
-        stageSlots: new Set(),
-        intakeMappings: false,
-        deletedStageIds: new Set(),
-        deletedGroupIds: new Set(),
-        deletedMatchIds: new Set(),
-        deletedTournamentTeamIds: new Set(),
-      },
-    }));
-  },
-
-  resetUnsavedChanges: () => {
-    const snap = get().lastSnapshot;
-    if (snap) get().hydrateFromSnapshot(JSON.parse(JSON.stringify(snap)));
   },
 
   /* -------------------- Wizard seeding -------------------- */
@@ -840,15 +727,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     }
 
     // 2) draft matches
-    const nextDrafts = drafts.slice();
+    const nextDrafts = ensureUids(drafts);
     const dirtyMatches = new Set<string>();
-    const overlay = { ...st.dbOverlayBySig };
+    const overlay = { ...st.dbOverlayByUid };
 
     nextDrafts.forEach((m) => {
-      const sig = matchSig(m);
-      dirtyMatches.add(sig);
-      const prev = overlay[sig] ?? {};
-      overlay[sig] = {
+      const uid = m.uid!;
+      dirtyMatches.add(uid);
+      const prev = overlay[uid] ?? {};
+      overlay[uid] = {
         db_id: prev.db_id ?? null,
         updated_at: prev.updated_at ?? null,
         status: prev.status ?? "scheduled",
@@ -865,7 +752,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     set({
       entities: { ...st.entities, teamsById },
       draftMatches: nextDrafts,
-      dbOverlayBySig: overlay,
+      dbOverlayByUid: overlay,
       dirty: { ...st.dirty, matches: dirtyMatches },
       payload: canon,
     });
@@ -984,9 +871,8 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     }));
     const overlay: Record<string, DbOverlay> = {};
     draftMatches.forEach((m) => {
-      const sig = matchSig(m);
-      const prev = st.dbOverlayBySig[sig];
-      if (prev) overlay[sig] = prev;
+      const prev = m.uid ? st.dbOverlayByUid[m.uid] : undefined;
+      if (m.uid && prev) overlay[m.uid] = prev;
     });
 
     set((curr) => ({
@@ -1002,7 +888,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         groupIdByStage: shifted,
       },
       draftMatches,
-      dbOverlayBySig: overlay,
+      dbOverlayByUid: overlay,
       dirty: {
         ...curr.dirty,
         stages: true,
@@ -1122,16 +1008,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
     const overlay: Record<string, DbOverlay> = {};
     draftMatches.forEach((m) => {
-      const sig = matchSig(m);
-      const prev = st.dbOverlayBySig[sig];
-      if (prev) overlay[sig] = prev;
+      const prev = m.uid ? st.dbOverlayByUid[m.uid] : undefined;
+      if (m.uid && prev) overlay[m.uid] = prev;
     });
 
     set((curr) => ({
       entities: { ...curr.entities, groupsById },
       ids: { ...curr.ids, groupIdByStage, groupIndexByStageAndId },
       draftMatches,
-      dbOverlayBySig: overlay,
+      dbOverlayByUid: overlay,
       dirty: {
         ...curr.dirty,
         groups: true,
@@ -1238,9 +1123,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   replaceAllDraftMatches: (next) => {
     set((st) => {
-      const nextArr = next.slice();
+      const nextArr = ensureUids(next);
       const dirty = new Set(st.dirty.matches);
-      nextArr.forEach((m) => dirty.add(matchSig(m)));
+      nextArr.forEach((m) => dirty.add(m.uid!));
       return { draftMatches: nextArr, dirty: { ...st.dirty, matches: dirty } };
     });
   },
@@ -1251,11 +1136,11 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       const sameStage = before.filter((m) => m.stageIdx === stageIdx);
       const others = before.filter((m) => m.stageIdx !== stageIdx);
 
-      const updated = updater(sameStage.slice());
+      const updated = ensureUids(updater(sameStage.slice()));
       wireKnockoutSourcesLocal(updated, stageIdx);
 
       const dirty = new Set(st.dirty.matches);
-      updated.forEach((m) => dirty.add(matchSig(m)));
+      updated.forEach((m) => dirty.add(m.uid!));
 
       return { draftMatches: [...others, ...updated], dirty: { ...st.dirty, matches: dirty } };
     });
@@ -1263,26 +1148,29 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
   // NEW: remove a single match (track deletion by DB id if present)
   removeMatch: (row) => set((curr) => {
-    const sig = matchSig(row);
-    const ov = curr.dbOverlayBySig[sig];
-    const dbId = ov?.db_id ?? null;
-    console.log('[delete-debug] Removing match:', { sig, dbId, row }); // Log before removal
-  
-    const nextMatches = curr.draftMatches.filter(m => matchSig(m) !== sig);
-    const nextOverlay = { ...curr.dbOverlayBySig };
-    delete nextOverlay[sig];
+    // BY UID: keyed by sig this removed BOTH of two identical TBD skeleton
+    // fixtures while queueing only one DB delete. The uid removes exactly the
+    // row asked for.
+    const uid = row.uid ?? null;
+    if (!uid) return {}; // rows never leave the store without a uid
+
+    const ov = curr.dbOverlayByUid[uid];
+    const dbId = ov?.db_id ?? row.db_id ?? null;
+
+    const nextMatches = curr.draftMatches.filter((m) => m.uid !== uid);
+    const nextOverlay = { ...curr.dbOverlayByUid };
+    delete nextOverlay[uid];
     const nextDirty = new Set(curr.dirty.matches);
-    nextDirty.delete(sig);
-  
+    nextDirty.delete(uid);
+
     const nextDeleted = new Set([...(curr.dirty.deletedMatchIds ?? [])]);
     if (typeof dbId === 'number' && dbId > 0) {
       nextDeleted.add(dbId);
-      console.log('[delete-debug] Added to deletedMatchIds:', dbId); // Confirm addition
     }
   
     return {
       draftMatches: nextMatches,
-      dbOverlayBySig: nextOverlay,
+      dbOverlayByUid: nextOverlay,
       dirty: {
         ...curr.dirty,
         matches: nextDirty,
@@ -1384,68 +1272,52 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
 
     const hasLeg2 = slotRows.some((m) => m.leg === 2);
 
-    // Changing a row's `leg` changes its matchSig. Move the overlay entry (which
-    // holds the persisted db_id + scores) and the dirty marker from the old sig
-    // to the new one, so the row keeps its DB identity instead of being orphaned
-    // (which would leave a stale row in the DB and a duplicate/orphan card).
-    const migrateSig = (
-      overlay: Record<string, DbOverlay>,
-      dirty: Set<string>,
-      oldRow: DraftMatch,
-      newRow: DraftMatch
-    ) => {
-      const oldSig = matchSig(oldRow);
-      const newSig = matchSig(newRow);
-      if (oldSig === newSig) return;
-      if (overlay[oldSig] && !overlay[newSig]) overlay[newSig] = overlay[oldSig];
-      delete overlay[oldSig];
-      dirty.delete(oldSig);
-    };
+    // Identity is the uid, which never changes when `leg` does — no overlay
+    // key migration needed (that dance existed only while overlays were keyed
+    // by matchSig, which embeds the leg).
 
     // ---- Make single-leg (1) ----
     if (legs === 1) {
       if (!hasLeg2) {
         // already single — just normalize any stray leg markers to null
         if (slotRows.every((m) => m.leg == null)) return {};
-        const nextOverlay = { ...curr.dbOverlayBySig };
         const dirty = new Set(curr.dirty.matches);
         const next = curr.draftMatches.map((m) => {
           if (!inSlot(m)) return m;
-          const nm = { ...m, leg: null, tie_leg1_match_idx: null };
-          migrateSig(nextOverlay, dirty, m, nm);
-          return nm;
+          dirty.add(m.uid!);
+          return { ...m, leg: null, tie_leg1_match_idx: null };
         });
-        next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
-        return { draftMatches: next, dbOverlayBySig: nextOverlay, dirty: { ...curr.dirty, matches: dirty } };
+        return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
       }
 
       // remove the leg-2 row, demote leg 1 → single (leg null)
       const leg2 = slotRows.find((m) => m.leg === 2)!;
-      const leg2DbId = curr.dbOverlayBySig[matchSig(leg2)]?.db_id ?? leg2.db_id ?? null;
+      const leg2DbId = (leg2.uid ? curr.dbOverlayByUid[leg2.uid]?.db_id : null) ?? leg2.db_id ?? null;
 
-      const nextOverlay = { ...curr.dbOverlayBySig };
+      const nextOverlay = { ...curr.dbOverlayByUid };
       const dirty = new Set(curr.dirty.matches);
 
       const next = curr.draftMatches
         .filter((m) => !(inSlot(m) && m.leg === 2))
         .map((m) => {
           if (!inSlot(m)) return m;
-          // demote the surviving leg-1 row to single, carrying its DB identity.
-          const nm = { ...m, leg: null, tie_leg1_match_idx: null };
-          migrateSig(nextOverlay, dirty, m, nm);
-          return nm;
+          dirty.add(m.uid!);
+          // demote the surviving leg-1 row to single; uid (and with it the
+          // overlay entry holding its DB identity) is untouched.
+          return { ...m, leg: null, tie_leg1_match_idx: null };
         });
 
-      delete nextOverlay[matchSig(leg2)];
-      dirty.delete(matchSig(leg2));
-      next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
+      if (leg2.uid) {
+        delete nextOverlay[leg2.uid];
+        dirty.delete(leg2.uid);
+      }
 
       const nextDeleted = new Set([...(curr.dirty.deletedMatchIds ?? [])]);
       if (typeof leg2DbId === "number" && leg2DbId > 0) nextDeleted.add(leg2DbId);
 
       return {
         draftMatches: next,
-        dbOverlayBySig: nextOverlay,
+        dbOverlayByUid: nextOverlay,
         dirty: { ...curr.dirty, matches: dirty, deletedMatchIds: nextDeleted },
       };
     }
@@ -1453,26 +1325,23 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     // ---- Make two-legged (2) ----
     if (hasLeg2) return {}; // already two-legged
 
-    // stamp the existing row as leg 1 and append its swapped leg-2 sibling
+    // stamp the existing row as leg 1 and append its swapped leg-2 sibling.
+    // makeLeg2Row spreads leg 1, so the sibling MUST get its own fresh uid.
     const leg1Base = { ...slotRows[0], leg: 1 as const };
-    const leg2 = makeLeg2Row(leg1Base);
+    const leg2 = { ...makeLeg2Row(leg1Base), uid: newUid() };
 
-    const nextOverlay = { ...curr.dbOverlayBySig };
     const dirty = new Set(curr.dirty.matches);
 
     const next = curr.draftMatches.map((m) => {
       if (!inSlot(m)) return m;
-      // promote the existing single row to leg 1, carrying its DB identity from
-      // the old (L0) sig to the new (L1) sig so it isn't re-inserted as a dup.
-      const nm = { ...m, leg: 1, tie_leg1_match_idx: null };
-      migrateSig(nextOverlay, dirty, m, nm);
-      return nm;
+      dirty.add(m.uid!);
+      // promote the existing single row to leg 1; identity (uid) unchanged.
+      return { ...m, leg: 1, tie_leg1_match_idx: null };
     });
     next.push(leg2);
+    dirty.add(leg2.uid);
 
-    next.filter(inSlot).forEach((m) => dirty.add(matchSig(m)));
-
-    return { draftMatches: next, dbOverlayBySig: nextOverlay, dirty: { ...curr.dirty, matches: dirty } };
+    return { draftMatches: next, dirty: { ...curr.dirty, matches: dirty } };
   }),
 
   setUIKnockoutLayout: (stageIdx, koKey, frame) => {
@@ -1614,6 +1483,10 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     try {
       /* -------- PHASE 1: tournament + stages (and stage deletions) -------- */
       const before_stageIndexById = { ...(get().ids.stageIndexById as any) } as Record<number, number | undefined>;
+      // old stage id (incl. temp negatives) → authoritative id after phase 1.
+      // Hoisted to saveAll scope: phase 2 needs it to translate temp group ids
+      // for tournamentTeams rows whose stage_id has ALREADY been rewritten.
+      const stageIdMap: Record<number, number> = {};
       let payload1: any = {};
       const st1 = get();
   
@@ -1695,7 +1568,6 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           // After stage IDs change, translate temp stage IDs used anywhere (e.g. tournamentTeams)
           // Build stage temp→db map from BEFORE indices → AFTER ordered ids
           const after_stageIdByIndex = get().ids.stageIdByIndex as Record<number, number>;
-          const stageIdMap: Record<number, number> = {};
           Object.entries(before_stageIndexById).forEach(([oldIdStr, idx]) => {
             const oldId = Number(oldIdStr);
             if (typeof idx === "number") {
@@ -1826,7 +1698,16 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
                 if (newGid) inner[oldGid] = newGid;
               }
             });
+            // Key under BOTH the old stage id and its authoritative id: phase 1
+            // already rewrote tournamentTeams.stage_id for brand-new stages, so
+            // the lookup below arrives with the NEW id — keying only by the old
+            // (temp) id left temp group_ids untranslated and phase 3 then sent
+            // negative group ids to the server (FK violation).
             groupIdMapByOldStage[stageOldId] = inner;
+            const stageNewId = stageIdMap[stageOldId];
+            if (stageNewId != null && stageNewId !== stageOldId) {
+              groupIdMapByOldStage[stageNewId] = inner;
+            }
           });
   
           // Translate tournamentTeams.group_id for any negative (temp) ids, using old-stage id to resolve index
@@ -1931,17 +1812,15 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         payload4.matches = { ...(payload4.matches || {}), deleteIds: delIds };
       }
   
-      // matches upserts (only dirty signatures)
+      // matches upserts (only dirty rows, keyed by uid)
       if (st4.dirty.matches.size) {
         const upserts: DbMatchRow[] = [];
-        const dirtySigs = new Set(st4.dirty.matches);
+        const dirtyUids = new Set(st4.dirty.matches);
 
         for (const r of st4.draftMatches) {
-          const sig = matchSig(r);
-          if (!dirtySigs.has(sig)) continue;
+          if (!r.uid || !dirtyUids.has(r.uid)) continue;
 
-          // ✅ Use defensive resolver to handle key drift
-          const ov = resolveOverlayForRow(r, st4.dbOverlayBySig) || {};
+          const ov = resolveOverlayForRow(r, st4.dbOverlayByUid) || {};
           const stageId = st4.ids.stageIdByIndex[r.stageIdx ?? -1];
           if (typeof stageId !== "number") continue;
   
@@ -1951,7 +1830,11 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               : null;
   
           upserts.push({
-            id: (ov as any).db_id ?? null,
+            // Prefer the row's OWN db_id over the sig-keyed overlay: overlay
+            // entries are shared when two rows collide on a sig (TBD skeleton
+            // fixtures), and the per-row id set at hydrate/reconcile is the
+            // only identity that stays distinct in that case.
+            id: r.db_id ?? (ov as any).db_id ?? null,
             stage_id: stageId,
             group_id: groupId ?? null,
             team_a_id: r.team_a_id ?? null,
@@ -1974,7 +1857,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             leg: r.leg ?? null,
             penalty_a: (r as any).penalty_a ?? null,
             penalty_b: (r as any).penalty_b ?? null,
-            updated_at: (ov as any).updated_at ?? null,
+            updated_at: r.updated_at ?? (ov as any).updated_at ?? null,
           } as any);
         }
   
@@ -1985,7 +1868,6 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   
       if (payload4.stageSlots || payload4.intakeMappings || payload4.matches) {
         const resp4 = await doPost(tid, payload4);
-        console.log('[save-debug] Sending payload4 to server:', JSON.stringify(payload4, null, 2));
         // StageSlots reconcile
         if (resp4.stageSlots) {
           const affectedStages = new Set(resp4.stageSlots.map((s) => s.stage_id));
@@ -2004,12 +1886,17 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           }));
         }
   
-        // Matches reconcile (overlay + draft row identity)
+        // Matches reconcile: match server rows to draft rows, then write the
+        // authoritative bits onto each row AND its uid-keyed overlay entry.
+        //
+        // The server doesn't know client uids, so rows are matched by matchSig
+        // as QUEUES consumed one-to-one: two TBD skeleton fixtures share a sig,
+        // and a last-row-wins map would hand both draft rows the same db_id
+        // (the old duplicate/lost-fixture corruption). Each draft row pops its
+        // own server row, so identities stay distinct.
         if (resp4.matches) {
           const st2 = get();
-          const overlay = { ...st2.dbOverlayBySig };
-          const dbIdBySig: Record<string, number | null> = {};
-          const updatedAtBySig: Record<string, string | null> = {};
+          const serverRowsBySig = new Map<string, (DbMatchRow & { updated_at?: string | null })[]>();
           for (const m of resp4.matches) {
             const stageIdx = (st2.ids.stageIndexById as any)[m.stage_id] ?? -1;
             const groupIdx =
@@ -2033,35 +1920,39 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
               away_source_bracket_pos: m.away_source_bracket_pos ?? null,
             } as DraftMatch);
 
-            const prev = overlay[uiSig] ?? {};
-            overlay[uiSig] = {
-              ...prev,
-              db_id: m.id ?? null,
-              updated_at: m.updated_at ?? null,
-              status: (m.status as any) ?? prev.status,
-              team_a_score: m.team_a_score ?? prev.team_a_score ?? null,
-              team_b_score: m.team_b_score ?? prev.team_b_score ?? null,
-              winner_team_id: m.winner_team_id ?? prev.winner_team_id ?? null,
-              home_source_round: m.home_source_round ?? prev.home_source_round ?? null,
-              home_source_bracket_pos: m.home_source_bracket_pos ?? prev.home_source_bracket_pos ?? null,
-              away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
-              away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
-            };
-            dbIdBySig[uiSig] = m.id ?? null;
-            updatedAtBySig[uiSig] = m.updated_at ?? null;
+            const q = serverRowsBySig.get(uiSig) ?? [];
+            q.push(m);
+            serverRowsBySig.set(uiSig, q);
           }
-          set((curr) => ({
-            dbOverlayBySig: overlay,
-            draftMatches: curr.draftMatches.map((r) => {
-              const sig = matchSig(r);
-              if (!(sig in dbIdBySig)) return r;
+
+          set((curr) => {
+            const overlay = { ...curr.dbOverlayByUid };
+            const draftMatches = curr.draftMatches.map((r) => {
+              const m = r.uid ? serverRowsBySig.get(matchSig(r))?.shift() : undefined;
+              if (!m) return r;
+
+              const prev = overlay[r.uid!] ?? {};
+              overlay[r.uid!] = {
+                ...prev,
+                db_id: m.id ?? null,
+                updated_at: m.updated_at ?? null,
+                status: (m.status as any) ?? prev.status,
+                team_a_score: m.team_a_score ?? prev.team_a_score ?? null,
+                team_b_score: m.team_b_score ?? prev.team_b_score ?? null,
+                winner_team_id: m.winner_team_id ?? prev.winner_team_id ?? null,
+                home_source_round: m.home_source_round ?? prev.home_source_round ?? null,
+                home_source_bracket_pos: m.home_source_bracket_pos ?? prev.home_source_bracket_pos ?? null,
+                away_source_round: m.away_source_round ?? prev.away_source_round ?? null,
+                away_source_bracket_pos: m.away_source_bracket_pos ?? prev.away_source_bracket_pos ?? null,
+              };
               return {
                 ...r,
-                db_id: dbIdBySig[sig] ?? r.db_id ?? null,
-                updated_at: updatedAtBySig[sig] ?? r.updated_at ?? null,
+                db_id: m.id ?? r.db_id ?? null,
+                updated_at: m.updated_at ?? r.updated_at ?? null,
               };
-            }),
-          }));
+            });
+            return { dbOverlayByUid: overlay, draftMatches };
+          });
         }
   
         // clear phase-4 dirties
@@ -2080,27 +1971,3 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
     }
   }}));
     
-/* =========================================================
-   Convenience hooks (unchanged in API surface; fixed KO check)
-   ========================================================= */
-export function useStageKO(stageIdx: number) {
-  const rows = useTournamentStore((s) => s.selectStageRows(stageIdx));
-  const isKO = (() => {
-    const st = useTournamentStore.getState();
-    const sid = st.ids.stageIdByIndex[stageIdx];
-    return !!(sid && st.entities.stagesById[sid]?.kind === "knockout");
-  })();
-  return isKO ? rows.slice().sort(sortKO) : [];
-}
-
-export function useKOLayout(stageIdx: number, where: KOCoord) {
-  const key = makeKoKey(where);
-  const frame = useTournamentStore((s) => s.ui.knockoutLayout[stageIdx]?.[key]);
-  const setFrame = (f: Frame) => useTournamentStore.getState().setUIKnockoutLayout(stageIdx, key, f);
-  return [frame, setFrame] as const;
-}
-
-export function mergeOverlay(row: DraftMatch) {
-  const ov = useTournamentStore.getState().dbOverlayBySig[matchSig(row)];
-  return ov ? ({ ...row, ...ov } as DraftMatch & DbOverlay) : row;
-}

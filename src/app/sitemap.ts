@@ -12,7 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/OMADES`, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${BASE}/matches`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${BASE}/paiktes`, changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${BASE}/standings`, changeFrequency: 'daily', priority: 0.8 },
+    { url: `${BASE}/geniki-katataxi`, changeFrequency: 'daily', priority: 0.8 },
     { url: `${BASE}/anakoinoseis`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${BASE}/articles`, changeFrequency: 'weekly', priority: 0.7 },
     { url: `${BASE}/kanonismos`, changeFrequency: 'monthly', priority: 0.5 },

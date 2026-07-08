@@ -1,0 +1,537 @@
+- generic [ref=f16e1]:
+  - banner "Site header" [ref=f16e2]:
+    - navigation "Main" [ref=f16e3]:
+      - generic:
+        - img
+      - generic [ref=f16e4]:
+        - button "Μενού" [ref=f16e5]:
+          - generic [ref=f16e10]: Μενού
+        - link "Ultra Champ Ultra Champ Mini Football Organization" [ref=f16e11] [cursor=pointer]:
+          - /url: /home
+          - img "Ultra Champ" [ref=f16e12]
+          - generic [ref=f16e13]:
+            - generic [ref=f16e14]: Ultra Champ
+            - generic [ref=f16e15]: Mini Football Organization
+      - link "Σύνδεση" [ref=f16e18] [cursor=pointer]:
+        - /url: /login?next=%2Fgeniki-katataxi%3Fseason%3D2025-2026
+  - main [ref=f16e19]:
+    - generic [ref=f16e20]:
+      - generic:
+        - img
+      - generic [ref=f16e22]:
+        - navigation [ref=f16e23]:
+          - link "Αρχική" [ref=f16e24] [cursor=pointer]:
+            - /url: /
+          - generic [ref=f16e25]: /
+          - generic [ref=f16e26]: Γενική Κατάταξη
+        - generic [ref=f16e27]:
+          - generic [ref=f16e28]:
+            - generic [ref=f16e29]: Ανά έτος · Ενιαίο σύστημα πόντων
+            - heading "Γενική Κατάταξη" [level=1] [ref=f16e31]
+          - generic [ref=f16e32]:
+            - generic [ref=f16e33]: Σεζόν · 2025-2026
+            - generic [ref=f16e34]: Ομάδες · 22
+      - generic [ref=f16e36]:
+        - generic [ref=f16e37]:
+          - generic [ref=f16e38]: Σεζόν
+          - link "2026" [ref=f16e39] [cursor=pointer]:
+            - /url: /geniki-katataxi?season=2026
+          - link "2025-2026" [ref=f16e40] [cursor=pointer]:
+            - /url: /geniki-katataxi?season=2025-2026
+          - link "Χωρίς σεζόν" [ref=f16e41] [cursor=pointer]:
+            - /url: /geniki-katataxi?season=%CE%A7%CF%89%CF%81%CE%AF%CF%82%20%CF%83%CE%B5%CE%B6%CF%8C%CE%BD
+        - generic [ref=f16e42]:
+          - generic [ref=f16e43]:
+            - heading "Σύστημα πόντων" [level=2] [ref=f16e44]
+            - generic [ref=f16e45]: Η κατάταξη μηδενίζει κάθε σεζόν
+          - generic [ref=f16e46]:
+            - generic [ref=f16e47]:
+              - generic [ref=f16e48]: Συμμετοχή σε τουρνουά
+              - generic [ref=f16e49]: "+50"
+            - generic [ref=f16e50]:
+              - generic [ref=f16e51]: Πρόκριση σε επόμενη φάση
+              - generic [ref=f16e52]: "+50"
+            - generic [ref=f16e53]:
+              - generic [ref=f16e54]: Νικητής τουρνουά
+              - generic [ref=f16e55]: "+500"
+            - generic [ref=f16e56]:
+              - generic [ref=f16e57]: Διεκδικητής (φιναλίστ)
+              - generic [ref=f16e58]: "+200"
+            - generic [ref=f16e59]:
+              - generic [ref=f16e60]: Διεθνής διάκριση *
+              - generic [ref=f16e61]: "+1000"
+            - generic [ref=f16e62]:
+              - generic [ref=f16e63]: Διεθνής συμμετοχή *
+              - generic [ref=f16e64]: "+300"
+            - generic [ref=f16e65]:
+              - generic [ref=f16e66]: Νίκη
+              - generic [ref=f16e67]: "+15"
+            - generic [ref=f16e68]:
+              - generic [ref=f16e69]: Ισοπαλία
+              - generic [ref=f16e70]: "+5"
+            - generic [ref=f16e71]:
+              - generic [ref=f16e72]: Ήττα
+              - generic [ref=f16e73]: "-10"
+            - generic [ref=f16e74]:
+              - generic [ref=f16e75]: Αποχώρηση από τουρνουά *
+              - generic [ref=f16e76]: "-100"
+            - generic [ref=f16e77]:
+              - generic [ref=f16e78]: Διακοπή αγώνα (υπαίτιος) *
+              - generic [ref=f16e79]: "-30"
+          - paragraph [ref=f16e80]: "* Καταχωρείται χειροκίνητα από τη διοργάνωση"
+        - table [ref=f16e83]:
+          - rowgroup [ref=f16e84]:
+            - row "# Ομάδα Συμ. Προκ. Τίτλοι Τελικοί Ν Ι Η Έξτρα Πόντοι" [ref=f16e85]:
+              - columnheader "#" [ref=f16e86]
+              - columnheader "Ομάδα" [ref=f16e87]
+              - columnheader "Συμ." [ref=f16e88]
+              - columnheader "Προκ." [ref=f16e89]
+              - columnheader "Τίτλοι" [ref=f16e90]
+              - columnheader "Τελικοί" [ref=f16e91]
+              - columnheader "Ν" [ref=f16e92]
+              - columnheader "Ι" [ref=f16e93]
+              - columnheader "Η" [ref=f16e94]
+              - columnheader "Έξτρα" [ref=f16e95]
+              - columnheader "Πόντοι" [ref=f16e96]
+          - rowgroup [ref=f16e97]:
+            - row "01 BANDOLEROS BANDOLEROS 1 2 1 — 20 0 1 — 940" [ref=f16e98]:
+              - cell "01" [ref=f16e99]:
+                - generic [ref=f16e100]: "01"
+              - cell "BANDOLEROS BANDOLEROS" [ref=f16e101]:
+                - link "BANDOLEROS BANDOLEROS" [ref=f16e102] [cursor=pointer]:
+                  - /url: /OMADA/85
+                  - img "BANDOLEROS" [ref=f16e103]
+                  - generic [ref=f16e104]: BANDOLEROS
+              - cell "1" [ref=f16e105]
+              - cell "2" [ref=f16e106]
+              - cell "1" [ref=f16e107]
+              - cell "—" [ref=f16e108]
+              - cell "20" [ref=f16e109]
+              - cell "0" [ref=f16e110]
+              - cell "1" [ref=f16e111]
+              - cell "—" [ref=f16e112]
+              - cell "940" [ref=f16e113]
+            - row "02 ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ 1 2 1 — 17 1 2 — 890" [ref=f16e114]:
+              - cell "02" [ref=f16e115]:
+                - generic [ref=f16e116]: "02"
+              - cell "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=f16e117]:
+                - link "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=f16e118] [cursor=pointer]:
+                  - /url: /OMADA/44
+                  - img "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=f16e119]
+                  - generic [ref=f16e120]: ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ
+              - cell "1" [ref=f16e121]
+              - cell "2" [ref=f16e122]
+              - cell "1" [ref=f16e123]
+              - cell "—" [ref=f16e124]
+              - cell "17" [ref=f16e125]
+              - cell "1" [ref=f16e126]
+              - cell "2" [ref=f16e127]
+              - cell "—" [ref=f16e128]
+              - cell "890" [ref=f16e129]
+            - row "03 ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ 1 2 — 1 14 2 4 — 530" [ref=f16e130]:
+              - cell "03" [ref=f16e131]:
+                - generic [ref=f16e132]: "03"
+              - cell "ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=f16e133]:
+                - link "ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=f16e134] [cursor=pointer]:
+                  - /url: /OMADA/42
+                  - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=f16e135]
+                  - generic [ref=f16e136]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+              - cell "1" [ref=f16e137]
+              - cell "2" [ref=f16e138]
+              - cell "—" [ref=f16e139]
+              - cell "1" [ref=f16e140]
+              - cell "14" [ref=f16e141]
+              - cell "2" [ref=f16e142]
+              - cell "4" [ref=f16e143]
+              - cell "—" [ref=f16e144]
+              - cell "530" [ref=f16e145]
+            - row "04 KOURAYO VALLECANO KOURAYO VALLECANO 1 2 — 1 15 1 7 — 510" [ref=f16e146]:
+              - cell "04" [ref=f16e147]:
+                - generic [ref=f16e148]: "04"
+              - cell "KOURAYO VALLECANO KOURAYO VALLECANO" [ref=f16e149]:
+                - link "KOURAYO VALLECANO KOURAYO VALLECANO" [ref=f16e150] [cursor=pointer]:
+                  - /url: /OMADA/75
+                  - img "KOURAYO VALLECANO" [ref=f16e151]
+                  - generic [ref=f16e152]: KOURAYO VALLECANO
+              - cell "1" [ref=f16e153]
+              - cell "2" [ref=f16e154]
+              - cell "—" [ref=f16e155]
+              - cell "1" [ref=f16e156]
+              - cell "15" [ref=f16e157]
+              - cell "1" [ref=f16e158]
+              - cell "7" [ref=f16e159]
+              - cell "—" [ref=f16e160]
+              - cell "510" [ref=f16e161]
+            - row "05 ΚΑΡΑΚΑΞΕΣ ΚΑΡΑΚΑΞΕΣ 1 1 — — 17 0 5 — 305" [ref=f16e162]:
+              - cell "05" [ref=f16e163]:
+                - generic [ref=f16e164]: "05"
+              - cell "ΚΑΡΑΚΑΞΕΣ ΚΑΡΑΚΑΞΕΣ" [ref=f16e165]:
+                - link "ΚΑΡΑΚΑΞΕΣ ΚΑΡΑΚΑΞΕΣ" [ref=f16e166] [cursor=pointer]:
+                  - /url: /OMADA/68
+                  - img "ΚΑΡΑΚΑΞΕΣ" [ref=f16e167]
+                  - generic [ref=f16e168]: ΚΑΡΑΚΑΞΕΣ
+              - cell "1" [ref=f16e169]
+              - cell "1" [ref=f16e170]
+              - cell "—" [ref=f16e171]
+              - cell "—" [ref=f16e172]
+              - cell "17" [ref=f16e173]
+              - cell "0" [ref=f16e174]
+              - cell "5" [ref=f16e175]
+              - cell "—" [ref=f16e176]
+              - cell "305" [ref=f16e177]
+            - row "06 FAM UNITED FAM UNITED 1 3 — — 12 0 10 — 280" [ref=f16e178]:
+              - cell "06" [ref=f16e179]:
+                - generic [ref=f16e180]: "06"
+              - cell "FAM UNITED FAM UNITED" [ref=f16e181]:
+                - link "FAM UNITED FAM UNITED" [ref=f16e182] [cursor=pointer]:
+                  - /url: /OMADA/52
+                  - img "FAM UNITED" [ref=f16e183]
+                  - generic [ref=f16e184]: FAM UNITED
+              - cell "1" [ref=f16e185]
+              - cell "3" [ref=f16e186]
+              - cell "—" [ref=f16e187]
+              - cell "—" [ref=f16e188]
+              - cell "12" [ref=f16e189]
+              - cell "0" [ref=f16e190]
+              - cell "10" [ref=f16e191]
+              - cell "—" [ref=f16e192]
+              - cell "280" [ref=f16e193]
+            - row "07 ALEVRI FC ALEVRI FC 1 2 — — 13 2 8 — 275" [ref=f16e194]:
+              - cell "07" [ref=f16e195]:
+                - generic [ref=f16e196]: "07"
+              - cell "ALEVRI FC ALEVRI FC" [ref=f16e197]:
+                - link "ALEVRI FC ALEVRI FC" [ref=f16e198] [cursor=pointer]:
+                  - /url: /OMADA/79
+                  - img "ALEVRI FC" [ref=f16e199]
+                  - generic [ref=f16e200]: ALEVRI FC
+              - cell "1" [ref=f16e201]
+              - cell "2" [ref=f16e202]
+              - cell "—" [ref=f16e203]
+              - cell "—" [ref=f16e204]
+              - cell "13" [ref=f16e205]
+              - cell "2" [ref=f16e206]
+              - cell "8" [ref=f16e207]
+              - cell "—" [ref=f16e208]
+              - cell "275" [ref=f16e209]
+            - row "08 CELTICS FC CELTICS FC 1 1 — — 13 1 5 — 250" [ref=f16e210]:
+              - cell "08" [ref=f16e211]:
+                - generic [ref=f16e212]: "08"
+              - cell "CELTICS FC CELTICS FC" [ref=f16e213]:
+                - link "CELTICS FC CELTICS FC" [ref=f16e214] [cursor=pointer]:
+                  - /url: /OMADA/46
+                  - img "CELTICS FC" [ref=f16e215]
+                  - generic [ref=f16e216]: CELTICS FC
+              - cell "1" [ref=f16e217]
+              - cell "1" [ref=f16e218]
+              - cell "—" [ref=f16e219]
+              - cell "—" [ref=f16e220]
+              - cell "13" [ref=f16e221]
+              - cell "1" [ref=f16e222]
+              - cell "5" [ref=f16e223]
+              - cell "—" [ref=f16e224]
+              - cell "250" [ref=f16e225]
+            - row "09 LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) 1 2 — — 11 1 12 — 200" [ref=f16e226]:
+              - cell "09" [ref=f16e227]:
+                - generic [ref=f16e228]: "09"
+              - cell "LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)" [ref=f16e229]:
+                - link "LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)" [ref=f16e230] [cursor=pointer]:
+                  - /url: /OMADA/77
+                  - img "LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)" [ref=f16e231]
+                  - generic [ref=f16e232]: LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)
+              - cell "1" [ref=f16e233]
+              - cell "2" [ref=f16e234]
+              - cell "—" [ref=f16e235]
+              - cell "—" [ref=f16e236]
+              - cell "11" [ref=f16e237]
+              - cell "1" [ref=f16e238]
+              - cell "12" [ref=f16e239]
+              - cell "—" [ref=f16e240]
+              - cell "200" [ref=f16e241]
+            - row "10 PINK PANTHERS X KONIORDOI PINK PANTHERS X KONIORDOI 1 2 — — 8 3 10 — 185" [ref=f16e242]:
+              - cell "10" [ref=f16e243]:
+                - generic [ref=f16e244]: "10"
+              - cell "PINK PANTHERS X KONIORDOI PINK PANTHERS X KONIORDOI" [ref=f16e245]:
+                - link "PINK PANTHERS X KONIORDOI PINK PANTHERS X KONIORDOI" [ref=f16e246] [cursor=pointer]:
+                  - /url: /OMADA/49
+                  - img "PINK PANTHERS X KONIORDOI" [ref=f16e247]
+                  - generic [ref=f16e248]: PINK PANTHERS X KONIORDOI
+              - cell "1" [ref=f16e249]
+              - cell "2" [ref=f16e250]
+              - cell "—" [ref=f16e251]
+              - cell "—" [ref=f16e252]
+              - cell "8" [ref=f16e253]
+              - cell "3" [ref=f16e254]
+              - cell "10" [ref=f16e255]
+              - cell "—" [ref=f16e256]
+              - cell "185" [ref=f16e257]
+            - row "11 DPR DPR 1 1 — — 7 5 11 — 120" [ref=f16e258]:
+              - cell "11" [ref=f16e259]:
+                - generic [ref=f16e260]: "11"
+              - cell "DPR DPR" [ref=f16e261]:
+                - link "DPR DPR" [ref=f16e262] [cursor=pointer]:
+                  - /url: /OMADA/80
+                  - img "DPR" [ref=f16e263]
+                  - generic [ref=f16e264]: DPR
+              - cell "1" [ref=f16e265]
+              - cell "1" [ref=f16e266]
+              - cell "—" [ref=f16e267]
+              - cell "—" [ref=f16e268]
+              - cell "7" [ref=f16e269]
+              - cell "5" [ref=f16e270]
+              - cell "11" [ref=f16e271]
+              - cell "—" [ref=f16e272]
+              - cell "120" [ref=f16e273]
+            - row "12 ΕΧΤΟ FC ΕΧΤΟ FC 1 1 — — 7 1 12 — 90" [ref=f16e274]:
+              - cell "12" [ref=f16e275]:
+                - generic [ref=f16e276]: "12"
+              - cell "ΕΧΤΟ FC ΕΧΤΟ FC" [ref=f16e277]:
+                - link "ΕΧΤΟ FC ΕΧΤΟ FC" [ref=f16e278] [cursor=pointer]:
+                  - /url: /OMADA/48
+                  - img "ΕΧΤΟ FC" [ref=f16e279]
+                  - generic [ref=f16e280]: ΕΧΤΟ FC
+              - cell "1" [ref=f16e281]
+              - cell "1" [ref=f16e282]
+              - cell "—" [ref=f16e283]
+              - cell "—" [ref=f16e284]
+              - cell "7" [ref=f16e285]
+              - cell "1" [ref=f16e286]
+              - cell "12" [ref=f16e287]
+              - cell "—" [ref=f16e288]
+              - cell "90" [ref=f16e289]
+            - row "13 PRANVERA PRANVERA 1 0 — — 7 0 10 — 55" [ref=f16e290]:
+              - cell "13" [ref=f16e291]:
+                - generic [ref=f16e292]: "13"
+              - cell "PRANVERA PRANVERA" [ref=f16e293]:
+                - link "PRANVERA PRANVERA" [ref=f16e294] [cursor=pointer]:
+                  - /url: /OMADA/50
+                  - img "PRANVERA" [ref=f16e295]
+                  - generic [ref=f16e296]: PRANVERA
+              - cell "1" [ref=f16e297]
+              - cell "0" [ref=f16e298]
+              - cell "—" [ref=f16e299]
+              - cell "—" [ref=f16e300]
+              - cell "7" [ref=f16e301]
+              - cell "0" [ref=f16e302]
+              - cell "10" [ref=f16e303]
+              - cell "—" [ref=f16e304]
+              - cell "55" [ref=f16e305]
+            - row "14 REAL BONANZA REAL BONANZA 1 0 — — 6 2 10 — 50" [ref=f16e306]:
+              - cell "14" [ref=f16e307]:
+                - generic [ref=f16e308]: "14"
+              - cell "REAL BONANZA REAL BONANZA" [ref=f16e309]:
+                - link "REAL BONANZA REAL BONANZA" [ref=f16e310] [cursor=pointer]:
+                  - /url: /OMADA/82
+                  - img "REAL BONANZA" [ref=f16e311]
+                  - generic [ref=f16e312]: REAL BONANZA
+              - cell "1" [ref=f16e313]
+              - cell "0" [ref=f16e314]
+              - cell "—" [ref=f16e315]
+              - cell "—" [ref=f16e316]
+              - cell "6" [ref=f16e317]
+              - cell "2" [ref=f16e318]
+              - cell "10" [ref=f16e319]
+              - cell "—" [ref=f16e320]
+              - cell "50" [ref=f16e321]
+            - row "14 ZLATANS ZLATANS 1 1 — — 5 3 14 — 50" [ref=f16e322]:
+              - cell "14" [ref=f16e323]:
+                - generic [ref=f16e324]: "14"
+              - cell "ZLATANS ZLATANS" [ref=f16e325]:
+                - link "ZLATANS ZLATANS" [ref=f16e326] [cursor=pointer]:
+                  - /url: /OMADA/76
+                  - img "ZLATANS" [ref=f16e327]
+                  - generic [ref=f16e328]: ZLATANS
+              - cell "1" [ref=f16e329]
+              - cell "1" [ref=f16e330]
+              - cell "—" [ref=f16e331]
+              - cell "—" [ref=f16e332]
+              - cell "5" [ref=f16e333]
+              - cell "3" [ref=f16e334]
+              - cell "14" [ref=f16e335]
+              - cell "—" [ref=f16e336]
+              - cell "50" [ref=f16e337]
+            - row "14 ΟΜΑΔΑ 10 ΟΜΑΔΑ 10 1 0 — — 0 0 0 — 50" [ref=f16e338]:
+              - cell "14" [ref=f16e339]:
+                - generic [ref=f16e340]: "14"
+              - cell "ΟΜΑΔΑ 10 ΟΜΑΔΑ 10" [ref=f16e341]:
+                - link "ΟΜΑΔΑ 10 ΟΜΑΔΑ 10" [ref=f16e342] [cursor=pointer]:
+                  - /url: /OMADA/83
+                  - img "ΟΜΑΔΑ 10" [ref=f16e343]
+                  - generic [ref=f16e344]: ΟΜΑΔΑ 10
+              - cell "1" [ref=f16e345]
+              - cell "0" [ref=f16e346]
+              - cell "—" [ref=f16e347]
+              - cell "—" [ref=f16e348]
+              - cell "0" [ref=f16e349]
+              - cell "0" [ref=f16e350]
+              - cell "0" [ref=f16e351]
+              - cell "—" [ref=f16e352]
+              - cell "50" [ref=f16e353]
+            - row "14 ΟΜΑΔΑ 12 ΟΜΑΔΑ 12 1 0 — — 0 0 0 — 50" [ref=f16e354]:
+              - cell "14" [ref=f16e355]:
+                - generic [ref=f16e356]: "14"
+              - cell "ΟΜΑΔΑ 12 ΟΜΑΔΑ 12" [ref=f16e357]:
+                - link "ΟΜΑΔΑ 12 ΟΜΑΔΑ 12" [ref=f16e358] [cursor=pointer]:
+                  - /url: /OMADA/84
+                  - img "ΟΜΑΔΑ 12" [ref=f16e359]
+                  - generic [ref=f16e360]: ΟΜΑΔΑ 12
+              - cell "1" [ref=f16e361]
+              - cell "0" [ref=f16e362]
+              - cell "—" [ref=f16e363]
+              - cell "—" [ref=f16e364]
+              - cell "0" [ref=f16e365]
+              - cell "0" [ref=f16e366]
+              - cell "0" [ref=f16e367]
+              - cell "—" [ref=f16e368]
+              - cell "50" [ref=f16e369]
+            - row "15 VENCEREMOS VENCEREMOS 1 0 — — 6 1 11 — 35" [ref=f16e370]:
+              - cell "15" [ref=f16e371]:
+                - generic [ref=f16e372]: "15"
+              - cell "VENCEREMOS VENCEREMOS" [ref=f16e373]:
+                - link "VENCEREMOS VENCEREMOS" [ref=f16e374] [cursor=pointer]:
+                  - /url: /OMADA/47
+                  - img "VENCEREMOS" [ref=f16e375]
+                  - generic [ref=f16e376]: VENCEREMOS
+              - cell "1" [ref=f16e377]
+              - cell "0" [ref=f16e378]
+              - cell "—" [ref=f16e379]
+              - cell "—" [ref=f16e380]
+              - cell "6" [ref=f16e381]
+              - cell "1" [ref=f16e382]
+              - cell "11" [ref=f16e383]
+              - cell "—" [ref=f16e384]
+              - cell "35" [ref=f16e385]
+            - row "16 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 1 1 — — 4 1 15 — 15" [ref=f16e386]:
+              - cell "16" [ref=f16e387]:
+                - generic [ref=f16e388]: "16"
+              - cell "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [ref=f16e389]:
+                - link "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [ref=f16e390] [cursor=pointer]:
+                  - /url: /OMADA/53
+                  - img "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [ref=f16e391]
+                  - generic [ref=f16e392]: 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ
+              - cell "1" [ref=f16e393]
+              - cell "1" [ref=f16e394]
+              - cell "—" [ref=f16e395]
+              - cell "—" [ref=f16e396]
+              - cell "4" [ref=f16e397]
+              - cell "1" [ref=f16e398]
+              - cell "15" [ref=f16e399]
+              - cell "—" [ref=f16e400]
+              - cell "15" [ref=f16e401]
+            - row "17 FADA FADA 1 0 — — 4 0 13 — -20" [ref=f16e402]:
+              - cell "17" [ref=f16e403]:
+                - generic [ref=f16e404]: "17"
+              - cell "FADA FADA" [ref=f16e405]:
+                - link "FADA FADA" [ref=f16e406] [cursor=pointer]:
+                  - /url: /OMADA/51
+                  - img "FADA" [ref=f16e407]
+                  - generic [ref=f16e408]: FADA
+              - cell "1" [ref=f16e409]
+              - cell "0" [ref=f16e410]
+              - cell "—" [ref=f16e411]
+              - cell "—" [ref=f16e412]
+              - cell "4" [ref=f16e413]
+              - cell "0" [ref=f16e414]
+              - cell "13" [ref=f16e415]
+              - cell "—" [ref=f16e416]
+              - cell "-20" [ref=f16e417]
+            - row "18 ΤΣΟΥΤΣΑΕΙΡΟΣ ΤΣΟΥΤΣΑΕΙΡΟΣ 1 0 — — 3 1 14 — -40" [ref=f16e418]:
+              - cell "18" [ref=f16e419]:
+                - generic [ref=f16e420]: "18"
+              - cell "ΤΣΟΥΤΣΑΕΙΡΟΣ ΤΣΟΥΤΣΑΕΙΡΟΣ" [ref=f16e421]:
+                - link "ΤΣΟΥΤΣΑΕΙΡΟΣ ΤΣΟΥΤΣΑΕΙΡΟΣ" [ref=f16e422] [cursor=pointer]:
+                  - /url: /OMADA/78
+                  - img "ΤΣΟΥΤΣΑΕΙΡΟΣ" [ref=f16e423]
+                  - generic [ref=f16e424]: ΤΣΟΥΤΣΑΕΙΡΟΣ
+              - cell "1" [ref=f16e425]
+              - cell "0" [ref=f16e426]
+              - cell "—" [ref=f16e427]
+              - cell "—" [ref=f16e428]
+              - cell "3" [ref=f16e429]
+              - cell "1" [ref=f16e430]
+              - cell "14" [ref=f16e431]
+              - cell "—" [ref=f16e432]
+              - cell "-40" [ref=f16e433]
+            - row "19 AL KANTAIFI AL KANTAIFI 1 0 — — 1 1 16 — -90" [ref=f16e434]:
+              - cell "19" [ref=f16e435]:
+                - generic [ref=f16e436]: "19"
+              - cell "AL KANTAIFI AL KANTAIFI" [ref=f16e437]:
+                - link "AL KANTAIFI AL KANTAIFI" [ref=f16e438] [cursor=pointer]:
+                  - /url: /OMADA/81
+                  - img "AL KANTAIFI" [ref=f16e439]
+                  - generic [ref=f16e440]: AL KANTAIFI
+              - cell "1" [ref=f16e441]
+              - cell "0" [ref=f16e442]
+              - cell "—" [ref=f16e443]
+              - cell "—" [ref=f16e444]
+              - cell "1" [ref=f16e445]
+              - cell "1" [ref=f16e446]
+              - cell "16" [ref=f16e447]
+              - cell "—" [ref=f16e448]
+              - cell "-90" [ref=f16e449]
+        - generic [ref=f16e450]:
+          - generic [ref=f16e451]:
+            - heading "Αναλυτικό μητρώο πόντων" [level=2] [ref=f16e452]
+            - generic [ref=f16e453]:
+              - button "Όλα" [ref=f16e454]
+              - button "Συμμετοχές" [ref=f16e455]
+              - button "Προκρίσεις" [ref=f16e456]
+              - button "Τίτλοι" [active] [ref=f16e457]
+              - button "Τελικοί" [ref=f16e458]
+              - button "Νίκες" [ref=f16e459]
+              - button "Ισοπαλίες" [ref=f16e460]
+              - button "Ήττες" [ref=f16e461]
+              - button "Χειροκίνητα" [ref=f16e462]
+          - table [ref=f16e464]:
+            - rowgroup [ref=f16e465]:
+              - row "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ Νικητής τουρνουά ULTRA LEAGUE ΗΛΙΟΥΠΟΛΗ +500" [ref=f16e466]:
+                - cell "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=f16e467]:
+                  - generic [ref=f16e468]:
+                    - img "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=f16e469]
+                    - generic [ref=f16e470]: ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ
+                - cell "Νικητής τουρνουά" [ref=f16e471]:
+                  - generic [ref=f16e472]: Νικητής τουρνουά
+                - cell "ULTRA LEAGUE ΗΛΙΟΥΠΟΛΗ" [ref=f16e473]
+                - cell "+500" [ref=f16e474]
+              - row "BANDOLEROS BANDOLEROS Νικητής τουρνουά ULTRA LEAGUE ΧΑΪΔΑΡΙ 5x5 +500" [ref=f16e475]:
+                - cell "BANDOLEROS BANDOLEROS" [ref=f16e476]:
+                  - generic [ref=f16e477]:
+                    - img "BANDOLEROS" [ref=f16e478]
+                    - generic [ref=f16e479]: BANDOLEROS
+                - cell "Νικητής τουρνουά" [ref=f16e480]:
+                  - generic [ref=f16e481]: Νικητής τουρνουά
+                - cell "ULTRA LEAGUE ΧΑΪΔΑΡΙ 5x5" [ref=f16e482]
+                - cell "+500" [ref=f16e483]
+        - paragraph [ref=f16e1321]: Οι πόντοι υπολογίζονται αυτόματα από τα τουρνουά και τους αγώνες κάθε σεζόν. · Οι χειροκίνητες προσαρμογές θα ενεργοποιηθούν με την επόμενη ενημέρωση της βάσης.
+      - generic [ref=f16e1323]:
+        - paragraph [ref=f16e1324]: Γενική Κατάταξη · Σεζόν 2025-2026
+        - link "← Επιστροφή στην Αρχική" [ref=f16e1325] [cursor=pointer]:
+          - /url: /
+  - contentinfo [ref=f16e1326]:
+    - generic [ref=f16e1327]:
+      - paragraph [ref=f16e1328]: © 2025 Ultra Champ.
+      - navigation "Legal" [ref=f16e1329]:
+        - link "Πολιτική Απορρήτου" [ref=f16e1330] [cursor=pointer]:
+          - /url: /privacy
+        - link "Όροι Χρήσης" [ref=f16e1331] [cursor=pointer]:
+          - /url: /terms
+        - link "Cookies" [ref=f16e1332] [cursor=pointer]:
+          - /url: /cookies
+        - link "Επικοινωνία" [ref=f16e1333] [cursor=pointer]:
+          - /url: /epikoinonia
+        - button "Ρυθμίσεις Cookies" [ref=f16e1334]
+      - generic [ref=f16e1335]:
+        - text: Κατασκευή ιστοσελίδας από
+        - link "Digital Footprint" [ref=f16e1336] [cursor=pointer]:
+          - /url: https://www.digitalfootprint.gr
+  - generic [ref=f16e1341] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=f16e1342]:
+      - img [ref=f16e1343]
+    - generic [ref=f16e1346]:
+      - button "Open issues overlay" [ref=f16e1347]:
+        - generic [ref=f16e1348]:
+          - generic [ref=f16e1349]: "0"
+          - generic [ref=f16e1350]: "1"
+        - generic [ref=f16e1351]: Issue
+      - button "Collapse issues badge" [ref=f16e1352]:
+        - img [ref=f16e1353]
+  - alert [ref=f16e1355]

@@ -1,0 +1,624 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>UltraChamp — Codebase Documentation</title>
+<style>
+  :root{
+    --bg:#faf9f6; --bg2:#f1efe9; --card:#ffffff; --ink:#1c1e21; --ink2:#5a5f66; --line:#e2dfd6;
+    --accent:#177245; --accent-ink:#0e5433; --accent-soft:#e3efe7;
+    --page:#177245;   --page-soft:#e3efe7;   --page-ink:#0e5433;
+    --api:#1d5fa8;    --api-soft:#e3ecf7;    --api-ink:#154a84;
+    --srv:#7a3fa4;    --srv-soft:#efe6f6;    --srv-ink:#5d2f80;
+    --db:#b06a10;     --db-soft:#f7ecd9;     --db-ink:#8a5209;
+    --admin:#a8322f;  --admin-soft:#f8e6e4;  --admin-ink:#832724;
+    --mono:ui-monospace,'Cascadia Code','SF Mono',Consolas,monospace;
+    --disp:'Arial Narrow','Helvetica Neue',system-ui,sans-serif;
+    --body:system-ui,'Segoe UI',Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){:root{
+    --bg:#0e1013; --bg2:#14171b; --card:#181c21; --ink:#e8e6df; --ink2:#9aa0a8; --line:#2a2f36;
+    --accent:#3fa46f; --accent-ink:#7fd0a3; --accent-soft:#16301f;
+    --page:#3fa46f;  --page-soft:#16301f; --page-ink:#8fd6ae;
+    --api:#5b9bd9;   --api-soft:#14263b;  --api-ink:#9cc4ec;
+    --srv:#ab74d6;   --srv-soft:#291a38;  --srv-ink:#cfaee9;
+    --db:#d99a3d;    --db-soft:#33250e;   --db-ink:#e8bd7d;
+    --admin:#d96b64; --admin-soft:#391714;--admin-ink:#eba49f;
+  }}
+  :root[data-theme="light"]{
+    --bg:#faf9f6; --bg2:#f1efe9; --card:#ffffff; --ink:#1c1e21; --ink2:#5a5f66; --line:#e2dfd6;
+    --accent:#177245; --accent-ink:#0e5433; --accent-soft:#e3efe7;
+    --page:#177245; --page-soft:#e3efe7; --page-ink:#0e5433;
+    --api:#1d5fa8; --api-soft:#e3ecf7; --api-ink:#154a84;
+    --srv:#7a3fa4; --srv-soft:#efe6f6; --srv-ink:#5d2f80;
+    --db:#b06a10; --db-soft:#f7ecd9; --db-ink:#8a5209;
+    --admin:#a8322f; --admin-soft:#f8e6e4; --admin-ink:#832724;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1013; --bg2:#14171b; --card:#181c21; --ink:#e8e6df; --ink2:#9aa0a8; --line:#2a2f36;
+    --accent:#3fa46f; --accent-ink:#7fd0a3; --accent-soft:#16301f;
+    --page:#3fa46f; --page-soft:#16301f; --page-ink:#8fd6ae;
+    --api:#5b9bd9; --api-soft:#14263b; --api-ink:#9cc4ec;
+    --srv:#ab74d6; --srv-soft:#291a38; --srv-ink:#cfaee9;
+    --db:#d99a3d; --db-soft:#33250e; --db-ink:#e8bd7d;
+    --admin:#d96b64; --admin-soft:#391714; --admin-ink:#eba49f;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.55;margin:0;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+  header.hero{border-bottom:3px solid var(--accent);padding:56px 0 28px;margin-bottom:8px}
+  .kicker{font-family:var(--disp);text-transform:uppercase;letter-spacing:.18em;font-size:12px;color:var(--accent-ink);font-weight:700}
+  h1{font-family:var(--disp);font-weight:800;font-size:clamp(30px,5vw,46px);line-height:1.04;margin:.25em 0 .35em;text-wrap:balance;text-transform:uppercase;letter-spacing:.01em}
+  .lede{max-width:68ch;color:var(--ink2);font-size:16.5px}
+  h2{font-family:var(--disp);font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:24px;margin:2.6em 0 .4em;padding-top:.4em;border-top:1px solid var(--line);text-wrap:balance}
+  h2 .num{color:var(--accent);margin-right:.45em}
+  h3{font-size:17px;font-weight:700;margin:1.8em 0 .4em;text-wrap:balance}
+  h4{font-size:14px;font-weight:700;margin:1.2em 0 .3em;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2)}
+  p{max-width:76ch}
+  a{color:var(--accent-ink)}
+  code,.path{font-family:var(--mono);font-size:.86em;background:var(--bg2);border:1px solid var(--line);border-radius:4px;padding:.08em .35em;white-space:nowrap}
+  /* legend badges */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px}
+  .lg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2)}
+  .dot{width:11px;height:11px;border-radius:3px;flex:none}
+  /* tables */
+  .tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;margin:12px 0 6px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th{font-family:var(--disp);text-transform:uppercase;letter-spacing:.07em;font-size:11.5px;text-align:left;color:var(--ink2);border-bottom:2px solid var(--line);padding:9px 12px;background:var(--bg2)}
+  td{border-bottom:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.f{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+  td:last-child{min-width:26ch}
+  /* feature cards */
+  .featgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:16px 0}
+  .feat{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:14px 16px}
+  .feat b{display:block;font-size:14.5px;margin-bottom:3px}
+  .feat span{font-size:13px;color:var(--ink2)}
+  /* pipelines */
+  .pipe{margin:20px 0 34px;border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:18px 16px;overflow-x:auto}
+  .pnode{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;max-width:860px;margin:0 auto;position:relative}
+  .pnode .t{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pnode .d{color:var(--ink2);font-size:13px;margin:3px 0 6px}
+  .badge{font-family:var(--disp);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:4px;padding:2px 7px;flex:none}
+  .b-page{background:var(--page-soft);color:var(--page-ink)}
+  .b-api{background:var(--api-soft);color:var(--api-ink)}
+  .b-srv{background:var(--srv-soft);color:var(--srv-ink)}
+  .b-db{background:var(--db-soft);color:var(--db-ink)}
+  .b-admin{background:var(--admin-soft);color:var(--admin-ink)}
+  .pnode.n-page{border-left:4px solid var(--page)}
+  .pnode.n-api{border-left:4px solid var(--api)}
+  .pnode.n-srv{border-left:4px solid var(--srv)}
+  .pnode.n-db{border-left:4px solid var(--db)}
+  .pnode.n-admin{border-left:4px solid var(--admin)}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{font-family:var(--mono);font-size:11.5px;background:var(--bg2);border:1px solid var(--line);border-radius:4px;padding:2px 7px;white-space:nowrap}
+  .arrow{display:flex;flex-direction:column;align-items:center;color:var(--ink2);margin:2px 0}
+  .arrow .ln{width:2px;height:14px;background:var(--line)}
+  .arrow .lb{font-size:11.5px;font-family:var(--disp);text-transform:uppercase;letter-spacing:.08em;padding:1px 0}
+  .arrow .hd{font-size:13px;line-height:1;margin-top:-2px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:860px;margin:0 auto}
+  @media(max-width:760px){.split{grid-template-columns:1fr}}
+  /* architecture */
+  .arch{display:flex;flex-direction:column;gap:0;margin:18px 0}
+  .arch .layer{border:1px solid var(--line);border-radius:8px;background:var(--card);padding:12px 16px;margin:0 auto;width:100%;max-width:900px}
+  .arch .layer .t{font-family:var(--disp);font-weight:800;text-transform:uppercase;letter-spacing:.07em;font-size:13px;display:flex;gap:10px;align-items:center}
+  .arch .layer .d{font-size:13px;color:var(--ink2);margin-top:2px}
+  /* callouts */
+  .note{border:1px solid var(--line);border-left:4px solid var(--db);background:var(--card);border-radius:8px;padding:12px 16px;margin:14px 0;font-size:13.5px;max-width:860px}
+  .note b{color:var(--db-ink)}
+  /* toc */
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:24px 0;columns:2;column-gap:32px}
+  @media(max-width:640px){nav.toc{columns:1}}
+  nav.toc a{display:block;padding:3px 0;text-decoration:none;color:var(--ink);font-size:14px;break-inside:avoid}
+  nav.toc a:hover{color:var(--accent-ink)}
+  nav.toc .s{color:var(--accent);font-family:var(--mono);font-size:12px;margin-right:8px}
+  .small{font-size:12.5px;color:var(--ink2)}
+  ul{padding-left:1.3em}
+  li{margin:.25em 0;max-width:78ch}
+</style>
+
+<div class="wrap">
+<header class="hero">
+  <div class="kicker">Project documentation · generated 2026-07-04 · branch test/group-match-orphan-fix</div>
+  <h1>UltraChamp<br>Codebase Documentation</h1>
+  <p class="lede"><strong>UltraChamp</strong> (repo <code>unitedchamp</code>, live at ultrachamp.gr) is a Greek 5×5/6×6/7×7 mini-football league platform: a public site where fans browse teams, players, matches, standings and tournaments, plus an admin dashboard where organizers build tournaments (league, groups, knockout — including two-legged ties), record match results, and publish news. Built on <strong>Next.js 16</strong> (App Router, RSC) with <strong>Supabase</strong> (Postgres + Auth + Storage) and <strong>Vercel KV</strong> for rate limiting. All UI text is Greek; route names are Greek transliterations (OMADES = teams, paiktes = players, anakoinoseis = announcements).</p>
+</header>
+
+<nav class="toc">
+  <a href="#overview"><span class="s">1</span>What the app does</a>
+  <a href="#arch"><span class="s">2</span>Architecture at a glance</a>
+  <a href="#features"><span class="s">3</span>Feature catalog — files by feature</a>
+  <a href="#pipelines"><span class="s">4</span>Pipelines (visual)</a>
+  <a href="#p1"><span class="s">4.1</span>Tournament lifecycle</a>
+  <a href="#p2"><span class="s">4.2</span>Match result &amp; progression</a>
+  <a href="#p3"><span class="s">4.3</span>Two-legged knockout ties</a>
+  <a href="#p4"><span class="s">4.4</span>Player stats</a>
+  <a href="#p5"><span class="s">4.5</span>Auth &amp; authorization</a>
+  <a href="#p6"><span class="s">4.6</span>Images &amp; storage</a>
+  <a href="#p7"><span class="s">4.7</span>Content publishing</a>
+  <a href="#p8"><span class="s">4.8</span>Home page composition</a>
+  <a href="#p9"><span class="s">4.9</span>Standings — two systems</a>
+  <a href="#data"><span class="s">5</span>Data model</a>
+  <a href="#issues"><span class="s">6</span>Known issues &amp; cleanup map</a>
+</nav>
+
+<h2 id="overview"><span class="num">1</span>What the app does</h2>
+<p>Two audiences, one Next.js app:</p>
+<div class="featgrid">
+  <div class="feat"><b>⚽ Public site</b><span>Editorial home with match calendar &amp; video highlights · team registry &amp; team pages · players directory with career/tournament stats · match explorer &amp; match broadsheets · tournament viewers with live brackets &amp; group tables · season standings · news (articles + announcements) · static info pages (rules, contact, policies).</span></div>
+  <div class="feat"><b>🛠 Admin dashboard</b><span>Gate: Supabase role <code>admin</code> (full) or <code>editor</code> (content only). Tournament wizard — stages, groups, knockout brackets, fixture generation, two-legged ties · match results &amp; per-player stats · postponements · team/player CRUD with logo/photo pipeline · articles/announcements CMS · user role management · stat-cache maintenance tools.</span></div>
+  <div class="feat"><b>🧠 Domain engine</b><span>Pure fixture generators (round-robin, seeded knockout for any N) · a server-side progression engine that cascades a finished match into bracket advancement, group intake, standings recompute, next-stage seeding and stat-cache refresh · two-legged tie resolution decided on leg wins + penalties.</span></div>
+  <div class="feat"><b>🧱 Infrastructure</b><span>Middleware (<code>src/proxy.ts</code> — Next 16's middleware) doing rate limiting, CSP nonces, security headers and auth gating · five Supabase client variants · signed-upload/proxy storage pipeline · GDPR consent-gated analytics · Greek-aware search normalization.</span></div>
+</div>
+<p class="small">The repo also self-documents in <code>docs/inventory/</code> (layer catalogs + 10 pipeline narratives, snapshot 2026-05-27). This page merges that inventory with a fresh 2026-07-04 exploration — the big deltas since May are <strong>two-legged knockout support ("Bracket 2.0")</strong>, the <strong>matches-v2 detail page promoted to live</strong>, and group-assignment orphan fixes.</p>
+
+<h2 id="arch"><span class="num">2</span>Architecture at a glance</h2>
+<div class="legend">
+  <span class="lg"><span class="dot" style="background:var(--page)"></span>Public page / UI</span>
+  <span class="lg"><span class="dot" style="background:var(--admin)"></span>Admin UI</span>
+  <span class="lg"><span class="dot" style="background:var(--api)"></span>API route / middleware</span>
+  <span class="lg"><span class="dot" style="background:var(--srv)"></span>Server logic / lib</span>
+  <span class="lg"><span class="dot" style="background:var(--db)"></span>Database / storage</span>
+</div>
+<div class="arch">
+  <div class="layer" style="border-left:4px solid var(--page)">
+    <div class="t"><span class="badge b-page">Browser</span> Public pages &amp; dashboard</div>
+    <div class="d">RSC pages under <code>src/app/*</code> (home, OMADES, OMADA, paiktes, matches, tournaments, standings, articles…) and the client-heavy admin under <code>src/app/dashboard/*</code>. Client state: one Zustand store for the tournament editor; everything else is local state + fetch.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="layer" style="border-left:4px solid var(--api)">
+    <div class="t"><span class="badge b-api">Edge</span> Middleware — <code>src/proxy.ts</code></div>
+    <div class="d">Runs on every request: Vercel-KV rate limiting (global/IP/endpoint/auth/write/daily tiers) → CSP nonce → auth gate (<code>/dashboard/*</code> + all API mutations require session; role routing for admin vs editor) → security headers + CSP.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="layer" style="border-left:4px solid var(--api)">
+    <div class="t"><span class="badge b-api">Server</span> ~50 API routes + server actions</div>
+    <div class="d"><code>src/app/api/*</code> (auth, teams, players, matches, tournaments, stages, articles, announcements, storage, admin) and <code>"use server"</code> actions colocated with dashboard/match pages. Admin checks via <code>app_metadata.roles</code>.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="layer" style="border-left:4px solid var(--srv)">
+    <div class="t"><span class="badge b-srv">Lib</span> Domain + plumbing — <code>src/app/lib/*</code>, <code>TournamentCURD/*</code></div>
+    <div class="d">Supabase clients (RSC / route / browser / admin service-role) · progression engine (<code>progression.ts</code>) · fixture generators (<code>util/functions/*</code>) · standings &amp; bracket math · datetime (wall-clock convention) · rate-limit, CSRF, safe-redirect · image resolver · Greek search utils.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="layer" style="border-left:4px solid var(--db)">
+    <div class="t"><span class="badge b-db">Data</span> Supabase Postgres + Storage · Vercel KV</div>
+    <div class="d">~20 tables (tournament core, matches, teams/players, stats caches, content, discipline) + a handful of RPCs. Storage buckets for logos/photos/masks. KV holds rate-limit counters only. <strong>All result propagation is app code — no DB triggers.</strong></div>
+  </div>
+</div>
+
+<h2 id="features"><span class="num">3</span>Feature catalog — files by feature</h2>
+<p>Every significant file, grouped by the feature that owns it, with a one-line description. Paths are relative to <code>src/app/</code> unless noted.</p>
+
+<h3>3.1 Home page (public landing)</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">page.tsx</td><td>Home server component (ISR 300s). Composes hero, dashboard, calendar, news, videos, top players, tournaments CTA, testimonials.</td></tr>
+<tr><td class="f">home/data.ts</td><td>Home data layer — <code>loadHomeData()</code> runs 4 parallel service-role fetchers: matches (−60/+90 days), tournaments (6 + counts), video matches (20), recent-news count.</td></tr>
+<tr><td class="f">home/HomeHero.tsx · Carousel.tsx</td><td>Hero photo carousel (client).</td></tr>
+<tr><td class="f">home/EditorialTeamDashboard.tsx</td><td>Upcoming-matches dashboard grouped per team.</td></tr>
+<tr><td class="f">home/EditorialCalendar.tsx</td><td>Client calendar; refetches windows via <code>/api/matches/calendar</code>.</td></tr>
+<tr><td class="f">home/HomeArticles.tsx</td><td>Async server section — latest news grid from <code>articles</code>.</td></tr>
+<tr><td class="f">home/HomeVideos.tsx</td><td>YouTube highlights carousel; paginates <code>/api/matches/videos</code>.</td></tr>
+<tr><td class="f">home/EditorialTopPlayersSection.tsx · EditorialTopPlayers.tsx · cards/EditorialPlayerCard.tsx</td><td>Top scorers/MVP section reading the player stat caches.</td></tr>
+<tr><td class="f">home/EditorialTournamentsGrid.tsx</td><td>Tournaments CTA grid.</td></tr>
+<tr><td class="f">home/LeftSideBubbles.tsx</td><td>Floating "recent content" indicator bubble.</td></tr>
+<tr><td class="f">home/VantaSection.tsx · GridBgSection.tsx · StaticDotGrid.tsx</td><td>Animated section backgrounds (Vanta / grid glow / dot grid).</td></tr>
+<tr><td class="f">home/useLockBodyScroll.ts</td><td>Hook to lock body scroll behind modals.</td></tr>
+<tr><td class="f">home/{Calendar, ResponsiveCalendar, EnhancedMobileCalendar, TeamDashboard, TeamSection, TopPlayersSection, TopScorers, TournamentsGrid, MiniAnnouncements, RecentAnnouncementsBubble, RecentMatchesTabs, ContactBubble, EventPillShrimp, MultiMatchCluster, newEventPilll}.tsx</td><td>"Classic" (pre-Editorial) component set — only consumed by <code>/preview/home-c</code> and <code>/hometest</code>; candidates for deletion once previews retire.</td></tr>
+<tr><td class="f">preview/home-c/page.tsx · hometest/*</td><td>Home design previews/prototypes (duplicate the home fetchers; not linked from nav).</td></tr>
+</table></div>
+
+<h3>3.2 Teams — OMADES (list) &amp; OMADA (detail)</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">OMADES/page.tsx</td><td>Team registry: paginated grid (16/page), fuzzy search via <code>search_teams_fuzzy</code> RPC, editorial paper styling.</td></tr>
+<tr><td class="f">OMADES/{SearchBar, Pagination, TeamCard, TeamsGrid, DotGrid, ColorBends}.tsx</td><td>Search input, pager, team card (links to <code>/OMADA/[id]</code>), grid wrapper, interactive dot-grid bg, gradient decoration.</td></tr>
+<tr><td class="f">OMADA/[id]/page.tsx</td><td>Team detail loader: team row, tournament memberships, championships, roster (+latest stats), JS-aggregated season stats from <code>match_player_stats</code>, full match history.</td></tr>
+<tr><td class="f">OMADA/[id]/TeamClient.tsx</td><td>Client orchestrator laying out header / sidebar / roster / matches.</td></tr>
+<tr><td class="f">OMADA/[id]/{TeamHeader, TeamMeta, TeamSidebar, TeamRosterShowcase, PlayersGrid, PlayersSection, MatchesSection, TeamMatchesTimeline, AvatarImage}.tsx</td><td>Header hero, meta strip, sidebar (tournaments/titles), roster views, fixtures list + timeline, avatar with fallback.</td></tr>
+<tr><td class="f">OMADA/[id]/react-bits/LightRays.tsx</td><td>Decorative light-rays background.</td></tr>
+</table></div>
+
+<h3>3.3 Players — paiktes</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">paiktes/page.tsx</td><td>Players directory engine (ISR 300s): reads precomputed <code>player_career_stats</code> / <code>player_tournament_stats</code>; filters (<code>team:</code>, <code>goals:&gt;N</code>…), sorts, hybrid DB/JS pagination (50/page), batched fetches.</td></tr>
+<tr><td class="f">paiktes/PlayersClient.tsx</td><td>Client list orchestrator; owns UI state and tournament-scoped display logic.</td></tr>
+<tr><td class="f">paiktes/{PlayersFilterHeader, PlayersList, ProfileCard, PlayerProfileCard}.tsx</td><td>Filter/sort/search controls (write URL params); virtualized list rows; player profile cards (two variants).</td></tr>
+<tr><td class="f">paiktes/{SignedImg, CardBackdrop, GlossOverlay, Sportybackground, Head}.tsx</td><td>Lazy-signing image component; card visual layers; page head.</td></tr>
+<tr><td class="f">paiktes/types.ts</td><td><code>PlayerLite</code>, <code>resolveStat()</code> — picks tournament vs career stat per scope.</td></tr>
+<tr><td class="f">lib/searchUtils.ts</td><td>Greek diacritic normalization + Greek↔Latin transliteration; <code>parseSearchQuery</code> field syntax. Shared with OMADES search.</td></tr>
+</table></div>
+
+<h3>3.4 Matches — explorer &amp; match page</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">matches/page.tsx</td><td>Match explorer shell (ISR 60s); loads tournament filter options.</td></tr>
+<tr><td class="f">matches/{MatchesExplorer, MatchesExplorerMobile}.tsx</td><td>Client explorers (upcoming/finished tabs, tournament filter, pagination) — query Supabase directly from the browser.</td></tr>
+<tr><td class="f">matches/[id]/page.tsx</td><td>Match broadsheet loader (no cache): match, rosters, stats map, participants, leg-1 scores; admin gating via <code>canEditContent</code>; assembles admin slot.</td></tr>
+<tr><td class="f">matches/[id]/MatchV2Client.tsx</td><td>Public match view orchestrator (promoted from matches-v2, 2026-06).</td></tr>
+<tr><td class="f">matches/[id]/queries.ts · utils.ts</td><td>Data-access helpers (<code>fetchMatch</code>, <code>fetchMatchStatsMap</code>, <code>fetchLegOneScores</code>…); <code>parseId</code>, <code>extractYouTubeId</code>.</td></tr>
+<tr><td class="f">matches/[id]/{TeamVersusScore, TournamentHeader, MatchEventsTimeline, MatchParticipantsShowcase, MatchStats, StatIcons, TeamRostersDisplay, TeamPlayers, TeamBadge, TournamentStandings, StadiumBg, LaurelWreath, ShinyText, WelcomeMessage}.tsx</td><td>Score header, scorer timeline, participants showcase, stat tables, rosters, embedded standings, atmosphere pieces.</td></tr>
+<tr><td class="f">matches/[id]/{StatsEditor, MatchAdminActions, MatchVideoAdminForm, TwoLeggedPenaltyPanel, FormDraftAutosave, AddPlayerToTeamLauncher, AddPlayerToTeamModal}.tsx</td><td>Admin-only: per-player stats editor with awards, postpone action, video CRUD, penalty panel for two-legged deciders, draft autosave, roster quick-add.</td></tr>
+<tr><td class="f">matches/[id]/actions.ts</td><td>Server actions — <code>saveAllStatsAction</code> writes stats/participants, sets awards via RPC, finalizes match.</td></tr>
+</table></div>
+
+<h3>3.5 Tournaments — public viewer</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">tournaments/page.tsx · TournamentsClient.tsx</td><td>All-tournaments grid with winner join + signed logos; client filter/search.</td></tr>
+<tr><td class="f">tournaments/[id]/page.tsx · [id]/v2-dark/page.tsx</td><td>Tournament detail (canonical = v2-dark theme); both call the same loader. <code>[id]/v2/</code> is the light variant.</td></tr>
+<tr><td class="f">tournaments/loadTournamentIntoStore.tsx</td><td>The aggregation loader — teams, players, stages, groups, standings, matches, awards + JS stat aggregation in one call.</td></tr>
+<tr><td class="f">tournaments/[id]/v2-dark/{TournamentClientV2Dark, KOBracketV2Dark, MobileShell}.tsx</td><td>Main client orchestrator, knockout bracket renderer (two-legged tie aware), mobile shell.</td></tr>
+<tr><td class="f">tournaments/stages/{LeagueStage, GroupsStage, KnockoutStage, MatchCard, MatchCarousel}.tsx</td><td>Canonical per-stage-kind views + match cards/carousel.</td></tr>
+<tr><td class="f">tournaments/stages/koStage/{KOStageDisplay, KOStageViewer, BracketBackground, BracketLineStyles}.tsx</td><td>Bracket display engine + connector-line styling.</td></tr>
+<tr><td class="f">tournaments/{TournamentHeader, TeamCard, StageMatchesTabs, StageStandingsMiniPublic, PlayerStats}.tsx · components/PlayerStatistics.tsx</td><td>Header, team card, stage tabs, mini standings table, tournament player-stat leaders.</td></tr>
+<tr><td class="f">tournaments/{useTournamentData, useStages}.tsx · signTournamentLogos.ts · actions.ts</td><td>Client store/types + stage-derivation hook; logo URL signing; public server actions.</td></tr>
+</table></div>
+
+<h3>3.6 Standings (public)</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">standings/page.tsx</td><td>Season-wide table ranked by <code>teams.season_score</code> (ISR 60s); dense-rank in JS; hardcoded prize list for top 3. Distinct from per-stage tournament standings.</td></tr>
+</table></div>
+
+<h3>3.7 Tournament editor (dashboard) — the domain core</h3>
+<div class="tblwrap"><table>
+<tr><th>File (dashboard/tournaments/TournamentCURD/)</th><th>What it does</th></tr>
+<tr><td class="f">../page.tsx</td><td>Tournament list + inline wizard when <code>?tid=</code>; create mode otherwise.</td></tr>
+<tr><td class="f">TournamentWizard.tsx</td><td>Wizard orchestrator (Basics → Teams → Stages → Review). Defines core draft types <code>TeamDraft</code>/<code>DraftMatch</code> incl. KO source pointers and two-legged fields.</td></tr>
+<tr><td class="f">actions.ts</td><td>Server actions: create / update / load-for-edit / list / delete tournament; persists intake mappings; auto-seeds KO stages via progression.</td></tr>
+<tr><td class="f">progression.ts</td><td><b>The progression engine</b> (service role): <code>progressAfterMatch</code>, <code>finalizeMatch</code>, KO propagation, standings recompute (+disciplinary), KO seeding from groups/league, intake application, tournament completion. Imported by <code>/api/matches/[id]</code>.</td></tr>
+<tr><td class="f">submit/tournamentStore.ts</td><td><b>The Zustand editor store</b> (~2,100 lines): snapshot hydration, dirty tracking per entity, leg-aware match signatures (<code>matchSig</code>), db-overlay reconciliation, temp-id→db-id mapping, and <code>saveAll()</code> — the 4-phase POST to save-all.</td></tr>
+<tr><td class="f">submit/ReviewAndSubmit.tsx · submit/loadSnapshotClient.ts</td><td>Save button: validates refs + DAG cycle detection, then create-or-saveAll + rehydrate; snapshot fetcher.</td></tr>
+<tr><td class="f">basics/TournamentBasicsForm.tsx · teams/TeamPicker.tsx · shared/ValidationSummary.tsx</td><td>Basics form (name/slug/format/season/status), tournament team pool picker, advisory validation list.</td></tr>
+<tr><td class="f">stages/{StageList, StageCard, StageStandingsMini, ConfirmDialog}.tsx</td><td>Stage add/remove/reorder; per-stage editor branching to league/groups/KO config; embedded standings with manual point-adjustment modal.</td></tr>
+<tr><td class="f">stages/actions.ts</td><td>Server actions: <code>applyPointAdjustmentAction</code> (writes <code>disciplinary_actions</code> + recompute), disciplinary history.</td></tr>
+<tr><td class="f">stages/groups/{GroupsBoard, GroupIntakeBoard, GroupsConfigKOIntake}.tsx</td><td>Group CRUD + team assignment (mobile-first picker since 2026-07), KO→groups intake slot board and config.</td></tr>
+<tr><td class="f">stages/leauge/KnockoutConfigFromLeague.tsx</td><td>KO stage config: source stage, advancers, double-round (two-leg) toggle. (Folder name is a typo.)</td></tr>
+<tr><td class="f">stages/KnockoutTree/newknockout/{KnockoutBoard, BracketBuilder2, BracketEditor, KnockoutConfigFromGroups}.tsx</td><td><b>Bracket Builder 2.0</b>: generate-first seeded brackets (any N, single/double leg), drag canvas, tie containers showing aggregate/leg-wins/penalties, per-tie 1↔2 leg toggle.</td></tr>
+<tr><td class="f">stages/KnockoutTree/hooks/{useKnockoutDesigner, useBracketData, useBracketLayout, useTournamentMatches}.ts</td><td>Bracket state/data/layout hooks.</td></tr>
+<tr><td class="f">preview/InlineMatchPlanner.tsx</td><td>Per-stage fixtures table (~1,300 lines): matchday grouping, team/date/round editing, stage regeneration, orphan-guarded add-match, RR integrity fixer.</td></tr>
+<tr><td class="f">preview/MatchControlPanel.tsx · preview/actions.ts</td><td>Full match result editor (both rosters' stats, MVP/GK, venue) → <code>saveMatchStatsAction</code> / revert / forfeit server actions that trigger progression.</td></tr>
+<tr><td class="f">preview/MatchPlannerZ/* · {KnockoutBuilder, ModernKnockoutViewesr, ExpandedRowEditor}.tsx · updateMatchAction.ts · Usematchupdate.ts</td><td>Alternative planner table + legacy KO builder/viewer variants and match-update helpers.</td></tr>
+<tr><td class="f">util/Generators.ts</td><td><code>generateDraftMatches</code> — dispatcher building all fixtures per stage (league/groups RR, KO from groups/league/standalone, intake skeletons, two-leg expansion, dedupe).</td></tr>
+<tr><td class="f">util/functions/{roundRobin, knockoutAnyN, knockoutPowerOfTwo, twoLeggedTie, groupsIntake, common}.ts</td><td>Pure algorithms: circle-method RR; seeded KO for any N (byes auto-advance); power-of-two brackets; <code>decideTwoLeggedTie</code> (leg wins → penalties); intake normalization/validation; seed order, leg expansion, source wiring.</td></tr>
+<tr><td class="f">util/groupsSignature.ts</td><td>Group-config change signature for regeneration detection.</td></tr>
+</table></div>
+
+<h3>3.8 Dashboard — other sections</h3>
+<div class="tblwrap"><table>
+<tr><th>File (dashboard/)</th><th>What it does</th></tr>
+<tr><td class="f">layout.tsx · ui/ClientShell.tsx · page.tsx</td><td>Auth gate (admin full / editor content-only, else /403), sidebar shell with Greek nav, home card grid.</td></tr>
+<tr><td class="f">users/page.tsx · users/UsersTable.tsx</td><td>Supabase auth user list with email search; per-user admin/editor role toggles → <code>/api/admin/users/[id]/roles</code>.</td></tr>
+<tr><td class="f">teams/{page, AdminTeamsGridClient, TeamRowEditor, PlayersPanel, AddPlayerToTeamModal, TeamDetailsPanel, TeamRowItem, Logo, ConfirmLogoModal, TrimLogoButton, teamHelpers}.tsx/.ts</td><td>Team CRUD rows (full-width since 2026-06): create/edit with logo upload + client color extraction, trim-logo, archive/restore, expandable roster panel with add/create/remove(&amp;archive) player. <code>AdminTeamsCRUD.tsx</code> is a legacy variant.</td></tr>
+<tr><td class="f">players/{page, AdminPlayersCRUD, PlayerEditorDrawer, PlayerBoard, PlayersToolbar, PlayersGrid, PlayerCard, PlayerPhoto, types}.tsx/.ts</td><td>Player CRUD: search, team filter, archive toggle, drawer editor for bio + statistics + photo.</td></tr>
+<tr><td class="f">matches/{page, MatchesDashboard, RowEditor, PostponeDialog}.tsx</td><td>All-matches admin: filters/sort/pagination, create/edit with two-legged-KO-aware winner logic, delete, postpone with reason, postponed section.</td></tr>
+<tr><td class="f">announcements/AnnouncementsAdmin.tsx · articles/ArticlesAdmin.tsx</td><td>CMS lists (editor-accessible): create/edit/delete/paginate; TipTap for articles via <code>components/RichTextEditor.tsx</code>.</td></tr>
+<tr><td class="f">fix-stats/{page, StatsTable, ApplyFixButton, actions}.tsx/.ts</td><td>Drift detector: legacy <code>player_statistics</code> vs recompute from <code>match_player_stats</code>, with apply-fix action.</td></tr>
+<tr><td class="f">refresh-stats/{page, RefreshButton, actions}.tsx/.ts</td><td>Full backfill of the career/tournament stat caches.</td></tr>
+<tr><td class="f">preview/*</td><td>Unlinked UI prototypes (player-list, player-list-mobile, teams-v2).</td></tr>
+</table></div>
+
+<h3>3.9 Content — articles &amp; announcements</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">articles/page.tsx</td><td>Unified news hub (client): merges <code>/api/articles-public</code> + active announcements; tabs Όλα/Άρθρα/Ανακοινώσεις.</td></tr>
+<tr><td class="f">article/[slug]/page.tsx</td><td>Article page: RLS read by slug, drafts gated to editors, TipTap JSON → HTML server-side, related + prev/next.</td></tr>
+<tr><td class="f">announcement/[id]/page.tsx · anakoinoseis/page.tsx</td><td>Announcement detail (published-only); legacy <code>/anakoinoseis</code> redirects to <code>/articles</code>.</td></tr>
+<tr><td class="f">src/components/{AnnouncementContent, ArticlePreview, RelatedArticles, ArticleNavigation, RichTextEditor}.tsx</td><td>Body renderer (md/html/plain), preview card, related grid, prev/next nav, TipTap editor.</td></tr>
+<tr><td class="f">src/lib/articleUtils.ts · lib/fetchRecentNewsCount.ts</td><td>Read-time/view-count formatting; cached 2-day news count for navbar bubble.</td></tr>
+</table></div>
+
+<h3>3.10 Auth &amp; security</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">login/page.tsx · sign-up/page.tsx · check-email/*</td><td>Client forms posting to <code>/api/auth/*</code> with CSRF token; Google OAuth link; pending-email confirmation screen.</td></tr>
+<tr><td class="f">api/auth/{csrf, sign-in, sign-up, sign-out, oauth, callback, confirm, refresh, resend}/route.ts</td><td>Full auth surface: CSRF mint, password sign-in (5/15min per-email limit), sign-up (+password rules), OAuth PKCE, email-link confirm, session refresh, resend (3/hr).</td></tr>
+<tr><td class="f">api/admin/users/[id]/roles/route.ts · api/me/route.ts</td><td>Role grant/revoke via Supabase admin API; current-user endpoint (legacy client — cleanup).</td></tr>
+<tr><td class="f">src/proxy.ts</td><td><b>Middleware</b> (Next 16 name): rate limiting, bot handling, CSP nonce, session refresh, dashboard/API auth gate with admin-vs-editor routing, security headers.</td></tr>
+<tr><td class="f">lib/{csrf, safe-redirect, password-validation, rate-limit}.ts</td><td>CSRF cookie tokens; open-redirect guard; password rules; Vercel-KV fixed-window limiter (fails open, off in dev).</td></tr>
+<tr><td class="f">lib/supabase/{supabaseServer, supabaseAdmin, supabaseBrowser, supabaseClient, client, Server, apiAuth, signDbToken}.ts</td><td>Client variants (RSC/route, service-role, browser modern + 2 legacy, near-duplicate <code>Server.ts</code>); <code>requireAuth/requireAdmin/requireEditor</code> guards; ES256 DB-token signer.</td></tr>
+</table></div>
+
+<h3>3.11 Storage &amp; images</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">api/storage/{sign, signed-upload, article-img, tournaments/image-upload, tournament-img-loader, delete-object, player-img, mask, proxy}/route.ts · api/storage/route.ts</td><td>Signed URLs (×2 duplicates), presigned uploads (players/articles/tournaments), tournament logo resolver, object delete, private photo/mask streaming, SSRF-guarded remote proxy.</td></tr>
+<tr><td class="f">api/public/team-logo/[...path]/route.ts · api/teams/logo-upload · api/teams/[id]/trim-logo</td><td>Public CORS-open logo proxy (stable URLs for canvas/WebGL); multipart logo upload (≤3MB); <code>sharp</code> transparent-border trim.</td></tr>
+<tr><td class="f">lib/image-config.ts · lib/OptimizedImage.tsx · lib/utils/images.ts · lib/player-images.ts</td><td>Central URL resolver (bucket <code>GPSarchive's Project</code>, public-bucket toggle, CDN); image wrapper component; signing helpers; deprecated player-photo resolver.</td></tr>
+<tr><td class="f">lib/colorExtraction.ts · tournaments/signTournamentLogos.ts</td><td>Canvas dominant-color extraction feeding <code>teams.colour</code>; bulk logo signing.</td></tr>
+</table></div>
+
+<h3>3.12 Chrome, consent &amp; misc infrastructure</h3>
+<div class="tblwrap"><table>
+<tr><th>File</th><th>What it does</th></tr>
+<tr><td class="f">layout.tsx · sitemap.ts · not-found.tsx · global-error.tsx</td><td>Root layout (Greek lang, fonts, CSP nonce, Navbar/Footer/consent wrap); DB-driven sitemap; 404; error boundary that never leaks messages.</td></tr>
+<tr><td class="f">lib/Navbar/{Navbar, NavbarClient, NavbarBG}.tsx · lib/Footer/Footer.tsx</td><td>RSC navbar (user + news count) → client menus/drawer; footer (hides on /paiktes).</td></tr>
+<tr><td class="f">lib/consent/{ConsentProvider, ConsentContext, use-consent, CookieBanner, ConsentGatedAnalytics}.tsx/.ts</td><td>GDPR consent state (localStorage + cookie), banner, analytics loaded only after consent.</td></tr>
+<tr><td class="f">lib/datetime.ts</td><td><b>Datetime convention</b>: match dates are literal wall-clock (never tz-converted); Athens-aware helpers for true instants.</td></tr>
+<tr><td class="f">lib/{types, getBaseUrl}.ts · lib/utils/{bracket, standings, media}.ts · lib/repos/tournaments.ts · src/lib/utils.ts</td><td>Shared row types; origin resolver; KO bracket math; standings sort + tiebreakers (points/GD/GF/H2H/fair-play); media helpers; tournament read repo (uses <code>v_tournament_standings</code>); shadcn <code>cn()</code>.</td></tr>
+<tr><td class="f">lib/VantaBg.tsx · lib/framermotion/useStagedHeader*.ts</td><td>Vanta animated backgrounds (login/contact/rules); scroll-staged header hooks.</td></tr>
+<tr><td class="f">epikoinonia/* · kanonismos · privacy · terms · cookies</td><td>Contact page + form; 49-rule regulation page; policy pages (all static, Vanta bg).</td></tr>
+<tr><td class="f">dotgrid/ · waves/ · src/components/{DotGrid.jsx, Waves.tsx, CardSwap, TeamFilter, FormerPlayerBadge}.tsx · src/components/cards/*</td><td>Background demos (likely dead); misc shared components; award stat cards (Scorer/Assister/Mvp/BestGk).</td></tr>
+<tr><td class="f">scripts/*.mjs · scripts/dummy-tournament/*</td><td>Ops/debug scripts: tournament-35/49 diagnostics &amp; fixes, two-legged dry-runs, dummy-data seeding, stat-filter verification.</td></tr>
+<tr><td class="f">migrations/*.sql · docs/inventory/*</td><td>Extension migrations (postponement, double-round KO, stat caches, articles, discipline…) — base DDL not in repo; the in-repo codebase inventory (May 2026 snapshot).</td></tr>
+</table></div>
+
+<h2 id="pipelines"><span class="num">4</span>Pipelines</h2>
+<p>End-to-end flows with the files that participate at each step. Color = layer (see legend above).</p>
+
+<h3 id="p1">4.1 Tournament lifecycle — create/edit → save → publish</h3>
+<div class="pipe">
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Admin UI</span> Compose in the wizard</div>
+    <div class="d">Admin builds basics, team pool, stages (league / groups / knockout), group assignments, bracket layout and fixtures. Fixture drafts come from pure generators.</div>
+    <div class="chips"><span class="chip">TournamentWizard.tsx</span><span class="chip">basics/TournamentBasicsForm.tsx</span><span class="chip">teams/TeamPicker.tsx</span><span class="chip">stages/StageList.tsx</span><span class="chip">stages/StageCard.tsx</span><span class="chip">stages/groups/GroupsBoard.tsx</span><span class="chip">KnockoutTree/newknockout/BracketBuilder2.tsx</span><span class="chip">preview/InlineMatchPlanner.tsx</span><span class="chip">util/Generators.ts</span><span class="chip">util/functions/*.ts</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">edits tracked as dirty sets</div><div class="hd">▼</div></div>
+  <div class="pnode n-srv">
+    <div class="t"><span class="badge b-srv">Client store</span> Zustand editor store</div>
+    <div class="d">All edits land in one store: draft matches keyed by leg-aware <code>matchSig</code>, db results kept in a separate overlay, per-entity dirty tracking, temp negative ids for new rows.</div>
+    <div class="chips"><span class="chip">submit/tournamentStore.ts</span><span class="chip">submit/loadSnapshotClient.ts</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">Save → validate refs + DAG cycles, then saveAll() in 4 phases</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">API</span> POST /api/tournaments/[id]/save-all</div>
+    <div class="d">The single biggest mutation endpoint (~700 lines). Ordered writes: tournament → deletes → stages → groups → tournament_teams → stage_slots (optimistic <code>updated_at</code> lock, 409 on stale) → intake_mappings (replace) → matches (leg-aware natural-key dedupe) → KO id-resolution pass (<code>source_match_id</code>, <code>tie_leg1_match_id</code>). Guards groups-stage matches against null <code>group_id</code>.</div>
+    <div class="chips"><span class="chip">api/tournaments/[id]/save-all/route.ts</span><span class="chip">TournamentCURD/actions.ts (create mode)</span><span class="chip">rpc create_tournament</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">writes</div><div class="hd">▼</div></div>
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">DB</span> Tournament core tables</div>
+    <div class="chips"><span class="chip">tournaments</span><span class="chip">tournament_stages</span><span class="chip">tournament_groups</span><span class="chip">tournament_teams</span><span class="chip">stage_slots</span><span class="chip">intake_mappings</span><span class="chip">matches</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">rehydrate editor ← snapshot · public read ← loader</div><div class="hd">▼</div></div>
+  <div class="split">
+    <div class="pnode n-api" style="margin:0">
+      <div class="t"><span class="badge b-api">API</span> GET /api/tournaments/[id]/snapshot</div>
+      <div class="d">Admin-only "bring everything" read (~8-table join) that hydrates the editor store and reconciles ids after save.</div>
+      <div class="chips"><span class="chip">api/tournaments/[id]/snapshot/route.ts</span></div>
+    </div>
+    <div class="pnode n-page" style="margin:0">
+      <div class="t"><span class="badge b-page">Public</span> /tournaments/[id]</div>
+      <div class="d"><code>loadTournamentIntoStore</code> aggregates everything server-side; the v2-dark client renders stages, group tables, and the two-legged-aware bracket.</div>
+      <div class="chips"><span class="chip">tournaments/[id]/v2-dark/page.tsx</span><span class="chip">loadTournamentIntoStore.tsx</span><span class="chip">TournamentClientV2Dark.tsx</span><span class="chip">KOBracketV2Dark.tsx</span><span class="chip">stages/*.tsx</span></div>
+    </div>
+  </div>
+</div>
+
+<h3 id="p2">4.2 Match result → progression cascade</h3>
+<div class="pipe">
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Admin UI</span> Record the result</div>
+    <div class="d">Two entry points: the match page stats editor, or the wizard's match control panel. Both write scores + per-player stat lines + MVP/best-GK.</div>
+    <div class="chips"><span class="chip">matches/[id]/StatsEditor.tsx</span><span class="chip">matches/[id]/actions.ts</span><span class="chip">TournamentCURD/preview/MatchControlPanel.tsx</span><span class="chip">TournamentCURD/preview/actions.ts</span><span class="chip">dashboard/matches/RowEditor.tsx</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">PATCH status → finished (or finalizeMatch server action)</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">API</span> PATCH /api/matches/[id]</div>
+    <div class="d">Editor + strict same-origin. Only non-structural fields allowed (bracket coordinates are immutable — use reseed). On transition to <code>finished</code>, invokes the progression engine (failure never fails the PATCH).</div>
+    <div class="chips"><span class="chip">api/matches/[id]/route.ts</span><span class="chip">api/matches/[id]/postpone/route.ts (postpone side-path)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">progressAfterMatch(matchId)</div><div class="hd">▼</div></div>
+  <div class="pnode n-srv">
+    <div class="t"><span class="badge b-srv">Engine</span> progression.ts — the cascade (app code, no DB triggers)</div>
+    <div class="d">① Resolve two-legged tie / stamp winner → propagate W/L into child KO slots (id pointers first, stable round+pos fallback; never overwrites finished or manual slots) · ② ensure KO→groups intake mappings · ③ apply intake → fill <code>stage_slots</code> → hydrate skeleton group fixtures · ④ recompute <code>stage_standings</code> (3-1-0 + disciplinary adjustments) · ⑤ seed next KO from groups/league if configured (guarded once KO has results) · ⑥ mark tournament completed when all matches finish · ⑦ refresh player stat caches.</div>
+    <div class="chips"><span class="chip">TournamentCURD/progression.ts</span><span class="chip">util/functions/twoLeggedTie.ts</span><span class="chip">lib/refreshPlayerStats.ts</span><span class="chip">rpc alloc_stage_slot</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">writes</div><div class="hd">▼</div></div>
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">DB</span> Result surface</div>
+    <div class="chips"><span class="chip">matches (winner, child slots, legs, pens)</span><span class="chip">match_player_stats</span><span class="chip">match_participants</span><span class="chip">stage_standings</span><span class="chip">stage_slots</span><span class="chip">player_career_stats</span><span class="chip">player_tournament_stats</span><span class="chip">player_statistics (legacy)</span><span class="chip">announcements (on postpone)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">read by</div><div class="hd">▼</div></div>
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Public</span> Everywhere results appear</div>
+    <div class="chips"><span class="chip">/matches/[id]</span><span class="chip">/tournaments/[id] brackets &amp; tables</span><span class="chip">home calendar &amp; dashboard</span><span class="chip">/OMADA/[id] history</span><span class="chip">/paiktes leaderboards</span></div>
+  </div>
+</div>
+<div class="note"><b>Manual re-trigger:</b> <code>POST /api/stages/[id]/reseed</code> recomputes standings and rebuilds KO pairings explicitly; point adjustments go through <code>applyPointAdjustmentAction</code> → <code>disciplinary_actions</code> → recompute.</div>
+
+<h3 id="p3">4.3 Two-legged knockout ties (Bracket 2.0, 2026-06)</h3>
+<div class="pipe">
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Editor</span> Create a double-round KO</div>
+    <div class="d">Stage config toggles <code>double_round_ko</code>; generators expand each pairing into leg 1 + leg 2 (swapped home/away). The bracket canvas renders both legs inside a dashed "tie" container and lets admins toggle 1↔2 legs per tie (store migrates identity by leg-aware <code>matchSig</code>).</div>
+    <div class="chips"><span class="chip">stages/leauge/KnockoutConfigFromLeague.tsx</span><span class="chip">util/functions/common.ts (expandToTwoLegs)</span><span class="chip">BracketBuilder2.tsx</span><span class="chip">tournamentStore.ts (setKOLegCount)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">save-all persists leg + tie link</div><div class="hd">▼</div></div>
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">DB</span> matches — two rows per tie</div>
+    <div class="d"><code>leg</code> (1|2), leg-2 carries <code>tie_leg1_match_id</code> → leg 1, and <code>penalty_a/penalty_b</code> when the tie is level. Migration: <code>migrations/add-double-round-knockout.sql</code>.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">when a leg finishes</div><div class="hd">▼</div></div>
+  <div class="pnode n-srv">
+    <div class="t"><span class="badge b-srv">Engine</span> decideTwoLeggedTie(leg2, leg1)</div>
+    <div class="d"><b>Winner is decided on leg wins, not aggregate goals</b>: 2-0 or 1-0 (with a draw) advances; level on wins → penalties entered on the leg-2 decider. Returns pending / undecided / decided; progression re-runs on the decider if leg 1 finished after leg 2. Verified by <code>scripts/dryrun-twolegged.mjs</code>.</div>
+    <div class="chips"><span class="chip">util/functions/twoLeggedTie.ts</span><span class="chip">progression.ts (applyKnockoutPropagation)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">winner advances</div><div class="hd">▼</div></div>
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Public + admin display</span> Tie-aware rendering</div>
+    <div class="d">Bracket shows aggregate, per-leg scores and penalties; the match page shows leg context and a penalty panel for admins.</div>
+    <div class="chips"><span class="chip">KOBracketV2Dark.tsx</span><span class="chip">matches/[id]/TwoLeggedPenaltyPanel.tsx</span><span class="chip">matches/[id]/queries.ts (fetchLegOneScores)</span><span class="chip">dashboard/matches/RowEditor.tsx</span></div>
+  </div>
+</div>
+
+<h3 id="p4">4.4 Player stats — source of truth → caches → leaderboards</h3>
+<div class="pipe">
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">Source of truth</span> match_player_stats</div>
+    <div class="d">One row per player per match: goals, assists, own goals, cards (Y/R/B), MVP, best GK, captain, GK flag, shirt number. Written by the stats editors (§4.2).</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">on match finish (incremental) or manual backfill</div><div class="hd">▼</div></div>
+  <div class="pnode n-srv">
+    <div class="t"><span class="badge b-srv">Aggregator</span> refreshPlayerStats.ts</div>
+    <div class="d">Batched (300/chunk) aggregation into two cache tables; wins from <code>matches.winner_team_id</code>; primary team by appearance count. <code>refreshStatsForMatch</code> runs per finished match; <code>refreshAllPlayerStats</code> is the full rebuild.</div>
+    <div class="chips"><span class="chip">lib/refreshPlayerStats.ts</span><span class="chip">dashboard/refresh-stats/*</span><span class="chip">dashboard/fix-stats/* (drift detector for legacy table)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">writes caches</div><div class="hd">▼</div></div>
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">Caches</span> player_career_stats · player_tournament_stats</div>
+    <div class="d">Per-stat DESC indexes make sorting cheap. Legacy <code>player_statistics</code> is still written in parallel (cleanup candidate).</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">read by</div><div class="hd">▼</div></div>
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Public</span> Leaderboards &amp; profiles</div>
+    <div class="chips"><span class="chip">paiktes/page.tsx (directory + filters)</span><span class="chip">home/EditorialTopPlayersSection.tsx</span><span class="chip">src/components/cards/* (Scorer/Assister/Mvp/BestGk)</span><span class="chip">OMADA/[id] (aggregates live from match_player_stats)</span><span class="chip">tournaments PlayerStats.tsx</span></div>
+  </div>
+</div>
+
+<h3 id="p5">4.5 Auth &amp; authorization</h3>
+<div class="pipe">
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">UI</span> /login · /sign-up · /check-email</div>
+    <div class="d">Client forms fetch a CSRF token, then POST credentials; Google OAuth via redirect link.</div>
+    <div class="chips"><span class="chip">login/page.tsx</span><span class="chip">sign-up/page.tsx</span><span class="chip">check-email/*</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">form POST (+ __csrf cookie)</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">API</span> /api/auth/*</div>
+    <div class="d">sign-in (CSRF + 5/15min per-email limit) · sign-up (password rules, sets <code>__pending_email</code>) · oauth → callback (PKCE exchange) · confirm (email links/OTP) · refresh · resend (3/hr, enumeration-safe) · sign-out (origin-checked). Session lives in Supabase cookies; redirects sanitized by <code>safeNextUrl</code>.</div>
+    <div class="chips"><span class="chip">api/auth/*/route.ts</span><span class="chip">lib/csrf.ts</span><span class="chip">lib/password-validation.ts</span><span class="chip">lib/safe-redirect.ts</span><span class="chip">lib/rate-limit.ts</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">every request thereafter</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">Middleware</span> src/proxy.ts</div>
+    <div class="d">Refreshes the Supabase session, rate-limits, then gates: API mutations need a session (401); <code>/dashboard/*</code> needs <code>admin</code> (full) or <code>editor</code> (articles/announcements only, others → /403). Roles come from <code>user.app_metadata.roles</code> — no roles table.</div>
+    <div class="chips"><span class="chip">src/proxy.ts</span><span class="chip">lib/supabase/apiAuth.ts (requireAuth/Admin/Editor)</span><span class="chip">dashboard/layout.tsx (second gate)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">role management</div><div class="hd">▼</div></div>
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Admin</span> Grant/revoke roles</div>
+    <div class="chips"><span class="chip">dashboard/users/UsersTable.tsx</span><span class="chip">api/admin/users/[id]/roles/route.ts</span><span class="chip">Supabase auth.users.app_metadata</span></div>
+  </div>
+</div>
+
+<h3 id="p6">4.6 Images &amp; storage</h3>
+<div class="pipe">
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Upload</span> Two write paths</div>
+    <div class="d"><b>Direct:</b> team logos POST multipart (≤3MB) and get a stable proxy URL; optional <code>sharp</code> trim. <b>Presigned:</b> player/article/tournament images get a signed upload URL and the client PUTs straight to Supabase; the storage path is saved on the row. Team colour is extracted client-side from the logo.</div>
+    <div class="chips"><span class="chip">api/teams/logo-upload</span><span class="chip">api/teams/[id]/trim-logo</span><span class="chip">api/storage/signed-upload</span><span class="chip">api/storage/article-img</span><span class="chip">api/storage/tournaments/image-upload</span><span class="chip">lib/colorExtraction.ts</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="pnode n-db">
+    <div class="t"><span class="badge b-db">Buckets</span> Supabase Storage</div>
+    <div class="d"><code>GPSarchive's Project</code> (default — logos, tournament assets, articles; name hardcoded in ~10 files), <code>players</code> (photos), <code>assets/masks/</code>, env-configurable tournaments bucket.</div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">read paths</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">Serve</span> Proxies &amp; signed URLs</div>
+    <div class="d">Public CORS-open team-logo proxy (immutable cache) · session-gated streaming for player photos and masks · 1h signed URLs for admin · SSRF-hardened remote proxy (Supabase/CDN hosts only). Front-end resolution goes through one config module.</div>
+    <div class="chips"><span class="chip">api/public/team-logo/[...path]</span><span class="chip">api/storage/{player-img, mask, proxy, sign, tournament-img-loader}</span><span class="chip">lib/image-config.ts</span><span class="chip">lib/OptimizedImage.tsx</span><span class="chip">paiktes/SignedImg.tsx</span><span class="chip">tournaments/signTournamentLogos.ts</span></div>
+  </div>
+</div>
+
+<h3 id="p7">4.7 Content publishing</h3>
+<div class="pipe">
+  <div class="pnode n-admin">
+    <div class="t"><span class="badge b-admin">Author</span> Dashboard CMS (admin or editor)</div>
+    <div class="d">Articles: TipTap rich text, slug, draft→published→archived, featured image via presigned upload. Announcements: md/html/plain body, pin, priority, visibility window. Match postponement <em>also</em> creates an announcement automatically.</div>
+    <div class="chips"><span class="chip">dashboard/articles/ArticlesAdmin.tsx</span><span class="chip">dashboard/announcements/AnnouncementsAdmin.tsx</span><span class="chip">src/components/RichTextEditor.tsx</span><span class="chip">api/matches/[id]/postpone (side-effect)</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">CRUD</div><div class="hd">▼</div></div>
+  <div class="pnode n-api">
+    <div class="t"><span class="badge b-api">API</span> Articles &amp; announcements routes</div>
+    <div class="chips"><span class="chip">api/articles (+ [id], slug/[slug])</span><span class="chip">api/articles-public</span><span class="chip">api/announcements (+ [id])</span><span class="chip">api/storage/article-img</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="lb">tables: articles (TipTap JSONB) · announcements</div><div class="hd">▼</div></div>
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Public</span> News surfaces</div>
+    <div class="d">Unified hub merges both content types (pinned first); article pages render TipTap→HTML server-side with draft gating; navbar bubble counts last-2-days content.</div>
+    <div class="chips"><span class="chip">articles/page.tsx</span><span class="chip">article/[slug]/page.tsx</span><span class="chip">announcement/[id]/page.tsx</span><span class="chip">home/HomeArticles.tsx</span><span class="chip">lib/fetchRecentNewsCount.ts</span><span class="chip">src/lib/articleUtils.ts</span></div>
+  </div>
+</div>
+
+<h3 id="p8">4.8 Home page composition</h3>
+<div class="pipe">
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Page</span> / (ISR, revalidate 300s)</div>
+    <div class="d"><code>loadHomeData()</code> fans out 4 parallel service-role queries; async sections stream via Suspense; client widgets refetch through public APIs.</div>
+    <div class="chips"><span class="chip">page.tsx</span><span class="chip">home/data.ts</span></div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="split">
+    <div class="pnode n-srv" style="margin:0">
+      <div class="t"><span class="badge b-srv">Server fetch</span></div>
+      <div class="d">Matches −60/+90 days (joins teams+tournaments) · 6 tournaments + counts + signed logos · 20 video matches · recent news count.</div>
+      <div class="chips"><span class="chip">home/data.ts</span><span class="chip">lib/fetchRecentNewsCount.ts</span><span class="chip">home/HomeArticles.tsx</span><span class="chip">home/EditorialTopPlayersSection.tsx</span></div>
+    </div>
+    <div class="pnode n-api" style="margin:0">
+      <div class="t"><span class="badge b-api">Client refetch</span></div>
+      <div class="d">Calendar window queries and video pagination after hydration.</div>
+      <div class="chips"><span class="chip">api/matches/calendar</span><span class="chip">api/matches/videos</span><span class="chip">home/EditorialCalendar.tsx</span><span class="chip">home/HomeVideos.tsx</span></div>
+    </div>
+  </div>
+  <div class="arrow"><div class="ln"></div><div class="hd">▼</div></div>
+  <div class="pnode n-page">
+    <div class="t"><span class="badge b-page">Sections</span> Hero → welcome → dashboard+calendar → news → videos → top players → features → tournaments CTA → testimonials</div>
+    <div class="chips"><span class="chip">HomeHero</span><span class="chip">VantaSection</span><span class="chip">EditorialTeamDashboard</span><span class="chip">EditorialCalendar</span><span class="chip">HomeArticles</span><span class="chip">HomeVideos</span><span class="chip">EditorialTopPlayersSection</span><span class="chip">EditorialTournamentsGrid</span><span class="chip">LeftSideBubbles</span></div>
+  </div>
+</div>
+
+<h3 id="p9">4.9 Standings — two coexisting systems</h3>
+<div class="pipe">
+  <div class="split">
+    <div class="pnode n-srv" style="margin:0">
+      <div class="t"><span class="badge b-srv">Per-stage</span> stage_standings</div>
+      <div class="d">Tournament-scoped, per group. Recomputed by the progression engine on every finished match (3-1-0 points, GD, GF + <code>disciplinary_actions</code> adjustments) or explicitly via reseed. Rendered inside tournament viewers and match pages.</div>
+      <div class="chips"><span class="chip">progression.ts (recompute)</span><span class="chip">api/stages/[id]/standings</span><span class="chip">api/stages/[id]/reseed</span><span class="chip">StageStandingsMini(Public).tsx</span><span class="chip">matches/[id]/TournamentStandings.tsx</span><span class="chip">lib/utils/standings.ts (tiebreaker types)</span></div>
+    </div>
+    <div class="pnode n-db" style="margin:0">
+      <div class="t"><span class="badge b-db">Season-wide</span> teams.season_score</div>
+      <div class="d">A simple cross-tournament score column on <code>teams</code>, ranked in JS on the public standings page with a hardcoded prize table. Not derived from <code>stage_standings</code> — the two systems share no computation.</div>
+      <div class="chips"><span class="chip">standings/page.tsx</span><span class="chip">teams.season_score</span></div>
+    </div>
+  </div>
+</div>
+
+<h2 id="data"><span class="num">5</span>Data model</h2>
+<p>Reconstructed from migrations + code (base DDL for the core tables is not committed — created via the Supabase dashboard). Roles live in <code>auth.users.app_metadata.roles</code>; there is no roles table.</p>
+<div class="tblwrap"><table>
+<tr><th>Domain</th><th>Table</th><th>Purpose / key columns</th></tr>
+<tr><td rowspan="7"><b>Tournament core</b></td><td class="f">tournaments</td><td>Top entity: format (league|groups|knockout|mixed), season, status, <code>winner_team_id</code>.</td></tr>
+<tr><td class="f">tournament_stages</td><td>Stage: kind (league|groups|knockout), ordering, JSON <code>config</code> (source stage, advancers, <code>double_round_ko</code>, tiebreakers).</td></tr>
+<tr><td class="f">tournament_groups</td><td>Groups inside a groups stage.</td></tr>
+<tr><td class="f">tournament_teams</td><td>Participation: (tournament, team, stage, group, seed); unique per (tournament, team, stage).</td></tr>
+<tr><td class="f">stage_slots</td><td>Slot grid (stage, group idx, slot) → team; manual or intake-fed; optimistic <code>updated_at</code>.</td></tr>
+<tr><td class="f">intake_mappings</td><td>Edges between stages: source (stage, round, bracket_pos, W|L) → target (stage, group idx, slot idx).</td></tr>
+<tr><td class="f">stage_standings</td><td>Standings cache per (stage, group): P/W/D/L, GF/GA/GD, points, rank. group 0 = league.</td></tr>
+<tr><td rowspan="3"><b>Matches</b></td><td class="f">matches</td><td>Central row: stage/group, date (wall-clock), matchday, round + bracket_pos, teams, scores, status (scheduled|finished|postponed), winner. KO sources doubly expressed (stable coords + resolved match ids). Two-legged: <code>leg</code>, <code>tie_leg1_match_id</code>, <code>penalty_a/b</code>. Postponement fields + <code>video_url</code>.</td></tr>
+<tr><td class="f">match_player_stats</td><td><b>Stat source of truth</b>: goals, assists, own goals, Y/R/B cards, MVP, best GK, captain/GK flags, shirt number.</td></tr>
+<tr><td class="f">match_participants</td><td>Per-match lineup (distinct from roster).</td></tr>
+<tr><td rowspan="6"><b>Teams &amp; players</b></td><td class="f">teams</td><td>Name, AM code, logo, extracted <code>colour</code>, <code>season_score</code>, soft delete.</td></tr>
+<tr><td class="f">player</td><td>(singular!) Bio, photo, position, jersey number, soft delete.</td></tr>
+<tr><td class="f">player_teams</td><td>M:N roster membership.</td></tr>
+<tr><td class="f">player_career_stats</td><td>All-time aggregate cache (per-stat DESC indexes) — powers /paiktes.</td></tr>
+<tr><td class="f">player_tournament_stats</td><td>Per-tournament aggregate cache.</td></tr>
+<tr><td class="f">player_statistics</td><td>Legacy aggregate, still dual-written; drift checked by /dashboard/fix-stats.</td></tr>
+<tr><td rowspan="2"><b>Content</b></td><td class="f">articles</td><td>TipTap JSONB, slug, draft|published|archived, featured image, view_count, author.</td></tr>
+<tr><td class="f">announcements</td><td>md/html/plain body, pinned, priority, visibility window; also written by match postponement.</td></tr>
+<tr><td rowspan="2"><b>Other</b></td><td class="f">disciplinary_actions</td><td>Signed point adjustments per participation (note: <code>team_id</code> actually references <code>tournament_teams.id</code>), applied in standings recompute.</td></tr>
+<tr><td class="f">tournament_awards · v_tournament_standings</td><td>Per-match MVP/GK awards at tournament level; standings view read by <code>lib/repos/tournaments.ts</code>.</td></tr>
+</table></div>
+<p class="small"><b>RPCs:</b> <code>create_tournament(v_json)</code>, <code>alloc_stage_slot</code>, <code>update_match_awards</code>, <code>search_teams_fuzzy</code>, <code>increment_article_view_count</code> (defined, apparently unwired). <b>Storage:</b> <code>GPSarchive's Project</code> (default), <code>players</code>, <code>assets/masks</code>.</p>
+
+<h2 id="issues"><span class="num">6</span>Known issues &amp; cleanup map</h2>
+<p>Surfaced during mapping (many already tracked in <code>docs/inventory/dead-ends.md</code> and <code>cleanup-candidates.md</code>):</p>
+<ul>
+<li><b>Layering inversion:</b> <code>/api/matches/[id]</code> and the snapshot route import from <code>dashboard/tournaments/TournamentCURD/</code> (progression engine + store types). The engine belongs in <code>lib/</code>.</li>
+<li><b>Duplicate Supabase clients:</b> <code>Server.ts</code> ≈ <code>supabaseServer.ts</code>; <code>client.ts</code>/<code>supabaseClient.ts</code>/<code>/api/me</code> still on legacy auth-helpers.</li>
+<li><b>Dual stat aggregates:</b> legacy <code>player_statistics</code> and the new caches are both written — pick a canonical (that's why fix-stats exists).</li>
+<li><b>Dual bracket-source representation</b> on <code>matches</code> (stable round+pos vs resolved match ids) — intentional for reseed resilience, but two ways to say one thing.</li>
+<li><b>Hardcoded values:</b> bucket name <code>GPSarchive's Project</code> in ~10 files; OAuth <code>BASE_URL</code>; standings prize table; testimonials/feature cards on home.</li>
+<li><b>Same-origin inconsistency:</b> team/player/content routes add the (spoofable) request origin to the allowlist; match routes are strict.</li>
+<li><b>Dead/typo files:</b> <code>TournamentCURD</code> (sic), <code>stages/leauge/</code>, <code>ModernKnockoutViewesr.tsx</code>, <code>LeaugeStage.tsx</code>, <code>* copy.tsx</code> files, <code>newEventPilll.tsx</code>, <code>/waves</code>, <code>/dotgrid</code>, <code>/hometest</code>, classic home component set (only used by previews).</li>
+<li><b>Duplicated home fetch logic</b> between <code>/</code> and <code>/preview/home-c</code> (~200 lines) — partially consolidated into <code>home/data.ts</code>.</li>
+<li><b>No committed baseline schema</b> — core-table DDL exists only in production; export a <code>0000-baseline.sql</code>.</li>
+<li><b>Partial-failure risk on match finish:</b> the progression cascade is many sequential writes with no transaction; a mid-cascade failure leaves standings/caches stale (reseed + refresh-stats are the recovery tools).</li>
+</ul>
+
+<p class="small" style="margin-top:48px;border-top:1px solid var(--line);padding-top:16px">Sources: live code exploration (2026-07-04) + the in-repo <code>docs/inventory/</code> catalogs (2026-05-27 snapshot). For exhaustive per-route/per-table detail see <code>docs/inventory/routes.md</code>, <code>api.md</code>, <code>data-model.md</code>, <code>shared-ui.md</code>, <code>infra.md</code> and <code>docs/inventory/pipelines/</code>.</p>
+</div>
+
+</body></html>

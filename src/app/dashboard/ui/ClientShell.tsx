@@ -13,6 +13,8 @@ const NAV = [
   { href: "/dashboard/players", label: "Παίκτες" },
   { href: "/dashboard/matches", label: "Αγώνες" },
   { href: "/dashboard/tournaments", label: "Διοργανώσεις" },
+  { href: "/preview/tournament-builder", label: "Tournament Builder 2.0" },
+  { href: "/dashboard/geniki-katataxi", label: "Γενική Κατάταξη" },
   { href: "/dashboard/announcements", label: "Ανακοινώσεις" },
   { href: "/dashboard/articles", label: "Άρθρα" },
 ];
