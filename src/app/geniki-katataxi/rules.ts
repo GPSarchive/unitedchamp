@@ -18,6 +18,40 @@ export const POINTS = {
 
 export const NO_SEASON_LABEL = "Χωρίς σεζόν";
 
+// ── Season model (date-derived) ──────────────────────────────────────────
+// A season runs Sept 30 → Sept 29 of the next year. A date on or after
+// Sept 30 of year Y belongs to season Y (label "Y/Y+1"); anything before
+// Sept 30 belongs to the previous season (Y-1). Labels are "YYYY/YY", e.g.
+// a match on 2024-09-30 → "2024/25", on 2024-09-29 → "2023/24".
+
+/** Month (1-based) and day on/after which a new season begins. */
+export const SEASON_START_MONTH = 9; // September
+export const SEASON_START_DAY = 30;
+
+/** Format a season by its starting calendar year: 2024 → "2024/25". */
+export function formatSeason(startYear: number): string {
+  const end = String((startYear + 1) % 100).padStart(2, "0");
+  return `${startYear}/${end}`;
+}
+
+/**
+ * Season label for a match/tournament date, using the Sept 30 cutoff.
+ * Accepts an ISO string (literal wall-clock digits, no tz conversion) and
+ * returns e.g. "2024/25", or null when the date can't be parsed.
+ */
+export function seasonFromDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
+  if (!m) return null;
+  const year = +m[1];
+  const month = +m[2];
+  const day = +m[3];
+  const beforeCutoff =
+    month < SEASON_START_MONTH ||
+    (month === SEASON_START_MONTH && day < SEASON_START_DAY);
+  return formatSeason(beforeCutoff ? year - 1 : year);
+}
+
 /** Every rule an admin can grant manually, with its default points (null = free amount). */
 export const ADJUSTMENT_PRESETS = {
   international: { label: "Διεθνής διάκριση", points: POINTS.international },

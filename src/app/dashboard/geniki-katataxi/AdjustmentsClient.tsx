@@ -196,13 +196,17 @@ export default function AdjustmentsClient({
               list="gk-seasons"
               value={gSeason}
               onChange={(e) => setGSeason(e.target.value)}
-              placeholder="π.χ. 2026"
+              placeholder="π.χ. 2024/25"
             />
             <datalist id="gk-seasons">
               {seasons.map((s) => (
                 <option key={s} value={s} />
               ))}
             </datalist>
+            <p className="text-[11px] text-white/40">
+              Μορφή «2024/25». Για παλιότερες σεζόν γράψε ελεύθερα τη σεζόν (η σεζόν
+              ξεκινά 30 Σεπ).
+            </p>
           </div>
           <div className="space-y-1">
             <label className={labelCls}>Ομάδα</label>

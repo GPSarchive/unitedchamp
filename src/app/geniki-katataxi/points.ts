@@ -19,6 +19,7 @@ import {
   POINTS,
   automaticSourceKey,
   parseCancelTag,
+  seasonFromDate,
   type AdjustmentKind,
   type EventKind,
   type MatchDetail,
@@ -124,7 +125,23 @@ function blankLine(teamId: number): TeamSeasonLine {
   };
 }
 
-export async function computeGeneralStandings(): Promise<GeneralStandings> {
+/**
+ * How a tournament's season is decided:
+ *   "field" — the manually-typed `tournaments.season` label (current/live behaviour).
+ *   "date"  — derived from `tournaments.start_date` via the Sept 30 cutoff
+ *             (seasonFromDate → "YYYY/YY"), falling back to the typed field, then
+ *             NO_SEASON_LABEL. This is the model under review in the preview tab.
+ */
+export type SeasonMode = "field" | "date";
+
+export interface ComputeOptions {
+  seasonMode?: SeasonMode;
+}
+
+export async function computeGeneralStandings(
+  options: ComputeOptions = {}
+): Promise<GeneralStandings> {
+  const seasonMode: SeasonMode = options.seasonMode ?? "field";
   const [tournaments, stages, participations, matches] = await Promise.all([
     fetchAll<TournamentRow>("tournaments", "id, name, season, status, winner_team_id, start_date"),
     fetchAll<StageRow>("tournament_stages", "id, tournament_id, kind, ordering"),
@@ -196,7 +213,23 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     // Admins don't always flip status off "scheduled", so a finished match also counts.
     const anyFinished = tMatches.some((m) => m.status === "finished");
     if (t.status === "scheduled" && !anyFinished) continue;
-    const season = seasonKey(t.season);
+    // In "date" mode the season comes from the tournament's date via the Sept 30
+    // cutoff. Prefer start_date, but it's usually null here — fall back to the
+    // earliest match date (matches are the real dated records). If nothing has a
+    // date, fall back to the typed season label.
+    const tDate =
+      seasonMode === "date"
+        ? t.start_date ??
+          tMatches.reduce<string | null>((min, m) => {
+            const d = m.match_date;
+            if (!d) return min;
+            return min == null || d < min ? d : min;
+          }, null)
+        : null;
+    const season =
+      seasonMode === "date"
+        ? seasonFromDate(tDate) ?? seasonKey(t.season)
+        : seasonKey(t.season);
     const tName = (t.name ?? "").trim() || `Τουρνουά #${t.id}`;
     // Emit one aggregated automatic event, tagged with a stable source key so the
     // admin panel can cancel/override it with a counter-adjustment. Optional `date`
