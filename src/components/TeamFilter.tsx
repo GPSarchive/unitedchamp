@@ -16,6 +16,8 @@ type TeamFilterProps = {
   onChange: (team: string | null) => void;
   placeholder?: string;
   className?: string;
+  /** Extra classes for the control button — lets callers tune size/shape. */
+  controlClassName?: string;
 };
 
 // Small helper to highlight query matches
@@ -46,6 +48,7 @@ export default function TeamFilter({
   onChange,
   placeholder = "Ψάξε την ομάδα σου...",
   className = "",
+  controlClassName = "",
 }: TeamFilterProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -118,7 +121,7 @@ export default function TeamFilter({
           value
             ? "border-orange-400/40 hover:border-orange-400/60"
             : "border-orange-400/50 hover:border-orange-400/70 animate-[border-glow_2.5s_ease-in-out_infinite]"
-        }`}
+        } ${controlClassName}`}
       >
         <div className="flex items-center gap-3 overflow-hidden">
           {selectedLogo ? (

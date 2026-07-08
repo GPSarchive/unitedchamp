@@ -1,10 +1,9 @@
 // app/geniki-katataxi/page.tsx
 // Γενική Κατάταξη — per-season overall team standings, computed by the points engine
-// in ./points.ts and rendered by the shared ./StandingsView. This live route uses the
-// current season model (the typed `tournaments.season` field). The date-derived model
-// (Sept 30 cutoff) is under review at /preview/geniki-katataxi.
+// in ./points.ts and rendered by the hall-of-champions ./StandingsViewGrand. This live
+// route uses the current season model (the typed `tournaments.season` field).
 import type { Metadata } from "next";
-import StandingsView from "./StandingsView";
+import StandingsViewGrand from "./StandingsViewGrand";
 
 export const revalidate = 60;
 
@@ -22,7 +21,7 @@ export default async function GenikiKataxiPage({
   const requested = Array.isArray(sp.season) ? sp.season[0] : sp.season;
 
   return (
-    <StandingsView
+    <StandingsViewGrand
       seasonMode="field"
       basePath="/geniki-katataxi"
       requestedSeason={requested}

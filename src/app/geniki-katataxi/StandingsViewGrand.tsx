@@ -1,8 +1,6 @@
 // app/geniki-katataxi/StandingsViewGrand.tsx
-// GRAND redesign of the Γενική Κατάταξη — an all-time hall-of-champions ledger.
-// Rendered ONLY by /preview/geniki-katataxi-grand; the live route keeps using
-// ./StandingsView untouched. Data loading is copied verbatim from StandingsView —
-// only the presentation differs.
+// GRAND design of the Γενική Κατάταξη — an all-time hall-of-champions ledger.
+// This is the live route's renderer (/geniki-katataxi).
 //
 // Design language: "Champions League title sequence meets a hand-set almanac".
 //   · Ceremonial gold (#e8c66b) is a metallic tier reserved for the champion's
@@ -23,6 +21,7 @@ import {
   type TeamSeasonLine,
 } from "./points";
 import PointsLog, { type LogTeam } from "./PointsLog";
+import MarqueeText from "@/app/home/cards/MarqueeText";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -441,7 +440,7 @@ function ChampionAltar({
 
         <div className="relative px-6 pt-10 pb-0 text-center md:pt-12">
           <p className="font-mono text-[11px] uppercase tracking-[0.55em]" style={{ color: GOLD }}>
-            Α΄ Θέση
+            1η Θέση
           </p>
 
           {/* crest between laurels */}
@@ -449,28 +448,21 @@ function ChampionAltar({
             <LaurelBranch className="h-24 w-12 sm:h-32 sm:w-16" />
             <Link href={`/OMADA/${line.teamId}`} className="group relative -mb-1">
               <TeamCrest team={team} name={name} size={128} ring={GOLD} />
-              <span
-                aria-hidden
-                className="absolute -top-3 left-1/2 -translate-x-1/2 font-mono text-[10px] font-bold uppercase tracking-[0.3em]"
-                style={{ color: GOLD }}
-              >
-                {pad2(1)}
-              </span>
             </Link>
             <LaurelBranch flip className="h-24 w-12 sm:h-32 sm:w-16" />
           </div>
 
-          <Link href={`/OMADA/${line.teamId}`} className="group mt-5 inline-block">
+          <Link href={`/OMADA/${line.teamId}`} className="group mt-5 block w-full">
             <h2
-              className="mx-auto max-w-[15ch] px-[0.15em] font-[var(--f-display)] font-black italic leading-[1.06] tracking-[-0.02em] transition-opacity group-hover:opacity-80"
+              className="mx-auto px-[0.15em] font-[var(--f-display)] font-black italic leading-[1.06] tracking-[-0.02em] transition-opacity group-hover:opacity-80"
               style={{
                 fontSize: "clamp(2.4rem, 6.5vw, 5rem)",
-                ...goldText,
                 paddingBottom: "0.08em",
-                overflowWrap: "anywhere",
               }}
             >
-              {name}
+              <MarqueeText className="text-center [&>*]:mx-auto">
+                <span style={goldText}>{name}</span>
+              </MarqueeText>
             </h2>
           </Link>
 
@@ -539,20 +531,14 @@ function PodiumFlank({
         >
           {ordinal}
         </p>
-        <div className="mt-4 flex items-center justify-center gap-4">
-          <span
-            className="font-[var(--f-display)] text-4xl font-black italic tabular-nums leading-none"
-            style={{ color: tone }}
-          >
-            {pad2(line.rank)}
-          </span>
+        <div className="mt-4 flex items-center justify-center">
           <Link href={`/OMADA/${line.teamId}`}>
             <TeamCrest team={team} name={name} size={72} ring={tone} />
           </Link>
         </div>
-        <Link href={`/OMADA/${line.teamId}`} className="group mt-3 inline-block">
+        <Link href={`/OMADA/${line.teamId}`} className="group mt-3 block w-full">
           <h3 className="font-[var(--f-display)] text-2xl font-black italic leading-tight text-[#F3EFE6] transition-colors group-hover:text-[#fb923c] md:text-3xl">
-            {name}
+            <MarqueeText className="text-center [&>*]:mx-auto">{name}</MarqueeText>
           </h3>
         </Link>
         <div className="mt-1 min-h-[1.25rem]">
@@ -639,13 +625,13 @@ function LedgerTable({
                             alt={name}
                             width={26}
                             height={26}
-                            className="h-[26px] w-[26px] rounded-sm object-cover"
+                            className="h-[26px] w-[26px] shrink-0 rounded-sm object-cover"
                           />
                         ) : (
-                          <div className="h-[26px] w-[26px] rounded-sm border border-[#F3EFE6]/15 bg-[#13131d]" />
+                          <div className="h-[26px] w-[26px] shrink-0 rounded-sm border border-[#F3EFE6]/15 bg-[#13131d]" />
                         )}
-                        <span className="font-medium text-[#F3EFE6] transition-colors group-hover:text-[#fb923c]">
-                          {name}
+                        <span className="min-w-0 max-w-[220px] font-medium text-[#F3EFE6] transition-colors group-hover:text-[#fb923c]">
+                          <MarqueeText>{name}</MarqueeText>
                         </span>
                       </Link>
                     </td>
@@ -722,36 +708,35 @@ const RULES: Array<{ label: string; pts: number; manual?: boolean }> = [
   { label: "Διακοπή αγώνα (υπαίτιος)", pts: POINTS.abandonment, manual: true },
 ];
 
+// A quiet statute footnote below the ledger — a calm inline list of rule +pts
+// pairs, always visible. No grid of tiles, no loud numerals competing with the
+// standings table above it.
 function PointsLegend() {
   return (
-    <section className="mt-12 border border-[#F3EFE6]/15 bg-[#13131d]/60">
-      <div className="flex items-center justify-between border-b border-[#F3EFE6]/15 px-5 py-3">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.3em]" style={{ color: GOLD }}>
-          Σύστημα πόντων
-        </h2>
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/45">
-          Η κατάταξη μηδενίζει κάθε σεζόν
+    <section className="mt-8 border-t border-[#F3EFE6]/10 pt-4">
+      <h2 className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/50">
+        <span aria-hidden style={{ color: GOLD }}>
+          ◆
         </span>
-      </div>
-      <div className="grid grid-cols-2 gap-px bg-[#F3EFE6]/10 sm:grid-cols-3 lg:grid-cols-5">
+        Σύστημα πόντων
+      </h2>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-[#F3EFE6]/55">
         {RULES.map((r) => (
-          <div key={r.label} className="flex flex-col gap-1 bg-[#0f0f19] px-4 py-3">
-            <span className="text-[13px] leading-snug text-[#F3EFE6]/80">
-              {r.label}
-              {r.manual && <span className="text-[#fb923c]"> *</span>}
-            </span>
+          <span key={r.label} className="whitespace-nowrap">
+            {r.label}
+            {r.manual && <span className="text-[#fb923c]">*</span>}{" "}
             <span
-              className={`font-mono text-lg font-bold tabular-nums ${
-                r.pts >= 0 ? "text-[#F3EFE6]" : "text-red-400"
+              className={`font-mono tabular-nums ${
+                r.pts >= 0 ? "text-[#F3EFE6]/80" : "text-red-400"
               }`}
             >
               {signed(r.pts)}
             </span>
-          </div>
+          </span>
         ))}
       </div>
-      <p className="border-t border-[#F3EFE6]/15 px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-[#F3EFE6]/45">
-        * Καταχωρείται χειροκίνητα από τη διοργάνωση
+      <p className="mt-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-[#F3EFE6]/35">
+        * χειροκίνητη καταχώρηση · η κατάταξη μηδενίζει κάθε σεζόν
       </p>
     </section>
   );
@@ -872,7 +857,7 @@ export default async function StandingsViewGrand({
                         key={l.teamId}
                         line={l}
                         team={teams.get(l.teamId)}
-                        ordinal="Β΄ Θέση"
+                        ordinal="2η Θέση"
                         tone={SILVER}
                       />
                     ))}
@@ -881,7 +866,7 @@ export default async function StandingsViewGrand({
                         key={l.teamId}
                         line={l}
                         team={teams.get(l.teamId)}
-                        ordinal="Γ΄ Θέση"
+                        ordinal="3η Θέση"
                         tone={BRONZE}
                       />
                     ))}

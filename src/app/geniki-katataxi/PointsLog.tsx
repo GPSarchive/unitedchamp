@@ -6,6 +6,7 @@ import { Fragment, useMemo, useState } from "react";
 import Image from "next/image";
 import { ADJUSTMENT_PRESETS, type EventKind, type PointsEvent } from "./rules";
 import { formatMatchDate } from "@/app/lib/datetime";
+import TeamFilter from "@/components/TeamFilter";
 
 export type LogTeam = { name: string; logo: string | null };
 
@@ -72,6 +73,26 @@ export default function PointsLog({
       .sort((a, b) => a.name.localeCompare(b.name, "el"));
   }, [events, teams]);
 
+  // Name-keyed shapes for the shared TeamFilter combobox.
+  const teamNames = useMemo(() => teamOptions.map((t) => t.name), [teamOptions]);
+  const teamLogos = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of teamOptions) {
+      const logo = teams[t.id]?.logo;
+      if (logo) m[t.name] = logo;
+    }
+    return m;
+  }, [teamOptions, teams]);
+  const idByName = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of teamOptions) m.set(t.name, t.id);
+    return m;
+  }, [teamOptions]);
+  const selectedTeamName =
+    teamFilter === "all"
+      ? null
+      : teamOptions.find((t) => t.id === teamFilter)?.name ?? null;
+
   const shown = useMemo(() => {
     let list = filter === "all" ? events : events.filter((e) => e.kind === filter);
     if (teamFilter !== "all") list = list.filter((e) => e.teamId === teamFilter);
@@ -93,6 +114,20 @@ export default function PointsLog({
           Αναλυτικό μητρώο πόντων
         </h2>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* Team filter — shared searchable combobox (same as the homepage teams dashboard),
+              sized down to sit uniformly beside the reason-filter tabs. */}
+          <TeamFilter
+            className="w-full sm:w-56"
+            controlClassName="!rounded !px-2.5 !py-1 !text-[11px] !gap-1.5 [&_svg]:!h-3.5 [&_svg]:!w-3.5 [&_img]:!h-4 [&_img]:!w-4 [&_.relative]:!h-4 [&_.relative]:!w-4"
+            options={teamNames}
+            logosByTeam={teamLogos}
+            value={selectedTeamName}
+            placeholder="Όλες οι ομάδες"
+            onChange={(name) =>
+              setTeamFilter(name == null ? "all" : idByName.get(name) ?? "all")
+            }
+          />
+
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
               const active = f.key === filter;
@@ -111,40 +146,6 @@ export default function PointsLog({
                 </button>
               );
             })}
-          </div>
-
-          {/* Team filter — styled native select (dark, mono, custom caret) */}
-          <div className="relative">
-            <select
-              aria-label="Φίλτρο ομάδας"
-              value={teamFilter === "all" ? "all" : String(teamFilter)}
-              onChange={(e) =>
-                setTeamFilter(e.target.value === "all" ? "all" : Number(e.target.value))
-              }
-              className={`w-full cursor-pointer appearance-none border bg-[#13131d] py-1 pl-2.5 pr-8 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors focus:outline-none sm:w-auto ${
-                teamFilter === "all"
-                  ? "border-[#F3EFE6]/25 text-[#F3EFE6]/70 hover:border-[#fb923c]/60 hover:text-[#fb923c]"
-                  : "border-[#fb923c] text-[#fb923c]"
-              }`}
-            >
-              <option value="all" className="bg-[#13131d] text-[#F3EFE6]">
-                Όλες οι ομάδες
-              </option>
-              {teamOptions.map((t) => (
-                <option key={t.id} value={t.id} className="bg-[#13131d] text-[#F3EFE6]">
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {/* custom caret */}
-            <span
-              aria-hidden
-              className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[9px] ${
-                teamFilter === "all" ? "text-[#F3EFE6]/50" : "text-[#fb923c]"
-              }`}
-            >
-              ▾
-            </span>
           </div>
         </div>
       </div>
