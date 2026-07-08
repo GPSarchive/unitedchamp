@@ -2,11 +2,15 @@
 // Public log: every points award of the season, filterable by reason.
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Image from "next/image";
 import { ADJUSTMENT_PRESETS, type EventKind, type PointsEvent } from "./rules";
+import { formatMatchDate } from "@/app/lib/datetime";
 
 export type LogTeam = { name: string; logo: string | null };
+
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? formatMatchDate(iso, { day: "2-digit", month: "short", year: "numeric" }) : "";
 
 type Filter = "all" | EventKind;
 
@@ -49,6 +53,15 @@ export default function PointsLog({
   teams: Record<number, LogTeam>;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  const oppName = (id: number | null) =>
+    id == null ? "—" : teams[id]?.name ?? `Ομάδα #${id}`;
 
   const shown = useMemo(() => {
     const list = filter === "all" ? events : events.filter((e) => e.kind === filter);
@@ -106,15 +119,28 @@ export default function PointsLog({
                     ? ADJUSTMENT_PRESETS[e.adjustmentKind]?.label ?? KIND_LABEL.adjustment
                     : KIND_LABEL[e.kind];
                 const cancelled = Boolean(e.cancelledBy);
+                const details = e.matches ?? [];
+                const expandable = details.length > 1;
+                const rowKey = e.sourceKey ?? `adj-${e.adjustmentId}-${i}`;
+                const isOpen = expanded.has(rowKey);
+                const dateText = fmtDate(e.date);
                 return (
+                  <Fragment key={rowKey}>
                   <tr
-                    key={`${e.teamId}-${e.kind}-${e.label}-${i}`}
                     className={`border-b border-[#F3EFE6]/10 last:border-b-0 hover:bg-[#fb923c]/[0.05] ${
                       cancelled ? "opacity-45" : ""
-                    }`}
+                    } ${expandable ? "cursor-pointer" : ""}`}
+                    onClick={expandable ? () => toggle(rowKey) : undefined}
                   >
                     <td className="px-5 py-2.5">
                       <div className="flex items-center gap-2.5">
+                        {expandable ? (
+                          <span className="font-mono text-[10px] text-[#fb923c]">
+                            {isOpen ? "▾" : "▸"}
+                          </span>
+                        ) : (
+                          <span className="w-[10px]" />
+                        )}
                         {team?.logo ? (
                           <Image
                             src={team.logo}
@@ -144,11 +170,17 @@ export default function PointsLog({
                     </td>
                     <td className="w-full px-3 py-2.5 text-[13px] text-[#F3EFE6]/60">
                       {e.label}
+                      {details.length === 1 && details[0].opponentId != null && (
+                        <span className="text-[#F3EFE6]/45"> · vs {oppName(details[0].opponentId)}</span>
+                      )}
                       {cancelled && (
                         <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.15em] text-red-300/80">
                           · ακυρώθηκε
                         </span>
                       )}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-mono text-[11px] text-[#F3EFE6]/55">
+                      {expandable ? `${details.length} αγ.` : dateText}
                     </td>
                     <td className="px-5 py-2.5 text-right">
                       <span
@@ -164,6 +196,29 @@ export default function PointsLog({
                       </span>
                     </td>
                   </tr>
+
+                  {expandable && isOpen &&
+                    details.map((m, mi) => (
+                      <tr
+                        key={`${rowKey}-m${mi}`}
+                        className="border-b border-[#F3EFE6]/5 bg-black/30 text-[12px]"
+                      >
+                        <td className="py-1.5 pl-12 pr-5 text-[#F3EFE6]/55">
+                          vs {oppName(m.opponentId)}
+                        </td>
+                        <td className="px-3 py-1.5 font-mono text-[11px] text-[#F3EFE6]/45">
+                          {m.goalsFor != null && m.goalsAgainst != null
+                            ? `${m.goalsFor}–${m.goalsAgainst}`
+                            : ""}
+                        </td>
+                        <td className="px-3 py-1.5" />
+                        <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono text-[11px] text-[#F3EFE6]/50">
+                          {fmtDate(m.date)}
+                        </td>
+                        <td />
+                      </tr>
+                    ))}
+                  </Fragment>
                 );
               })}
             </tbody>

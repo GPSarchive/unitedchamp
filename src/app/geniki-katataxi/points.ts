@@ -21,6 +21,7 @@ import {
   parseCancelTag,
   type AdjustmentKind,
   type EventKind,
+  type MatchDetail,
   type PointsEvent,
 } from "./rules";
 
@@ -67,6 +68,7 @@ type TournamentRow = {
   season: string | null;
   status: string;
   winner_team_id: number | null;
+  start_date: string | null;
 };
 type StageRow = { id: number; tournament_id: number; kind: string; ordering: number | null };
 type ParticipationRow = { tournament_id: number; team_id: number; stage_id: number | null };
@@ -82,6 +84,7 @@ type MatchRow = {
   round: number | null;
   bracket_pos: number | null;
   leg: number | null;
+  match_date: string | null;
 };
 
 const PAGE = 1000;
@@ -123,12 +126,12 @@ function blankLine(teamId: number): TeamSeasonLine {
 
 export async function computeGeneralStandings(): Promise<GeneralStandings> {
   const [tournaments, stages, participations, matches] = await Promise.all([
-    fetchAll<TournamentRow>("tournaments", "id, name, season, status, winner_team_id"),
+    fetchAll<TournamentRow>("tournaments", "id, name, season, status, winner_team_id, start_date"),
     fetchAll<StageRow>("tournament_stages", "id, tournament_id, kind, ordering"),
     fetchAll<ParticipationRow>("tournament_teams", "tournament_id, team_id, stage_id"),
     fetchAll<MatchRow>(
       "matches",
-      "tournament_id, stage_id, team_a_id, team_b_id, team_a_score, team_b_score, winner_team_id, status, round, bracket_pos, leg"
+      "tournament_id, stage_id, team_a_id, team_b_id, team_a_score, team_b_score, winner_team_id, status, round, bracket_pos, leg, match_date"
     ),
   ]);
 
@@ -196,8 +199,15 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     const season = seasonKey(t.season);
     const tName = (t.name ?? "").trim() || `Τουρνουά #${t.id}`;
     // Emit one aggregated automatic event, tagged with a stable source key so the
-    // admin panel can cancel/override it with a counter-adjustment.
-    const emit = (teamId: number, kind: EventKind, count: number, points: number) => {
+    // admin panel can cancel/override it with a counter-adjustment. Optional `date`
+    // (representative) and `matches` (per-match breakdown for W/D/L) enrich the log.
+    const emit = (
+      teamId: number,
+      kind: EventKind,
+      count: number,
+      points: number,
+      extra?: { date?: string | null; matches?: MatchDetail[] }
+    ) => {
       events.push({
         season,
         teamId,
@@ -207,6 +217,8 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
         label: tName,
         tournamentId: t.id,
         sourceKey: automaticSourceKey(season, teamId, kind, t.id),
+        date: extra?.date ?? null,
+        matches: extra?.matches,
       });
     };
 
@@ -220,7 +232,7 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     }
     for (const teamId of participants) {
       line(season, teamId).participations += 1;
-      emit(teamId, "participation", 1, POINTS.participation);
+      emit(teamId, "participation", 1, POINTS.participation, { date: t.start_date });
     }
 
     // Πρόκριση: +50 for each new phase a team enters after its first one in the
@@ -272,22 +284,35 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
       if (koTies) for (const ties of koTies.values()) advances += ties.size - 1;
       if (advances > 0) {
         line(season, teamId).qualifications += advances;
-        emit(teamId, "qualification", advances, advances * POINTS.qualification);
+        emit(teamId, "qualification", advances, advances * POINTS.qualification, {
+          date: t.start_date,
+        });
       }
     }
 
     // Per-match results. Each leg of a two-legged tie is one match result, decided
     // by its own score — on leg rows winner_team_id marks the TIE winner (aggregate
     // or penalties), not the leg's result. Level scores are a draw at match level
-    // (a shootout only decides who advances).
-    const records = new Map<number, { w: number; d: number; l: number }>();
+    // (a shootout only decides who advances). We keep a per-match breakdown (date +
+    // opponent + score) so the log can expand a "Νίκη ×N" row into its matches.
+    type Rec = { win: MatchDetail[]; draw: MatchDetail[]; loss: MatchDetail[] };
+    const records = new Map<number, Rec>();
     const record = (teamId: number) => {
       let r = records.get(teamId);
       if (!r) {
-        r = { w: 0, d: 0, l: 0 };
+        r = { win: [], draw: [], loss: [] };
         records.set(teamId, r);
       }
       return r;
+    };
+    const detailFor = (m: MatchRow, teamId: number): MatchDetail => {
+      const isA = m.team_a_id === teamId;
+      return {
+        date: m.match_date,
+        opponentId: isA ? m.team_b_id : m.team_a_id,
+        goalsFor: isA ? m.team_a_score : m.team_b_score,
+        goalsAgainst: isA ? m.team_b_score : m.team_a_score,
+      };
     };
     for (const m of tMatches) {
       if (m.status !== "finished") continue;
@@ -301,21 +326,38 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
         winner = m.winner_team_id; // e.g. a forfeit recorded without a real score
       }
       if (winner != null) {
-        record(winner).w += 1;
-        record(winner === a ? b : a).l += 1;
+        const loser = winner === a ? b : a;
+        record(winner).win.push(detailFor(m, winner));
+        record(loser).loss.push(detailFor(m, loser));
       } else if (hasScores) {
-        record(a).d += 1;
-        record(b).d += 1;
+        record(a).draw.push(detailFor(m, a));
+        record(b).draw.push(detailFor(m, b));
       }
     }
+    // Earliest dated match represents the aggregated row; undated sort last.
+    const byDate = (ms: MatchDetail[]) =>
+      [...ms].sort((x, y) => (x.date ?? "9999").localeCompare(y.date ?? "9999"));
+    const repDate = (ms: MatchDetail[]) => byDate(ms).find((m) => m.date)?.date ?? null;
     for (const [teamId, r] of records) {
       const l = line(season, teamId);
-      l.wins += r.w;
-      l.draws += r.d;
-      l.losses += r.l;
-      if (r.w > 0) emit(teamId, "win", r.w, r.w * POINTS.win);
-      if (r.d > 0) emit(teamId, "draw", r.d, r.d * POINTS.draw);
-      if (r.l > 0) emit(teamId, "loss", r.l, r.l * POINTS.loss);
+      l.wins += r.win.length;
+      l.draws += r.draw.length;
+      l.losses += r.loss.length;
+      if (r.win.length > 0)
+        emit(teamId, "win", r.win.length, r.win.length * POINTS.win, {
+          date: repDate(r.win),
+          matches: byDate(r.win),
+        });
+      if (r.draw.length > 0)
+        emit(teamId, "draw", r.draw.length, r.draw.length * POINTS.draw, {
+          date: repDate(r.draw),
+          matches: byDate(r.draw),
+        });
+      if (r.loss.length > 0)
+        emit(teamId, "loss", r.loss.length, r.loss.length * POINTS.loss, {
+          date: repDate(r.loss),
+          matches: byDate(r.loss),
+        });
     }
 
     // Τίτλος + διεκδικητής. Winner is the admin-set winner_team_id; the runner-up is
@@ -323,9 +365,8 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     // have parallel knockout paths — consolation brackets, ULTRA/GREAT paths — so the
     // final is not simply "the last knockout stage's top round".)
     if (t.winner_team_id != null) {
-      line(season, t.winner_team_id).titles += 1;
-      emit(t.winner_team_id, "title", 1, POINTS.tournamentWinner);
-
+      // Find the winner's last knockout match first — its date stamps the title,
+      // and its non-winner is the runner-up.
       let final: MatchRow | null = null;
       let finalKey = -1;
       for (const m of tMatches) {
@@ -340,6 +381,14 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
           final = m;
         }
       }
+      const finalDate = final?.match_date ?? t.start_date;
+
+      line(season, t.winner_team_id).titles += 1;
+      emit(t.winner_team_id, "title", 1, POINTS.tournamentWinner, {
+        date: finalDate,
+        matches: final ? [detailFor(final, t.winner_team_id)] : undefined,
+      });
+
       const runnerUp =
         final == null
           ? null
@@ -348,7 +397,10 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
             : final.team_a_id;
       if (runnerUp != null) {
         line(season, runnerUp).runnerUps += 1;
-        emit(runnerUp, "runner_up", 1, POINTS.runnerUp);
+        emit(runnerUp, "runner_up", 1, POINTS.runnerUp, {
+          date: finalDate,
+          matches: [detailFor(final!, runnerUp)],
+        });
       }
     }
   }

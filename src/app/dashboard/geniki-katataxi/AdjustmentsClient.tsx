@@ -7,9 +7,9 @@
 //   • undo a cancellation.
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Ban, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Ban, RotateCcw, ChevronRight, ChevronDown } from "lucide-react";
 import {
   ADJUSTMENT_KINDS,
   ADJUSTMENT_PRESETS,
@@ -17,9 +17,12 @@ import {
   type EventKind,
   type PointsEvent,
 } from "@/app/geniki-katataxi/rules";
+import { formatMatchDate } from "@/app/lib/datetime";
 import { addAdjustment, deleteAdjustment, cancelEvent, uncancelEvent } from "./actions";
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? formatMatchDate(iso, { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 // Human labels for the automatic event kinds (adjustment kinds come from ADJUSTMENT_PRESETS).
 const EVENT_LABEL: Record<Exclude<EventKind, "adjustment">, string> = {
@@ -82,8 +85,18 @@ export default function AdjustmentsClient({
   const [season, setSeason] = useState<string>(seasons[0] ?? "");
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   const teamName = useMemo(() => new Map(teams.map((t) => [t.id, t.name])), [teams]);
+  const oppName = (id: number | null) =>
+    id == null ? "—" : teamName.get(id) ?? `Ομάδα #${id}`;
 
   const seasonEvents = useMemo(
     () => events.filter((e) => e.season === season),
@@ -308,9 +321,11 @@ export default function AdjustmentsClient({
             <table className="min-w-full text-sm">
               <thead className="bg-zinc-900/60 text-left text-xs text-white/60">
                 <tr>
+                  <th className="w-8 px-2 py-2" />
                   <th className="px-4 py-2">Ομάδα</th>
                   <th className="px-4 py-2">Λόγος</th>
                   <th className="px-4 py-2">Πηγή</th>
+                  <th className="whitespace-nowrap px-4 py-2">Ημ/νία</th>
                   <th className="px-4 py-2 text-center">Τύπος</th>
                   <th className="px-4 py-2 text-right">Πόντοι</th>
                   <th className="px-4 py-2 text-right">Ενέργεια</th>
@@ -324,13 +339,34 @@ export default function AdjustmentsClient({
                     ? `adj-${e.adjustmentId}`
                     : `evt-${e.sourceKey}`;
                   const busy = busyKey === rowKey;
+                  const details = e.matches ?? [];
+                  // Expandable only when there are per-match rows worth showing
+                  // (a single match already fits the main row).
+                  const expandable = details.length > 1;
+                  const isOpen = expanded.has(rowKey);
                   return (
+                    <Fragment key={rowKey}>
                     <tr
-                      key={rowKey}
                       className={`border-t border-white/5 odd:bg-zinc-950 even:bg-zinc-900/40 ${
                         cancelled ? "opacity-55" : ""
                       }`}
                     >
+                      <td className="px-2 py-2 text-center">
+                        {expandable ? (
+                          <button
+                            onClick={() => toggle(rowKey)}
+                            className="rounded p-0.5 text-white/50 hover:bg-white/10 hover:text-white"
+                            title={isOpen ? "Σύμπτυξη" : "Ανάλυση αγώνων"}
+                            aria-expanded={isOpen}
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        ) : null}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2 text-white">
                         {teamName.get(e.teamId) ?? `Ομάδα #${e.teamId}`}
                       </td>
@@ -340,7 +376,21 @@ export default function AdjustmentsClient({
                           {e.count > 1 && ` ×${e.count}`}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-white/60">{e.label}</td>
+                      <td className="px-4 py-2 text-white/60">
+                        {e.label}
+                        {/* single-match events name the opponent inline */}
+                        {details.length === 1 && details[0].opponentId != null && (
+                          <span className="text-white/45"> · vs {oppName(details[0].opponentId)}</span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-white/60">
+                        {fmtDate(e.date)}
+                        {expandable && (
+                          <span className="ml-1 text-white/35">
+                            ({details.length} αγ.)
+                          </span>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap px-4 py-2 text-center">
                         {isManual ? (
                           <span className="rounded-md border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-xs text-sky-200">
@@ -409,6 +459,32 @@ export default function AdjustmentsClient({
                         )}
                       </td>
                     </tr>
+
+                    {expandable && isOpen &&
+                      details.map((m, i) => (
+                        <tr
+                          key={`${rowKey}-m${i}`}
+                          className="border-t border-white/5 bg-black/40 text-xs"
+                        >
+                          <td />
+                          <td className="px-4 py-1.5 text-white/40">↳</td>
+                          <td className="whitespace-nowrap px-4 py-1.5 text-white/70">
+                            vs {oppName(m.opponentId)}
+                          </td>
+                          <td className="px-4 py-1.5 text-white/45">
+                            {m.goalsFor != null && m.goalsAgainst != null
+                              ? `${m.goalsFor}–${m.goalsAgainst}`
+                              : ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-1.5 text-white/60">
+                            {fmtDate(m.date)}
+                          </td>
+                          <td />
+                          <td />
+                          <td />
+                        </tr>
+                      ))}
+                    </Fragment>
                   );
                 })}
               </tbody>

@@ -49,6 +49,18 @@ export type EventKind =
   | "loss"
   | "adjustment";
 
+/** One match behind a W/D/L award — for the expandable per-match breakdown. */
+export interface MatchDetail {
+  /** ISO date (match_date) or null when the match has no date. */
+  date: string | null;
+  /** Opponent team id, or null if unknown. */
+  opponentId: number | null;
+  /** This team's goals in the match, when scored. */
+  goalsFor: number | null;
+  /** Opponent's goals in the match, when scored. */
+  goalsAgainst: number | null;
+}
+
 export interface PointsEvent {
   season: string;
   teamId: number;
@@ -61,6 +73,14 @@ export interface PointsEvent {
   points: number;
   /** Context: tournament name, or the admin's reason text. */
   label: string;
+  /**
+   * Representative date for the award (ISO). For W/D/L it's the earliest of the
+   * underlying matches; for title/runner-up the final's date; for participation/
+   * qualification the tournament's start date when known. May be null.
+   */
+  date?: string | null;
+  /** Per-match breakdown for W/D/L events (the expandable sub-rows). */
+  matches?: MatchDetail[];
   /** Source tournament id for automatic events (undefined for manual adjustments). */
   tournamentId?: number;
   /**
