@@ -785,7 +785,9 @@ export default async function StandingsViewGrand({
 
   const [standings, teamsRes] = await Promise.all([
     computeGeneralStandings({ seasonMode }),
-    supabaseAdmin.from("teams").select("id, name, logo"),
+    // Active teams only — soft-deleted (deleted_at set) teams are excluded from the
+    // standings so a disbanded team stops appearing in every season it ever played.
+    supabaseAdmin.from("teams").select("id, name, logo").is("deleted_at", null),
   ]);
 
   const teams = new Map<number, TeamInfo>(
@@ -797,9 +799,12 @@ export default async function StandingsViewGrand({
       ? requested
       : standings.seasons.find((s) => s !== NO_SEASON_LABEL) ?? standings.seasons[0] ?? "—";
 
-  const lines = standings.bySeason.get(season) ?? [];
+  // The points engine derives teams from participation/match rows and knows nothing
+  // about soft-deletes, so drop any line for a team that's no longer active. Ranks
+  // below recompute over the surviving lines.
+  const lines = (standings.bySeason.get(season) ?? []).filter((l) => teams.has(l.teamId));
   const seasonEvents = standings.events.filter(
-    (e) => e.season === season && !e.cancelsSourceKey
+    (e) => e.season === season && !e.cancelsSourceKey && teams.has(e.teamId)
   );
   const logTeams: Record<number, LogTeam> = Object.fromEntries(
     [...teams].map(([id, t]) => [id, { name: t.name ?? `Ομάδα #${id}`, logo: t.logo }])
