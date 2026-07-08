@@ -23,7 +23,7 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "win", label: "Νίκες" },
   { key: "draw", label: "Ισοπαλίες" },
   { key: "loss", label: "Ήττες" },
-  { key: "adjustment", label: "Χειροκίνητα" },
+  { key: "adjustment", label: "Άλλο" },
 ];
 
 const KIND_LABEL: Record<EventKind, string> = {
@@ -53,6 +53,7 @@ export default function PointsLog({
   teams: Record<number, LogTeam>;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
+  const [teamFilter, setTeamFilter] = useState<"all" | number>("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
     setExpanded((prev) => {
@@ -63,8 +64,17 @@ export default function PointsLog({
   const oppName = (id: number | null) =>
     id == null ? "—" : teams[id]?.name ?? `Ομάδα #${id}`;
 
+  // Only teams that actually appear in this season's log, alphabetised (Greek).
+  const teamOptions = useMemo(() => {
+    const ids = new Set(events.map((e) => e.teamId));
+    return [...ids]
+      .map((id) => ({ id, name: teams[id]?.name ?? `Ομάδα #${id}` }))
+      .sort((a, b) => a.name.localeCompare(b.name, "el"));
+  }, [events, teams]);
+
   const shown = useMemo(() => {
-    const list = filter === "all" ? events : events.filter((e) => e.kind === filter);
+    let list = filter === "all" ? events : events.filter((e) => e.kind === filter);
+    if (teamFilter !== "all") list = list.filter((e) => e.teamId === teamFilter);
     return [...list].sort((a, b) => {
       const ac = a.cancelledBy ? 1 : 0;
       const bc = b.cancelledBy ? 1 : 0;
@@ -74,32 +84,68 @@ export default function PointsLog({
         (teams[a.teamId]?.name ?? "").localeCompare(teams[b.teamId]?.name ?? "", "el")
       );
     });
-  }, [events, filter, teams]);
+  }, [events, filter, teamFilter, teams]);
 
   return (
     <section className="mt-10 border-2 border-[#F3EFE6]/20 bg-[#0f0f19]/70">
-      <div className="flex flex-col gap-3 border-b border-[#F3EFE6]/15 px-5 py-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-[#F3EFE6]/15 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-[#fb923c]">
           Αναλυτικό μητρώο πόντων
         </h2>
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => {
-            const active = f.key === filter;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={`border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                  active
-                    ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                    : "border-[#F3EFE6]/25 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#fb923c]/60 hover:text-[#fb923c]"
-                }`}
-              >
-                {f.label}
-              </button>
-            );
-          })}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex flex-wrap gap-1.5">
+            {FILTERS.map((f) => {
+              const active = f.key === filter;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className={`border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                    active
+                      ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
+                      : "border-[#F3EFE6]/25 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#fb923c]/60 hover:text-[#fb923c]"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Team filter — styled native select (dark, mono, custom caret) */}
+          <div className="relative">
+            <select
+              aria-label="Φίλτρο ομάδας"
+              value={teamFilter === "all" ? "all" : String(teamFilter)}
+              onChange={(e) =>
+                setTeamFilter(e.target.value === "all" ? "all" : Number(e.target.value))
+              }
+              className={`w-full cursor-pointer appearance-none border bg-[#13131d] py-1 pl-2.5 pr-8 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors focus:outline-none sm:w-auto ${
+                teamFilter === "all"
+                  ? "border-[#F3EFE6]/25 text-[#F3EFE6]/70 hover:border-[#fb923c]/60 hover:text-[#fb923c]"
+                  : "border-[#fb923c] text-[#fb923c]"
+              }`}
+            >
+              <option value="all" className="bg-[#13131d] text-[#F3EFE6]">
+                Όλες οι ομάδες
+              </option>
+              {teamOptions.map((t) => (
+                <option key={t.id} value={t.id} className="bg-[#13131d] text-[#F3EFE6]">
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            {/* custom caret */}
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[9px] ${
+                teamFilter === "all" ? "text-[#F3EFE6]/50" : "text-[#fb923c]"
+              }`}
+            >
+              ▾
+            </span>
+          </div>
         </div>
       </div>
 
