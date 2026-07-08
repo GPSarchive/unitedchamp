@@ -17,7 +17,10 @@ import {
   ADJUSTMENT_PRESETS,
   NO_SEASON_LABEL,
   POINTS,
+  automaticSourceKey,
+  parseCancelTag,
   type AdjustmentKind,
+  type EventKind,
   type PointsEvent,
 } from "./rules";
 
@@ -25,6 +28,7 @@ export { ADJUSTMENT_PRESETS, NO_SEASON_LABEL, POINTS } from "./rules";
 export type { AdjustmentKind, EventKind, PointsEvent } from "./rules";
 
 export interface SeasonAdjustment {
+  id: number;
   season: string;
   team_id: number;
   kind: AdjustmentKind;
@@ -134,7 +138,7 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
   try {
     adjustments = await fetchAll<SeasonAdjustment>(
       "season_team_adjustments",
-      "season, team_id, kind, points, reason"
+      "id, season, team_id, kind, points, reason"
     );
   } catch {
     adjustmentsAvailable = false;
@@ -191,6 +195,20 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     if (t.status === "scheduled" && !anyFinished) continue;
     const season = seasonKey(t.season);
     const tName = (t.name ?? "").trim() || `Τουρνουά #${t.id}`;
+    // Emit one aggregated automatic event, tagged with a stable source key so the
+    // admin panel can cancel/override it with a counter-adjustment.
+    const emit = (teamId: number, kind: EventKind, count: number, points: number) => {
+      events.push({
+        season,
+        teamId,
+        kind,
+        count,
+        points,
+        label: tName,
+        tournamentId: t.id,
+        sourceKey: automaticSourceKey(season, teamId, kind, t.id),
+      });
+    };
 
     const tParticipations = participationsByTournament.get(t.id) ?? [];
 
@@ -202,14 +220,7 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     }
     for (const teamId of participants) {
       line(season, teamId).participations += 1;
-      events.push({
-        season,
-        teamId,
-        kind: "participation",
-        count: 1,
-        points: POINTS.participation,
-        label: tName,
-      });
+      emit(teamId, "participation", 1, POINTS.participation);
     }
 
     // Πρόκριση: +50 for each new phase a team enters after its first one in the
@@ -261,14 +272,7 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
       if (koTies) for (const ties of koTies.values()) advances += ties.size - 1;
       if (advances > 0) {
         line(season, teamId).qualifications += advances;
-        events.push({
-          season,
-          teamId,
-          kind: "qualification",
-          count: advances,
-          points: advances * POINTS.qualification,
-          label: tName,
-        });
+        emit(teamId, "qualification", advances, advances * POINTS.qualification);
       }
     }
 
@@ -309,12 +313,9 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
       l.wins += r.w;
       l.draws += r.d;
       l.losses += r.l;
-      if (r.w > 0)
-        events.push({ season, teamId, kind: "win", count: r.w, points: r.w * POINTS.win, label: tName });
-      if (r.d > 0)
-        events.push({ season, teamId, kind: "draw", count: r.d, points: r.d * POINTS.draw, label: tName });
-      if (r.l > 0)
-        events.push({ season, teamId, kind: "loss", count: r.l, points: r.l * POINTS.loss, label: tName });
+      if (r.w > 0) emit(teamId, "win", r.w, r.w * POINTS.win);
+      if (r.d > 0) emit(teamId, "draw", r.d, r.d * POINTS.draw);
+      if (r.l > 0) emit(teamId, "loss", r.l, r.l * POINTS.loss);
     }
 
     // Τίτλος + διεκδικητής. Winner is the admin-set winner_team_id; the runner-up is
@@ -323,14 +324,7 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
     // final is not simply "the last knockout stage's top round".)
     if (t.winner_team_id != null) {
       line(season, t.winner_team_id).titles += 1;
-      events.push({
-        season,
-        teamId: t.winner_team_id,
-        kind: "title",
-        count: 1,
-        points: POINTS.tournamentWinner,
-        label: tName,
-      });
+      emit(t.winner_team_id, "title", 1, POINTS.tournamentWinner);
 
       let final: MatchRow | null = null;
       let finalKey = -1;
@@ -354,26 +348,28 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
             : final.team_a_id;
       if (runnerUp != null) {
         line(season, runnerUp).runnerUps += 1;
-        events.push({
-          season,
-          teamId: runnerUp,
-          kind: "runner_up",
-          count: 1,
-          points: POINTS.runnerUp,
-          label: tName,
-        });
+        emit(runnerUp, "runner_up", 1, POINTS.runnerUp);
       }
     }
   }
 
   // Manual adjustments (international distinction/participation, withdrawal,
-  // abandonment, or any rule granted by hand in the dashboard).
+  // abandonment, or any rule granted by hand in the dashboard). Some adjustments are
+  // "counter-adjustments" created by the admin cancel action: they carry a machine tag
+  // pairing them to an automatic event's sourceKey, which we use to neutralise it.
+  const cancelledByKey = new Map<string, number>();
+  for (const adj of adjustments) {
+    const key = parseCancelTag(adj.reason);
+    if (key) cancelledByKey.set(key, adj.id);
+  }
+
   for (const adj of adjustments) {
     const season = seasonKey(adj.season);
     const l = line(season, adj.team_id);
     l.adjustmentPoints += adj.points;
     l.adjustmentCount += 1;
     const preset = ADJUSTMENT_PRESETS[adj.kind] ?? ADJUSTMENT_PRESETS.other;
+    const cancelsSourceKey = parseCancelTag(adj.reason) ?? undefined;
     events.push({
       season,
       teamId: adj.team_id,
@@ -382,7 +378,18 @@ export async function computeGeneralStandings(): Promise<GeneralStandings> {
       count: 1,
       points: adj.points,
       label: (adj.reason ?? "").trim() || preset.label,
+      adjustmentId: adj.id,
+      cancelsSourceKey,
     });
+  }
+
+  // Flag each automatic event that a counter-adjustment neutralises.
+  if (cancelledByKey.size > 0) {
+    for (const e of events) {
+      if (e.sourceKey && cancelledByKey.has(e.sourceKey)) {
+        e.cancelledBy = cancelledByKey.get(e.sourceKey);
+      }
+    }
   }
 
   // Totals.

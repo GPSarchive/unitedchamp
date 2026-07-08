@@ -1,55 +1,45 @@
 // app/dashboard/geniki-katataxi/page.tsx
-// SERVER: loads teams, known seasons and existing manual adjustments, and hands
-// them to the client CRUD. Auth is enforced by the dashboard layout; the server
-// actions re-check the admin role on every write.
+// SERVER: computes the full Γενική Κατάταξη points log (automatic + manual) and
+// hands it to the client CRUD. Auth is enforced by the dashboard layout; the
+// server actions re-check the admin role on every write.
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { NO_SEASON_LABEL } from "@/app/geniki-katataxi/rules";
-import AdjustmentsClient, { type AdjustmentRow } from "./AdjustmentsClient";
+import { computeGeneralStandings } from "@/app/geniki-katataxi/points";
+import AdjustmentsClient from "./AdjustmentsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
-  const [teamsRes, tournamentsRes, adjustmentsRes] = await Promise.all([
+  const [teamsRes, standings] = await Promise.all([
     supabaseAdmin
       .from("teams")
       .select("id, name")
       .is("deleted_at", null)
       .order("name", { ascending: true }),
-    supabaseAdmin.from("tournaments").select("season"),
-    supabaseAdmin
-      .from("season_team_adjustments")
-      .select("id, season, team_id, kind, points, reason, created_at")
-      .order("created_at", { ascending: false }),
+    computeGeneralStandings().catch((err) => {
+      console.error("[dashboard/geniki-katataxi] compute error:", err);
+      return null;
+    }),
   ]);
 
-  const teams = (teamsRes.data ?? []) as { id: number; name: string | null }[];
+  const teams = ((teamsRes.data ?? []) as { id: number; name: string | null }[]).map((t) => ({
+    id: t.id,
+    name: t.name ?? `Ομάδα #${t.id}`,
+  }));
 
-  const seasons = [
-    ...new Set(
-      ((tournamentsRes.data ?? []) as { season: string | null }[])
-        .map((t) => (t.season ?? "").trim())
-        .filter(Boolean)
-    ),
-  ].sort((a, b) => b.localeCompare(a, "el", { numeric: true }));
-
-  // If the table doesn't exist yet the query errors — surface that to the client
-  // so it can point at the pending migration instead of showing an empty list.
-  const tableMissing = Boolean(adjustmentsRes.error);
-  if (adjustmentsRes.error) {
-    console.error(
-      "[dashboard/geniki-katataxi] adjustments load error:",
-      adjustmentsRes.error.message
-    );
-  }
-  const rows = (adjustmentsRes.data ?? []) as AdjustmentRow[];
+  const seasons = standings?.seasons ?? [];
+  // The public log carries the counter-adjustment "cancel" rows as their own
+  // adjustment events; the admin table pairs them to the source event instead of
+  // listing them separately, so filter them out of the standalone log.
+  const events = (standings?.events ?? []).filter((e) => !e.cancelsSourceKey);
 
   return (
     <AdjustmentsClient
-      teams={teams.map((t) => ({ id: t.id, name: t.name ?? `Ομάδα #${t.id}` }))}
+      teams={teams}
       seasons={seasons.length ? seasons : [NO_SEASON_LABEL]}
-      rows={rows}
-      tableMissing={tableMissing}
+      events={events}
+      adjustmentsAvailable={standings?.adjustmentsAvailable ?? false}
     />
   );
 }

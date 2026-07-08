@@ -8,7 +8,11 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { isAdmin } from "@/app/lib/supabase/apiAuth";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import { ADJUSTMENT_KINDS, type AdjustmentKind } from "@/app/geniki-katataxi/rules";
+import {
+  ADJUSTMENT_KINDS,
+  makeCancelTag,
+  type AdjustmentKind,
+} from "@/app/geniki-katataxi/rules";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -83,4 +87,69 @@ export async function deleteAdjustment(id: number): Promise<ActionResult> {
     console.error("[deleteAdjustment] error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
+}
+
+/**
+ * Cancels an automatic points event (a computed win/title/participation/…) by writing
+ * a counter-adjustment of equal, opposite points, tagged so we can pair it back to the
+ * source event. Does NOT touch tournament/match data, and is fully reversible via
+ * uncancelEvent. Idempotent: refuses to double-cancel the same sourceKey.
+ */
+export async function cancelEvent(input: {
+  season: string;
+  teamId: number;
+  sourceKey: string;
+  points: number;
+  note: string;
+}): Promise<ActionResult> {
+  try {
+    const user = await requireAdminUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const season = (input.season ?? "").trim();
+    const sourceKey = (input.sourceKey ?? "").trim();
+    const points = Math.trunc(Number(input.points));
+    if (!season) return { success: false, error: "Λείπει η σεζόν." };
+    if (!Number.isFinite(input.teamId) || input.teamId <= 0)
+      return { success: false, error: "Λείπει η ομάδα." };
+    if (!sourceKey) return { success: false, error: "Λείπει το αναγνωριστικό του event." };
+    if (!Number.isFinite(points) || points === 0)
+      return { success: false, error: "Το event δεν έχει πόντους προς ακύρωση." };
+
+    const tag = makeCancelTag(sourceKey);
+
+    // Guard against double-cancel: is there already a counter-adjustment for this key?
+    const { data: existing, error: exErr } = await supabaseAdmin
+      .from("season_team_adjustments")
+      .select("id")
+      .ilike("reason", `%${tag}%`)
+      .limit(1);
+    if (exErr) return { success: false, error: exErr.message };
+    if (existing && existing.length > 0)
+      return { success: false, error: "Το event είναι ήδη ακυρωμένο." };
+
+    const note = (input.note ?? "").trim();
+    const reason = note ? `${note} ${tag}` : `Ακύρωση αυτόματου πόντου ${tag}`;
+
+    const { error } = await supabaseAdmin.from("season_team_adjustments").insert({
+      season,
+      team_id: input.teamId,
+      kind: "other",
+      points: -points, // opposite sign → nets the automatic event to zero
+      reason,
+      created_by: user.id,
+    });
+    if (error) return { success: false, error: error.message };
+
+    revalidate();
+    return { success: true };
+  } catch (err) {
+    console.error("[cancelEvent] error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+/** Reverses a cancellation by deleting the counter-adjustment row. */
+export async function uncancelEvent(adjustmentId: number): Promise<ActionResult> {
+  return deleteAdjustment(adjustmentId);
 }

@@ -61,4 +61,54 @@ export interface PointsEvent {
   points: number;
   /** Context: tournament name, or the admin's reason text. */
   label: string;
+  /** Source tournament id for automatic events (undefined for manual adjustments). */
+  tournamentId?: number;
+  /**
+   * Stable identifier of an automatic event, for the admin cancel/override flow.
+   * Set on automatic events only; manual adjustment rows carry `adjustmentId` instead.
+   */
+  sourceKey?: string;
+  /** DB row id when kind === "adjustment" (a real season_team_adjustments row). */
+  adjustmentId?: number;
+  /**
+   * For automatic events: the id of the counter-adjustment row that cancels this
+   * event, if one exists. When set, the event's points are neutralised.
+   */
+  cancelledBy?: number;
+  /**
+   * For adjustment events: the sourceKey this row cancels, if it is a counter-
+   * adjustment created by the admin "cancel" action (rather than a plain grant).
+   */
+  cancelsSourceKey?: string;
+}
+
+/**
+ * Deterministic key for an automatic points event: (season, team, rule, tournament).
+ * Recomputing the standings must reproduce the exact same key so the admin panel
+ * can tell whether an event has already been cancelled by a counter-adjustment.
+ */
+export function automaticSourceKey(
+  season: string,
+  teamId: number,
+  kind: EventKind,
+  tournamentId: number
+): string {
+  return `${season}|${teamId}|${kind}|${tournamentId}`;
+}
+
+/** Marker embedded in a counter-adjustment's reason so we can pair it to its source event. */
+export const CANCEL_TAG_PREFIX = "[gk-cancel:";
+
+export function makeCancelTag(sourceKey: string): string {
+  return `${CANCEL_TAG_PREFIX}${sourceKey}]`;
+}
+
+/** Extracts the cancelled sourceKey from an adjustment reason, or null if it isn't a cancel. */
+export function parseCancelTag(reason: string | null): string | null {
+  if (!reason) return null;
+  const start = reason.indexOf(CANCEL_TAG_PREFIX);
+  if (start < 0) return null;
+  const end = reason.indexOf("]", start);
+  if (end < 0) return null;
+  return reason.slice(start + CANCEL_TAG_PREFIX.length, end);
 }

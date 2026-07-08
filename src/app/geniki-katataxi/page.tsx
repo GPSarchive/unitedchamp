@@ -408,7 +408,11 @@ export default async function GenikiKataxiPage({
       : standings.seasons.find((s) => s !== NO_SEASON_LABEL) ?? standings.seasons[0] ?? "—";
 
   const lines = standings.bySeason.get(season) ?? [];
-  const seasonEvents = standings.events.filter((e) => e.season === season);
+  // Public log: hide the admin's counter-adjustment rows (they'd read as stray
+  // "+X/−X" lines); cancelled automatic events are shown struck-through by PointsLog.
+  const seasonEvents = standings.events.filter(
+    (e) => e.season === season && !e.cancelsSourceKey
+  );
   const logTeams: Record<number, LogTeam> = Object.fromEntries(
     [...teams].map(([id, t]) => [id, { name: t.name ?? `Ομάδα #${id}`, logo: t.logo }])
   );

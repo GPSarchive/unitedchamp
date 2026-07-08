@@ -52,11 +52,15 @@ export default function PointsLog({
 
   const shown = useMemo(() => {
     const list = filter === "all" ? events : events.filter((e) => e.kind === filter);
-    return [...list].sort(
-      (a, b) =>
+    return [...list].sort((a, b) => {
+      const ac = a.cancelledBy ? 1 : 0;
+      const bc = b.cancelledBy ? 1 : 0;
+      if (ac !== bc) return ac - bc; // cancelled entries sink to the bottom
+      return (
         Math.abs(b.points) - Math.abs(a.points) ||
         (teams[a.teamId]?.name ?? "").localeCompare(teams[b.teamId]?.name ?? "", "el")
-    );
+      );
+    });
   }, [events, filter, teams]);
 
   return (
@@ -101,10 +105,13 @@ export default function PointsLog({
                   e.kind === "adjustment" && e.adjustmentKind
                     ? ADJUSTMENT_PRESETS[e.adjustmentKind]?.label ?? KIND_LABEL.adjustment
                     : KIND_LABEL[e.kind];
+                const cancelled = Boolean(e.cancelledBy);
                 return (
                   <tr
                     key={`${e.teamId}-${e.kind}-${e.label}-${i}`}
-                    className="border-b border-[#F3EFE6]/10 last:border-b-0 hover:bg-[#fb923c]/[0.05]"
+                    className={`border-b border-[#F3EFE6]/10 last:border-b-0 hover:bg-[#fb923c]/[0.05] ${
+                      cancelled ? "opacity-45" : ""
+                    }`}
                   >
                     <td className="px-5 py-2.5">
                       <div className="flex items-center gap-2.5">
@@ -137,11 +144,20 @@ export default function PointsLog({
                     </td>
                     <td className="w-full px-3 py-2.5 text-[13px] text-[#F3EFE6]/60">
                       {e.label}
+                      {cancelled && (
+                        <span className="ml-2 font-mono text-[10px] uppercase tracking-[0.15em] text-red-300/80">
+                          · ακυρώθηκε
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-2.5 text-right">
                       <span
                         className={`font-mono text-sm font-bold tabular-nums ${
-                          e.points < 0 ? "text-red-400" : "text-[#F3EFE6]"
+                          cancelled
+                            ? "text-[#F3EFE6]/40 line-through"
+                            : e.points < 0
+                              ? "text-red-400"
+                              : "text-[#F3EFE6]"
                         }`}
                       >
                         {signed(e.points)}
