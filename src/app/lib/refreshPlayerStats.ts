@@ -1,4 +1,8 @@
-"use server";
+// Server-only stat-cache rebuilders. Deliberately NOT "use server": these run
+// with the service-role client and carry no auth checks of their own, so they
+// must not be compiled into publicly invokable Server Action endpoints. Auth
+// lives in the routes/actions that call them.
+import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 

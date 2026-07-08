@@ -41,7 +41,7 @@ const selStageIdByIndex    = (s: TournamentState) => (s.ids?.stageIdByIndex ?? {
 const selTournamentTeams   = (s: TournamentState) =>
   (s.entities?.tournamentTeams ?? EMPTY_ARR) as ReadonlyArray<{ team_id: number; seed?: number | null }>;
 const selDraftMatches      = (s: TournamentState) => s.draftMatches as DraftMatch[];
-const selDbOverlayBySig    = (s: TournamentState) => s.dbOverlayBySig as Record<string, any>;
+const selDbOverlayByUid    = (s: TournamentState) => s.dbOverlayByUid as Record<string, any>;
 
 /* ============================ Helpers ============================ */
 const slotKey = (r?: number | null, p?: number | null) => (r && p ? `R${r}-B${p}` : null);
@@ -80,7 +80,7 @@ export default function BracketBuilder2({
   const stageIdByIndex    = useTournamentStore(selStageIdByIndex);
   const tournamentTeams   = useTournamentStore(selTournamentTeams);
   const draftMatches      = useTournamentStore(selDraftMatches);
-  const dbOverlayBySig    = useTournamentStore(selDbOverlayBySig);
+  const dbOverlayByUid    = useTournamentStore(selDbOverlayByUid);
 
   const [advanced, setAdvanced] = useState(false);
 
@@ -118,11 +118,10 @@ export default function BracketBuilder2({
     return draftMatches
       .filter((m) => m.stageIdx === stageIdx && (m.round ?? null) != null && (m.bracket_pos ?? null) != null)
       .map((r) => {
-        const ov = dbOverlayBySig[rowSignatureKO(r)];
-        // overlay keyed differently here is fine; draft rows already carry live data
+        const ov = r.uid ? dbOverlayByUid[r.uid] : undefined;
         return ov ? { ...r, ...ov } : r;
       });
-  }, [draftMatches, dbOverlayBySig, stageIdx]);
+  }, [draftMatches, dbOverlayByUid, stageIdx]);
 
   const maxRound = useMemo(
     () => (rows.length ? Math.max(...rows.map((m) => m.round ?? 1)) : 1),

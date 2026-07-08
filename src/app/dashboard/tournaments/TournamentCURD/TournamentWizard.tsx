@@ -29,6 +29,14 @@ export type TeamDraft = {
  * (Kept for types used elsewhere.)
  */
 export type DraftMatch = {
+  /**
+   * Client-side row identity, assigned by the tournament store the moment a row
+   * enters it (hydration, wizard seeding, planner edits). Unlike matchSig — a
+   * fingerprint of the row's properties that collides for identical TBD
+   * skeleton fixtures — the uid is unique per row and never changes, so
+   * overlays/dirty-tracking keyed by it survive any edit. Never persisted.
+   */
+  uid?: string | null;
   db_id?: number | null;
   updated_at?: string | null;
   stageIdx: number;

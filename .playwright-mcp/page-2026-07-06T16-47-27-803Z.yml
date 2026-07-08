@@ -1,0 +1,284 @@
+- generic [active] [ref=e1]:
+  - banner "Site header" [ref=e2]:
+    - navigation "Main" [ref=e3]:
+      - generic:
+        - img
+      - generic [ref=e4]:
+        - button "Μενού" [ref=e5]:
+          - generic [ref=e10]: Μενού
+        - link "Ultra Champ Ultra Champ Mini Football Organization" [ref=e11] [cursor=pointer]:
+          - /url: /home
+          - img "Ultra Champ" [ref=e12]
+          - generic [ref=e13]:
+            - generic [ref=e14]: Ultra Champ
+            - generic [ref=e15]: Mini Football Organization
+      - link "Σύνδεση" [ref=e18] [cursor=pointer]:
+        - /url: /login?next=%2Fgeniki-katataxi
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - generic:
+        - img
+      - generic [ref=e22]:
+        - navigation [ref=e23]:
+          - link "Αρχική" [ref=e24] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e25]: /
+          - generic [ref=e26]: Γενική Κατάταξη
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]: Ανά έτος · Ενιαίο σύστημα πόντων
+            - heading "Γενική Κατάταξη" [level=1] [ref=e31]
+          - generic [ref=e32]:
+            - generic [ref=e33]: Σεζόν · 2026
+            - generic [ref=e34]: Ομάδες · 10
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - generic [ref=e38]: Σεζόν
+          - link "2026" [ref=e39] [cursor=pointer]:
+            - /url: /geniki-katataxi?season=2026
+          - link "Χωρίς σεζόν" [ref=e40] [cursor=pointer]:
+            - /url: /geniki-katataxi?season=%CE%A7%CF%89%CF%81%CE%AF%CF%82%20%CF%83%CE%B5%CE%B6%CF%8C%CE%BD
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - heading "Σύστημα πόντων" [level=2] [ref=e43]
+            - generic [ref=e44]: Η κατάταξη μηδενίζει κάθε σεζόν
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - generic [ref=e47]: Συμμετοχή σε τουρνουά
+              - generic [ref=e48]: "+50"
+            - generic [ref=e49]:
+              - generic [ref=e50]: Πρόκριση σε επόμενη φάση
+              - generic [ref=e51]: "+50"
+            - generic [ref=e52]:
+              - generic [ref=e53]: Νικητής τουρνουά
+              - generic [ref=e54]: "+500"
+            - generic [ref=e55]:
+              - generic [ref=e56]: Διεκδικητής (φιναλίστ)
+              - generic [ref=e57]: "+200"
+            - generic [ref=e58]:
+              - generic [ref=e59]: Διεθνής διάκριση *
+              - generic [ref=e60]: "+1000"
+            - generic [ref=e61]:
+              - generic [ref=e62]: Νίκη
+              - generic [ref=e63]: "+15"
+            - generic [ref=e64]:
+              - generic [ref=e65]: Ισοπαλία
+              - generic [ref=e66]: "+5"
+            - generic [ref=e67]:
+              - generic [ref=e68]: Ήττα
+              - generic [ref=e69]: "-10"
+            - generic [ref=e70]:
+              - generic [ref=e71]: Αποχώρηση από τουρνουά *
+              - generic [ref=e72]: "-100"
+            - generic [ref=e73]:
+              - generic [ref=e74]: Διακοπή αγώνα (υπαίτιος) *
+              - generic [ref=e75]: "-30"
+          - paragraph [ref=e76]: "* Καταχωρείται χειροκίνητα από τη διοργάνωση"
+        - table [ref=e79]:
+          - rowgroup [ref=e80]:
+            - row "# Ομάδα Συμ. Προκ. Τίτλοι Τελικοί Ν Ι Η Έξτρα Πόντοι" [ref=e81]:
+              - columnheader "#" [ref=e82]
+              - columnheader "Ομάδα" [ref=e83]
+              - columnheader "Συμ." [ref=e84]
+              - columnheader "Προκ." [ref=e85]
+              - columnheader "Τίτλοι" [ref=e86]
+              - columnheader "Τελικοί" [ref=e87]
+              - columnheader "Ν" [ref=e88]
+              - columnheader "Ι" [ref=e89]
+              - columnheader "Η" [ref=e90]
+              - columnheader "Έξτρα" [ref=e91]
+              - columnheader "Πόντοι" [ref=e92]
+          - rowgroup [ref=e93]:
+            - row "01 BRODIOS BRODIOS 1 2 1 — 6 0 0 — 740" [ref=e94]:
+              - cell "01" [ref=e95]:
+                - generic [ref=e96]: "01"
+              - cell "BRODIOS BRODIOS" [ref=e97]:
+                - link "BRODIOS BRODIOS" [ref=e98] [cursor=pointer]:
+                  - /url: /OMADA/99
+                  - img "BRODIOS" [ref=e99]
+                  - generic [ref=e100]: BRODIOS
+              - cell "1" [ref=e101]
+              - cell "2" [ref=e102]
+              - cell "1" [ref=e103]
+              - cell "—" [ref=e104]
+              - cell "6" [ref=e105]
+              - cell "0" [ref=e106]
+              - cell "0" [ref=e107]
+              - cell "—" [ref=e108]
+              - cell "740" [ref=e109]
+            - row "02 KALIMOXTA KALIMOXTA 1 2 — — 4 0 2 — 190" [ref=e110]:
+              - cell "02" [ref=e111]:
+                - generic [ref=e112]: "02"
+              - cell "KALIMOXTA KALIMOXTA" [ref=e113]:
+                - link "KALIMOXTA KALIMOXTA" [ref=e114] [cursor=pointer]:
+                  - /url: /OMADA/96
+                  - img "KALIMOXTA" [ref=e115]
+                  - generic [ref=e116]: KALIMOXTA
+              - cell "1" [ref=e117]
+              - cell "2" [ref=e118]
+              - cell "—" [ref=e119]
+              - cell "—" [ref=e120]
+              - cell "4" [ref=e121]
+              - cell "0" [ref=e122]
+              - cell "2" [ref=e123]
+              - cell "—" [ref=e124]
+              - cell "190" [ref=e125]
+            - row "03 GOONERS FC GOONERS FC 1 2 — — 2 1 3 — 155" [ref=e126]:
+              - cell "03" [ref=e127]:
+                - generic [ref=e128]: "03"
+              - cell "GOONERS FC GOONERS FC" [ref=e129]:
+                - link "GOONERS FC GOONERS FC" [ref=e130] [cursor=pointer]:
+                  - /url: /OMADA/58
+                  - img "GOONERS FC" [ref=e131]
+                  - generic [ref=e132]: GOONERS FC
+              - cell "1" [ref=e133]
+              - cell "2" [ref=e134]
+              - cell "—" [ref=e135]
+              - cell "—" [ref=e136]
+              - cell "2" [ref=e137]
+              - cell "1" [ref=e138]
+              - cell "3" [ref=e139]
+              - cell "—" [ref=e140]
+              - cell "155" [ref=e141]
+            - row "04 MAGUFANA MAGUFANA 1 1 — — 4 0 1 — 150" [ref=e142]:
+              - cell "04" [ref=e143]:
+                - generic [ref=e144]: "04"
+              - cell "MAGUFANA MAGUFANA" [ref=e145]:
+                - link "MAGUFANA MAGUFANA" [ref=e146] [cursor=pointer]:
+                  - /url: /OMADA/93
+                  - img "MAGUFANA" [ref=e147]
+                  - generic [ref=e148]: MAGUFANA
+              - cell "1" [ref=e149]
+              - cell "1" [ref=e150]
+              - cell "—" [ref=e151]
+              - cell "—" [ref=e152]
+              - cell "4" [ref=e153]
+              - cell "0" [ref=e154]
+              - cell "1" [ref=e155]
+              - cell "—" [ref=e156]
+              - cell "150" [ref=e157]
+            - row "05 PINK PANTHERS PINK PANTHERS 1 2 — — 2 0 4 — 140" [ref=e158]:
+              - cell "05" [ref=e159]:
+                - generic [ref=e160]: "05"
+              - cell "PINK PANTHERS PINK PANTHERS" [ref=e161]:
+                - link "PINK PANTHERS PINK PANTHERS" [ref=e162] [cursor=pointer]:
+                  - /url: /OMADA/100
+                  - img "PINK PANTHERS" [ref=e163]
+                  - generic [ref=e164]: PINK PANTHERS
+              - cell "1" [ref=e165]
+              - cell "2" [ref=e166]
+              - cell "—" [ref=e167]
+              - cell "—" [ref=e168]
+              - cell "2" [ref=e169]
+              - cell "0" [ref=e170]
+              - cell "4" [ref=e171]
+              - cell "—" [ref=e172]
+              - cell "140" [ref=e173]
+            - row "06 BOCA SENIORS BOCA SENIORS 1 1 — — 3 0 2 — 125" [ref=e174]:
+              - cell "06" [ref=e175]:
+                - generic [ref=e176]: "06"
+              - cell "BOCA SENIORS BOCA SENIORS" [ref=e177]:
+                - link "BOCA SENIORS BOCA SENIORS" [ref=e178] [cursor=pointer]:
+                  - /url: /OMADA/98
+                  - img "BOCA SENIORS" [ref=e179]
+                  - generic [ref=e180]: BOCA SENIORS
+              - cell "1" [ref=e181]
+              - cell "1" [ref=e182]
+              - cell "—" [ref=e183]
+              - cell "—" [ref=e184]
+              - cell "3" [ref=e185]
+              - cell "0" [ref=e186]
+              - cell "2" [ref=e187]
+              - cell "—" [ref=e188]
+              - cell "125" [ref=e189]
+            - row "07 LOCOZ FC LOCOZ FC 1 1 — — 2 0 3 — 100" [ref=e190]:
+              - cell "07" [ref=e191]:
+                - generic [ref=e192]: "07"
+              - cell "LOCOZ FC LOCOZ FC" [ref=e193]:
+                - link "LOCOZ FC LOCOZ FC" [ref=e194] [cursor=pointer]:
+                  - /url: /OMADA/95
+                  - img "LOCOZ FC" [ref=e195]
+                  - generic [ref=e196]: LOCOZ FC
+              - cell "1" [ref=e197]
+              - cell "1" [ref=e198]
+              - cell "—" [ref=e199]
+              - cell "—" [ref=e200]
+              - cell "2" [ref=e201]
+              - cell "0" [ref=e202]
+              - cell "3" [ref=e203]
+              - cell "—" [ref=e204]
+              - cell "100" [ref=e205]
+            - row "08 ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ 1 1 — — 1 0 4 — 75" [ref=e206]:
+              - cell "08" [ref=e207]:
+                - generic [ref=e208]: "08"
+              - cell "ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e209]:
+                - link "ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e210] [cursor=pointer]:
+                  - /url: /OMADA/42
+                  - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e211]
+                  - generic [ref=e212]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+              - cell "1" [ref=e213]
+              - cell "1" [ref=e214]
+              - cell "—" [ref=e215]
+              - cell "—" [ref=e216]
+              - cell "1" [ref=e217]
+              - cell "0" [ref=e218]
+              - cell "4" [ref=e219]
+              - cell "—" [ref=e220]
+              - cell "75" [ref=e221]
+            - row "09 KLIKA FC KLIKA FC 1 0 — — 1 1 2 — 50" [ref=e222]:
+              - cell "09" [ref=e223]:
+                - generic [ref=e224]: "09"
+              - cell "KLIKA FC KLIKA FC" [ref=e225]:
+                - link "KLIKA FC KLIKA FC" [ref=e226] [cursor=pointer]:
+                  - /url: /OMADA/94
+                  - img "KLIKA FC" [ref=e227]
+                  - generic [ref=e228]: KLIKA FC
+              - cell "1" [ref=e229]
+              - cell "0" [ref=e230]
+              - cell "—" [ref=e231]
+              - cell "—" [ref=e232]
+              - cell "1" [ref=e233]
+              - cell "1" [ref=e234]
+              - cell "2" [ref=e235]
+              - cell "—" [ref=e236]
+              - cell "50" [ref=e237]
+            - row "10 MEIKTH ULTRACHAMP MEIKTH ULTRACHAMP 1 0 — — 0 0 4 — 10" [ref=e238]:
+              - cell "10" [ref=e239]:
+                - generic [ref=e240]: "10"
+              - cell "MEIKTH ULTRACHAMP MEIKTH ULTRACHAMP" [ref=e241]:
+                - link "MEIKTH ULTRACHAMP MEIKTH ULTRACHAMP" [ref=e242] [cursor=pointer]:
+                  - /url: /OMADA/90
+                  - img "MEIKTH ULTRACHAMP" [ref=e243]
+                  - generic [ref=e244]: MEIKTH ULTRACHAMP
+              - cell "1" [ref=e245]
+              - cell "0" [ref=e246]
+              - cell "—" [ref=e247]
+              - cell "—" [ref=e248]
+              - cell "0" [ref=e249]
+              - cell "0" [ref=e250]
+              - cell "4" [ref=e251]
+              - cell "—" [ref=e252]
+              - cell "10" [ref=e253]
+        - paragraph [ref=e254]: Οι πόντοι υπολογίζονται αυτόματα από τα τουρνουά και τους αγώνες κάθε σεζόν. · Οι χειροκίνητες προσαρμογές θα ενεργοποιηθούν με την επόμενη ενημέρωση της βάσης.
+      - generic [ref=e256]:
+        - paragraph [ref=e257]: Γενική Κατάταξη · Σεζόν 2026
+        - link "← Επιστροφή στην Αρχική" [ref=e258] [cursor=pointer]:
+          - /url: /
+  - contentinfo [ref=e259]:
+    - generic [ref=e260]:
+      - paragraph [ref=e261]: © 2025 Ultra Champ.
+      - navigation "Legal" [ref=e262]:
+        - link "Πολιτική Απορρήτου" [ref=e263] [cursor=pointer]:
+          - /url: /privacy
+        - link "Όροι Χρήσης" [ref=e264] [cursor=pointer]:
+          - /url: /terms
+        - link "Cookies" [ref=e265] [cursor=pointer]:
+          - /url: /cookies
+        - link "Επικοινωνία" [ref=e266] [cursor=pointer]:
+          - /url: /epikoinonia
+        - button "Ρυθμίσεις Cookies" [ref=e267]
+      - generic [ref=e268]:
+        - text: Κατασκευή ιστοσελίδας από
+        - link "Digital Footprint" [ref=e269] [cursor=pointer]:
+          - /url: https://www.digitalfootprint.gr
+  - alert [ref=e270]

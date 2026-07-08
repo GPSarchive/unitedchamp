@@ -129,18 +129,26 @@ function matchNaturalKey(r: {
   matchday?: number | null;
   round?: number | null;
   bracket_pos?: number | null;
+  team_a_id?: number | null;
+  team_b_id?: number | null;
 }) {
   const isKO = r.round != null && r.bracket_pos != null;
   if (isKO) return `KO|${r.stage_id}|${r.round}|${r.bracket_pos}`;
-  return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}`;
+  // The team pair MUST be part of the key: a group matchday normally holds
+  // several fixtures, so keying on (stage, group, matchday) alone made every
+  // new match on an already-populated matchday look like a duplicate of the
+  // existing one and silently dropped it. Order-insensitive so a home/away
+  // flip of the same pairing still counts as the same fixture.
+  const a = r.team_a_id ?? 0;
+  const b = r.team_b_id ?? 0;
+  const [lo, hi] = a <= b ? [a, b] : [b, a];
+  return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}|${lo}-${hi}`;
 }
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<Params> }
 ) {
-  const rid = req.headers.get("x-debug-id") ?? "no-id";
-  const phase = req.headers.get("x-debug-phase") ?? "n/a";
   const { id } = await params;
 
   // Authentication check
@@ -163,12 +171,9 @@ export async function POST(
   let body: SaveAllRequest;
   try {
     body = (await req.json()) as SaveAllRequest;
-    console.log("[save-all][in] body:", JSON.stringify(body, null, 2));
   } catch {
-    console.error("[save-all][in]", rid, "bad JSON");
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  console.log('[save-all-debug] Received body:', JSON.stringify(body, null, 2));
   const tournamentId = Number(id);
   if (!Number.isFinite(tournamentId)) {
     return NextResponse.json({ error: "Invalid tournament id" }, { status: 400 });
@@ -195,7 +200,6 @@ export async function POST(
 
     /* 2) Groups — deletions first ----------------------------------------- */
     if (body.groups?.deleteIds?.length) {
-      console.log("[save-all][delete-groups]", body.groups.deleteIds);
       const { error: grpDelErr } = await supabaseAdmin
         .from("tournament_groups")
         .delete()
@@ -206,10 +210,10 @@ export async function POST(
 
     /* 3) Stages — deletions next (after groups) --------------------------- */
     if (body.stages?.deleteIds?.length) {
-      console.log("[save-all][delete-stages]", body.stages.deleteIds);
       const { error: stgDelErr } = await supabaseAdmin
         .from("tournament_stages")
         .delete()
+        .eq("tournament_id", tournamentId)
         .in("id", body.stages.deleteIds);
       if (stgDelErr) return NextResponse.json({ error: stgDelErr.message }, { status: 500 });
       out.deletedStageIds = body.stages.deleteIds;
@@ -233,9 +237,9 @@ if (body.matches?.deleteIds?.length) {
   if (delFetchErr) return NextResponse.json({ error: delFetchErr.message }, { status: 500 });
   matchDeleteStageIds = Array.from(new Set((delRows ?? []).map((r) => r.stage_id)));
 
-  // delete and verify
+  // delete and verify (scoped to this tournament so a stray id can't touch another one)
   const { data: deleted, error: delErr } = await supabaseAdmin
-    .from("matches").delete().in("id", deleteIds).select("id");
+    .from("matches").delete().eq("tournament_id", tournamentId).in("id", deleteIds).select("id");
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
   const deletedIds = new Set((deleted ?? []).map((r: any) => r.id));
@@ -569,16 +573,25 @@ if (body.matches?.upsert?.length) {
       const { data, error } = await q.select("*");
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-      if (r.updated_at && (!data || data.length === 0)) {
-        const { data: cur } = await supabaseAdmin
-          .from("matches").select("id,updated_at").eq("id", r.id as number).single();
+      if (!data || data.length === 0) {
+        if (r.updated_at) {
+          const { data: cur } = await supabaseAdmin
+            .from("matches").select("id,updated_at").eq("id", r.id as number).maybeSingle();
+          return NextResponse.json(
+            { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
+              sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
+            { status: 409 }
+          );
+        }
+        // No lock token and zero rows touched → the row no longer exists
+        // (deleted in another session). Surfacing it beats silently dropping
+        // the admin's edit and letting the client keep a phantom db_id.
         return NextResponse.json(
-          { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
-            sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
+          { error: "Match no longer exists. Please reload.", entity: "matches", id: r.id },
           { status: 409 }
         );
       }
-      updated.push(...(data ?? []));
+      updated.push(...data);
     }
   }
 
@@ -641,7 +654,7 @@ if (body.matches?.upsert?.length) {
     const lgStageIds = Array.from(new Set(toCreateLG.map(m => m.stage_id).filter(Boolean)));
     const { data: existingMatches } = await supabaseAdmin
       .from("matches")
-      .select("stage_id, group_id, matchday, round, bracket_pos")
+      .select("stage_id, group_id, matchday, round, bracket_pos, team_a_id, team_b_id")
       .in("stage_id", lgStageIds)
       .is("round", null);
 
@@ -757,7 +770,6 @@ if (body.matches?.upsert?.length) {
     }
     // ======================================================================
 
-    console.log("[save-all][out] Final:", JSON.stringify(out, null, 2));
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {
     console.error("[save-all] Error:", e?.message ?? "Unknown error");

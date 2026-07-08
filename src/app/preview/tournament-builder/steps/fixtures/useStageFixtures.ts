@@ -19,17 +19,14 @@ import { useEffectiveStageIdx } from "../../hooks/useEffectiveStageIdx";
 import {
   rrPairKey,
   rowSignature,
-  legacyRowSignature,
   safeOverlay,
   ensureOverlayForRow,
-  migrateOverlayKey,
-  migrateOverlayByDbIdToKey,
   fixRoundRobinIntegrity,
 } from "./helpers";
 
 const selDraftMatches = (s: TournamentState) => s.draftMatches as DraftMatch[];
-const selDbOverlayBySig = (s: TournamentState) =>
-  s.dbOverlayBySig as Record<
+const selDbOverlayByUid = (s: TournamentState) =>
+  s.dbOverlayByUid as Record<
     string,
     Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null }
   >;
@@ -51,7 +48,7 @@ export function useStageFixtures({
   const effectiveStageIdx = useEffectiveStageIdx(allStages, index);
 
   const draftMatches = useTournamentStore(selDraftMatches);
-  const dbOverlayBySig = useTournamentStore(selDbOverlayBySig);
+  const dbOverlayByUid = useTournamentStore(selDbOverlayByUid);
   const stagesById = useTournamentStore((s) => s.entities?.stagesById ?? {});
   const stageIdByIndex = useTournamentStore((s) => s.ids?.stageIdByIndex ?? {});
   const groupIdByStage = useTournamentStore((s) => s.ids?.groupIdByStage ?? {});
@@ -119,21 +116,19 @@ export function useStageFixtures({
     return sid ? ((stagesById as any)[sid]?.kind ?? "league") : "league";
   }, [stageIdByIndex, stagesById, effectiveStageIdx]);
 
-  // Merged rows for this stage (draft + overlay, with legacy/db_id fallbacks)
+  // Merged rows for this stage (draft + uid-keyed overlay, db_id fallback)
   const allRowsForStage = useMemo(() => {
     const rows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
     return rows.map((r) => {
-      const sigLegacy = legacyRowSignature(r);
       const ovRaw =
-        dbOverlayBySig[rowSignature(r)] ||
-        dbOverlayBySig[sigLegacy] ||
+        (r.uid ? dbOverlayByUid[r.uid] : undefined) ||
         ((r as any).db_id != null
-          ? Object.values(dbOverlayBySig).find((v) => v?.db_id === (r as any).db_id)
+          ? Object.values(dbOverlayByUid).find((v) => v?.db_id === (r as any).db_id)
           : undefined);
       const ov = safeOverlay(ovRaw);
       return ov ? ({ ...r, ...ov } as DraftMatch) : r;
     });
-  }, [draftMatches, dbOverlayBySig, effectiveStageIdx]);
+  }, [draftMatches, dbOverlayByUid, effectiveStageIdx]);
 
   const hasAnyGrouped = useMemo(
     () => allRowsForStage.some((r) => r.groupIdx != null),
@@ -241,8 +236,6 @@ export function useStageFixtures({
   }
 
   const applyPatch = (target: DraftMatch, patch: MatchPatch) => {
-    const beforeLegacy = legacyRowSignature(target);
-
     if (isKO) {
       const currR = target.round ?? 1,
         currP = target.bracket_pos ?? 1;
@@ -251,15 +244,8 @@ export function useStageFixtures({
 
       if (newR !== currR || newP !== currP) {
         ensureRowExists(effectiveStageIdx, newR, newP);
-        const afterLegacyTmp = legacyRowSignature({
-          ...target,
-          round: newR,
-          bracket_pos: newP,
-        });
-        const dbId = (target as any).db_id as number | null | undefined;
-        if (dbId != null) migrateOverlayByDbIdToKey(dbId, afterLegacyTmp);
-        else migrateOverlayKey(beforeLegacy, afterLegacyTmp);
-
+        // Identity is the uid — moving a tie to another slot needs no overlay
+        // key migration anymore.
         setKORoundPos(
           effectiveStageIdx,
           { round: currR, bracket_pos: currP },
@@ -280,12 +266,6 @@ export function useStageFixtures({
             if (i >= 0) {
               const merged = { ...next[i], ...rest };
               next[i] = merged;
-              const afterLegacy = legacyRowSignature(merged);
-              if (afterLegacy !== afterLegacyTmp) {
-                const mDbId = (merged as any).db_id;
-                if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
-                else migrateOverlayKey(afterLegacyTmp, afterLegacy);
-              }
               ensureOverlayForRow(merged);
             }
             return next;
@@ -305,13 +285,12 @@ export function useStageFixtures({
       const fixedRows = fixRoundRobinIntegrity(target, patch, stageRows, teamsInGroup);
       const next = fixedRows.slice();
 
+      // Locate the edited row: uid is authoritative; db_id and the structural
+      // signature remain as safety nets for rows from stale closures.
       const dbId = (target as any).db_id as number | null | undefined;
-      const beforeStruct = rowSignature(target);
-
-      let idx = -1;
-      if (dbId != null) idx = next.findIndex((r) => (r as any).db_id === dbId);
-      if (idx < 0) idx = next.findIndex((r) => rowSignature(r) === beforeStruct);
-      if (idx < 0) idx = next.findIndex((r) => legacyRowSignature(r) === beforeLegacy);
+      let idx = target.uid ? next.findIndex((r) => r.uid === target.uid) : -1;
+      if (idx < 0 && dbId != null) idx = next.findIndex((r) => (r as any).db_id === dbId);
+      if (idx < 0) idx = next.findIndex((r) => rowSignature(r) === rowSignature(target));
 
       const base = idx >= 0 ? next[idx] : target;
       // Deviation from InlineMatchPlanner: it always pins matchday to the base row
@@ -323,23 +302,10 @@ export function useStageFixtures({
         matchday: patch.matchday !== undefined ? patch.matchday : base.matchday ?? null,
       };
 
-      const afterLegacy = legacyRowSignature(merged);
-      if (afterLegacy !== beforeLegacy) {
-        const mDbId = (merged as any).db_id;
-        if (mDbId != null) migrateOverlayByDbIdToKey(mDbId, afterLegacy);
-        else migrateOverlayKey(beforeLegacy, afterLegacy);
-      }
-
       ensureOverlayForRow(merged);
 
-      if (idx >= 0) {
-        next[idx] = merged;
-      } else {
-        const afterStruct = rowSignature(merged);
-        const j = next.findIndex((r) => rowSignature(r) === afterStruct);
-        if (j >= 0) next[j] = merged;
-        else next.push(merged);
-      }
+      if (idx >= 0) next[idx] = merged;
+      else next.push(merged);
       return next;
     });
   };
@@ -413,21 +379,9 @@ export function useStageFixtures({
   };
 
   const removeRow = (m: DraftMatch) => {
-    // Ensure db_id is in the overlay before removal, or the DB row survives save
-    const dbId = (m as any).db_id;
-    if (dbId != null) {
-      const key = legacyRowSignature(m);
-      const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, any>;
-      const curr = overlay[key];
-      if (!curr || curr.db_id == null) {
-        useTournamentStore.setState({
-          dbOverlayBySig: {
-            ...overlay,
-            [key]: { ...(curr ?? {}), db_id: dbId },
-          },
-        });
-      }
-    }
+    // removeMatch removes by uid and reads db_id from the overlay or the row
+    // itself — no overlay pre-stuffing needed. m is a merged row, so it carries
+    // both uid and db_id.
     removeMatch(m);
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
@@ -454,6 +408,10 @@ export function useStageFixtures({
         const mergedRow = old
           ? ({
               ...f,
+              // Carry the old row's uid so the regenerated row KEEPS its identity
+              // (overlay entry, dirty state, db linkage) instead of being treated
+              // as a brand-new match.
+              uid: old.uid ?? undefined,
               db_id: (old as any).db_id ?? null,
               status: (old as any).status ?? null,
               team_a_score: (old as any).team_a_score ?? null,
@@ -466,6 +424,8 @@ export function useStageFixtures({
       })
       .sort((a, b) => (a.matchday ?? 0) - (b.matchday ?? 0));
     updateMatches(effectiveStageIdx, () => merged);
+    // Re-wire KO source pointers so the bracket reflects the regenerated tree.
+    if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
   // Non-KO: rows grouped by matchday (sorted)

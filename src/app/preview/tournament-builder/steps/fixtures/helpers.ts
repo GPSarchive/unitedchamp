@@ -63,16 +63,9 @@ export function localInputToISO(localStr?: string) {
 
 type Overlay = Partial<DraftMatch> & { db_id?: number | null; updated_at?: string | null };
 
-export function migrateOverlayKey(oldKey: string, newKey: string) {
-  if (!oldKey || !newKey || oldKey === newKey) return;
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Overlay>;
-  const ov = overlay[oldKey];
-  if (!ov) return;
-  const next = { ...overlay };
-  next[newKey] = { ...ov };
-  delete next[oldKey];
-  useTournamentStore.setState({ dbOverlayBySig: next });
-}
+// Overlays are keyed by the row's uid, which never changes when a row is
+// edited, so the old signature-key migration helpers are gone (see the store's
+// "Row identity (uid)" note). Kept in sync with preview/InlineMatchPlanner.tsx.
 
 export function safeOverlay(ov?: Overlay) {
   if (!ov) return undefined;
@@ -90,7 +83,9 @@ export function safeOverlay(ov?: Overlay) {
   return rest as typeof ov;
 }
 
+/** Push a merged row's DB bits (db_id/scores/status) into its uid-keyed overlay entry. */
 export function ensureOverlayForRow(row: DraftMatch) {
+  if (!row.uid) return; // rows from the store always carry a uid
   const db_id = (row as any).db_id as number | null | undefined;
   const status = (row as any).status;
   const team_a_score = (row as any).team_a_score;
@@ -104,9 +99,8 @@ export function ensureOverlayForRow(row: DraftMatch) {
     team_b_score != null ||
     winner_team_id != null;
   if (!hasDbBits) return;
-  const key = legacyRowSignature(row);
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Overlay>;
-  const curr = overlay[key];
+  const overlay = useTournamentStore.getState().dbOverlayByUid as Record<string, Overlay>;
+  const curr = overlay[row.uid];
   const nextVal = {
     db_id: db_id ?? curr?.db_id ?? null,
     updated_at: updated_at ?? curr?.updated_at ?? null,
@@ -122,15 +116,8 @@ export function ensureOverlayForRow(row: DraftMatch) {
       row.away_source_bracket_pos ?? (curr as any)?.away_source_bracket_pos ?? null,
   } as const;
   useTournamentStore.setState({
-    dbOverlayBySig: { ...overlay, [key]: nextVal },
+    dbOverlayByUid: { ...overlay, [row.uid]: nextVal },
   });
-}
-
-export function migrateOverlayByDbIdToKey(dbId: number, newKey: string) {
-  const overlay = useTournamentStore.getState().dbOverlayBySig as Record<string, Overlay>;
-  const found = Object.entries(overlay).find(([, v]) => v?.db_id === dbId);
-  if (!found) return;
-  migrateOverlayKey(found[0], newKey);
 }
 
 export function getRepeatFromMatchday(matchday: number, teamsCount: number): number {

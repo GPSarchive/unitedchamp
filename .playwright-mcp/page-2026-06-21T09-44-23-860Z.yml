@@ -1,0 +1,1102 @@
+- generic [active] [ref=e1]:
+  - banner "Site header" [ref=e2]:
+    - navigation "Main" [ref=e3]:
+      - generic:
+        - img
+      - generic [ref=e4]:
+        - button "Μενού" [ref=e5]:
+          - generic [ref=e10]: Μενού
+        - link "Ultra Champ Ultra Champ Mini Football Organization" [ref=e11] [cursor=pointer]:
+          - /url: /home
+          - img "Ultra Champ" [ref=e12]
+          - generic [ref=e13]:
+            - generic [ref=e14]: Ultra Champ
+            - generic [ref=e15]: Mini Football Organization
+      - link "Σύνδεση" [ref=e18] [cursor=pointer]:
+        - /url: /login?next=%2F
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - region "Ultra Champ hero" [ref=e21]:
+        - generic [ref=e24]:
+          - img "Slide 1" [ref=e27]
+          - img "Slide 2" [ref=e30]
+          - img "Slide 3" [ref=e33]
+          - img "Slide 4" [ref=e36]
+          - img "Slide 5" [ref=e39]
+          - img "Slide 6" [ref=e42]
+        - generic [ref=e50]:
+          - paragraph [ref=e52]: Καλώς Ήρθες Στη Νεα Τάση
+          - img "Ultra Champ" [ref=e54]
+          - paragraph [ref=e56]: ΣΤΟ ΜΙΝΙ Football
+      - generic [ref=e60]:
+        - heading "UltraChamp" [level=1] [ref=e61]
+        - paragraph [ref=e62]: Ο απόλυτος προορισμός για συναρπαστικούς αγώνες mini football στην Ελλάδα και όλον τον κόσμο! Ώρα να κυριαρχήσεις στο ποδόσφαιρο μικρών διαστάσεων και να γίνεις εσύ ο Ultrachamp! Αγωνίσου σε κλίμα ασφάλειας, οργάνωσης και ηθικής!
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]: Το πρόγραμμα
+          - heading "Επερχόμενοι αγώνες" [level=2] [ref=e69]
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - generic [ref=e72]:
+              - generic [ref=e73]:
+                - generic [ref=e74]: Βρες τον αγώνα σου
+                - heading "Επίλεξε ομάδα, δες πότε παίζει." [level=3] [ref=e76]
+              - combobox [ref=e79]:
+                - generic [ref=e80]:
+                  - img [ref=e81]
+                  - generic [ref=e84]: Ψάξε την ομάδα σου...
+                - img [ref=e85]
+            - link "Επόμενος αγώνας ΣΕ 7Ω ΚΟΝΙΟΡΔΟΙ FC ΚΟΝΙΟΡΔΟΙ FC ΚΥΡ 21 ΙΟΥΝ 20:30 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ ULTRACHAMP SUMMER LEAGUE ULTRACHAMP SUMMER LEAGUE Αγ. 8 Προβολή Λεπτομερειών" [ref=e88] [cursor=pointer]:
+              - /url: /matches/2433
+              - generic [ref=e90]:
+                - generic [ref=e92]:
+                  - generic [ref=e93]: Επόμενος αγώνας
+                  - generic [ref=e95]: ΣΕ 7Ω
+                - generic [ref=e96]:
+                  - generic: VS
+                  - generic [ref=e97]:
+                    - generic [ref=e98]:
+                      - img "ΚΟΝΙΟΡΔΟΙ FC" [ref=e100]
+                      - heading "ΚΟΝΙΟΡΔΟΙ FC" [level=3] [ref=e101]
+                    - generic [ref=e102]:
+                      - generic [ref=e103]:
+                        - generic [ref=e104]: ΚΥΡ
+                        - generic [ref=e105]: "21"
+                        - generic [ref=e106]: ΙΟΥΝ
+                      - generic [ref=e107]: 20:30
+                    - generic [ref=e108]:
+                      - img "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [ref=e110]
+                      - heading "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [level=3] [ref=e111]
+                - generic [ref=e112]:
+                  - generic [ref=e113]:
+                    - img "ULTRACHAMP SUMMER LEAGUE" [ref=e114]
+                    - generic [ref=e115]: ULTRACHAMP SUMMER LEAGUE
+                  - generic [ref=e116]: Αγ. 8
+                  - generic [ref=e117]:
+                    - generic [ref=e118]: Προβολή Λεπτομερειών
+                    - img [ref=e119]
+            - generic [ref=e121]:
+              - generic [ref=e123]:
+                - text: Επόμενοι αγώνες
+                - generic [ref=e125]: · 27
+              - generic [ref=e126]:
+                - link "ΚΥΡ 21 ΙΟΥΝ ΚΟΝΙΟΡΔΟΙ FC ΚΟΝΙΟΡΔΟΙ FC 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ 20:30 Αγ. 8 ULTRACHAMP SUMMER LEAGUE" [ref=e127] [cursor=pointer]:
+                  - /url: /matches/2433
+                  - generic [ref=e129]:
+                    - generic [ref=e130]:
+                      - generic [ref=e131]: ΚΥΡ
+                      - generic [ref=e132]: "21"
+                      - generic [ref=e133]: ΙΟΥΝ
+                    - generic [ref=e134]:
+                      - generic [ref=e135]:
+                        - img "ΚΟΝΙΟΡΔΟΙ FC" [ref=e137]
+                        - generic [ref=e138]: ΚΟΝΙΟΡΔΟΙ FC
+                      - generic [ref=e139]:
+                        - img "3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ" [ref=e141]
+                        - generic [ref=e142]: 3 ΔΑΧΤΥΛΑ ΑΦΡΟΣ
+                    - generic [ref=e143]:
+                      - generic [ref=e144]: 20:30
+                      - generic [ref=e145]: Αγ. 8
+                      - generic [ref=e146]: ULTRACHAMP SUMMER LEAGUE
+                - link "ΔΕΥ 22 ΙΟΥΝ PALOMAS PALOMAS PINK PANTHERS PINK PANTHERS 21:00 Αγ. 9 ULTRACHAMP ARENA 2026" [ref=e147] [cursor=pointer]:
+                  - /url: /matches/2484
+                  - generic [ref=e149]:
+                    - generic [ref=e150]:
+                      - generic [ref=e151]: ΔΕΥ
+                      - generic [ref=e152]: "22"
+                      - generic [ref=e153]: ΙΟΥΝ
+                    - generic [ref=e154]:
+                      - generic [ref=e155]:
+                        - img "PALOMAS" [ref=e157]
+                        - generic [ref=e158]: PALOMAS
+                      - generic [ref=e159]:
+                        - img "PINK PANTHERS" [ref=e161]
+                        - generic [ref=e162]: PINK PANTHERS
+                    - generic [ref=e163]:
+                      - generic [ref=e164]: 21:00
+                      - generic [ref=e165]: Αγ. 9
+                      - generic [ref=e166]: ULTRACHAMP ARENA 2026
+                - link "ΔΕΥ 22 ΙΟΥΝ LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ) ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ 22:00 Αγ. 4 ULTRACHAMP ARENA 2026" [ref=e167] [cursor=pointer]:
+                  - /url: /matches/2460
+                  - generic [ref=e169]:
+                    - generic [ref=e170]:
+                      - generic [ref=e171]: ΔΕΥ
+                      - generic [ref=e172]: "22"
+                      - generic [ref=e173]: ΙΟΥΝ
+                    - generic [ref=e174]:
+                      - generic [ref=e175]:
+                        - img "LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)" [ref=e177]
+                        - generic [ref=e178]: LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)
+                      - generic [ref=e179]:
+                        - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e181]
+                        - generic [ref=e182]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+                    - generic [ref=e183]:
+                      - generic [ref=e184]: 22:00
+                      - generic [ref=e185]: Αγ. 4
+                      - generic [ref=e186]: ULTRACHAMP ARENA 2026
+                - link "ΤΡΙ 23 ΙΟΥΝ PRANVERA PRANVERA CELTICS FC CELTICS FC 21:00 Αγ. 3 ULTRACHAMP SUMMER LEAGUE" [ref=e187] [cursor=pointer]:
+                  - /url: /matches/2383
+                  - generic [ref=e189]:
+                    - generic [ref=e190]:
+                      - generic [ref=e191]: ΤΡΙ
+                      - generic [ref=e192]: "23"
+                      - generic [ref=e193]: ΙΟΥΝ
+                    - generic [ref=e194]:
+                      - generic [ref=e195]:
+                        - img "PRANVERA" [ref=e197]
+                        - generic [ref=e198]: PRANVERA
+                      - generic [ref=e199]:
+                        - img "CELTICS FC" [ref=e201]
+                        - generic [ref=e202]: CELTICS FC
+                    - generic [ref=e203]:
+                      - generic [ref=e204]: 21:00
+                      - generic [ref=e205]: Αγ. 3
+                      - generic [ref=e206]: ULTRACHAMP SUMMER LEAGUE
+                - link "ΤΡΙ 23 ΙΟΥΝ ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ 21:00 Αγ. 6 ULTRACHAMP SUMMER LEAGUE" [ref=e207] [cursor=pointer]:
+                  - /url: /matches/2412
+                  - generic [ref=e209]:
+                    - generic [ref=e210]:
+                      - generic [ref=e211]: ΤΡΙ
+                      - generic [ref=e212]: "23"
+                      - generic [ref=e213]: ΙΟΥΝ
+                    - generic [ref=e214]:
+                      - generic [ref=e215]:
+                        - img "ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ" [ref=e217]
+                        - generic [ref=e218]: ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ
+                      - generic [ref=e219]:
+                        - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e221]
+                        - generic [ref=e222]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+                    - generic [ref=e223]:
+                      - generic [ref=e224]: 21:00
+                      - generic [ref=e225]: Αγ. 6
+                      - generic [ref=e226]: ULTRACHAMP SUMMER LEAGUE
+                - link "ΤΡΙ 23 ΙΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ ΦΟΝΙΚΑ ΡΑΚΟΥΝ FARMERS FC FARMERS FC 21:00 Αγ. 9 ULTRACHAMP SUMMER LEAGUE" [ref=e227] [cursor=pointer]:
+                  - /url: /matches/2445
+                  - generic [ref=e229]:
+                    - generic [ref=e230]:
+                      - generic [ref=e231]: ΤΡΙ
+                      - generic [ref=e232]: "23"
+                      - generic [ref=e233]: ΙΟΥΝ
+                    - generic [ref=e234]:
+                      - generic [ref=e235]:
+                        - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e237]
+                        - generic [ref=e238]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+                      - generic [ref=e239]:
+                        - img "FARMERS FC" [ref=e241]
+                        - generic [ref=e242]: FARMERS FC
+                    - generic [ref=e243]:
+                      - generic [ref=e244]: 21:00
+                      - generic [ref=e245]: Αγ. 9
+                      - generic [ref=e246]: ULTRACHAMP SUMMER LEAGUE
+              - link "Προβολή όλων (27)" [ref=e248] [cursor=pointer]:
+                - /url: /matches
+                - text: Προβολή όλων (27)
+                - img [ref=e249]
+          - generic [ref=e251]:
+            - generic [ref=e253]:
+              - generic [ref=e254]: Πλήρες Πρόγραμμα
+              - generic [ref=e256]: Ημερολόγιο
+            - generic [ref=e257]:
+              - generic [ref=e259]:
+                - button "Προηγούμενος μήνας" [ref=e260]:
+                  - img [ref=e261]
+                - generic [ref=e263]:
+                  - generic [ref=e264]: Ημερολόγιο
+                  - generic [ref=e265]:
+                    - heading "Ιούνιος" [level=3] [ref=e266]
+                    - generic [ref=e267]: "2026"
+                - button "Επόμενος μήνας" [ref=e269]:
+                  - img [ref=e270]
+              - generic [ref=e272]:
+                - generic [ref=e273]:
+                  - generic [ref=e274]: Αγώνες · 64
+                  - generic [ref=e275]: Ημέρες · 22
+                - button "Σήμερα" [ref=e276]
+              - generic [ref=e277]:
+                - generic [ref=e278]:
+                  - generic [ref=e279]:
+                    - generic [ref=e280]: ΔΕΥ
+                    - generic [ref=e281]: ΤΡΙ
+                    - generic [ref=e282]: ΤΕΤ
+                    - generic [ref=e283]: ΠΕΜ
+                    - generic [ref=e284]: ΠΑΡ
+                    - generic [ref=e285]: ΣΑΒ
+                    - generic [ref=e286]: ΚΥΡ
+                  - generic [ref=e287]:
+                    - button "01" [disabled] [ref=e288]:
+                      - generic [ref=e289]: "01"
+                    - button "02" [ref=e290] [cursor=pointer]:
+                      - generic [ref=e291]: "02"
+                      - generic [ref=e299]: ·02
+                    - button "03 +2" [ref=e300] [cursor=pointer]:
+                      - generic [ref=e301]: "03"
+                      - generic "5 αγώνες συνολικά" [ref=e312]: "+2"
+                      - generic [ref=e313]: ·05
+                    - button "04" [ref=e314] [cursor=pointer]:
+                      - generic [ref=e315]: "04"
+                      - generic [ref=e320]: ·01
+                    - button "05" [ref=e321] [cursor=pointer]:
+                      - generic [ref=e322]: "05"
+                      - generic [ref=e333]: ·03
+                    - button "06" [disabled] [ref=e334]:
+                      - generic [ref=e335]: "06"
+                    - button "07" [disabled] [ref=e336]:
+                      - generic [ref=e337]: "07"
+                    - button "08" [ref=e338] [cursor=pointer]:
+                      - generic [ref=e339]: "08"
+                      - generic [ref=e347]: ·02
+                    - button "09" [ref=e348] [cursor=pointer]:
+                      - generic [ref=e349]: "09"
+                      - generic [ref=e357]: ·02
+                    - button "10 +1" [ref=e358] [cursor=pointer]:
+                      - generic [ref=e359]: "10"
+                      - generic "4 αγώνες συνολικά" [ref=e370]: "+1"
+                      - generic [ref=e371]: ·04
+                    - button "11" [ref=e372] [cursor=pointer]:
+                      - generic [ref=e373]: "11"
+                      - generic [ref=e381]: ·02
+                    - button "12 +1" [ref=e382] [cursor=pointer]:
+                      - generic [ref=e383]: "12"
+                      - generic "4 αγώνες συνολικά" [ref=e394]: "+1"
+                      - generic [ref=e395]: ·04
+                    - button "13" [disabled] [ref=e396]:
+                      - generic [ref=e397]: "13"
+                    - button "14" [disabled] [ref=e398]:
+                      - generic [ref=e399]: "14"
+                    - button "15" [ref=e400] [cursor=pointer]:
+                      - generic [ref=e401]: "15"
+                      - generic [ref=e406]: ·01
+                    - button "16" [ref=e407] [cursor=pointer]:
+                      - generic [ref=e408]: "16"
+                      - generic [ref=e419]: ·03
+                    - button "17 +2" [ref=e420] [cursor=pointer]:
+                      - generic [ref=e421]: "17"
+                      - generic "5 αγώνες συνολικά" [ref=e432]: "+2"
+                      - generic [ref=e433]: ·05
+                    - button "18" [ref=e434] [cursor=pointer]:
+                      - generic [ref=e435]: "18"
+                      - generic [ref=e443]: ·02
+                    - button "19" [ref=e444] [cursor=pointer]:
+                      - generic [ref=e445]: "19"
+                      - generic [ref=e456]: ·03
+                    - button "20" [disabled] [ref=e457]:
+                      - generic [ref=e458]: "20"
+                    - button "21 ΣΗΜΕΡΑ" [ref=e459] [cursor=pointer]:
+                      - generic [ref=e460]: "21"
+                      - generic [ref=e461]: ΣΗΜΕΡΑ
+                      - generic [ref=e466]: ·01
+                    - button "22" [ref=e467] [cursor=pointer]:
+                      - generic [ref=e468]: "22"
+                      - generic [ref=e476]: ·02
+                    - button "23 +2" [ref=e477] [cursor=pointer]:
+                      - generic [ref=e478]: "23"
+                      - generic "5 αγώνες συνολικά" [ref=e489]: "+2"
+                      - generic [ref=e490]: ·05
+                    - button "24 +3" [ref=e491] [cursor=pointer]:
+                      - generic [ref=e492]: "24"
+                      - generic "6 αγώνες συνολικά" [ref=e503]: "+3"
+                      - generic [ref=e504]: ·06
+                    - button "25" [ref=e505] [cursor=pointer]:
+                      - generic [ref=e506]: "25"
+                      - generic [ref=e514]: ·02
+                    - button "26 +2" [ref=e515] [cursor=pointer]:
+                      - generic [ref=e516]: "26"
+                      - generic "5 αγώνες συνολικά" [ref=e527]: "+2"
+                      - generic [ref=e528]: ·05
+                    - button "27" [disabled] [ref=e529]:
+                      - generic [ref=e530]: "27"
+                    - button "28" [ref=e531] [cursor=pointer]:
+                      - generic [ref=e532]: "28"
+                      - generic [ref=e540]: ·02
+                    - button "29" [ref=e541] [cursor=pointer]:
+                      - generic [ref=e542]: "29"
+                      - generic [ref=e550]: ·02
+                    - button "30" [disabled] [ref=e551]:
+                      - generic [ref=e552]: "30"
+                    - button "01" [disabled] [ref=e553]:
+                      - generic [ref=e554]: "01"
+                    - button "02" [disabled] [ref=e555]:
+                      - generic [ref=e556]: "02"
+                    - button "03" [disabled] [ref=e557]:
+                      - generic [ref=e558]: "03"
+                    - button "04" [disabled] [ref=e559]:
+                      - generic [ref=e560]: "04"
+                    - button "05" [disabled] [ref=e561]:
+                      - generic [ref=e562]: "05"
+                    - button "06" [disabled] [ref=e563]:
+                      - generic [ref=e564]: "06"
+                    - button "07" [disabled] [ref=e565]:
+                      - generic [ref=e566]: "07"
+                    - button "08" [disabled] [ref=e567]:
+                      - generic [ref=e568]: "08"
+                    - button "09" [disabled] [ref=e569]:
+                      - generic [ref=e570]: "09"
+                    - button "10" [disabled] [ref=e571]:
+                      - generic [ref=e572]: "10"
+                    - button "11" [disabled] [ref=e573]:
+                      - generic [ref=e574]: "11"
+                    - button "12" [disabled] [ref=e575]:
+                      - generic [ref=e576]: "12"
+                  - generic [ref=e577]:
+                    - generic [ref=e578]: Πατήστε σε ημέρα για λεπτομέρειες
+                    - generic [ref=e580]: Σήμερα
+                - button "Ανάπτυξη ημερολογίου" [ref=e582]:
+                  - img [ref=e583]
+                  - text: Ανάπτυξη
+      - generic [ref=e586]:
+        - generic:
+          - img
+          - img
+        - generic [ref=e587]:
+          - generic [ref=e588]:
+            - generic [ref=e589]: Ανακοινώσεις
+            - heading "Τελευταία Νέα" [level=2] [ref=e591]
+          - generic [ref=e593]:
+            - generic [ref=e594]:
+              - heading "ΑΡΘΡΑ" [level=2] [ref=e595]
+              - paragraph [ref=e597]: Τελευταία νέα και αναλύσεις αγώνων
+            - generic [ref=e598]:
+              - link [ref=e599] [cursor=pointer]:
+                - /url: /article/p
+                - article [ref=e600]:
+                  - generic [ref=e601]:
+                    - img "Ultrachamp Summer League - P/TOTW - 5η/6η/7η Αγωνιστική" [ref=e602]
+                    - generic [ref=e604]: "01"
+                  - generic [ref=e605]:
+                    - paragraph [ref=e606]:
+                      - img [ref=e607]
+                      - time [ref=e609]: 15 Ιουν 2026
+                    - heading "Ultrachamp Summer League - P/TOTW - 5η/6η/7η Αγωνιστική" [level=3] [ref=e610]
+                    - generic [ref=e611]:
+                      - generic [ref=e612]: Διαβάστε περισσότερα
+                      - img [ref=e613]
+              - link [ref=e615] [cursor=pointer]:
+                - /url: /article/Df5
+                - article [ref=e616]:
+                  - generic [ref=e617]:
+                    - img "Ανασκόπηση 5ης , 6ης , 7ης αγωνιστικής Ultrachamp Summer League" [ref=e618]
+                    - generic [ref=e620]: "02"
+                  - generic [ref=e621]:
+                    - paragraph [ref=e622]:
+                      - img [ref=e623]
+                      - time [ref=e625]: 15 Ιουν 2026
+                    - heading "Ανασκόπηση 5ης , 6ης , 7ης αγωνιστικής Ultrachamp Summer League" [level=3] [ref=e626]
+                    - generic [ref=e627]:
+                      - generic [ref=e628]: Διαβάστε περισσότερα
+                      - img [ref=e629]
+              - link [ref=e631] [cursor=pointer]:
+                - /url: /article/u34
+                - article [ref=e632]:
+                  - generic [ref=e633]:
+                    - img "Ultrachamp Summer League - P/TOTW 3 & 4" [ref=e634]
+                    - generic [ref=e636]: "03"
+                  - generic [ref=e637]:
+                    - paragraph [ref=e638]:
+                      - img [ref=e639]
+                      - time [ref=e641]: 30 Μαΐ 2026
+                    - heading "Ultrachamp Summer League - P/TOTW 3 & 4" [level=3] [ref=e642]
+                    - generic [ref=e643]:
+                      - generic [ref=e644]: Διαβάστε περισσότερα
+                      - img [ref=e645]
+              - link [ref=e647] [cursor=pointer]:
+                - /url: /article/u12
+                - article [ref=e648]:
+                  - generic [ref=e649]:
+                    - img "Ανασκόπηση 4ης αγωνιστικής - Ultrachamp Summer League" [ref=e650]
+                    - generic [ref=e652]: "04"
+                  - generic [ref=e653]:
+                    - paragraph [ref=e654]:
+                      - img [ref=e655]
+                      - time [ref=e657]: 30 Μαΐ 2026
+                    - heading "Ανασκόπηση 4ης αγωνιστικής - Ultrachamp Summer League" [level=3] [ref=e658]
+                    - generic [ref=e659]:
+                      - generic [ref=e660]: Διαβάστε περισσότερα
+                      - img [ref=e661]
+            - link "Δείτε Περισσότερα" [ref=e664] [cursor=pointer]:
+              - /url: /articles
+              - text: Δείτε Περισσότερα
+              - img [ref=e665]
+      - generic [ref=e669]:
+        - generic [ref=e670]:
+          - generic [ref=e671]: Στιγμιότυπα
+          - heading "Highlights" [level=2] [ref=e673]
+        - generic [ref=e675]:
+          - generic [ref=e676]:
+            - heading "ΒΙΝΤΕΟ" [level=2] [ref=e677]
+            - paragraph [ref=e679]: Στιγμιότυπα από τους αγώνες μας
+          - generic [ref=e680]:
+            - generic [ref=e681]:
+              - generic [ref=e682]:
+                - img "BALLISTAS FC vs LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)" [ref=e683]
+                - button "Play video" [ref=e685] [cursor=pointer]:
+                  - img [ref=e687]
+                - generic [ref=e689]: 11 – 4
+              - generic [ref=e690]:
+                - generic [ref=e691]:
+                  - generic [ref=e692]: 3 Ιουν 2026
+                  - generic [ref=e693]: ·
+                  - generic [ref=e694]: ULTRACHAMP ARENA 2026
+                - generic [ref=e695]:
+                  - generic [ref=e697]: BALLISTAS FC
+                  - generic [ref=e698]: vs
+                  - generic [ref=e700]: LA (ΛΟΦΟΣ ΑΞΙΟΜΑΤΙΚΩΝ)
+            - generic [ref=e701]:
+              - generic [ref=e702]:
+                - img "BALLISTAS FC vs HIGHDARI" [ref=e703]
+                - button "Play video" [ref=e705] [cursor=pointer]:
+                  - img [ref=e707]
+                - generic [ref=e709]: 24 – 3
+              - generic [ref=e710]:
+                - generic [ref=e711]:
+                  - generic [ref=e712]: 3 Ιουν 2026
+                  - generic [ref=e713]: ·
+                  - generic [ref=e714]: ULTRACHAMP ARENA 2026
+                - generic [ref=e715]:
+                  - generic [ref=e717]: BALLISTAS FC
+                  - generic [ref=e718]: vs
+                  - generic [ref=e720]: HIGHDARI
+          - generic [ref=e721]:
+            - button "Previous page" [disabled] [ref=e722]:
+              - img [ref=e723]
+            - generic [ref=e725]:
+              - button "Page 1" [ref=e726]
+              - button "Page 2" [ref=e727]
+              - button "Page 3" [ref=e728]
+              - button "Page 4" [ref=e729]
+              - button "Page 5" [ref=e730]
+              - button "Page 6" [ref=e731]
+              - button "Page 7" [ref=e732]
+              - button "Page 8" [ref=e733]
+            - button "Next page" [ref=e734]:
+              - img [ref=e735]
+      - generic [ref=e737]:
+        - generic:
+          - img
+          - img
+        - generic [ref=e738]:
+          - generic [ref=e739]:
+            - generic [ref=e740]: Αποδόσεις
+            - heading "Οι κορυφαίοι" [level=2] [ref=e742]
+          - generic [ref=e744]:
+            - generic [ref=e745]:
+              - generic [ref=e746]:
+                - generic [ref=e747]: Goals
+                - heading "Top Σκόρερς" [level=3] [ref=e749]
+              - generic [ref=e751]:
+                - generic [ref=e753]:
+                  - generic [ref=e755] [cursor=pointer]:
+                    - generic [ref=e756]:
+                      - img "ΜΑΚΗΣ ΝΑΣΙΟΣ" [ref=e757]
+                      - generic [ref=e760]:
+                        - img "WALKERS" [ref=e762]
+                        - generic [ref=e763]: WALKERS
+                    - generic [ref=e764]:
+                      - generic [ref=e766]:
+                        - generic [ref=e767]: № 01 · Σκόρερ
+                        - generic [ref=e769]: League Leader
+                      - generic [ref=e770]:
+                        - generic [ref=e771]:
+                          - generic [ref=e772]: ΜΑΚΗΣ
+                          - heading "ΝΑΣΙΟΣ" [level=3] [ref=e773]:
+                            - generic [ref=e775]: ΝΑΣΙΟΣ
+                          - generic [ref=e778]: Γκολ
+                        - generic [ref=e779]:
+                          - generic [ref=e780]: "63"
+                          - generic [ref=e781]: Γκολ
+                        - generic [ref=e782]:
+                          - generic [ref=e783]:
+                            - generic [ref=e784]: "63"
+                            - generic [ref=e785]: Γκολ
+                          - generic [ref=e786]:
+                            - generic [ref=e787]: "44"
+                            - generic [ref=e788]: Ασίστ
+                          - generic [ref=e789]:
+                            - generic [ref=e790]: "2.03"
+                            - generic [ref=e791]: Ανά αγώνα
+                  - generic [ref=e793] [cursor=pointer]:
+                    - generic [ref=e794]:
+                      - img "ΑΝΤΩΝΗΣ ΠΑΝΤΑΖΟΠΟΥΛΟΣ" [ref=e795]
+                      - generic [ref=e798]:
+                        - img "BANDOLEROS" [ref=e800]
+                        - generic [ref=e801]: BANDOLEROS
+                    - generic [ref=e802]:
+                      - generic [ref=e804]:
+                        - generic [ref=e805]: № 02 · Σκόρερ
+                        - generic [ref=e807]: 2η Θέση
+                      - generic [ref=e808]:
+                        - generic [ref=e809]:
+                          - generic [ref=e810]: ΑΝΤΩΝΗΣ
+                          - heading "ΠΑΝΤΑΖΟΠΟΥΛΟΣ" [level=3] [ref=e811]:
+                            - generic [ref=e813]: ΠΑΝΤΑΖΟΠΟΥΛΟΣ
+                          - generic [ref=e816]: Γκολ
+                        - generic [ref=e817]:
+                          - generic [ref=e818]: "58"
+                          - generic [ref=e819]: Γκολ
+                        - generic [ref=e820]:
+                          - generic [ref=e821]:
+                            - generic [ref=e822]: "58"
+                            - generic [ref=e823]: Γκολ
+                          - generic [ref=e824]:
+                            - generic [ref=e825]: "24"
+                            - generic [ref=e826]: Ασίστ
+                          - generic [ref=e827]:
+                            - generic [ref=e828]: "2.90"
+                            - generic [ref=e829]: Ανά αγώνα
+                  - generic [ref=e831] [cursor=pointer]:
+                    - generic [ref=e832]:
+                      - img "ΜΑΡΙΟΣ ΤΣΟΥΤΣΑΣ" [ref=e833]
+                      - generic [ref=e836]:
+                        - img "CELTICS FC" [ref=e838]
+                        - generic [ref=e839]: CELTICS FC
+                    - generic [ref=e840]:
+                      - generic [ref=e842]:
+                        - generic [ref=e843]: № 03 · Σκόρερ
+                        - generic [ref=e845]: 3η Θέση
+                      - generic [ref=e846]:
+                        - generic [ref=e847]:
+                          - generic [ref=e848]: ΜΑΡΙΟΣ
+                          - heading "ΤΣΟΥΤΣΑΣ" [level=3] [ref=e849]:
+                            - generic [ref=e851]: ΤΣΟΥΤΣΑΣ
+                          - generic [ref=e854]: Γκολ
+                        - generic [ref=e855]:
+                          - generic [ref=e856]: "48"
+                          - generic [ref=e857]: Γκολ
+                        - generic [ref=e858]:
+                          - generic [ref=e859]:
+                            - generic [ref=e860]: "48"
+                            - generic [ref=e861]: Γκολ
+                          - generic [ref=e862]:
+                            - generic [ref=e863]: "21"
+                            - generic [ref=e864]: Ασίστ
+                          - generic [ref=e865]:
+                            - generic [ref=e866]: "2.18"
+                            - generic [ref=e867]: Ανά αγώνα
+                - button "Προηγούμενος παίκτης" [ref=e868]:
+                  - img [ref=e869]
+                - button "Επόμενος παίκτης" [ref=e871]:
+                  - img [ref=e872]
+            - generic [ref=e874]:
+              - generic [ref=e875]:
+                - generic [ref=e876]: Assists
+                - heading "Top Ασίστ" [level=3] [ref=e878]
+              - generic [ref=e880]:
+                - generic [ref=e882]:
+                  - generic [ref=e884] [cursor=pointer]:
+                    - generic [ref=e885]:
+                      - img "ΜΑΚΗΣ ΝΑΣΙΟΣ" [ref=e886]
+                      - generic [ref=e889]:
+                        - img "WALKERS" [ref=e891]
+                        - generic [ref=e892]: WALKERS
+                    - generic [ref=e893]:
+                      - generic [ref=e895]:
+                        - generic [ref=e896]: № 01 · Πάσες
+                        - generic [ref=e898]: League Leader
+                      - generic [ref=e899]:
+                        - generic [ref=e900]:
+                          - generic [ref=e901]: ΜΑΚΗΣ
+                          - heading "ΝΑΣΙΟΣ" [level=3] [ref=e902]:
+                            - generic [ref=e904]: ΝΑΣΙΟΣ
+                          - generic [ref=e907]: Ασίστ
+                        - generic [ref=e908]:
+                          - generic [ref=e909]: "44"
+                          - generic [ref=e910]: Ασίστ
+                        - generic [ref=e911]:
+                          - generic [ref=e912]:
+                            - generic [ref=e913]: "63"
+                            - generic [ref=e914]: Γκολ
+                          - generic [ref=e915]:
+                            - generic [ref=e916]: "44"
+                            - generic [ref=e917]: Ασίστ
+                          - generic [ref=e918]:
+                            - generic [ref=e919]: "1.42"
+                            - generic [ref=e920]: Ανά αγώνα
+                  - generic [ref=e922] [cursor=pointer]:
+                    - generic [ref=e923]:
+                      - img "ΤΑΣΟΣ ΧΟΤΖΑ" [ref=e924]
+                      - generic [ref=e927]:
+                        - img "ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ" [ref=e929]
+                        - generic [ref=e930]: ΠΑΝΣΟΥΓΚΑΡΙΑΚΟΣ
+                    - generic [ref=e931]:
+                      - generic [ref=e933]:
+                        - generic [ref=e934]: № 02 · Πάσες
+                        - generic [ref=e936]: 2η Θέση
+                      - generic [ref=e937]:
+                        - generic [ref=e938]:
+                          - generic [ref=e939]: ΤΑΣΟΣ
+                          - heading "ΧΟΤΖΑ" [level=3] [ref=e940]:
+                            - generic [ref=e942]: ΧΟΤΖΑ
+                          - generic [ref=e945]: Ασίστ
+                        - generic [ref=e946]:
+                          - generic [ref=e947]: "35"
+                          - generic [ref=e948]: Ασίστ
+                        - generic [ref=e949]:
+                          - generic [ref=e950]:
+                            - generic [ref=e951]: "16"
+                            - generic [ref=e952]: Γκολ
+                          - generic [ref=e953]:
+                            - generic [ref=e954]: "35"
+                            - generic [ref=e955]: Ασίστ
+                          - generic [ref=e956]:
+                            - generic [ref=e957]: "1.84"
+                            - generic [ref=e958]: Ανά αγώνα
+                  - generic [ref=e960] [cursor=pointer]:
+                    - generic [ref=e961]:
+                      - img "ΛΕΥΤΕΡΗΣ ΚΥΡΙΑΖΑΚΗΣ" [ref=e962]
+                      - generic [ref=e965]:
+                        - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ" [ref=e967]
+                        - generic [ref=e968]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ
+                    - generic [ref=e969]:
+                      - generic [ref=e971]:
+                        - generic [ref=e972]: № 03 · Πάσες
+                        - generic [ref=e974]: 3η Θέση
+                      - generic [ref=e975]:
+                        - generic [ref=e976]:
+                          - generic [ref=e977]: ΛΕΥΤΕΡΗΣ
+                          - heading "ΚΥΡΙΑΖΑΚΗΣ" [level=3] [ref=e978]:
+                            - generic [ref=e980]: ΚΥΡΙΑΖΑΚΗΣ
+                          - generic [ref=e983]: Ασίστ
+                        - generic [ref=e984]:
+                          - generic [ref=e985]: "33"
+                          - generic [ref=e986]: Ασίστ
+                        - generic [ref=e987]:
+                          - generic [ref=e988]:
+                            - generic [ref=e989]: "43"
+                            - generic [ref=e990]: Γκολ
+                          - generic [ref=e991]:
+                            - generic [ref=e992]: "33"
+                            - generic [ref=e993]: Ασίστ
+                          - generic [ref=e994]:
+                            - generic [ref=e995]: "0.82"
+                            - generic [ref=e996]: Ανά αγώνα
+                - button "Προηγούμενος παίκτης" [ref=e997]:
+                  - img [ref=e998]
+                - button "Επόμενος παίκτης" [ref=e1000]:
+                  - img [ref=e1001]
+            - generic [ref=e1003]:
+              - generic [ref=e1004]:
+                - generic [ref=e1005]: Most Valuable
+                - heading "Top MVP" [level=3] [ref=e1007]
+              - generic [ref=e1009]:
+                - generic [ref=e1011]:
+                  - generic [ref=e1013] [cursor=pointer]:
+                    - generic [ref=e1014]:
+                      - img "ΜΑΚΗΣ ΝΑΣΙΟΣ" [ref=e1015]
+                      - generic [ref=e1018]:
+                        - img "WALKERS" [ref=e1020]
+                        - generic [ref=e1021]: WALKERS
+                    - generic [ref=e1022]:
+                      - generic [ref=e1024]:
+                        - generic [ref=e1025]: № 01 · MVP
+                        - generic [ref=e1027]: League Leader
+                      - generic [ref=e1028]:
+                        - generic [ref=e1029]:
+                          - generic [ref=e1030]: ΜΑΚΗΣ
+                          - heading "ΝΑΣΙΟΣ" [level=3] [ref=e1031]:
+                            - generic [ref=e1033]: ΝΑΣΙΟΣ
+                          - generic [ref=e1036]: MVP
+                        - generic [ref=e1037]:
+                          - generic [ref=e1038]: "10"
+                          - generic [ref=e1039]: MVP
+                        - generic [ref=e1040]:
+                          - generic [ref=e1041]:
+                            - generic [ref=e1042]: "61"
+                            - generic [ref=e1043]: Γκολ
+                          - generic [ref=e1044]:
+                            - generic [ref=e1045]: "40"
+                            - generic [ref=e1046]: Ασίστ
+                          - generic [ref=e1047]:
+                            - generic [ref=e1048]: "30"
+                            - generic [ref=e1049]: Αγώνες
+                  - generic [ref=e1051] [cursor=pointer]:
+                    - generic [ref=e1052]:
+                      - img "ΛΕΥΤΕΡΗΣ ΚΥΡΙΑΖΑΚΗΣ" [ref=e1053]
+                      - generic [ref=e1056]:
+                        - img "GOONERS FC" [ref=e1058]
+                        - generic [ref=e1059]: GOONERS FC
+                    - generic [ref=e1060]:
+                      - generic [ref=e1062]:
+                        - generic [ref=e1063]: № 02 · MVP
+                        - generic [ref=e1065]: 2η Θέση
+                      - generic [ref=e1066]:
+                        - generic [ref=e1067]:
+                          - generic [ref=e1068]: ΛΕΥΤΕΡΗΣ
+                          - heading "ΚΥΡΙΑΖΑΚΗΣ" [level=3] [ref=e1069]:
+                            - generic [ref=e1071]: ΚΥΡΙΑΖΑΚΗΣ
+                          - generic [ref=e1074]: MVP
+                        - generic [ref=e1075]:
+                          - generic [ref=e1076]: "9"
+                          - generic [ref=e1077]: MVP
+                        - generic [ref=e1078]:
+                          - generic [ref=e1079]:
+                            - generic [ref=e1080]: "43"
+                            - generic [ref=e1081]: Γκολ
+                          - generic [ref=e1082]:
+                            - generic [ref=e1083]: "33"
+                            - generic [ref=e1084]: Ασίστ
+                          - generic [ref=e1085]:
+                            - generic [ref=e1086]: "40"
+                            - generic [ref=e1087]: Αγώνες
+                  - generic [ref=e1089] [cursor=pointer]:
+                    - generic [ref=e1090]:
+                      - img "ΑΓΓΕΛΟΣ ΘΕΟΔΟΣΙΟΥ" [ref=e1091]
+                      - generic [ref=e1094]:
+                        - img "ΦΟΝΙΚΑ ΡΑΚΟΥΝ Β" [ref=e1096]
+                        - generic [ref=e1097]: ΦΟΝΙΚΑ ΡΑΚΟΥΝ Β
+                    - generic [ref=e1098]:
+                      - generic [ref=e1100]:
+                        - generic [ref=e1101]: № 03 · MVP
+                        - generic [ref=e1103]: 3η Θέση
+                      - generic [ref=e1104]:
+                        - generic [ref=e1105]:
+                          - generic [ref=e1106]: ΑΓΓΕΛΟΣ
+                          - heading "ΘΕΟΔΟΣΙΟΥ" [level=3] [ref=e1107]:
+                            - generic [ref=e1109]: ΘΕΟΔΟΣΙΟΥ
+                          - generic [ref=e1112]: MVP
+                        - generic [ref=e1113]:
+                          - generic [ref=e1114]: "8"
+                          - generic [ref=e1115]: MVP
+                        - generic [ref=e1116]:
+                          - generic [ref=e1117]:
+                            - generic [ref=e1118]: "29"
+                            - generic [ref=e1119]: Γκολ
+                          - generic [ref=e1120]:
+                            - generic [ref=e1121]: "10"
+                            - generic [ref=e1122]: Ασίστ
+                          - generic [ref=e1123]:
+                            - generic [ref=e1124]: "15"
+                            - generic [ref=e1125]: Αγώνες
+                - button "Προηγούμενος παίκτης" [ref=e1126]:
+                  - img [ref=e1127]
+                - button "Επόμενος παίκτης" [ref=e1129]:
+                  - img [ref=e1130]
+            - generic [ref=e1132]:
+              - generic [ref=e1133]:
+                - generic [ref=e1134]: Between the posts
+                - heading "Top Best GK" [level=3] [ref=e1136]
+              - generic [ref=e1138]:
+                - generic [ref=e1140]:
+                  - generic [ref=e1142] [cursor=pointer]:
+                    - generic [ref=e1143]:
+                      - img "ΣΤΕΦΑΝΟΣ ΘΕΟΔΟΥΛΙΔΗΣ" [ref=e1144]
+                      - generic [ref=e1147]:
+                        - img "DPR" [ref=e1149]
+                        - generic [ref=e1150]: DPR
+                    - generic [ref=e1151]:
+                      - generic [ref=e1153]:
+                        - generic [ref=e1154]: № 01 · Best GK
+                        - generic [ref=e1156]: League Leader
+                      - generic [ref=e1157]:
+                        - generic [ref=e1158]:
+                          - generic [ref=e1159]: ΣΤΕΦΑΝΟΣ
+                          - heading "ΘΕΟΔΟΥΛΙΔΗΣ" [level=3] [ref=e1160]:
+                            - generic [ref=e1162]: ΘΕΟΔΟΥΛΙΔΗΣ
+                          - generic [ref=e1165]: Best GK
+                        - generic [ref=e1166]:
+                          - generic [ref=e1167]: "14"
+                          - generic [ref=e1168]: Best GK
+                        - generic [ref=e1169]:
+                          - generic [ref=e1170]:
+                            - generic [ref=e1171]: "0"
+                            - generic [ref=e1172]: Γκολ
+                          - generic [ref=e1173]:
+                            - generic [ref=e1174]: "1"
+                            - generic [ref=e1175]: Ασίστ
+                          - generic [ref=e1176]:
+                            - generic [ref=e1177]: "26"
+                            - generic [ref=e1178]: Αγώνες
+                  - generic [ref=e1180] [cursor=pointer]:
+                    - generic [ref=e1181]:
+                      - img "ΘΕΟΔΩΡΟΣ ΚΟΝΤΟΓΕΩΡΓΗΣ" [ref=e1182]
+                      - generic [ref=e1185]:
+                        - img "ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ" [ref=e1187]
+                        - generic [ref=e1188]: ΑΛΚΟΟΛΙΚΟΣ ΑΣΤΕΡΑΣ
+                    - generic [ref=e1189]:
+                      - generic [ref=e1191]:
+                        - generic [ref=e1192]: № 02 · Best GK
+                        - generic [ref=e1194]: 2η Θέση
+                      - generic [ref=e1195]:
+                        - generic [ref=e1196]:
+                          - generic [ref=e1197]: ΘΕΟΔΩΡΟΣ
+                          - heading "ΚΟΝΤΟΓΕΩΡΓΗΣ" [level=3] [ref=e1198]:
+                            - generic [ref=e1200]: ΚΟΝΤΟΓΕΩΡΓΗΣ
+                          - generic [ref=e1203]: Best GK
+                        - generic [ref=e1204]:
+                          - generic [ref=e1205]: "13"
+                          - generic [ref=e1206]: Best GK
+                        - generic [ref=e1207]:
+                          - generic [ref=e1208]:
+                            - generic [ref=e1209]: "1"
+                            - generic [ref=e1210]: Γκολ
+                          - generic [ref=e1211]:
+                            - generic [ref=e1212]: "5"
+                            - generic [ref=e1213]: Ασίστ
+                          - generic [ref=e1214]:
+                            - generic [ref=e1215]: "28"
+                            - generic [ref=e1216]: Αγώνες
+                  - generic [ref=e1218] [cursor=pointer]:
+                    - generic [ref=e1219]:
+                      - img "ΑΛΕΞΑΝΔΡΟΣ ΜΠΑΚΟΓΙΑΝΝΗΣ" [ref=e1220]
+                      - generic [ref=e1223]:
+                        - img "PINK PANTHERS X KONIORDOI" [ref=e1225]
+                        - generic [ref=e1226]: PINK PANTHERS X KONIORDOI
+                    - generic [ref=e1227]:
+                      - generic [ref=e1229]:
+                        - generic [ref=e1230]: № 03 · Best GK
+                        - generic [ref=e1232]: 3η Θέση
+                      - generic [ref=e1233]:
+                        - generic [ref=e1234]:
+                          - generic [ref=e1235]: ΑΛΕΞΑΝΔΡΟΣ
+                          - heading "ΜΠΑΚΟΓΙΑΝΝΗΣ" [level=3] [ref=e1236]:
+                            - generic [ref=e1238]: ΜΠΑΚΟΓΙΑΝΝΗΣ
+                          - generic [ref=e1241]: Best GK
+                        - generic [ref=e1242]:
+                          - generic [ref=e1243]: "11"
+                          - generic [ref=e1244]: Best GK
+                        - generic [ref=e1245]:
+                          - generic [ref=e1246]:
+                            - generic [ref=e1247]: "0"
+                            - generic [ref=e1248]: Γκολ
+                          - generic [ref=e1249]:
+                            - generic [ref=e1250]: "0"
+                            - generic [ref=e1251]: Ασίστ
+                          - generic [ref=e1252]:
+                            - generic [ref=e1253]: "33"
+                            - generic [ref=e1254]: Αγώνες
+                - button "Προηγούμενος παίκτης" [ref=e1255]:
+                  - img [ref=e1256]
+                - button "Επόμενος παίκτης" [ref=e1258]:
+                  - img [ref=e1259]
+      - generic [ref=e1263]:
+        - generic [ref=e1264]:
+          - generic [ref=e1265]: Οι Αξίες μας
+          - heading "Η ομάδα σε περιμένει" [level=2] [ref=e1267]
+          - paragraph [ref=e1268]: Τρεις λόγοι που μας εμπιστεύονται παίκτες κάθε επιπέδου.
+        - generic [ref=e1269]:
+          - generic [ref=e1270]:
+            - generic [ref=e1271]:
+              - generic [ref=e1272]: № 01
+              - img [ref=e1273]
+            - heading "Φιλόξενη Κοινότητα" [level=3] [ref=e1278]
+            - paragraph [ref=e1279]: Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.
+          - generic [ref=e1281]:
+            - generic [ref=e1282]:
+              - generic [ref=e1283]: № 02
+              - img [ref=e1284]
+            - heading "Ποιοτικοί Αγώνες" [level=3] [ref=e1290]
+            - paragraph [ref=e1291]: Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».
+          - generic [ref=e1293]:
+            - generic [ref=e1294]:
+              - generic [ref=e1295]: № 03
+              - img [ref=e1296]
+            - heading "Προφίλ & Στατιστικά" [level=3] [ref=e1298]
+            - paragraph [ref=e1299]: Γκολ, ασίστ, συμμετοχές και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.
+      - generic [ref=e1301]:
+        - generic:
+          - img
+          - img
+        - generic [ref=e1302]:
+          - generic [ref=e1303]:
+            - generic [ref=e1304]: Τα Τουρνουά
+            - heading "Έτοιμοι για σέντρα;" [level=2] [ref=e1306]
+            - paragraph [ref=e1307]: Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
+          - link "Όλα τα Τουρνουά →" [ref=e1308] [cursor=pointer]:
+            - /url: /tournaments
+            - text: Όλα τα Τουρνουά
+            - generic [ref=e1309]: →
+          - generic [ref=e1311]:
+            - link "Άνοιγμα ULTRACHAMP ARENA 2026" [ref=e1313] [cursor=pointer]:
+              - /url: /tournaments/35
+              - generic [ref=e1314]:
+                - generic [ref=e1315]:
+                  - generic [ref=e1316]: Προγραμματισμένο
+                  - generic [ref=e1317]: N°35
+                - generic [ref=e1318]:
+                  - generic [ref=e1319]:
+                    - img "ULTRACHAMP ARENA 2026 logo" [ref=e1320]
+                    - generic [ref=e1321]:
+                      - heading "ULTRACHAMP ARENA 2026" [level=3] [ref=e1322]
+                      - generic [ref=e1324]: mixed
+                  - generic [ref=e1325]:
+                    - generic [ref=e1326]:
+                      - generic [ref=e1327]:
+                        - generic [ref=e1328]: "13"
+                        - generic [ref=e1329]: Ομάδες
+                      - generic [ref=e1330]:
+                        - generic [ref=e1331]: "42"
+                        - generic [ref=e1332]: Αγώνες
+                    - generic [ref=e1333]: Προβολή →
+                - generic [ref=e1335]: UC · 35
+            - link "Άνοιγμα ULTRACHAMP SUMMER LEAGUE" [ref=e1338] [cursor=pointer]:
+              - /url: /tournaments/34
+              - generic [ref=e1339]:
+                - generic [ref=e1340]:
+                  - generic [ref=e1341]: Προγραμματισμένο
+                  - generic [ref=e1342]: N°34
+                - generic [ref=e1343]:
+                  - generic [ref=e1344]:
+                    - img "ULTRACHAMP SUMMER LEAGUE logo" [ref=e1345]
+                    - generic [ref=e1346]:
+                      - heading "ULTRACHAMP SUMMER LEAGUE" [level=3] [ref=e1347]
+                      - generic [ref=e1348]:
+                        - generic [ref=e1349]: Σεζόν 2026
+                        - generic [ref=e1350]: mixed
+                  - generic [ref=e1351]:
+                    - generic [ref=e1352]:
+                      - generic [ref=e1353]:
+                        - generic [ref=e1354]: "20"
+                        - generic [ref=e1355]: Ομάδες
+                      - generic [ref=e1356]:
+                        - generic [ref=e1357]: "90"
+                        - generic [ref=e1358]: Αγώνες
+                    - generic [ref=e1359]: Προβολή →
+                - generic [ref=e1361]: UC · 34
+            - link "Άνοιγμα UL-GL PLAYOUTS 2025-2026" [ref=e1364] [cursor=pointer]:
+              - /url: /tournaments/33
+              - generic [ref=e1365]:
+                - generic [ref=e1366]:
+                  - generic [ref=e1367]: Έληξε
+                  - generic [ref=e1368]: N°33
+                - generic [ref=e1369]:
+                  - generic [ref=e1370]:
+                    - img "UL-GL PLAYOUTS 2025-2026 logo" [ref=e1371]
+                    - generic [ref=e1372]:
+                      - heading "UL-GL PLAYOUTS 2025-2026" [level=3] [ref=e1373]
+                      - generic [ref=e1375]: mixed
+                  - generic [ref=e1376]:
+                    - generic [ref=e1377]:
+                      - generic [ref=e1378]:
+                        - generic [ref=e1379]: "6"
+                        - generic [ref=e1380]: Ομάδες
+                      - generic [ref=e1381]:
+                        - generic [ref=e1382]: "9"
+                        - generic [ref=e1383]: Αγώνες
+                    - generic [ref=e1384]: Προβολή →
+                - generic [ref=e1386]: UC · 33
+            - link "Άνοιγμα MASTERSCUP 2026 by Ultrachamp" [ref=e1389] [cursor=pointer]:
+              - /url: /tournaments/32
+              - generic [ref=e1390]:
+                - generic [ref=e1391]:
+                  - generic [ref=e1392]: Έληξε
+                  - generic [ref=e1393]: N°32
+                - generic [ref=e1394]:
+                  - generic [ref=e1395]:
+                    - img "MASTERSCUP 2026 by Ultrachamp logo" [ref=e1396]
+                    - generic [ref=e1397]:
+                      - heading "MASTERSCUP 2026 by Ultrachamp" [level=3] [ref=e1398]
+                      - generic [ref=e1400]: mixed
+                  - generic [ref=e1401]:
+                    - generic [ref=e1402]:
+                      - generic [ref=e1403]:
+                        - generic [ref=e1404]: "22"
+                        - generic [ref=e1405]: Ομάδες
+                      - generic [ref=e1406]:
+                        - generic [ref=e1407]: "28"
+                        - generic [ref=e1408]: Αγώνες
+                    - generic [ref=e1409]: Προβολή →
+                - generic [ref=e1411]: UC · 32
+            - link "Άνοιγμα NEW YEAR ULTRA CUP" [ref=e1414] [cursor=pointer]:
+              - /url: /tournaments/31
+              - generic [ref=e1415]:
+                - generic [ref=e1416]:
+                  - generic [ref=e1417]: Έληξε
+                  - generic [ref=e1418]: N°31
+                - generic [ref=e1419]:
+                  - generic [ref=e1420]:
+                    - img "NEW YEAR ULTRA CUP logo" [ref=e1421]
+                    - generic [ref=e1422]:
+                      - heading "NEW YEAR ULTRA CUP" [level=3] [ref=e1423]
+                      - generic [ref=e1424]:
+                        - generic [ref=e1425]: Σεζόν 2026
+                        - generic [ref=e1426]: mixed
+                  - generic [ref=e1427]:
+                    - generic [ref=e1428]:
+                      - generic [ref=e1429]:
+                        - generic [ref=e1430]: "10"
+                        - generic [ref=e1431]: Ομάδες
+                      - generic [ref=e1432]:
+                        - generic [ref=e1433]: "26"
+                        - generic [ref=e1434]: Αγώνες
+                    - generic [ref=e1435]: Προβολή →
+                - generic [ref=e1437]: UC · 31
+            - link "Άνοιγμα ULTRA LEAGUE ΧΑΪΔΑΡΙ 5x5" [ref=e1440] [cursor=pointer]:
+              - /url: /tournaments/23
+              - generic [ref=e1441]:
+                - generic [ref=e1442]:
+                  - generic [ref=e1443]: Προγραμματισμένο
+                  - generic [ref=e1444]: N°23
+                - generic [ref=e1445]:
+                  - generic [ref=e1446]:
+                    - img "ULTRA LEAGUE ΧΑΪΔΑΡΙ 5x5 logo" [ref=e1447]
+                    - generic [ref=e1448]:
+                      - heading "ULTRA LEAGUE ΧΑΪΔΑΡΙ 5x5" [level=3] [ref=e1449]
+                      - generic [ref=e1450]:
+                        - generic [ref=e1451]: Σεζόν 2025-2026
+                        - generic [ref=e1452]: mixed
+                  - generic [ref=e1453]:
+                    - generic [ref=e1454]:
+                      - generic [ref=e1455]:
+                        - generic [ref=e1456]: "12"
+                        - generic [ref=e1457]: Ομάδες
+                      - generic [ref=e1458]:
+                        - generic [ref=e1459]: "150"
+                        - generic [ref=e1460]: Αγώνες
+                    - generic [ref=e1461]: Προβολή →
+                - generic [ref=e1463]: UC · 23
+      - generic [ref=e1467]:
+        - generic [ref=e1468]:
+          - generic [ref=e1469]: Μαρτυρίες
+          - heading "Τι λένε οι παίκτες μας" [level=2] [ref=e1471]
+        - generic [ref=e1472]:
+          - figure "№ 01 Φίλιππος Αστεριάδης Αρχηγός Μεικτής Ομάδας UltraChamp" [ref=e1473]:
+            - generic [ref=e1474]: “
+            - blockquote [ref=e1475]: Ενα πρότζεκτ για όλους με άξονα την ποδοσφαιρική παιδεία.
+            - generic [ref=e1476]:
+              - generic [ref=e1477]: № 01
+              - generic [ref=e1478]: Φίλιππος Αστεριάδης
+              - generic [ref=e1479]: Αρχηγός Μεικτής Ομάδας UltraChamp
+          - figure "№ 02 Τόλης Παύλου Αρχηγός Πανσουγκαριακού" [ref=e1480]:
+            - generic [ref=e1481]: “
+            - blockquote [ref=e1482]: Μια διοργάνωση που σου προσφέρει εμπιστοσύνη και αντιμετωπίζει τις ομάδες με επαγγελματισμό και σοβαρότητα.
+            - generic [ref=e1483]:
+              - generic [ref=e1484]: № 02
+              - generic [ref=e1485]: Τόλης Παύλου
+              - generic [ref=e1486]: Αρχηγός Πανσουγκαριακού
+          - figure "№ 03 Πέτρος Τσιαβό Αρχηγός Ελληνικής Ομάδας F7" [ref=e1487]:
+            - generic [ref=e1488]: “
+            - blockquote [ref=e1489]: Ποδοσφαιρικό πάθος. Όλοι οι παίχτες με το ίδιο πάθος και σεβασμό προς το άθλημα και την διοργάνωση.
+            - generic [ref=e1490]:
+              - generic [ref=e1491]: № 03
+              - generic [ref=e1492]: Πέτρος Τσιαβό
+              - generic [ref=e1493]: Αρχηγός Ελληνικής Ομάδας F7
+      - button "Επικοινωνία" [ref=e1495]:
+        - img [ref=e1496]
+        - generic [ref=e1498]: Επικοινωνία
+  - contentinfo [ref=e1499]:
+    - generic [ref=e1500]:
+      - paragraph [ref=e1501]: © 2025 Ultra Champ.
+      - navigation "Legal" [ref=e1502]:
+        - link "Πολιτική Απορρήτου" [ref=e1503] [cursor=pointer]:
+          - /url: /privacy
+        - link "Όροι Χρήσης" [ref=e1504] [cursor=pointer]:
+          - /url: /terms
+        - link "Cookies" [ref=e1505] [cursor=pointer]:
+          - /url: /cookies
+        - link "Επικοινωνία" [ref=e1506] [cursor=pointer]:
+          - /url: /epikoinonia
+        - button "Ρυθμίσεις Cookies" [ref=e1507]
+      - generic [ref=e1508]:
+        - text: Κατασκευή ιστοσελίδας από
+        - link "Digital Footprint" [ref=e1509] [cursor=pointer]:
+          - /url: https://www.digitalfootprint.gr
+  - generic [ref=e1514] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e1515]:
+      - img [ref=e1516]
+    - generic [ref=e1519]:
+      - button "Open issues overlay" [ref=e1520]:
+        - generic [ref=e1521]:
+          - generic [ref=e1522]: "0"
+          - generic [ref=e1523]: "1"
+        - generic [ref=e1524]: Issue
+      - button "Collapse issues badge" [ref=e1525]:
+        - img [ref=e1526]
+  - alert [ref=e1528]
