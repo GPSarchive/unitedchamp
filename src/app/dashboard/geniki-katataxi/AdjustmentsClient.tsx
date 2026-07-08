@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Plus,
+  Minus,
   Trash2,
   Ban,
   RotateCcw,
@@ -299,12 +300,20 @@ function TeamDrawer({
 }) {
   const { team } = row;
 
-  // Add-points form state (team + season are fixed by the drawer context).
+  // Add-points form state (team + season are fixed by the modal context).
+  // The admin picks a DIRECTION (add = reward, subtract = punishment) and types a
+  // positive MAGNITUDE; the saved points get the sign from the direction. Punishments
+  // are just "Αφαίρεση" — no need to type a minus.
   const [kind, setKind] = useState<AdjustmentKind>("international");
-  const [points, setPoints] = useState<number>(ADJUSTMENT_PRESETS.international.points ?? 0);
+  const [direction, setDirection] = useState<"add" | "subtract">("add");
+  const [magnitude, setMagnitude] = useState<number>(
+    Math.abs(ADJUSTMENT_PRESETS.international.points ?? 0)
+  );
   const [reason, setReason] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const signedPoints = (direction === "subtract" ? -1 : 1) * Math.abs(magnitude);
 
   // Close on Escape; lock body scroll while the drawer is open.
   useEffect(() => {
@@ -321,7 +330,11 @@ function TeamDrawer({
   const onKindChange = (k: AdjustmentKind) => {
     setKind(k);
     const preset = ADJUSTMENT_PRESETS[k].points;
-    if (preset != null) setPoints(preset);
+    if (preset != null) {
+      // A preset carries its own sign → set both the magnitude and the direction.
+      setDirection(preset < 0 ? "subtract" : "add");
+      setMagnitude(Math.abs(preset));
+    }
   };
 
   const toggle = (key: string) =>
@@ -333,7 +346,13 @@ function TeamDrawer({
 
   const submitGrant = () =>
     run("grant", async () => {
-      const res = await addAdjustment({ season, teamId: team.id, kind, points, reason });
+      const res = await addAdjustment({
+        season,
+        teamId: team.id,
+        kind,
+        points: signedPoints,
+        reason,
+      });
       if (res.success) {
         setReason("");
         setShowForm(false);
@@ -358,15 +377,19 @@ function TeamDrawer({
   const labelCls = "text-xs text-white/60";
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden
       />
-      {/* Panel */}
-      <div className="relative flex h-full w-full flex-col bg-zinc-950 shadow-2xl ring-1 ring-white/10 sm:w-[30rem]">
+      {/* Modal card — full screen on phones, centered dialog on larger screens */}
+      <div className="relative flex h-full w-full max-h-full flex-col overflow-hidden bg-zinc-950 shadow-2xl ring-1 ring-white/10 sm:h-auto sm:max-h-[85vh] sm:w-[34rem] sm:rounded-2xl">
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
           {team.logo ? (
@@ -441,6 +464,34 @@ function TeamDrawer({
             </button>
           ) : (
             <div className="space-y-3">
+              {/* Direction: reward vs punishment. Subtract = ποινή, no minus needed. */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDirection("add")}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                    direction === "add"
+                      ? "border-emerald-500/60 bg-emerald-600/20 text-emerald-200"
+                      : "border-white/15 bg-zinc-900 text-white/60 hover:bg-zinc-800"
+                  }`}
+                >
+                  <Plus className="h-4 w-4" />
+                  Πρόσθεση
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDirection("subtract")}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                    direction === "subtract"
+                      ? "border-red-500/60 bg-red-600/20 text-red-200"
+                      : "border-white/15 bg-zinc-900 text-white/60 hover:bg-zinc-800"
+                  }`}
+                >
+                  <Minus className="h-4 w-4" />
+                  Αφαίρεση (ποινή)
+                </button>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2 space-y-1">
                   <label className={labelCls}>Λόγος (κανόνας)</label>
@@ -449,24 +500,37 @@ function TeamDrawer({
                     value={kind}
                     onChange={(e) => onKindChange(e.target.value as AdjustmentKind)}
                   >
-                    {ADJUSTMENT_KINDS.map((k) => {
-                      const p = ADJUSTMENT_PRESETS[k];
-                      return (
+                    <optgroup label="Βραβεία">
+                      {ADJUSTMENT_KINDS.filter(
+                        (k) => (ADJUSTMENT_PRESETS[k].points ?? 0) > 0
+                      ).map((k) => (
                         <option key={k} value={k}>
-                          {p.label}
-                          {p.points != null ? ` (${signed(p.points)})` : ""}
+                          {ADJUSTMENT_PRESETS[k].label} ({signed(ADJUSTMENT_PRESETS[k].points!)})
                         </option>
-                      );
-                    })}
+                      ))}
+                    </optgroup>
+                    <optgroup label="Ποινές">
+                      {ADJUSTMENT_KINDS.filter(
+                        (k) => (ADJUSTMENT_PRESETS[k].points ?? 0) < 0
+                      ).map((k) => (
+                        <option key={k} value={k}>
+                          {ADJUSTMENT_PRESETS[k].label} ({signed(ADJUSTMENT_PRESETS[k].points!)})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Άλλο">
+                      <option value="other">{ADJUSTMENT_PRESETS.other.label} (ελεύθερο)</option>
+                    </optgroup>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className={labelCls}>Πόντοι</label>
+                  <label className={labelCls}>Πόντοι (θετικός αριθμός)</label>
                   <input
                     type="number"
+                    min={0}
                     className={inputCls}
-                    value={points}
-                    onChange={(e) => setPoints(Number(e.target.value))}
+                    value={magnitude}
+                    onChange={(e) => setMagnitude(Math.abs(Number(e.target.value)))}
                   />
                 </div>
                 <div className="space-y-1">
@@ -479,14 +543,30 @@ function TeamDrawer({
                   />
                 </div>
               </div>
+
+              <div
+                className={`rounded-lg border px-3 py-2 text-center text-sm ${
+                  signedPoints < 0
+                    ? "border-red-500/30 bg-red-500/10 text-red-200"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                }`}
+              >
+                Θα καταχωρηθεί:{" "}
+                <b className="font-mono tabular-nums">{signed(signedPoints)}</b> πόντοι
+              </div>
+
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={submitGrant}
-                  disabled={pending || !adjustmentsAvailable}
+                  disabled={pending || !adjustmentsAvailable || signedPoints === 0}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Plus className="h-4 w-4" />
+                  {direction === "subtract" ? (
+                    <Minus className="h-4 w-4" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
                   {busyKey === "grant" ? "Αποθήκευση…" : "Καταχώρηση"}
                 </button>
                 <button
