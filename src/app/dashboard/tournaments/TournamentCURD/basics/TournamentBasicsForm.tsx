@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NewTournamentPayload } from "@/app/lib/types";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { seasonLabelFromDate } from "@/app/geniki-katataxi/rules";
 
 type T = NewTournamentPayload["tournament"];
 
@@ -47,6 +48,32 @@ export default function TournamentBasicsForm({
     }
     return list.sort((a, b) => a.name.localeCompare(b.name, "el"));
   }, [tournamentTeams, teamsById, value.winner_team_id]);
+
+  // Season is auto-derived from the tournament's date (Sept 30 cutoff): prefer
+  // start_date, else the earliest dated match. This mirrors the server's
+  // deriveSeason() so the admin sees exactly what will be saved. When no date
+  // exists anywhere the field falls back to a manual entry.
+  const draftMatches = useTournamentStore((s) => s.draftMatches);
+  const derivedSeason = useMemo(() => {
+    const fromStart = seasonLabelFromDate(value.start_date ?? null);
+    if (fromStart) return fromStart;
+    const earliest = draftMatches.reduce<string | null>((min, m) => {
+      const d = (m as { match_date?: string | null }).match_date ?? null;
+      if (!d) return min;
+      return min == null || d < min ? d : min;
+    }, null);
+    return seasonLabelFromDate(earliest);
+  }, [value.start_date, draftMatches]);
+
+  // Keep the payload's season in sync with the derived value so the review
+  // step and any manual save reflect it before the server recomputes.
+  useEffect(() => {
+    if (derivedSeason && derivedSeason !== value.season) {
+      onChange({ ...value, season: derivedSeason });
+      updateTournament({ season: derivedSeason } as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedSeason]);
 
   const editedSlug = useRef(false);
   const [uploading, setUploading] = useState(false);
@@ -286,12 +313,21 @@ export default function TournamentBasicsForm({
             onChange({ ...value, slug: e.target.value || null });
           }}
         />
-        <input
-          className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
-          placeholder="Season (e.g. 2025)"
-          value={value.season ?? ""}
-          onChange={(e) => onChange({ ...value, season: e.target.value || null })}
-        />
+        <div className="w-full">
+          <input
+            className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full disabled:opacity-70 disabled:cursor-not-allowed"
+            placeholder="Season (auto από ημερομηνία, π.χ. 2025-2026)"
+            value={value.season ?? ""}
+            readOnly={!!derivedSeason}
+            disabled={!!derivedSeason}
+            onChange={(e) => onChange({ ...value, season: e.target.value || null })}
+          />
+          <p className="mt-1 text-[11px] text-zinc-400">
+            {derivedSeason
+              ? `Αυτόματα από την ημερομηνία (όριο 30 Σεπ) → ${derivedSeason}`
+              : "Χωρίς ημερομηνία αγώνα ακόμη — όρισε τη σεζόν χειροκίνητα ή πρόσθεσε ημερομηνίες."}
+          </p>
+        </div>
         <select
           className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
           value={value.status ?? "scheduled"}

@@ -35,11 +35,14 @@ export function formatSeason(startYear: number): string {
 }
 
 /**
- * Season label for a match/tournament date, using the Sept 30 cutoff.
- * Accepts an ISO string (literal wall-clock digits, no tz conversion) and
- * returns e.g. "2024/25", or null when the date can't be parsed.
+ * The starting calendar year of the season a date belongs to, using the
+ * Sept 30 cutoff. A date on/after Sept 30 of year Y → Y; before → Y-1.
+ * Returns null when the ISO string can't be parsed. Shared by every
+ * date→season formatter so the cutoff lives in exactly one place.
  */
-export function seasonFromDate(iso: string | null | undefined): string | null {
+export function seasonStartYearFromDate(
+  iso: string | null | undefined
+): number | null {
   if (!iso) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso.trim());
   if (!m) return null;
@@ -49,7 +52,30 @@ export function seasonFromDate(iso: string | null | undefined): string | null {
   const beforeCutoff =
     month < SEASON_START_MONTH ||
     (month === SEASON_START_MONTH && day < SEASON_START_DAY);
-  return formatSeason(beforeCutoff ? year - 1 : year);
+  return beforeCutoff ? year - 1 : year;
+}
+
+/**
+ * Season label for a match/tournament date, using the Sept 30 cutoff.
+ * Accepts an ISO string (literal wall-clock digits, no tz conversion) and
+ * returns e.g. "2024/25", or null when the date can't be parsed.
+ */
+export function seasonFromDate(iso: string | null | undefined): string | null {
+  const startYear = seasonStartYearFromDate(iso);
+  return startYear == null ? null : formatSeason(startYear);
+}
+
+/**
+ * Season label in the DB-stored "YYYY-YYYY" form (e.g. 2025-2026), derived
+ * from a date with the same Sept 30 cutoff. This is the value the tournament
+ * builder writes to `tournaments.season`; the standings' date model uses the
+ * "YYYY/YY" form ({@link seasonFromDate}) for display. Same cutoff, two labels.
+ */
+export function seasonLabelFromDate(
+  iso: string | null | undefined
+): string | null {
+  const startYear = seasonStartYearFromDate(iso);
+  return startYear == null ? null : `${startYear}-${startYear + 1}`;
 }
 
 /** Every rule an admin can grant manually, with its default points (null = free amount). */
