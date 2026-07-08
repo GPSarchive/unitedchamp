@@ -1,11 +1,12 @@
 // app/dashboard/geniki-katataxi/page.tsx
-// SERVER: computes the full Γενική Κατάταξη points log (automatic + manual) and
-// hands it to the client CRUD. Auth is enforced by the dashboard layout; the
-// server actions re-check the admin role on every write.
+// SERVER: computes the full Γενική Κατάταξη (per-team totals + every points award,
+// automatic and manual) and hands it to the client. Auth is enforced by the dashboard
+// layout; the server actions re-check the admin role on every write. The admin panel
+// uses the same season model as the live public page ("field").
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { NO_SEASON_LABEL } from "@/app/geniki-katataxi/rules";
-import { computeGeneralStandings } from "@/app/geniki-katataxi/points";
+import { computeGeneralStandings, type TeamSeasonLine } from "@/app/geniki-katataxi/points";
 import AdjustmentsClient from "./AdjustmentsClient";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export default async function Page() {
   const [teamsRes, standings] = await Promise.all([
     supabaseAdmin
       .from("teams")
-      .select("id, name")
+      .select("id, name, logo")
       .is("deleted_at", null)
       .order("name", { ascending: true }),
     computeGeneralStandings().catch((err) => {
@@ -23,10 +24,9 @@ export default async function Page() {
     }),
   ]);
 
-  const teams = ((teamsRes.data ?? []) as { id: number; name: string | null }[]).map((t) => ({
-    id: t.id,
-    name: t.name ?? `Ομάδα #${t.id}`,
-  }));
+  const teams = ((teamsRes.data ?? []) as { id: number; name: string | null; logo: string | null }[]).map(
+    (t) => ({ id: t.id, name: t.name ?? `Ομάδα #${t.id}`, logo: t.logo })
+  );
 
   const seasons = standings?.seasons ?? [];
   // The public log carries the counter-adjustment "cancel" rows as their own
@@ -34,11 +34,19 @@ export default async function Page() {
   // listing them separately, so filter them out of the standalone log.
   const events = (standings?.events ?? []).filter((e) => !e.cancelsSourceKey);
 
+  // Per-team season totals (the number the standings show), keyed by season so the
+  // client can build one row per team with its total for the selected season.
+  const linesBySeason: Record<string, TeamSeasonLine[]> = {};
+  if (standings) {
+    for (const [season, lines] of standings.bySeason) linesBySeason[season] = lines;
+  }
+
   return (
     <AdjustmentsClient
       teams={teams}
       seasons={seasons.length ? seasons : [NO_SEASON_LABEL]}
       events={events}
+      linesBySeason={linesBySeason}
       adjustmentsAvailable={standings?.adjustmentsAvailable ?? false}
     />
   );

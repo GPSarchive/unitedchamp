@@ -1,15 +1,27 @@
 // app/dashboard/geniki-katataxi/AdjustmentsClient.tsx
-// CLIENT: the full Αναλυτικό μητρώο πόντων for the dashboard — every points award
-// (automatic + manual) with its source, filterable by season and reason, plus:
-//   • grant new manual points for any rule,
-//   • delete a manual grant,
-//   • cancel an automatic event (writes a reversible counter-adjustment),
-//   • undo a cancellation.
+// CLIENT: the Γενική Κατάταξη admin — one row per team with its TOTAL points for the
+// selected season, sorted high→low. Tapping a team opens a slide-over drawer with:
+//   • its full award log (automatic + manual) for the season,
+//   • a form to add manual points to that team,
+//   • per-award actions: delete a manual grant, cancel an automatic event
+//     (reversible counter-adjustment), or undo a cancellation.
+// Built mobile-first: the list is flex rows (no wide table), the drawer is full-width
+// on phones and a right-hand panel on desktop.
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Ban, RotateCcw, ChevronRight, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import {
+  Plus,
+  Trash2,
+  Ban,
+  RotateCcw,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Search,
+} from "lucide-react";
 import {
   ADJUSTMENT_KINDS,
   ADJUSTMENT_PRESETS,
@@ -17,6 +29,7 @@ import {
   type EventKind,
   type PointsEvent,
 } from "@/app/geniki-katataxi/rules";
+import type { TeamSeasonLine } from "@/app/geniki-katataxi/points";
 import { formatMatchDate } from "@/app/lib/datetime";
 import { addAdjustment, deleteAdjustment, cancelEvent, uncancelEvent } from "./actions";
 
@@ -24,7 +37,7 @@ const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 const fmtDate = (iso: string | null | undefined) =>
   iso ? formatMatchDate(iso, { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
-// Human labels for the automatic event kinds (adjustment kinds come from ADJUSTMENT_PRESETS).
+// Human labels for automatic event kinds (adjustment kinds come from ADJUSTMENT_PRESETS).
 const EVENT_LABEL: Record<Exclude<EventKind, "adjustment">, string> = {
   participation: "Συμμετοχή",
   qualification: "Πρόκριση",
@@ -35,20 +48,6 @@ const EVENT_LABEL: Record<Exclude<EventKind, "adjustment">, string> = {
   loss: "Ήττα",
 };
 
-type Filter = "all" | "manual" | EventKind;
-
-const FILTERS: Array<{ key: Filter; label: string }> = [
-  { key: "all", label: "Όλα" },
-  { key: "participation", label: "Συμμετοχές" },
-  { key: "qualification", label: "Προκρίσεις" },
-  { key: "title", label: "Τίτλοι" },
-  { key: "runner_up", label: "Τελικοί" },
-  { key: "win", label: "Νίκες" },
-  { key: "draw", label: "Ισοπαλίες" },
-  { key: "loss", label: "Ήττες" },
-  { key: "manual", label: "Χειροκίνητα" },
-];
-
 function eventLabel(e: PointsEvent): string {
   if (e.kind === "adjustment") {
     return e.adjustmentKind
@@ -58,15 +57,28 @@ function eventLabel(e: PointsEvent): string {
   return EVENT_LABEL[e.kind];
 }
 
+type Team = { id: number; name: string; logo: string | null };
+
+type TeamRow = {
+  team: Team;
+  /** Total season points from the standings line (0 when the team has no line). */
+  points: number;
+  /** How many award rows this team has this season (automatic + manual). */
+  awards: number;
+  line: TeamSeasonLine | null;
+};
+
 export default function AdjustmentsClient({
   teams,
   seasons,
   events,
+  linesBySeason,
   adjustmentsAvailable,
 }: {
-  teams: { id: number; name: string }[];
+  teams: Team[];
   seasons: string[];
   events: PointsEvent[];
+  linesBySeason: Record<string, TeamSeasonLine[]>;
   adjustmentsAvailable: boolean;
 }) {
   const router = useRouter();
@@ -74,62 +86,63 @@ export default function AdjustmentsClient({
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  // Grant form state
-  const [gSeason, setGSeason] = useState(seasons[0] ?? "");
-  const [teamId, setTeamId] = useState<number>(teams[0]?.id ?? 0);
-  const [kind, setKind] = useState<AdjustmentKind>("international");
-  const [points, setPoints] = useState<number>(ADJUSTMENT_PRESETS.international.points ?? 0);
-  const [reason, setReason] = useState("");
-
-  // Log filters
   const [season, setSeason] = useState<string>(seasons[0] ?? "");
-  const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [openTeamId, setOpenTeamId] = useState<number | null>(null);
 
-  const toggle = (key: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  const teamById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
+  const teamName = (id: number | null) =>
+    id == null ? "—" : teamById.get(id)?.name ?? `Ομάδα #${id}`;
 
-  const teamName = useMemo(() => new Map(teams.map((t) => [t.id, t.name])), [teams]);
-  const oppName = (id: number | null) =>
-    id == null ? "—" : teamName.get(id) ?? `Ομάδα #${id}`;
-
-  const seasonEvents = useMemo(
-    () => events.filter((e) => e.season === season),
-    [events, season]
-  );
-
-  const filtered = useMemo(() => {
-    let list = seasonEvents;
-    if (filter === "manual") list = list.filter((e) => e.kind === "adjustment");
-    else if (filter !== "all") list = list.filter((e) => e.kind === filter);
-    const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter((e) => {
-        const name = (teamName.get(e.teamId) ?? "").toLowerCase();
-        return name.includes(q) || e.label.toLowerCase().includes(q);
-      });
+  // Events for the selected season, grouped by team.
+  const eventsByTeam = useMemo(() => {
+    const map = new Map<number, PointsEvent[]>();
+    for (const e of events) {
+      if (e.season !== season) continue;
+      const list = map.get(e.teamId) ?? [];
+      list.push(e);
+      map.set(e.teamId, list);
     }
-    // Cancelled events sink to the bottom; otherwise by |points| desc, then team.
-    return [...list].sort((a, b) => {
-      const ac = a.cancelledBy ? 1 : 0;
-      const bc = b.cancelledBy ? 1 : 0;
-      if (ac !== bc) return ac - bc;
-      return (
-        Math.abs(b.points) - Math.abs(a.points) ||
-        (teamName.get(a.teamId) ?? "").localeCompare(teamName.get(b.teamId) ?? "", "el")
-      );
-    });
-  }, [seasonEvents, filter, query, teamName]);
+    return map;
+  }, [events, season]);
 
-  const netTotal = useMemo(
-    () => filtered.reduce((s, e) => s + (e.cancelledBy ? 0 : e.points), 0),
-    [filtered]
-  );
+  // Per-team season line (carries the total), keyed by team.
+  const lineByTeam = useMemo(() => {
+    const map = new Map<number, TeamSeasonLine>();
+    for (const l of linesBySeason[season] ?? []) map.set(l.teamId, l);
+    return map;
+  }, [linesBySeason, season]);
+
+  // One row per team. Teams with points/awards come first (points desc); teams with
+  // nothing this season are still listed (alphabetical) so points can be added to them.
+  const rows = useMemo<TeamRow[]>(() => {
+    const built = teams.map((team) => {
+      const line = lineByTeam.get(team.id) ?? null;
+      return {
+        team,
+        points: line?.points ?? 0,
+        awards: eventsByTeam.get(team.id)?.length ?? 0,
+        line,
+      };
+    });
+    built.sort((a, b) => {
+      const aHas = a.points !== 0 || a.awards > 0 ? 1 : 0;
+      const bHas = b.points !== 0 || b.awards > 0 ? 1 : 0;
+      if (aHas !== bHas) return bHas - aHas; // active teams first
+      if (b.points !== a.points) return b.points - a.points; // points desc
+      return a.team.name.localeCompare(b.team.name, "el");
+    });
+    return built;
+  }, [teams, lineByTeam, eventsByTeam]);
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.team.name.toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const openRow = openTeamId != null ? rows.find((r) => r.team.id === openTeamId) ?? null : null;
+  const openEvents = openTeamId != null ? eventsByTeam.get(openTeamId) ?? [] : [];
 
   const run = (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => {
     setError(null);
@@ -142,32 +155,13 @@ export default function AdjustmentsClient({
     });
   };
 
-  const onKindChange = (k: AdjustmentKind) => {
-    setKind(k);
-    const preset = ADJUSTMENT_PRESETS[k].points;
-    if (preset != null) setPoints(preset);
-  };
-
-  const submitGrant = () =>
-    run("grant", async () => {
-      const res = await addAdjustment({ season: gSeason, teamId, kind, points, reason });
-      if (res.success) setReason("");
-      return res;
-    });
-
-  const inputCls =
-    "w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-emerald-400/50";
-  const labelCls = "text-xs text-white/60";
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <header>
-        <h2 className="text-xl font-semibold">Γενική Κατάταξη · Αναλυτικό μητρώο πόντων</h2>
+        <h2 className="text-xl font-semibold">Γενική Κατάταξη · Πόντοι ανά ομάδα</h2>
         <p className="mt-1 text-sm text-white/60">
-          Κάθε πόντος κάθε ομάδας, με την πηγή του. Οι <b>αυτόματοι</b> πόντοι
-          (συμμετοχή, πρόκριση, τίτλος, Ν/Ι/Η) προκύπτουν από τα τουρνουά και τους
-          αγώνες· μπορείς να τους <b>ακυρώσεις</b> (γράφεται αντίθετη εγγραφή, αναστρέψιμο).
-          Οι <b>χειροκίνητοι</b> πόντοι διαγράφονται κανονικά.
+          Μία γραμμή ανά ομάδα με το <b>σύνολο πόντων</b> της σεζόν. Πάτησε μια ομάδα για
+          να δεις την ανάλυση των πόντων της και να <b>προσθέσεις ή να ακυρώσεις</b> πόντους.
         </p>
       </header>
 
@@ -185,182 +179,353 @@ export default function AdjustmentsClient({
         </div>
       )}
 
-      {/* ── Grant form ─────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-white/10 bg-zinc-950 p-4">
-        <h3 className="mb-3 text-sm font-semibold text-white/80">Νέα χειροκίνητη καταχώρηση</h3>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-          <div className="space-y-1">
-            <label className={labelCls}>Σεζόν</label>
-            <input
-              className={inputCls}
-              list="gk-seasons"
-              value={gSeason}
-              onChange={(e) => setGSeason(e.target.value)}
-              placeholder="π.χ. 2024/25"
-            />
-            <datalist id="gk-seasons">
-              {seasons.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-            <p className="text-[11px] text-white/40">
-              Μορφή «2024/25». Για παλιότερες σεζόν γράψε ελεύθερα τη σεζόν (η σεζόν
-              ξεκινά 30 Σεπ).
-            </p>
-          </div>
-          <div className="space-y-1">
-            <label className={labelCls}>Ομάδα</label>
-            <select
-              className={inputCls}
-              value={teamId}
-              onChange={(e) => setTeamId(Number(e.target.value))}
-            >
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className={labelCls}>Λόγος (κανόνας)</label>
-            <select
-              className={inputCls}
-              value={kind}
-              onChange={(e) => onKindChange(e.target.value as AdjustmentKind)}
-            >
-              {ADJUSTMENT_KINDS.map((k) => {
-                const p = ADJUSTMENT_PRESETS[k];
-                return (
-                  <option key={k} value={k}>
-                    {p.label}
-                    {p.points != null ? ` (${signed(p.points)})` : ""}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className={labelCls}>Πόντοι</label>
-            <input
-              type="number"
-              className={inputCls}
-              value={points}
-              onChange={(e) => setPoints(Number(e.target.value))}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className={labelCls}>Αιτιολογία (προαιρετική)</label>
-            <input
-              className={inputCls}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="π.χ. Συμμετοχή σε ευρωπαϊκή διοργάνωση"
-            />
-          </div>
-        </div>
-        <div className="mt-4">
-          <button
-            onClick={submitGrant}
-            disabled={pending || !adjustmentsAvailable}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+      {/* ── Season + search toolbar ─────────────────────────────────── */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-white/50">Σεζόν</label>
+          <select
+            className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white"
+            value={season}
+            onChange={(e) => {
+              setSeason(e.target.value);
+              setOpenTeamId(null);
+            }}
           >
-            <Plus className="h-4 w-4" />
-            {busyKey === "grant" ? "Αποθήκευση…" : "Καταχώρηση"}
+            {seasons.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="relative sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <input
+            className="w-full rounded-lg border border-white/15 bg-zinc-900 py-2 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-emerald-400/50"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Αναζήτηση ομάδας…"
+          />
+        </div>
+      </div>
+
+      {/* ── Team list: one row per team ─────────────────────────────── */}
+      <ul className="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
+        {filteredRows.length === 0 ? (
+          <li className="p-4 text-sm text-white/50">Δεν βρέθηκαν ομάδες.</li>
+        ) : (
+          filteredRows.map((r) => (
+            <li key={r.team.id}>
+              <button
+                type="button"
+                onClick={() => setOpenTeamId(r.team.id)}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-white/[0.04] sm:px-4"
+              >
+                {r.team.logo ? (
+                  <Image
+                    src={r.team.logo}
+                    alt={r.team.name}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 shrink-0 rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="h-8 w-8 shrink-0 rounded-md border border-white/10 bg-zinc-900" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium text-white">{r.team.name}</div>
+                  <div className="text-xs text-white/45">
+                    {r.awards > 0 ? `${r.awards} εγγραφές` : "Χωρίς πόντους"}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div
+                    className={`font-mono text-lg font-bold tabular-nums ${
+                      r.points < 0 ? "text-red-300" : r.points > 0 ? "text-emerald-300" : "text-white/40"
+                    }`}
+                  >
+                    {r.points}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wide text-white/35">πόντοι</div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-white/30" />
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+
+      {/* ── Slide-over drawer for the open team ─────────────────────── */}
+      {openRow && (
+        <TeamDrawer
+          row={openRow}
+          season={season}
+          events={openEvents}
+          teamName={teamName}
+          adjustmentsAvailable={adjustmentsAvailable}
+          pending={pending}
+          busyKey={busyKey}
+          onClose={() => setOpenTeamId(null)}
+          run={run}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Drawer
+// ─────────────────────────────────────────────────────────────────────────
+function TeamDrawer({
+  row,
+  season,
+  events,
+  teamName,
+  adjustmentsAvailable,
+  pending,
+  busyKey,
+  onClose,
+  run,
+}: {
+  row: TeamRow;
+  season: string;
+  events: PointsEvent[];
+  teamName: (id: number | null) => string;
+  adjustmentsAvailable: boolean;
+  pending: boolean;
+  busyKey: string | null;
+  onClose: () => void;
+  run: (key: string, fn: () => Promise<{ success: boolean; error?: string }>) => void;
+}) {
+  const { team } = row;
+
+  // Add-points form state (team + season are fixed by the drawer context).
+  const [kind, setKind] = useState<AdjustmentKind>("international");
+  const [points, setPoints] = useState<number>(ADJUSTMENT_PRESETS.international.points ?? 0);
+  const [reason, setReason] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Close on Escape; lock body scroll while the drawer is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  const onKindChange = (k: AdjustmentKind) => {
+    setKind(k);
+    const preset = ADJUSTMENT_PRESETS[k].points;
+    if (preset != null) setPoints(preset);
+  };
+
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  const submitGrant = () =>
+    run("grant", async () => {
+      const res = await addAdjustment({ season, teamId: team.id, kind, points, reason });
+      if (res.success) {
+        setReason("");
+        setShowForm(false);
+      }
+      return res;
+    });
+
+  // Sort: cancelled sink; then |points| desc.
+  const sorted = useMemo(
+    () =>
+      [...events].sort((a, b) => {
+        const ac = a.cancelledBy ? 1 : 0;
+        const bc = b.cancelledBy ? 1 : 0;
+        if (ac !== bc) return ac - bc;
+        return Math.abs(b.points) - Math.abs(a.points);
+      }),
+    [events]
+  );
+
+  const inputCls =
+    "w-full rounded-lg border border-white/15 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-emerald-400/50";
+  const labelCls = "text-xs text-white/60";
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      {/* Panel */}
+      <div className="relative flex h-full w-full flex-col bg-zinc-950 shadow-2xl ring-1 ring-white/10 sm:w-[30rem]">
+        {/* Header */}
+        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+          {team.logo ? (
+            <Image
+              src={team.logo}
+              alt={team.name}
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-md object-cover"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-md border border-white/10 bg-zinc-900" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-base font-semibold text-white">{team.name}</div>
+            <div className="text-xs text-white/45">Σεζόν {season}</div>
+          </div>
+          <div className="text-right">
+            <div
+              className={`font-mono text-xl font-bold tabular-nums ${
+                row.points < 0 ? "text-red-300" : row.points > 0 ? "text-emerald-300" : "text-white/50"
+              }`}
+            >
+              {row.points}
+            </div>
+            <div className="text-[10px] uppercase tracking-wide text-white/35">σύνολο</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-1 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+            aria-label="Κλείσιμο"
+          >
+            <X className="h-5 w-5" />
           </button>
         </div>
-      </section>
 
-      {/* ── Full log ───────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-white/10 bg-zinc-950">
-        <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-3">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <h3 className="text-sm font-semibold text-white/80">
-              Μητρώο πόντων ({filtered.length}) · Καθαρό σύνολο:{" "}
-              <span className={netTotal < 0 ? "text-red-300" : "text-emerald-300"}>
-                {netTotal}
-              </span>
-            </h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                className="rounded-md border border-white/15 bg-zinc-900 px-2.5 py-1 text-xs text-white"
-                value={season}
-                onChange={(e) => setSeason(e.target.value)}
-              >
-                {seasons.map((s) => (
-                  <option key={s} value={s}>
-                    Σεζόν {s}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="rounded-md border border-white/15 bg-zinc-900 px-2.5 py-1 text-xs text-white placeholder:text-white/40"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Αναζήτηση ομάδας/πηγής…"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setFilter(f.key)}
-                className={`rounded-md border px-2.5 py-1 text-xs transition ${
-                  filter === f.key
-                    ? "border-emerald-400/50 bg-emerald-600/20 text-white"
-                    : "border-white/15 bg-zinc-900 text-white/70 hover:bg-zinc-800"
-                }`}
-              >
-                {f.label}
-              </button>
+        {/* Breakdown chips */}
+        {row.line && (
+          <div className="grid grid-cols-4 gap-px border-b border-white/10 bg-white/5 text-center sm:grid-cols-8">
+            {[
+              ["Συμ.", row.line.participations],
+              ["Προκ.", row.line.qualifications],
+              ["Τίτλ.", row.line.titles],
+              ["Τελ.", row.line.runnerUps],
+              ["Ν", row.line.wins],
+              ["Ι", row.line.draws],
+              ["Η", row.line.losses],
+              ["Έξτρα", row.line.adjustmentPoints, true],
+            ].map(([label, val, isPts], i) => (
+              <div key={i} className="bg-zinc-950 py-2">
+                <div className="font-mono text-sm font-semibold text-white/85 tabular-nums">
+                  {isPts ? (val === 0 ? "—" : signed(val as number)) : (val as number)}
+                </div>
+                <div className="text-[9px] uppercase tracking-wide text-white/35">{label}</div>
+              </div>
             ))}
           </div>
+        )}
+
+        {/* Add-points */}
+        <div className="border-b border-white/10 px-4 py-3">
+          {!showForm ? (
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              disabled={!adjustmentsAvailable}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-600/15 px-4 py-2.5 text-sm font-medium text-emerald-200 hover:bg-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Προσθήκη πόντων
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 space-y-1">
+                  <label className={labelCls}>Λόγος (κανόνας)</label>
+                  <select
+                    className={inputCls}
+                    value={kind}
+                    onChange={(e) => onKindChange(e.target.value as AdjustmentKind)}
+                  >
+                    {ADJUSTMENT_KINDS.map((k) => {
+                      const p = ADJUSTMENT_PRESETS[k];
+                      return (
+                        <option key={k} value={k}>
+                          {p.label}
+                          {p.points != null ? ` (${signed(p.points)})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className={labelCls}>Πόντοι</label>
+                  <input
+                    type="number"
+                    className={inputCls}
+                    value={points}
+                    onChange={(e) => setPoints(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className={labelCls}>Αιτιολογία</label>
+                  <input
+                    className={inputCls}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="προαιρετικό"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={submitGrant}
+                  disabled={pending || !adjustmentsAvailable}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  {busyKey === "grant" ? "Αποθήκευση…" : "Καταχώρηση"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="rounded-lg border border-white/15 bg-zinc-900 px-4 py-2 text-sm text-white/70 hover:bg-zinc-800"
+                >
+                  Άκυρο
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {filtered.length === 0 ? (
-          <p className="p-4 text-sm text-white/50">Δεν υπάρχουν εγγραφές για αυτά τα φίλτρα.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-zinc-900/60 text-left text-xs text-white/60">
-                <tr>
-                  <th className="w-8 px-2 py-2" />
-                  <th className="px-4 py-2">Ομάδα</th>
-                  <th className="px-4 py-2">Λόγος</th>
-                  <th className="px-4 py-2">Πηγή</th>
-                  <th className="whitespace-nowrap px-4 py-2">Ημ/νία</th>
-                  <th className="px-4 py-2 text-center">Τύπος</th>
-                  <th className="px-4 py-2 text-right">Πόντοι</th>
-                  <th className="px-4 py-2 text-right">Ενέργεια</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((e) => {
-                  const isManual = e.kind === "adjustment";
-                  const cancelled = Boolean(e.cancelledBy);
-                  const rowKey = isManual
-                    ? `adj-${e.adjustmentId}`
-                    : `evt-${e.sourceKey}`;
-                  const busy = busyKey === rowKey;
-                  const details = e.matches ?? [];
-                  // Expandable only when there are per-match rows worth showing
-                  // (a single match already fits the main row).
-                  const expandable = details.length > 1;
-                  const isOpen = expanded.has(rowKey);
-                  return (
-                    <Fragment key={rowKey}>
-                    <tr
-                      className={`border-t border-white/5 odd:bg-zinc-950 even:bg-zinc-900/40 ${
-                        cancelled ? "opacity-55" : ""
-                      }`}
-                    >
-                      <td className="px-2 py-2 text-center">
+        {/* Award log */}
+        <div className="flex-1 overflow-y-auto">
+          {sorted.length === 0 ? (
+            <p className="p-4 text-sm text-white/50">
+              Καμία εγγραφή πόντων για αυτή την ομάδα τη σεζόν {season}.
+            </p>
+          ) : (
+            <ul className="divide-y divide-white/5">
+              {sorted.map((e, i) => {
+                const isManual = e.kind === "adjustment";
+                const cancelled = Boolean(e.cancelledBy);
+                const rowKey = isManual ? `adj-${e.adjustmentId}` : `evt-${e.sourceKey}`;
+                const busy = busyKey === rowKey;
+                const details = e.matches ?? [];
+                const expandable = details.length > 1;
+                const isOpen = expanded.has(rowKey);
+                return (
+                  <Fragment key={`${rowKey}-${i}`}>
+                    <li className={`px-4 py-2.5 ${cancelled ? "opacity-55" : ""}`}>
+                      <div className="flex items-start gap-2">
                         {expandable ? (
                           <button
+                            type="button"
                             onClick={() => toggle(rowKey)}
-                            className="rounded p-0.5 text-white/50 hover:bg-white/10 hover:text-white"
-                            title={isOpen ? "Σύμπτυξη" : "Ανάλυση αγώνων"}
+                            className="mt-0.5 rounded p-0.5 text-white/50 hover:bg-white/10 hover:text-white"
                             aria-expanded={isOpen}
                           >
                             {isOpen ? (
@@ -369,133 +534,118 @@ export default function AdjustmentsClient({
                               <ChevronRight className="h-4 w-4" />
                             )}
                           </button>
-                        ) : null}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-white">
-                        {teamName.get(e.teamId) ?? `Ομάδα #${e.teamId}`}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2">
-                        <span className="rounded-md border border-white/15 bg-zinc-900 px-2 py-0.5 text-xs text-white/80">
-                          {eventLabel(e)}
-                          {e.count > 1 && ` ×${e.count}`}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-white/60">
-                        {e.label}
-                        {/* single-match events name the opponent inline */}
-                        {details.length === 1 && details[0].opponentId != null && (
-                          <span className="text-white/45"> · vs {oppName(details[0].opponentId)}</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-white/60">
-                        {fmtDate(e.date)}
-                        {expandable && (
-                          <span className="ml-1 text-white/35">
-                            ({details.length} αγ.)
-                          </span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-center">
-                        {isManual ? (
-                          <span className="rounded-md border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-xs text-sky-200">
-                            Χειροκίνητο
-                          </span>
                         ) : (
-                          <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/50">
-                            Αυτόματο
+                          <span className="w-[18px]" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-md border border-white/15 bg-zinc-900 px-2 py-0.5 text-xs text-white/80">
+                              {eventLabel(e)}
+                              {e.count > 1 && ` ×${e.count}`}
+                            </span>
+                            <span
+                              className={`rounded-md border px-1.5 py-0.5 text-[10px] ${
+                                isManual
+                                  ? "border-sky-400/30 bg-sky-500/10 text-sky-200"
+                                  : "border-white/10 bg-white/5 text-white/45"
+                              }`}
+                            >
+                              {isManual ? "Χειροκίνητο" : "Αυτόματο"}
+                            </span>
+                          </div>
+                          <div className="mt-1 truncate text-xs text-white/55">
+                            {e.label}
+                            {details.length === 1 && details[0].opponentId != null && (
+                              <span className="text-white/40"> · vs {teamName(details[0].opponentId)}</span>
+                            )}
+                            <span className="text-white/30"> · {fmtDate(e.date)}</span>
+                            {expandable && (
+                              <span className="text-white/30"> · {details.length} αγ.</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span
+                            className={`font-mono text-sm font-semibold tabular-nums ${
+                              cancelled
+                                ? "text-white/40 line-through"
+                                : e.points < 0
+                                  ? "text-red-400"
+                                  : "text-emerald-300"
+                            }`}
+                          >
+                            {signed(e.points)}
                           </span>
-                        )}
-                      </td>
-                      <td
-                        className={`whitespace-nowrap px-4 py-2 text-right font-mono font-semibold tabular-nums ${
-                          cancelled
-                            ? "text-white/40 line-through"
-                            : e.points < 0
-                              ? "text-red-400"
-                              : "text-emerald-300"
-                        }`}
-                      >
-                        {signed(e.points)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-right">
-                        {isManual ? (
-                          <button
-                            onClick={() =>
-                              run(rowKey, () => deleteAdjustment(e.adjustmentId!))
-                            }
-                            disabled={pending}
-                            className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/70 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50"
-                            title="Διαγραφή χειροκίνητης εγγραφής"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {busy ? "…" : "Διαγραφή"}
-                          </button>
-                        ) : cancelled ? (
-                          <button
-                            onClick={() => run(rowKey, () => uncancelEvent(e.cancelledBy!))}
-                            disabled={pending}
-                            className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/70 hover:bg-emerald-600/20 hover:text-emerald-300 disabled:opacity-50"
-                            title="Αναίρεση ακύρωσης"
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                            {busy ? "…" : "Επαναφορά"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              run(rowKey, () =>
-                                cancelEvent({
-                                  season: e.season,
-                                  teamId: e.teamId,
-                                  sourceKey: e.sourceKey!,
-                                  points: e.points,
-                                  note: `Ακύρωση: ${eventLabel(e)} — ${e.label}`,
-                                })
-                              )
-                            }
-                            disabled={pending || !adjustmentsAvailable}
-                            className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-xs text-white/70 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50"
-                            title="Ακύρωση αυτόματου πόντου (αναστρέψιμο)"
-                          >
-                            <Ban className="h-3.5 w-3.5" />
-                            {busy ? "…" : "Ακύρωση"}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                          {isManual ? (
+                            <button
+                              type="button"
+                              onClick={() => run(rowKey, () => deleteAdjustment(e.adjustmentId!))}
+                              disabled={pending}
+                              className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-[11px] text-white/70 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {busy ? "…" : "Διαγραφή"}
+                            </button>
+                          ) : cancelled ? (
+                            <button
+                              type="button"
+                              onClick={() => run(rowKey, () => uncancelEvent(e.cancelledBy!))}
+                              disabled={pending}
+                              className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-[11px] text-white/70 hover:bg-emerald-600/20 hover:text-emerald-300 disabled:opacity-50"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              {busy ? "…" : "Επαναφορά"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                run(rowKey, () =>
+                                  cancelEvent({
+                                    season: e.season,
+                                    teamId: e.teamId,
+                                    sourceKey: e.sourceKey!,
+                                    points: e.points,
+                                    note: `Ακύρωση: ${eventLabel(e)} — ${e.label}`,
+                                  })
+                                )
+                              }
+                              disabled={pending || !adjustmentsAvailable}
+                              className="inline-flex items-center gap-1 rounded-md border border-white/15 bg-zinc-900 px-2 py-1 text-[11px] text-white/70 hover:bg-red-600/20 hover:text-red-300 disabled:opacity-50"
+                            >
+                              <Ban className="h-3 w-3" />
+                              {busy ? "…" : "Ακύρωση"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
 
-                    {expandable && isOpen &&
-                      details.map((m, i) => (
-                        <tr
-                          key={`${rowKey}-m${i}`}
-                          className="border-t border-white/5 bg-black/40 text-xs"
-                        >
-                          <td />
-                          <td className="px-4 py-1.5 text-white/40">↳</td>
-                          <td className="whitespace-nowrap px-4 py-1.5 text-white/70">
-                            vs {oppName(m.opponentId)}
-                          </td>
-                          <td className="px-4 py-1.5 text-white/45">
-                            {m.goalsFor != null && m.goalsAgainst != null
-                              ? `${m.goalsFor}–${m.goalsAgainst}`
-                              : ""}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-1.5 text-white/60">
-                            {fmtDate(m.date)}
-                          </td>
-                          <td />
-                          <td />
-                          <td />
-                        </tr>
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                      {expandable && isOpen && (
+                        <ul className="mt-2 space-y-1 border-l border-white/10 pl-4">
+                          {details.map((m, mi) => (
+                            <li
+                              key={mi}
+                              className="flex items-center justify-between text-[11px] text-white/55"
+                            >
+                              <span>vs {teamName(m.opponentId)}</span>
+                              <span className="font-mono text-white/45">
+                                {m.goalsFor != null && m.goalsAgainst != null
+                                  ? `${m.goalsFor}–${m.goalsAgainst}`
+                                  : ""}
+                              </span>
+                              <span className="text-white/40">{fmtDate(m.date)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  </Fragment>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
