@@ -125,7 +125,7 @@ function CategoryColumn({
         "
       >
         {firstWord}{' '}
-        <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+        <span className="text-white">
           {restOfTitle}
         </span>
       </motion.h3>
@@ -137,7 +137,7 @@ function CategoryColumn({
         transition={{ duration: 0.6, delay: animateFrom === 'left' ? 0.4 : 0.5 }}
         className="
           ml-17 h-px w-8 mb-4
-          bg-gradient-to-r from-orange-400/60 to-amber-300/20
+          bg-gradient-to-r from-white/40 to-white/10
           origin-left
           sm:ml-auto sm:mr-auto sm:w-16 sm:h-[2px] sm:mb-8 sm:origin-center
           sm:from-transparent sm:via-white/20 sm:to-transparent
@@ -230,11 +230,6 @@ export default function TopScorers({
       ref={sectionRef}
       className="relative py-8 sm:py-20 lg:py-32 overflow-hidden"
     >
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-0 w-[600px] h-[600px] bg-orange-600/[0.04] blur-[200px] rounded-full" />
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-amber-500/[0.04] blur-[200px] rounded-full" />
-      </div>
-
       <div className="container mx-auto px-0 sm:px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -244,7 +239,7 @@ export default function TopScorers({
         >
           <h2 className="text-2xl sm:text-5xl lg:text-7xl font-black text-white mb-2 sm:mb-6 tracking-tight uppercase">
             ΤΟP{' '}
-            <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+            <span className="text-white">
               Παίκτες
             </span>
           </h2>
