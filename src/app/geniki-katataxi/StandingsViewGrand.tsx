@@ -318,18 +318,29 @@ function TeamCrest({
   name,
   size,
   ring,
+  mobileSize,
 }: {
   team: TeamInfo | undefined;
   name: string;
   size: number;
   ring: string;
+  /** Optional smaller crest below the `sm` breakpoint (defaults to `size`). */
+  mobileSize?: number;
 }) {
+  // Drive the crest dimensions from a CSS var so the podium flanks can shrink on
+  // narrow phones (two cards side-by-side) without a second render path.
+  const m = mobileSize ?? size;
+  const vars = {
+    "--crest": `${m}px`,
+    "--crest-sm": `${size}px`,
+  } as React.CSSProperties;
   return (
     <div
-      className="relative flex items-center justify-center rounded-full"
+      className="relative flex items-center justify-center rounded-full [--frame:calc(var(--crest)+26px)] sm:[--frame:calc(var(--crest-sm)+26px)]"
       style={{
-        width: size + 26,
-        height: size + 26,
+        ...vars,
+        width: "var(--frame)",
+        height: "var(--frame)",
         background: `radial-gradient(closest-side, rgba(232,198,107,0.16), transparent 72%)`,
         border: `1px solid ${ring}55`,
         boxShadow: `inset 0 0 0 5px ${INK}, inset 0 0 0 6px ${ring}44`,
@@ -341,14 +352,10 @@ function TeamCrest({
           alt={name}
           width={size}
           height={size}
-          className="rounded-full object-cover"
-          style={{ width: size, height: size }}
+          className="rounded-full object-cover [width:var(--crest)] [height:var(--crest)] sm:[width:var(--crest-sm)] sm:[height:var(--crest-sm)]"
         />
       ) : (
-        <div
-          className="flex items-center justify-center rounded-full border border-[#F3EFE6]/20 bg-[#13131d] font-[var(--f-display)] text-2xl font-black italic text-[#F3EFE6]/60"
-          style={{ width: size, height: size }}
-        >
+        <div className="flex items-center justify-center rounded-full border border-[#F3EFE6]/20 bg-[#13131d] font-[var(--f-display)] text-lg font-black italic text-[#F3EFE6]/60 [width:var(--crest)] [height:var(--crest)] sm:text-2xl sm:[width:var(--crest-sm)] sm:[height:var(--crest-sm)]">
           {name.slice(0, 2).toUpperCase()}
         </div>
       )}
@@ -356,14 +363,30 @@ function TeamCrest({
   );
 }
 
-/** The compact ledger line every podium card carries — full data, zero mystery. */
-function StatLine({ line, tone }: { line: RankedLine; tone: string }) {
+/** The compact ledger line every podium card carries — full data, zero mystery.
+ *  `dense` tightens the cells for the side-by-side podium flanks on narrow phones. */
+function StatLine({ line, tone, dense = false }: { line: RankedLine; tone: string; dense?: boolean }) {
   const cell = (label: string, value: React.ReactNode, title: string) => (
-    <div className="flex flex-col items-center gap-0.5 px-3 py-2" title={title}>
-      <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#F3EFE6]/50">
+    <div
+      className={`flex flex-col items-center gap-0.5 py-2 ${
+        dense ? "px-1 sm:px-3" : "px-3"
+      }`}
+      title={title}
+    >
+      <span
+        className={`font-mono uppercase text-[#F3EFE6]/50 ${
+          dense ? "text-[8px] tracking-normal sm:text-[9px] sm:tracking-[0.2em]" : "text-[9px] tracking-[0.2em]"
+        }`}
+      >
         {label}
       </span>
-      <span className="font-mono text-sm font-bold tabular-nums text-[#F3EFE6]/90">{value}</span>
+      <span
+        className={`font-mono font-bold tabular-nums text-[#F3EFE6]/90 ${
+          dense ? "text-xs sm:text-sm" : "text-sm"
+        }`}
+      >
+        {value}
+      </span>
     </div>
   );
   return (
@@ -524,36 +547,39 @@ function PodiumFlank({
       className="relative overflow-hidden border bg-[#0f0f19]/80"
       style={{ borderColor: `${tone}40`, boxShadow: `inset 0 1px 0 ${tone}40` }}
     >
-      <div className="px-5 pt-7 pb-0 text-center">
+      <div className="px-2.5 pt-5 pb-0 text-center sm:px-5 sm:pt-7">
         <p
-          className="font-mono text-[10px] uppercase tracking-[0.45em]"
+          className="font-mono text-[8px] uppercase tracking-[0.3em] sm:text-[10px] sm:tracking-[0.45em]"
           style={{ color: tone }}
         >
           {ordinal}
         </p>
-        <div className="mt-4 flex items-center justify-center">
+        <div className="mt-3 flex items-center justify-center sm:mt-4">
           <Link href={`/OMADA/${line.teamId}`}>
-            <TeamCrest team={team} name={name} size={72} ring={tone} />
+            <TeamCrest team={team} name={name} size={72} mobileSize={52} ring={tone} />
           </Link>
         </div>
-        <Link href={`/OMADA/${line.teamId}`} className="group mt-3 block w-full">
-          <h3 className="font-[var(--f-display)] text-2xl font-black italic leading-tight text-[#F3EFE6] transition-colors group-hover:text-[#fb923c] md:text-3xl">
+        <Link href={`/OMADA/${line.teamId}`} className="group mt-2.5 block w-full sm:mt-3">
+          <h3 className="font-[var(--f-display)] text-lg font-black italic leading-tight text-[#F3EFE6] transition-colors group-hover:text-[#fb923c] sm:text-2xl md:text-3xl">
             <MarqueeText className="text-center [&>*]:mx-auto">{name}</MarqueeText>
           </h3>
         </Link>
         <div className="mt-1 min-h-[1.25rem]">
           <TitleStars count={line.titles} tone={tone} />
         </div>
-        <div className="mt-3 flex items-baseline justify-center gap-2">
-          <span className="font-mono text-4xl font-bold tabular-nums" style={{ color: tone }}>
+        <div className="mt-2.5 flex items-baseline justify-center gap-1.5 sm:mt-3 sm:gap-2">
+          <span
+            className="font-mono text-3xl font-bold tabular-nums sm:text-4xl"
+            style={{ color: tone }}
+          >
             {line.points}
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]/55">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#F3EFE6]/55 sm:text-[10px] sm:tracking-[0.3em]">
             Πόντοι
           </span>
         </div>
-        <div className="mt-5">
-          <StatLine line={line} tone={tone} />
+        <div className="mt-4 sm:mt-5">
+          <StatLine line={line} tone={tone} dense />
         </div>
       </div>
       <div className="h-2" style={{ background: `linear-gradient(180deg, transparent, ${tone}22)` }} />
@@ -856,7 +882,7 @@ export default async function StandingsViewGrand({
                 ))}
 
                 {(seconds.length > 0 || thirds.length > 0) && (
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-5">
                     {seconds.map((l) => (
                       <PodiumFlank
                         key={l.teamId}
