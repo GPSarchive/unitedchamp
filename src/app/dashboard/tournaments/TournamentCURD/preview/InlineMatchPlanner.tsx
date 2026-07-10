@@ -76,6 +76,8 @@ const selRemoveMatch = (s: TournamentState) =>
   s.removeMatch as (row: DraftMatch) => void;
 const selReindexKOPointers = (s: TournamentState) =>
   s.reindexKOPointers as (stageIdx: number) => void;
+const selSetKOLegCount = (s: TournamentState) =>
+  s.setKOLegCount as (stageIdx: number, where: { round: number; bracket_pos: number }, legs: 1 | 2) => void;
 const selSetKORoundPos = (s: TournamentState) =>
   s.setKORoundPos as (
     stageIdx: number,
@@ -266,6 +268,7 @@ export default function InlineMatchPlanner({
   const removeMatch = useTournamentStore(selRemoveMatch);
   const reindexKOPointers = useTournamentStore(selReindexKOPointers);
   const setKORoundPos = useTournamentStore(selSetKORoundPos);
+  const setKOLegCount = useTournamentStore(selSetKOLegCount);
 
   useEffect(() => {
     (window as any).useTournamentStore = useTournamentStore;
@@ -387,6 +390,15 @@ export default function InlineMatchPlanner({
   // When adding a match from the "All groups" view of a groups stage, we prompt
   // the admin to pick which group the new match belongs to (avoids orphaning).
   const [pendingAddGroup, setPendingAddGroup] = useState(false);
+  // KO stages: adding a match always goes through a prompt (round / bracket
+  // position / legs). Blindly appending to round 1 is how brackets end up with
+  // duplicate "later round" matches that no progression can ever reach.
+  const [pendingAddKO, setPendingAddKO] = useState(false);
+  const [koAdd, setKoAdd] = useState<{ round: number; pos: number; legs: 1 | 2 }>({
+    round: 1,
+    pos: 1,
+    legs: 1,
+  });
 
   // Dismiss the group picker on Escape (proper dialog behaviour).
   useEffect(() => {
@@ -478,9 +490,14 @@ export default function InlineMatchPlanner({
         newP = patch.bracket_pos ?? currP;
 
       if (newR !== currR || newP !== currP) {
-        ensureRowExists(effectiveStageIdx, newR, newP);
-        // Identity is the uid — moving a tie to another slot needs no overlay
-        // key migration anymore.
+        // NOTE: do NOT pre-create the destination row here. Creating an empty
+        // placeholder at the target coords used to flip setKORoundPos from a
+        // "move" into a "swap" with that fresh ghost row, leaving stray empty
+        // round-1 rows behind and making round edits appear to never stick.
+        // setKORoundPos moves the whole slot (both legs of a two-legged tie)
+        // and swaps with the occupant slot only if one genuinely exists.
+        // Identity is the uid — moving a tie needs no overlay key migration.
+        const dbId = (target as any).db_id as number | null | undefined;
         setKORoundPos(
           effectiveStageIdx,
           { round: currR, bracket_pos: currP },
@@ -492,12 +509,18 @@ export default function InlineMatchPlanner({
         if (Object.keys(rest).length > 0) {
           updateMatches(effectiveStageIdx, (stageRows) => {
             const next = stageRows.slice();
-            const i = next.findIndex(
-              (r) =>
-                r.stageIdx === effectiveStageIdx &&
-                r.round === newR &&
-                r.bracket_pos === newP
-            );
+            // Target the edited row, not just "whatever sits at the new coords":
+            // both legs of a two-legged tie share round/bracket_pos.
+            let i = target.uid ? next.findIndex((r) => r.uid === target.uid) : -1;
+            if (i < 0 && dbId != null) i = next.findIndex((r) => (r as any).db_id === dbId);
+            if (i < 0)
+              i = next.findIndex(
+                (r) =>
+                  r.stageIdx === effectiveStageIdx &&
+                  r.round === newR &&
+                  r.bracket_pos === newP &&
+                  (r.leg ?? 0) === (target.leg ?? 0)
+              );
             if (i >= 0) {
               const merged = { ...next[i], ...rest };
               next[i] = merged;
@@ -549,6 +572,15 @@ export default function InlineMatchPlanner({
   // "All groups" view, prompt the admin to pick a group first instead of
   // creating an ambiguous, un-assignable match.
   const addRow = (forcedGroupIdx?: number) => {
+    if (isKO) {
+      // Ask what to create (round / bracket position / legs) before adding.
+      const rounds = allRowsForStage.map((r) => r.round).filter((r): r is number => r != null);
+      const defaultRound = rounds.length ? Math.max(...rounds) : 1;
+      const defaultLegs: 1 | 2 = allRowsForStage.some((r) => r.leg != null) ? 2 : 1;
+      setKoAdd({ round: defaultRound, pos: nextFreeKOPos(defaultRound), legs: defaultLegs });
+      setPendingAddKO(true);
+      return;
+    }
     if (isGroups && storeGroups.length > 0) {
       const chosen =
         forcedGroupIdx != null
@@ -567,16 +599,30 @@ export default function InlineMatchPlanner({
     addRowForGroup(null);
   };
 
+  /** Next unused bracket position in the given KO round of this stage. */
+  const nextFreeKOPos = (round: number) => {
+    const used = allRowsForStage
+      .filter((r) => r.round === round && r.bracket_pos != null)
+      .map((r) => r.bracket_pos as number);
+    return used.length ? Math.max(...used) + 1 : 1;
+  };
+
+  const koSlotTaken = (round: number, pos: number) =>
+    allRowsForStage.some((r) => r.round === round && r.bracket_pos === pos);
+
+  /** Create a KO tie at the chosen coords (one row, or leg-1 + leg-2 siblings). */
+  const addKORow = ({ round, pos, legs }: { round: number; pos: number; legs: 1 | 2 }) => {
+    if (koSlotTaken(round, pos)) return;
+    ensureRowExists(effectiveStageIdx, round, pos);
+    if (legs === 2) setKOLegCount(effectiveStageIdx, { round, bracket_pos: pos }, 2);
+    reindexKOPointers(effectiveStageIdx);
+    setPendingAddKO(false);
+  };
+
   const addRowForGroup = (forcedGroupIdx: number | null) => {
     if (isKO) {
-      const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
-      const round = 1;
-      const used = stageRows
-        .filter((r) => r.round === round && r.bracket_pos != null)
-        .map((r) => r.bracket_pos as number);
-      const nextPos = used.length ? Math.max(...used) + 1 : 1;
-      ensureRowExists(effectiveStageIdx, round, nextPos);
-      reindexKOPointers(effectiveStageIdx);
+      // KO creation goes through the add-match prompt (addKORow); nothing to do here.
+      return;
     } else {
       // A groups stage always resolves to a concrete group here (the addRow guard
       // guarantees forcedGroupIdx is set for groups stages); league/KO stays null.
@@ -807,6 +853,91 @@ export default function InlineMatchPlanner({
         </div>
       )}
 
+      {/* KO add-match prompt — same section-level bottom-sheet/modal pattern as
+          the group picker. Adding a KO match must specify where it lives in the
+          bracket (round / position / legs); blindly appending to round 1 is how
+          brackets end up with duplicate "later round" matches no progression
+          can reach. */}
+      {pendingAddKO && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="New knockout match"
+        >
+          <button
+            type="button"
+            aria-label="Cancel"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPendingAddKO(false)}
+          />
+          <div className="relative w-full rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-80 sm:rounded-2xl sm:p-5 space-y-3">
+            <div className="text-sm font-medium text-white/90">New knockout match</div>
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Round
+              <input
+                type="number"
+                min={1}
+                className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={koAdd.round}
+                onChange={(e) => {
+                  if (e.target.value === "") return;
+                  const round = Math.max(1, Number(e.target.value) || 1);
+                  setKoAdd((k) => ({ ...k, round, pos: nextFreeKOPos(round) }));
+                }}
+              />
+            </label>
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Bracket pos
+              <input
+                type="number"
+                min={1}
+                className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={koAdd.pos}
+                onChange={(e) => {
+                  if (e.target.value === "") return;
+                  setKoAdd((k) => ({ ...k, pos: Math.max(1, Number(e.target.value) || 1) }));
+                }}
+              />
+            </label>
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Legs
+              <select
+                className="w-32 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={koAdd.legs}
+                onChange={(e) =>
+                  setKoAdd((k) => ({ ...k, legs: Number(e.target.value) === 2 ? 2 : 1 }))
+                }
+              >
+                <option value={1}>Single match</option>
+                <option value={2}>Two legs</option>
+              </select>
+            </label>
+            {koSlotTaken(koAdd.round, koAdd.pos) && (
+              <div className="text-xs text-amber-300/90">
+                Round {koAdd.round}, position {koAdd.pos} already has a match — pick a free
+                position.
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                className="min-h-[44px] rounded px-3 text-sm text-white/60 hover:bg-white/5"
+                onClick={() => setPendingAddKO(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="min-h-[44px] rounded border border-emerald-400/40 px-3 text-sm text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={koSlotTaken(koAdd.round, koAdd.pos)}
+                onClick={() => addKORow(koAdd)}
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
           No matches for this selection.
@@ -850,26 +981,33 @@ export default function InlineMatchPlanner({
                         <td className="px-4 py-4">
                           <input
                             type="number"
+                            min={1}
                             className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
                             value={m.round ?? 1}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              // Ignore the transient empty state while typing —
+                              // coercing "" back to 1 used to fire a bogus move
+                              // to round 1 on every cleared keystroke.
+                              if (e.target.value === "") return;
                               applyPatch(m, {
-                                round: Number(e.target.value) || 1,
+                                round: Math.max(1, Number(e.target.value) || 1),
                                 matchday: null,
-                              })
-                            }
+                              });
+                            }}
                           />
                         </td>
                         <td className="px-4 py-4">
                           <input
                             type="number"
+                            min={1}
                             className="w-24 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white"
                             value={m.bracket_pos ?? 1}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              if (e.target.value === "") return;
                               applyPatch(m, {
-                                bracket_pos: Number(e.target.value) || 1,
-                              })
-                            }
+                                bracket_pos: Math.max(1, Number(e.target.value) || 1),
+                              });
+                            }}
                           />
                         </td>
                         <td className="px-4 py-4">
