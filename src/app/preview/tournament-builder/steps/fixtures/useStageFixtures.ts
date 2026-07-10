@@ -61,6 +61,7 @@ export function useStageFixtures({
   const removeMatch = useTournamentStore((s) => s.removeMatch);
   const reindexKOPointers = useTournamentStore((s) => s.reindexKOPointers);
   const setKORoundPos = useTournamentStore((s) => s.setKORoundPos);
+  const setKOLegCount = useTournamentStore((s) => s.setKOLegCount);
 
   // Stage-filtered teams honoring cfg.stage_team_ids (same as StageCard)
   const stage = allStages[index] as any;
@@ -243,9 +244,14 @@ export function useStageFixtures({
         newP = patch.bracket_pos ?? currP;
 
       if (newR !== currR || newP !== currP) {
-        ensureRowExists(effectiveStageIdx, newR, newP);
-        // Identity is the uid — moving a tie to another slot needs no overlay
-        // key migration anymore.
+        // NOTE: do NOT pre-create the destination row here. Creating an empty
+        // placeholder at the target coords used to flip setKORoundPos from a
+        // "move" into a "swap" with that fresh ghost row, leaving stray empty
+        // round-1 rows behind and making round edits appear to never stick.
+        // setKORoundPos moves the whole slot (both legs of a two-legged tie)
+        // and swaps with the occupant slot only if one genuinely exists.
+        // Identity is the uid — moving a tie needs no overlay key migration.
+        const dbId = (target as any).db_id as number | null | undefined;
         setKORoundPos(
           effectiveStageIdx,
           { round: currR, bracket_pos: currP },
@@ -257,12 +263,18 @@ export function useStageFixtures({
         if (Object.keys(rest).length > 0) {
           updateMatches(effectiveStageIdx, (stageRows) => {
             const next = stageRows.slice();
-            const i = next.findIndex(
-              (r) =>
-                r.stageIdx === effectiveStageIdx &&
-                r.round === newR &&
-                r.bracket_pos === newP
-            );
+            // Target the edited row, not just "whatever sits at the new coords":
+            // both legs of a two-legged tie share round/bracket_pos.
+            let i = target.uid ? next.findIndex((r) => r.uid === target.uid) : -1;
+            if (i < 0 && dbId != null) i = next.findIndex((r) => (r as any).db_id === dbId);
+            if (i < 0)
+              i = next.findIndex(
+                (r) =>
+                  r.stageIdx === effectiveStageIdx &&
+                  r.round === newR &&
+                  r.bracket_pos === newP &&
+                  ((r as any).leg ?? 0) === ((target as any).leg ?? 0)
+              );
             if (i >= 0) {
               const merged = { ...next[i], ...rest };
               next[i] = merged;
@@ -310,18 +322,20 @@ export function useStageFixtures({
     });
   };
 
-  const addRow = () => {
+  // When adding a match in a groups stage, a concrete group MUST be chosen —
+  // otherwise the row is created with groupIdx=null and gets silently orphaned
+  // (never counts toward any group's standings, and shows up as a phantom
+  // "group 0" bucket in stage_standings). On the "All groups" view the UI must
+  // ask which group first and pass it as forcedGroupIdx; without one, this is
+  // a no-op rather than an orphan factory.
+  const addRow = (forcedGroupIdx?: number) => {
     if (isKO) {
-      const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
-      const round = 1;
-      const used = stageRows
-        .filter((r) => r.round === round && r.bracket_pos != null)
-        .map((r) => r.bracket_pos as number);
-      const nextPos = used.length ? Math.max(...used) + 1 : 1;
-      ensureRowExists(effectiveStageIdx, round, nextPos);
-      reindexKOPointers(effectiveStageIdx);
+      addKoRowInRound(1);
     } else {
-      const effectiveGroup = isGroups && !useAllGroups ? (groupIdx ?? 0) : null;
+      const effectiveGroup = isGroups
+        ? forcedGroupIdx ?? (useAllGroups ? null : groupIdx ?? 0)
+        : null;
+      if (isGroups && storeGroups.length > 0 && effectiveGroup == null) return;
       const teamIds =
         effectiveGroup !== null
           ? listGroupTeamIds(effectiveStageIdx, effectiveGroup)
@@ -367,14 +381,16 @@ export function useStageFixtures({
     }
   };
 
-  // KO: add a match to a specific round at the next free bracket position
-  const addKoRowInRound = (round: number) => {
+  // KO: add a tie to a specific round at the next free bracket position —
+  // one row, or leg-1 + leg-2 sibling rows for a two-legged tie.
+  const addKoRowInRound = (round: number, legs: 1 | 2 = 1) => {
     const stageRows = draftMatches.filter((r) => r.stageIdx === effectiveStageIdx);
     const used = stageRows
       .filter((r) => r.round === round && r.bracket_pos != null)
       .map((r) => r.bracket_pos as number);
     const nextPos = used.length ? Math.max(...used) + 1 : 1;
     ensureRowExists(effectiveStageIdx, round, nextPos);
+    if (legs === 2) setKOLegCount(effectiveStageIdx, { round, bracket_pos: nextPos }, 2);
     reindexKOPointers(effectiveStageIdx);
   };
 

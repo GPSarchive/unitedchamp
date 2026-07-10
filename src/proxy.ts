@@ -326,11 +326,20 @@ export async function proxy(req: NextRequest) {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // NONCE: Generate and inject into REQUEST headers only
+  // NONCE: only for the (force-dynamic) dashboard.
+  //
+  // Public routes are ISR-cached: the rendered HTML — including any nonce
+  // Next stamps into <script> tags — is reused across requests, while this
+  // proxy would mint a fresh nonce per response. The mismatch makes the
+  // browser block every script on a cache hit (dead, unhydrated pages).
+  // Nonce-based CSP requires dynamic rendering (see Next.js CSP docs), so
+  // the strict nonce policy is kept only for /dashboard/*, whose layout is
+  // force-dynamic; public routes get a nonce-less policy below.
   // ─────────────────────────────────────────────────────────────
-  const nonce = makeNonce()
+  const isDashboard = path.startsWith('/dashboard')
+  const nonce = isDashboard ? makeNonce() : null
   const reqHeaders = new Headers(req.headers)
-  reqHeaders.set('x-nonce', nonce)
+  if (nonce) reqHeaders.set('x-nonce', nonce)
 
   const res = NextResponse.next({
     request: { headers: reqHeaders },
@@ -473,7 +482,12 @@ export async function proxy(req: NextRequest) {
     .filter(Boolean)
     .join(' ')
 
-  const scriptSrcParts = ["'self'", `'nonce-${nonce}'`, 'https://cdnjs.cloudflare.com']
+  // Dashboard: strict nonce policy (dynamic pages, fresh nonce each request).
+  // Public: 'unsafe-inline' is required for Next's inline hydration scripts on
+  // cached pages; external script origins stay pinned to self + the CDN.
+  const scriptSrcParts = nonce
+    ? ["'self'", `'nonce-${nonce}'`, 'https://cdnjs.cloudflare.com']
+    : ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com']
   if (process.env.NODE_ENV !== 'production') scriptSrcParts.push("'unsafe-eval'")
   const scriptSrc = scriptSrcParts.join(' ')
 

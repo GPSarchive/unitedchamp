@@ -218,6 +218,11 @@ const MatchNode: React.FC<{
             <span>
               R{node.round} · B{pad2(node.bracket_pos)}
             </span>
+            {isFinished && match.penalty_a != null && match.penalty_b != null && (
+              <span className="font-bold" style={{ color: SAFFRON }}>
+                ΠΕΝ {match.penalty_a}-{match.penalty_b}
+              </span>
+            )}
             {isFinished && match.winner_team_id && (
               <span className="font-bold" style={{ color: accent }}>
                 ▶ ΝΙΚΗΤΗΣ

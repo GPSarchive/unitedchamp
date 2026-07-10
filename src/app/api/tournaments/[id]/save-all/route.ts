@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -769,6 +771,12 @@ if (body.matches?.upsert?.length) {
       out.matches = resolvedMatches ?? out.matches;
     }
     // ======================================================================
+
+    // Editor saved matches/stages/teams — regenerate the ISR-cached public
+    // pages that render this tournament.
+    revalidateTournamentSurfaces(id);
+    revalidatePath("/");
+    revalidatePath("/matches");
 
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {

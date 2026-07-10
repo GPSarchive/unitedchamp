@@ -1,3 +1,13 @@
+export const revalidate = 60;
+
+// Required for ISR on a dynamic segment: without generateStaticParams the App
+// Router renders every request dynamically even when `revalidate` is set.
+// Empty array = no build-time prerender; each id is generated on first
+// request and then cached for the revalidate window.
+export function generateStaticParams() {
+  return [];
+}
+
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   type Team,
@@ -25,52 +35,41 @@ export default async function TeamPage({ params }: TeamPageProps) {
     );
   }
 
-  // Team details
-  const { data: team, error: teamError } = await supabaseAdmin
-    .from("teams")
-    .select("*")
-    .eq("id", teamId)
-    .single();
-
-  if (teamError || !team) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
-        Σφάλμα φόρτωσης ομάδας: {teamError?.message || "Η ομάδα δεν βρέθηκε"}
-      </div>
-    );
-  }
-
-  // Tournament memberships (dedup per tournament — a team can be linked via multiple groups)
-  const { data: tournamentMembership } = await supabaseAdmin
-    .from("tournament_teams")
-    .select(
-      `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
-    )
-    .eq("team_id", teamId)
-    .order("tournament_id", { ascending: false });
-
-  const seen = new Set<number>();
-  const tournaments = (tournamentMembership ?? [])
-    .map((r: any) => r.tournament)
-    .filter((t: any) => {
-      if (!t || seen.has(t.id)) return false;
-      seen.add(t.id);
-      return true;
-    });
-
-  // Championships
-  const { data: winsList } = await supabaseAdmin
-    .from("tournaments")
-    .select("id, name, season")
-    .eq("winner_team_id", teamId);
-
-  const wins = winsList ?? [];
-
-  // Players + latest stats snapshot
-  const { data: playerAssociationsData } = await supabaseAdmin
-    .from("player_teams")
-    .select(
-      `
+  // Independent reads batched in one round-trip wave. The stats aggregation
+  // below is the only query that needs a prior result (the finished-match ids).
+  const [
+    { data: team, error: teamError },
+    { data: tournamentMembership },
+    { data: winsList },
+    { data: playerAssociationsData },
+    { data: teamMatches },
+    { data: matchesData },
+  ] = await Promise.all([
+    // Team details
+    supabaseAdmin
+      .from("teams")
+      .select("id, name, logo, colour, am, created_at, season_score")
+      .eq("id", teamId)
+      .single(),
+    // Tournament memberships (dedup per tournament — a team can be linked via multiple groups)
+    supabaseAdmin
+      .from("tournament_teams")
+      .select(
+        `id, tournament:tournament_id (id, name, season, status, winner_team_id)`
+      )
+      .eq("team_id", teamId)
+      .order("tournament_id", { ascending: false }),
+    // Championships
+    supabaseAdmin
+      .from("tournaments")
+      .select("id, name, season")
+      .eq("winner_team_id", teamId),
+    // Players + latest stats snapshot (only `age` is rendered from it;
+    // season aggregates come from match_player_stats below)
+    supabaseAdmin
+      .from("player_teams")
+      .select(
+        `
         id,
         player:player_id (
           id,
@@ -83,25 +82,61 @@ export default async function TeamPage({ params }: TeamPageProps) {
           deleted_at,
           player_statistics (
             id,
-            age,
-            total_goals,
-            total_assists,
-            yellow_cards,
-            red_cards,
-            blue_cards,
-            created_at,
-            updated_at
+            age
           )
         )
       `
-    )
-    .eq("team_id", teamId)
-    .order("player_id", { ascending: true })
-    .order("id", {
-      foreignTable: "player.player_statistics",
-      ascending: false,
-    })
-    .limit(1, { foreignTable: "player.player_statistics" });
+      )
+      .eq("team_id", teamId)
+      .order("player_id", { ascending: true })
+      .order("id", {
+        foreignTable: "player.player_statistics",
+        ascending: false,
+      })
+      .limit(1, { foreignTable: "player.player_statistics" }),
+    // Finished-match ids feeding the stats aggregation
+    supabaseAdmin
+      .from("matches")
+      .select("id")
+      .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+      .eq("status", "finished"),
+    // Matches (full history, newest first)
+    supabaseAdmin
+      .from("matches")
+      .select(
+        `
+        id,
+        match_date,
+        status,
+        team_a_score,
+        team_b_score,
+        team_a:teams!matches_team_a_id_fkey (id, name, logo),
+        team_b:teams!matches_team_b_id_fkey (id, name, logo),
+        tournament:tournament_id (id, name)
+      `
+      )
+      .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+      .order("match_date", { ascending: false }),
+  ]);
+
+  if (teamError || !team) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
+        Σφάλμα φόρτωσης ομάδας: {teamError?.message || "Η ομάδα δεν βρέθηκε"}
+      </div>
+    );
+  }
+
+  const seen = new Set<number>();
+  const tournaments = (tournamentMembership ?? [])
+    .map((r: any) => r.tournament)
+    .filter((t: any) => {
+      if (!t || seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+
+  const wins = winsList ?? [];
 
   const playerAssociations: PlayerAssociation[] = !playerAssociationsData
     ? []
@@ -110,18 +145,13 @@ export default async function TeamPage({ params }: TeamPageProps) {
       );
 
   // Aggregate player stats from match_player_stats for this team's finished matches
-  const { data: teamMatches } = await supabaseAdmin
-    .from("matches")
-    .select("id")
-    .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
-    .eq("status", "finished");
-
   const matchIds = (teamMatches ?? []).map((m) => m.id);
 
-  const { data: matchPlayerStats } = await supabaseAdmin
-    .from("match_player_stats")
-    .select(
-      `
+  const { data: matchPlayerStats } = matchIds.length
+    ? await supabaseAdmin
+        .from("match_player_stats")
+        .select(
+          `
         player_id,
         goals,
         assists,
@@ -131,9 +161,10 @@ export default async function TeamPage({ params }: TeamPageProps) {
         mvp,
         best_goalkeeper
       `
-    )
-    .in("match_id", matchIds.length > 0 ? matchIds : [0])
-    .eq("team_id", teamId);
+        )
+        .in("match_id", matchIds)
+        .eq("team_id", teamId)
+    : { data: null };
 
   const seasonStatsByPlayer: Record<
     number,
@@ -172,29 +203,6 @@ export default async function TeamPage({ params }: TeamPageProps) {
     ps.mvp += stat.mvp ? 1 : 0;
     ps.best_gk += stat.best_goalkeeper ? 1 : 0;
   }
-
-  // Matches
-  const { data: matchesData } = await supabaseAdmin
-    .from("matches")
-    .select(
-      `
-        id,
-        match_date,
-        status,
-        team_a_score,
-        team_b_score,
-        winner_team_id,
-        stage_id,
-        group_id,
-        matchday,
-        round,
-        team_a:teams!matches_team_a_id_fkey (id, name, logo),
-        team_b:teams!matches_team_b_id_fkey (id, name, logo),
-        tournament:tournament_id (id, name, season, slug, logo)
-      `
-    )
-    .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
-    .order("match_date", { ascending: false });
 
   const matches = (matchesData as unknown as Match[] | null) ?? null;
 

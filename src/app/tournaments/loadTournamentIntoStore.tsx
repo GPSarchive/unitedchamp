@@ -44,7 +44,7 @@ type TournamentTeamData = {
     id: number;
     name: string;
     logo: string;
-    season_score: any; // Adjust type if season_score has a specific structure
+    colour: string | null;
   };
   stage_id: number | null;
   group_id: number | null;
@@ -65,6 +65,29 @@ type MatchParticipant = {
   played: boolean;
 };
 
+// PostgREST caps un-ranged selects at 1000 rows; per-match tables
+// (match_player_stats, match_participants) exceed that on big tournaments,
+// so page through explicitly or aggregates silently miss rows.
+const fetchAllRows = async <T,>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+  pageSize = 1000
+): Promise<{ data: T[]; error: any }> => {
+  const all: T[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery(from, from + pageSize - 1);
+    if (error) return { data: all, error };
+    all.push(...(data ?? []));
+    if (!data || data.length < pageSize) return { data: all, error: null };
+  }
+};
+
+const MATCH_COLUMNS =
+  'id, stage_id, group_id, bracket_pos, matchday, match_date, team_a_id, team_b_id, round, status, ' +
+  'team_a_score, team_b_score, winner_team_id, ' +
+  'home_source_match_id, away_source_match_id, home_source_outcome, away_source_outcome, ' +
+  'home_source_round, home_source_bracket_pos, away_source_round, away_source_bracket_pos, ' +
+  'leg, tie_leg1_match_id, penalty_a, penalty_b';
+
 export const loadTournamentIntoStore = async (
   tournamentId: number,
   supabaseInstance: import('@supabase/supabase-js').SupabaseClient
@@ -78,12 +101,39 @@ export const loadTournamentIntoStore = async (
   awards: Awards | null;
   groups: Group[]; // Added for completeness, even if not in store yet
 }> => {
-  // Fetch tournament
-  const { data: tournamentData, error: tournamentError } = await supabaseInstance
-    .from('tournaments')
-    .select('*')
-    .eq('id', tournamentId)
-    .single();
+  // Wave 1 — everything keyed by tournament id alone
+  const [
+    { data: tournamentData, error: tournamentError },
+    { data: stagesData, error: stagesError },
+    { data: matchesData, error: matchesError },
+    { data: tournamentTeamsRaw, error: teamsError },
+    { data: awardsData, error: awardsError },
+  ] = await Promise.all([
+    supabaseInstance
+      .from('tournaments')
+      .select('id, name, slug, format, season, logo, status, winner_team_id')
+      .eq('id', tournamentId)
+      .single(),
+    supabaseInstance
+      .from('tournament_stages')
+      .select('*')
+      .eq('tournament_id', tournamentId)
+      .order('ordering'),
+    supabaseInstance
+      .from('matches')
+      .select(MATCH_COLUMNS)
+      .eq('tournament_id', tournamentId)
+      .order('match_date'),
+    supabaseInstance
+      .from('tournament_teams')
+      .select('stage_id, group_id, seed, team:teams(id, name, logo, colour)')
+      .eq('tournament_id', tournamentId),
+    supabaseInstance
+      .from('tournament_awards')
+      .select('*')
+      .eq('tournament_id', tournamentId)
+      .maybeSingle(),
+  ]);
 
   if (tournamentError || !tournamentData) {
     throw new Error(`Failed to fetch tournament: ${tournamentError?.message || 'No data'}`);
@@ -101,37 +151,11 @@ export const loadTournamentIntoStore = async (
     teams_count: ''
   };
 
-  // Fetch stages
-  const { data: stagesData, error: stagesError } = await supabaseInstance
-    .from('tournament_stages')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .order('ordering');
-
   if (stagesError) {
     throw new Error(`Failed to fetch stages: ${stagesError.message}`);
   }
   const stages: Stage[] = stagesData || [];
-
-  // Fetch groups (added for completeness, as they tie into stages, standings, and matches)
   const stageIds = stages.map((s: Stage) => s.id);
-  const { data: groupsData, error: groupsError } = await supabaseInstance
-    .from('tournament_groups')
-    .select('*')
-    .in('stage_id', stageIds)
-    .order('ordering');
-
-  if (groupsError) {
-    throw new Error(`Failed to fetch groups: ${groupsError.message}`);
-  }
-  const groups: Group[] = groupsData || [];
-
-  // Fetch matches
-  const { data: matchesData, error: matchesError } = await supabaseInstance
-    .from('matches')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .order('match_date');
 
   if (matchesError) {
     throw new Error(`Failed to fetch matches: ${matchesError.message}`);
@@ -165,68 +189,76 @@ export const loadTournamentIntoStore = async (
     penalty_b: match.penalty_b ?? null,
   }));
 
-  // Fetch standings
-  const { data: standingsData, error: standingsError } = await supabaseInstance
-  .from("stage_standings")
-  .select("stage_id,group_id,team_id,played,won,drawn,lost,gf,ga,gd,points,rank")
-  .in("stage_id", stageIds.length ? stageIds : [-1])
-  .order("stage_id", { ascending: true })
-  .order("group_id", { ascending: true, nullsFirst: true })
-  .order("rank", { ascending: true, nullsFirst: true });
+  if (teamsError) {
+    throw new Error(`Failed to fetch teams: ${teamsError.message}`);
+  }
+  // PostgREST types the FK join as an array; at runtime it's a single object
+  const tournamentTeamsData = (tournamentTeamsRaw ?? []) as unknown as TournamentTeamData[];
+
+  // Deduplicate team IDs (a team can have multiple rows across group stages)
+  const teamIds = Array.from(new Set(
+    tournamentTeamsData.map((tt: TournamentTeamData) => tt.team.id)
+  ));
+
+  // Fetch match IDs for tournament-specific filtering
+  const matchIds = matches.map((m: DraftMatch) => m.db_id).filter((id): id is number => id !== null && id !== undefined);
+
+  // Wave 2 — everything keyed by stage/match/team ids
+  const [
+    { data: groupsData, error: groupsError },
+    { data: standingsData, error: standingsError },
+    { data: rawStats, error: statsError },
+    { data: participantsData },
+  ] = await Promise.all([
+    supabaseInstance
+      .from('tournament_groups')
+      .select('*')
+      .in('stage_id', stageIds)
+      .order('ordering'),
+    supabaseInstance
+      .from('stage_standings')
+      .select('stage_id,group_id,team_id,played,won,drawn,lost,gf,ga,gd,points,rank')
+      .in('stage_id', stageIds.length ? stageIds : [-1])
+      .order('stage_id', { ascending: true })
+      .order('group_id', { ascending: true, nullsFirst: true })
+      .order('rank', { ascending: true, nullsFirst: true }),
+    // Raw match player stats DIRECTLY (primary source of truth) — paged past
+    // the 1000-row cap (big tournaments have 1000+ stat rows)
+    fetchAllRows<MatchPlayerStat>((from, to) =>
+      supabaseInstance
+        .from('match_player_stats')
+        .select('player_id, team_id, match_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper, is_captain')
+        .in('match_id', matchIds)
+        .in('team_id', teamIds)
+        .order('id')
+        .range(from, to)
+    ),
+    // Participants for match count (optional - will work even if empty)
+    fetchAllRows<MatchParticipant>((from, to) =>
+      supabaseInstance
+        .from('match_participants')
+        .select('player_id, team_id, match_id, played')
+        .in('match_id', matchIds)
+        .in('team_id', teamIds)
+        .eq('played', true)
+        .order('id')
+        .range(from, to)
+    ),
+  ]);
+
+  if (groupsError) {
+    throw new Error(`Failed to fetch groups: ${groupsError.message}`);
+  }
+  const groups: Group[] = groupsData || [];
 
   if (standingsError) {
     throw new Error(`Failed to fetch standings: ${standingsError.message}`);
   }
   const standings: Standing[] = standingsData || [];
 
-  // Fetch teams
-  const { data: tournamentTeamsData, error: teamsError } = await supabaseInstance
-    .from('tournament_teams')
-    .select('*, team:teams(id, name, logo, colour, season_score), stage_id, group_id, seed')
-    .eq('tournament_id', tournamentId);
-
-  if (teamsError) {
-    throw new Error(`Failed to fetch teams: ${teamsError.message}`);
-  }
-
-  // Deduplicate team IDs (a team can have multiple rows across group stages)
-  const teamIds = Array.from(new Set(
-    tournamentTeamsData?.map((tt: TournamentTeamData) => tt.team.id) || []
-  ));
-
-  // Fetch match IDs for tournament-specific filtering
-  const matchIds = matches.map((m: DraftMatch) => m.db_id).filter((id): id is number => id !== null && id !== undefined);
-
-  // Fetch raw match player stats DIRECTLY (primary source of truth)
-  const { data: rawStats, error: statsError } = await supabaseInstance
-    .from('match_player_stats')
-    .select(`
-      player_id,
-      team_id,
-      match_id,
-      goals,
-      assists,
-      yellow_cards,
-      red_cards,
-      blue_cards,
-      mvp,
-      best_goalkeeper,
-      is_captain
-    `)
-    .in('match_id', matchIds)
-    .in('team_id', teamIds) as { data: MatchPlayerStat[] | null; error: any };
-
   if (statsError) {
     throw new Error(`Failed to fetch raw player stats: ${statsError.message}`);
   }
-
-  // Fetch participants for match count (optional - will work even if empty)
-  const { data: participantsData, error: participantsError } = await supabaseInstance
-    .from('match_participants')
-    .select('player_id, team_id, match_id, played')
-    .in('match_id', matchIds)
-    .in('team_id', teamIds)
-    .eq('played', true);
 
   // Build participant map for accurate match counts
   const participantMap = new Map<string, Set<number>>();
@@ -278,15 +310,16 @@ export const loadTournamentIntoStore = async (
   }
 
   // If no participant data, estimate matches from stats records
+  const statMatchesByKey = new Map<string, Set<number>>();
+  for (const s of rawStats || []) {
+    const key = `${s.player_id}-${s.team_id}`;
+    let set = statMatchesByKey.get(key);
+    if (!set) statMatchesByKey.set(key, (set = new Set<number>()));
+    set.add(s.match_id);
+  }
   for (const [key, stat] of aggStatsMap.entries()) {
     if (stat.matches === 0) {
-      // Count unique match_ids for this player from rawStats
-      const playerMatches = new Set(
-        (rawStats || [])
-          .filter(s => `${s.player_id}-${s.team_id}` === key)
-          .map(s => s.match_id)
-      );
-      stat.matches = playerMatches.size;
+      stat.matches = statMatchesByKey.get(key)?.size ?? 0;
     }
   }
 
@@ -358,7 +391,7 @@ export const loadTournamentIntoStore = async (
 
   // Build teams
   const teams: Team[] = [];
-  for (const tt of (tournamentTeamsData || []) as TournamentTeamData[]) {
+  for (const tt of tournamentTeamsData) {
     const teamStandings = standings.filter((s: Standing) => s.team_id === tt.team.id);
     const aggregatedStandings = teamStandings.reduce(
       (
@@ -424,13 +457,6 @@ export const loadTournamentIntoStore = async (
       blueCards,
     });
   }
-
-  // Fetch awards
-  const { data: awardsData, error: awardsError } = await supabaseInstance
-    .from('tournament_awards')
-    .select('*')
-    .eq('tournament_id', tournamentId)
-    .single();
 
   if (awardsError && awardsError.code !== 'PGRST116') {
     throw new Error(`Failed to fetch awards: ${awardsError.message}`);

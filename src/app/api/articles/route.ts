@@ -1,5 +1,6 @@
 // app/api/articles/route.ts
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
@@ -137,6 +138,7 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    revalidatePath("/"); // home + navbar news sections render this content
     return NextResponse.json({ data }, { status: 201 });
   } catch (e: any) {
     const msg = String(e?.message ?? "");

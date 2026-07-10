@@ -23,8 +23,6 @@ type TournamentLite = {
 // Your existing type, augmented with an optional tournament
 export type MatchWithTournament = MatchWithTeams & {
   tournament: TournamentLite | null;
-  stage_id: number | null;
-  group_id: number | null;
   video_url: string | null; // ✅ NEW: per-match YouTube URL/ID
   // two-legged KO
   leg: number | null;
@@ -43,10 +41,7 @@ export async function fetchMatch(id: Id) {
         "status",
         "team_a_score",
         "team_b_score",
-        "winner_team_id",
         "referee",
-        "stage_id",
-        "group_id",
         "video_url", // ✅ NEW: load from DB
         // two-legged KO
         "leg",
@@ -87,6 +82,8 @@ export async function fetchLegOneScores(legOneMatchId: Id) {
 }
 
 export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation[]> {
+  // No player_statistics join here: the match page renders only identity
+  // fields (roster, stats editor), never the career aggregates.
   const { data, error } = await supabaseAdmin
     .from("player_teams")
     .select(
@@ -97,25 +94,12 @@ export async function fetchPlayersForTeam(teamId: Id): Promise<PlayerAssociation
         first_name,
         last_name,
         photo,
-        deleted_at,
-        player_statistics(
-          id,
-          age,
-          total_goals,
-          total_assists,
-          yellow_cards,
-          red_cards,
-          blue_cards,
-          created_at,
-          updated_at
-        )
+        deleted_at
       )
     `
     )
     .eq("team_id", teamId)
-    .order("player_id", { ascending: true })
-    .order("id", { foreignTable: "player.player_statistics", ascending: false })
-    .limit(1, { foreignTable: "player.player_statistics" });
+    .order("player_id", { ascending: true });
 
   if (error || !data) return [];
   return normalizeTeamPlayers(data as TeamPlayersRowRaw[]);

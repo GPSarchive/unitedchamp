@@ -26,6 +26,7 @@ export async function runFullBackfill(): Promise<{
 
     const result = await refreshAllPlayerStats();
     revalidatePath("/paiktes");
+    revalidatePath("/"); // home top-players section reads the same caches
     revalidatePath("/dashboard/refresh-stats");
     return { success: true, ...result };
   } catch (err) {

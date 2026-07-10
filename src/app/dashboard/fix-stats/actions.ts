@@ -2,7 +2,10 @@
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { fetchAllRows } from "@/app/lib/refreshPlayerStats";
+import { aggregateLegacyTotals, chunk, type LegacyTotals } from "@/app/lib/playerStatsAggregation";
 import { revalidatePath } from "next/cache";
+
+const BATCH_SIZE = 300;
 
 export async function applySyncFix() {
   // 1. Aggregate all-time stats from match_player_stats.
@@ -17,18 +20,19 @@ export async function applySyncFix() {
     blue_cards: number | null;
   }>("match_player_stats", "player_id, goals, assists, yellow_cards, red_cards, blue_cards");
 
-  const totals = new Map<
-    number,
-    {
-      total_goals: number;
-      total_assists: number;
-      yellow_cards: number;
-      red_cards: number;
-      blue_cards: number;
-    }
-  >();
+  const totals = aggregateLegacyTotals(mpsRows);
 
-  for (const r of mpsRows) {
+  // 2. Players that have a player_statistics row but no source stats anymore
+  //    get zeroed (not deleted) — in ONE upsert pass with everyone else.
+  //    The previous implementation zeroed ALL rows first and re-upserted after,
+  //    which briefly published all-zero totals to public readers and, on a
+  //    crash between the two steps, left them that way.
+  const existingRows = await fetchAllRows<{ player_id: number }>(
+    "player_statistics",
+    "player_id",
+    "player_id",
+  );
+  for (const r of existingRows) {
     if (!totals.has(r.player_id)) {
       totals.set(r.player_id, {
         total_goals: 0,
@@ -36,46 +40,26 @@ export async function applySyncFix() {
         yellow_cards: 0,
         red_cards: 0,
         blue_cards: 0,
-      });
+      } satisfies LegacyTotals);
     }
-    const t = totals.get(r.player_id)!;
-    t.total_goals += Number(r.goals) || 0;
-    t.total_assists += Number(r.assists) || 0;
-    t.yellow_cards += Number(r.yellow_cards) || 0;
-    t.red_cards += Number(r.red_cards) || 0;
-    t.blue_cards += Number(r.blue_cards) || 0;
   }
 
-  // 2. Zero out all existing player_statistics (for players with no match entries)
-  const { error: resetErr } = await supabaseAdmin
-    .from("player_statistics")
-    .update({
-      total_goals: 0,
-      total_assists: 0,
-      yellow_cards: 0,
-      red_cards: 0,
-      blue_cards: 0,
-    })
-    .gte("player_id", 0); // matches all rows
+  // 3. Upsert recalculated values (batched to avoid payload limits)
+  const upserts = Array.from(totals.entries()).map(([pid, t]) => ({
+    player_id: pid,
+    ...t,
+  }));
 
-  if (resetErr) throw new Error(`Failed to reset player_statistics: ${resetErr.message}`);
-
-  // 3. Upsert recalculated values
-  if (totals.size > 0) {
-    const upserts = Array.from(totals.entries()).map(([pid, t]) => ({
-      player_id: pid,
-      ...t,
-    }));
-
+  for (const batch of chunk(upserts, BATCH_SIZE)) {
     const { error: upsertErr } = await supabaseAdmin
       .from("player_statistics")
-      .upsert(upserts, { onConflict: "player_id" });
-
+      .upsert(batch, { onConflict: "player_id" });
     if (upsertErr) throw new Error(`Failed to upsert player_statistics: ${upsertErr.message}`);
   }
 
   revalidatePath("/dashboard/fix-stats");
   revalidatePath("/paiktes");
+  revalidatePath("/"); // home top-players section reads player_statistics
 
-  return { updated: totals.size };
+  return { updated: upserts.length };
 }

@@ -5,6 +5,7 @@ import { canEditContent } from "@/app/lib/supabase/apiAuth";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
 import { decideTwoLeggedTie } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
+import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -511,6 +512,15 @@ export async function PATCH(
       }
     }
 
+    // Public pages are ISR-cached; regenerate the ones showing this match.
+    revalidateMatchSurfaces({
+      id,
+      tournament_id: current.tournament_id,
+      team_a_id: "team_a_id" in update ? update.team_a_id : current.team_a_id,
+      team_b_id: "team_b_id" in update ? update.team_b_id : current.team_b_id,
+      previous_team_ids: [current.team_a_id, current.team_b_id],
+    });
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const msg = String(e?.message ?? "");
@@ -547,7 +557,7 @@ export async function PATCH(
       // Load current match with stage + wiring anchors
       const { data: current, error: curErr } = await supa
         .from("matches")
-        .select("id, tournament_id, stage_id, round, bracket_pos")
+        .select("id, tournament_id, stage_id, round, bracket_pos, team_a_id, team_b_id")
         .eq("id", id)
         .maybeSingle();
   
@@ -645,7 +655,14 @@ export async function PATCH(
         return jsonError(mapped.status, mapped.msg, error);
       }
       if (!data) return jsonError(404, "Not found");
-  
+
+      revalidateMatchSurfaces({
+        id,
+        tournament_id: current.tournament_id,
+        team_a_id: current.team_a_id,
+        team_b_id: current.team_b_id,
+      });
+
       return NextResponse.json({ ok: true });
     } catch (e: any) {
       const msg = String(e?.message ?? "");

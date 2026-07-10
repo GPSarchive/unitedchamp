@@ -166,6 +166,62 @@ describe("setKOLegCount — identity survives leg changes", () => {
   });
 });
 
+describe("setKORoundPos — slots move/swap as units", () => {
+  const koAt = (round: number, pos: number) =>
+    state().draftMatches.filter(
+      (m) => m.stageIdx === 1 && m.round === round && m.bracket_pos === pos
+    );
+  const koCount = () => state().draftMatches.filter((m) => m.stageIdx === 1).length;
+
+  it("moves both legs of a tie to an empty slot without creating ghost rows", () => {
+    state().hydrateFromSnapshot(makeSnapshot());
+    const before = koAt(1, 1);
+    expect(before).toHaveLength(2);
+    const total = koCount();
+
+    state().setKORoundPos(1, { round: 1, bracket_pos: 1 }, { round: 2, bracket_pos: 1 });
+
+    // both legs arrived together, identity intact
+    const moved = koAt(2, 1);
+    expect(moved).toHaveLength(2);
+    expect(new Set(moved.map((m) => m.uid))).toEqual(new Set(before.map((m) => m.uid)));
+    expect(moved.map((m) => m.leg).sort()).toEqual([1, 2]);
+    // the old slot is empty and nothing was minted to fill it
+    expect(koAt(1, 1)).toHaveLength(0);
+    expect(koCount()).toBe(total);
+    // overlay entries followed the uids
+    const overlay = state().dbOverlayByUid;
+    expect(moved.map((m) => overlay[m.uid!]?.db_id).sort()).toEqual([910, 911]);
+  });
+
+  it("swaps with an occupied slot; each row keeps its own uid and leg marker", () => {
+    state().hydrateFromSnapshot(makeSnapshot());
+    const tie = koAt(1, 1);
+    const single = koAt(1, 2);
+    const total = koCount();
+
+    state().setKORoundPos(1, { round: 1, bracket_pos: 1 }, { round: 1, bracket_pos: 2 });
+
+    const atP2 = koAt(1, 2);
+    expect(atP2).toHaveLength(2);
+    expect(new Set(atP2.map((m) => m.uid))).toEqual(new Set(tie.map((m) => m.uid)));
+    const atP1 = koAt(1, 1);
+    expect(atP1).toHaveLength(1);
+    expect(atP1[0].uid).toBe(single[0].uid);
+    expect(atP1[0].leg ?? null).toBeNull();
+    expect(koCount()).toBe(total);
+  });
+
+  it("is a no-op when the source slot has no rows", () => {
+    state().hydrateFromSnapshot(makeSnapshot());
+    const before = state().draftMatches;
+
+    state().setKORoundPos(1, { round: 5, bracket_pos: 9 }, { round: 1, bracket_pos: 1 });
+
+    expect(state().draftMatches).toBe(before);
+  });
+});
+
 describe("saveAll reconcile — sig-colliding creates get distinct db_ids", () => {
   it("assigns server rows one-to-one and keys overlays by uid", async () => {
     state().hydrateFromSnapshot(makeSnapshot({ matches: [] }));

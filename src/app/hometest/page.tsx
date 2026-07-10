@@ -1,4 +1,6 @@
 // app/page.tsx
+export const revalidate = 300;
+
 import Image from 'next/image';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { Trophy, Users, BarChart3 } from 'lucide-react';

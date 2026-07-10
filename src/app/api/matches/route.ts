@@ -1,6 +1,7 @@
 // app/api/matches/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -401,6 +402,13 @@ export async function POST(req: Request) {
       const mapped = mapDbError(error);
       return jsonError(mapped.status, mapped.msg, error);
     }
+
+    revalidateMatchSurfaces({
+      id: data.id,
+      tournament_id: payload.tournament_id ?? null,
+      team_a_id: payload.team_a_id,
+      team_b_id: payload.team_b_id,
+    });
 
     return NextResponse.json({ ok: true, id: data.id }, { status: 201 });
   } catch (e: any) {

@@ -1236,24 +1236,26 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   },
 
   setKORoundPos: (stageIdx, from, to) => {
+    if (from.round === to.round && from.bracket_pos === to.bracket_pos) return;
+    const at = (m: DraftMatch, c: KOCoord) =>
+      m.round === c.round && m.bracket_pos === c.bracket_pos;
+    // Bail before updateMatches: it rebuilds the array and dirties the whole
+    // stage, which a move with no source rows must not do.
+    if (!get().draftMatches.some((m) => m.stageIdx === stageIdx && at(m, from))) return;
     get().updateMatches(stageIdx, (rows) => {
-      const next = rows.slice();
-      const i = next.findIndex((r) => r.round === from.round && r.bracket_pos === from.bracket_pos);
-      if (i < 0) return next;
-      const j = next.findIndex((r) => r.round === to.round && r.bracket_pos === to.bracket_pos);
-      if (j >= 0) {
-        const a = { ...next[i] };
-        const b = { ...next[j] };
-        const [r1, p1] = [a.round, a.bracket_pos];
-        a.round = b.round; a.bracket_pos = b.bracket_pos;
-        b.round = r1;      b.bracket_pos = p1;
-        next[i] = b; next[j] = a;
-      } else {
-        const row = { ...next[i] };
-        row.round = to.round; row.bracket_pos = to.bracket_pos;
-        next[i] = row;
-      }
-      return next;
+      // A slot moves/swaps as a UNIT: both legs of a two-legged tie share
+      // (round, bracket_pos), so a single-row findIndex would grab an arbitrary
+      // leg and tear the tie apart. If the destination slot is occupied, the
+      // two slots trade places. Rows keep their uid, so overlay entries and
+      // dirty markers follow them without any re-keying; updateMatches rewires
+      // KO source pointers and marks the stage dirty.
+      return rows.map((m) =>
+        at(m, from)
+          ? { ...m, round: to.round, bracket_pos: to.bracket_pos }
+          : at(m, to)
+          ? { ...m, round: from.round, bracket_pos: from.bracket_pos }
+          : m
+      );
     });
   },
 

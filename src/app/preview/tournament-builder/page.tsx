@@ -33,8 +33,7 @@ export default async function TournamentBuilderPreviewPage({
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8 text-white">
-      <h1 className="text-xl font-bold tracking-tight">Tournament Builder 2.0</h1>
-      <p className="mt-1 text-sm text-zinc-400">
+      <p className="text-sm text-zinc-400">
         Επίλεξε διοργάνωση για επεξεργασία ή ξεκίνα μία καινούρια.
       </p>
 

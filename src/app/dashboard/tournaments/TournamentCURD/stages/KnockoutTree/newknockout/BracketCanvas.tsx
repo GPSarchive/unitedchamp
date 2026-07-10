@@ -1020,8 +1020,11 @@ export default function BracketCanvas({
 
     // move in store only when Apply is pressed
     if (prev && (prev.round !== m.round || prev.bracket_pos !== m.bracket_pos)) {
+      // Source may be a canvas-only node with no store row yet — create it so
+      // there is something to move. Do NOT pre-create the destination: an
+      // empty placeholder there turns setKORoundPos's move into a swap with
+      // the ghost, stranding an empty row at the old coordinates.
       ensureRowExists(prev.round, prev.bracket_pos);
-      ensureRowExists(m.round, m.bracket_pos);
       syncingRef.current = true;
       setKORoundPos(
         stageIdx,

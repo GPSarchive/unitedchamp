@@ -58,6 +58,8 @@ type MatchNodeData = {
   leg?: number | null;
   /** Aggregate + pens, attached to the leg-2 (decider) card only. */
   agg?: { a: number; b: number; finished: boolean; penA: number | null; penB: number | null } | null;
+  /** Penalty shootout on a single-leg slot (match drawn, decided on pens). */
+  pens?: { a: number; b: number } | null;
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -237,6 +239,10 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
           status: sample.status ?? null,
           winnerId: sample.winner_team_id ?? null,
           matchDate: sample.match_date ?? null,
+          pens:
+            sample.penalty_a != null && sample.penalty_b != null
+              ? { a: sample.penalty_a, b: sample.penalty_b }
+              : null,
         };
         return;
       }
@@ -339,7 +345,7 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
         const data = matchData[n.id];
         if (!data) return null;
 
-        const { teamA, teamB, scoreA, scoreB, status, matchDate, twoLegged, leg, agg } = data;
+        const { teamA, teamB, scoreA, scoreB, status, matchDate, twoLegged, leg, agg, pens } = data;
         const nameA = getTeamName(teamA);
         const nameB = getTeamName(teamB);
         const logoA = getTeamLogo(teamA);
@@ -404,6 +410,15 @@ const KOStageDisplay = ({ stage }: { stage: Stage }) => {
               </div>
 
               <TeamRow logo={logoB} name={nameB} score={isFinished ? scoreB : null} isTBD={teamB == null} compact={compact} />
+
+              {/* Single-leg footer: match drawn, decided on penalties. */}
+              {!twoLegged && isFinished && pens && (
+                <div className="mt-0.5 flex items-center justify-center px-2 text-[9px] font-medium">
+                  <span className="rounded bg-amber-500/15 border border-amber-500/20 px-1.5 py-0.5 text-amber-300 tabular-nums">
+                    pens {pens.a}-{pens.b}
+                  </span>
+                </div>
+              )}
 
               {/* Leg-2 footer: the tie is decided here. Aggregate sits on the tie
                   container; the card only flags pending / penalties. */}
