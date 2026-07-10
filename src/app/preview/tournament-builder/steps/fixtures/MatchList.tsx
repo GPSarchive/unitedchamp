@@ -24,6 +24,10 @@ export default function MatchList({
 }) {
   const [query, setQuery] = useState("");
   const [confirmRegen, setConfirmRegen] = useState(false);
+  // On the "All groups" view a new match has no group to land in — creating it
+  // anyway would orphan it (groupIdx=null never counts toward any group's
+  // standings), so ask which group first.
+  const [pendingAddGroup, setPendingAddGroup] = useState(false);
 
   const {
     isGroups,
@@ -83,7 +87,16 @@ export default function MatchList({
           <RefreshCw size={15} />
           <span className="hidden sm:inline">Αναδημιουργία</span>
         </Button>
-        <Button variant="primary" onClick={addRow}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (isGroups && storeGroups.length > 0 && useAllGroups) {
+              setPendingAddGroup(true);
+              return;
+            }
+            addRow();
+          }}
+        >
           <Plus size={15} />
           Αγώνας
         </Button>
@@ -120,6 +133,49 @@ export default function MatchList({
             </div>
           </section>
         ))
+      )}
+
+      {/* Group picker — bottom sheet on mobile, centered on desktop */}
+      {pendingAddGroup && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Σε ποιον όμιλο;"
+        >
+          <button
+            type="button"
+            aria-label="Άκυρο"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPendingAddGroup(false)}
+          />
+          <div className="relative w-full rounded-t-2xl border border-white/8 bg-[#0d0f14] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl sm:mb-0 sm:w-80 sm:rounded-2xl sm:p-5">
+            <div className="mb-3 text-sm font-semibold text-white">
+              Σε ποιον όμιλο να μπει ο αγώνας;
+            </div>
+            <div className="flex flex-col gap-2">
+              {storeGroups.map((g) => (
+                <button
+                  key={g.idx}
+                  className="min-h-11 w-full rounded-lg border border-zinc-700 px-4 text-left text-sm text-white hover:bg-zinc-800 active:bg-zinc-700"
+                  onClick={() => {
+                    setPendingAddGroup(false);
+                    setGroupIdx(g.idx);
+                    addRow(g.idx);
+                  }}
+                >
+                  {g.name}
+                </button>
+              ))}
+              <button
+                className="mt-1 min-h-11 w-full rounded-lg px-4 text-sm text-zinc-500 hover:bg-white/5"
+                onClick={() => setPendingAddGroup(false)}
+              >
+                Άκυρο
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmRegen && (

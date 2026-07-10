@@ -44,10 +44,12 @@ export default function KnockoutRounds({
   onOpenMatch: (m: DraftMatch) => void;
 }) {
   const [confirmRegen, setConfirmRegen] = useState(false);
+  // Round the admin is adding a match into; opens the single/two-legs chooser.
+  const [pendingKoRound, setPendingKoRound] = useState<number | null>(null);
   const { koRounds, nameOf, addKoRowInRound, regenerateStage } = fx;
 
-  const maxRound = koRounds.length ? Math.max(...koRounds.map((r) => r.round)) : 1;
-  const roundLabel = makeRoundLabel(maxRound);
+  const maxRound = koRounds.length ? Math.max(...koRounds.map((r) => r.round)) : 0;
+  const roundLabel = makeRoundLabel(Math.max(maxRound, 1));
 
   return (
     <div className="space-y-5">
@@ -57,7 +59,7 @@ export default function KnockoutRounds({
           <RefreshCw size={15} />
           <span className="hidden sm:inline">Αναδημιουργία</span>
         </Button>
-        <Button variant="primary" className="ml-auto" onClick={() => addKoRowInRound(1)}>
+        <Button variant="primary" className="ml-auto" onClick={() => setPendingKoRound(1)}>
           <Plus size={15} />
           Αγώνας (Γύρος 1)
         </Button>
@@ -78,7 +80,7 @@ export default function KnockoutRounds({
                 </span>
               </h3>
               <button
-                onClick={() => addKoRowInRound(round)}
+                onClick={() => setPendingKoRound(round)}
                 className="rounded-md px-2 py-1 text-xs font-medium text-indigo-300 hover:bg-indigo-500/10"
               >
                 + Προσθήκη
@@ -101,6 +103,70 @@ export default function KnockoutRounds({
             </div>
           </section>
         ))
+      )}
+
+      {/* Next-round affordance: the per-round buttons above only cover rounds
+          that already have matches, so without this there is no way to start
+          e.g. the semifinals when the generator only produced round 1 — the
+          gap that used to make admins add "later rounds" as extra round-1
+          matches no progression could ever reach. */}
+      {koRounds.length > 0 && (
+        <button
+          onClick={() => setPendingKoRound(maxRound + 1)}
+          className="w-full rounded-xl border border-dashed border-zinc-700 px-4 py-3 text-sm font-medium text-indigo-300 hover:border-indigo-500/50 hover:bg-indigo-500/5"
+        >
+          + Νέος γύρος (Γύρος {maxRound + 1})
+        </button>
+      )}
+
+      {/* Single/two-legs chooser — bottom sheet on mobile, centered on desktop */}
+      {pendingKoRound != null && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Νέος αγώνας knockout"
+        >
+          <button
+            type="button"
+            aria-label="Άκυρο"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPendingKoRound(null)}
+          />
+          <div className="relative w-full rounded-t-2xl border border-white/8 bg-[#0d0f14] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-xl sm:mb-0 sm:w-80 sm:rounded-2xl sm:p-5">
+            <div className="mb-3 text-sm font-semibold text-white">
+              Νέος αγώνας — Γύρος {pendingKoRound}
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                className="min-h-11 w-full rounded-lg border border-zinc-700 px-4 text-left text-sm text-white hover:bg-zinc-800 active:bg-zinc-700"
+                onClick={() => {
+                  const r = pendingKoRound;
+                  setPendingKoRound(null);
+                  addKoRowInRound(r, 1);
+                }}
+              >
+                Μονός αγώνας
+              </button>
+              <button
+                className="min-h-11 w-full rounded-lg border border-zinc-700 px-4 text-left text-sm text-white hover:bg-zinc-800 active:bg-zinc-700"
+                onClick={() => {
+                  const r = pendingKoRound;
+                  setPendingKoRound(null);
+                  addKoRowInRound(r, 2);
+                }}
+              >
+                Διπλός (2 αγώνες, εντός-εκτός)
+              </button>
+              <button
+                className="mt-1 min-h-11 w-full rounded-lg px-4 text-sm text-zinc-500 hover:bg-white/5"
+                onClick={() => setPendingKoRound(null)}
+              >
+                Άκυρο
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmRegen && (
