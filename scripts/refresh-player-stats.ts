@@ -27,6 +27,18 @@ process.env.NEXT_PUBLIC_SUPABASE_URL ??= env.NEXT_PUBLIC_SUPABASE_URL;
 process.env.SUPABASE_SERVICE_ROLE_KEY ??= env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function main() {
+  // The lib imports "server-only", which Next aliases at build time but is not
+  // an installed package here — provide a no-op stub so tsx can resolve it.
+  const stubDir = "node_modules/server-only";
+  if (!fs.existsSync(stubDir)) {
+    fs.mkdirSync(stubDir, { recursive: true });
+    fs.writeFileSync(
+      `${stubDir}/package.json`,
+      JSON.stringify({ name: "server-only", version: "0.0.0-local-stub", main: "index.js" }),
+    );
+    fs.writeFileSync(`${stubDir}/index.js`, "// no-op stub for tsx scripts\n");
+  }
+
   // dynamic import so the env vars above are set before supabaseAdmin is created
   const { refreshAllPlayerStats } = await import("../src/app/lib/refreshPlayerStats");
 
