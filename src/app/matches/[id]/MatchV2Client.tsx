@@ -397,8 +397,8 @@ const ScorePanel: React.FC<{
             </motion.div>
           ) : null}
 
-          {/* Two-legged KO decider: aggregate + penalties */}
-          {isFinished && match.leg === 2 && (match.aggregate_a != null || match.penalty_a != null) && (
+          {/* KO decided on penalties (single-leg or two-legged decider): aggregate + penalties */}
+          {isFinished && (match.aggregate_a != null || match.penalty_a != null) && (
             <div className="flex flex-col items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60">
               {match.aggregate_a != null && match.aggregate_b != null && (
                 <span>
