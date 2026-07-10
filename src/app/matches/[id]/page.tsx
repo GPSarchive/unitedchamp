@@ -21,7 +21,7 @@ import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
 import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
-import { createSupabaseRSCClient } from "@/app/lib/supabase/Server";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
