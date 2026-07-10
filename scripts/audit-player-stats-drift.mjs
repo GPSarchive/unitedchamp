@@ -57,9 +57,9 @@ const name = new Map(players.map(p => [p.id, `${p.first_name ?? ''} ${p.last_nam
 
 console.log(`Loaded ${mps.length} match_player_stats rows across ${new Set(mps.map(r => r.match_id)).size} matches.`);
 if (mps.length >= 1000) {
-  console.log('⚠ NOTE: dataset exceeds 1000 rows — any code path reading match_player_stats');
-  console.log('  WITHOUT pagination (fix-stats page, applySyncFix, the inline sync in');
-  console.log('  saveAllStatsAction) is silently truncated by PostgREST and will undercount.\n');
+  console.log('⚠ NOTE: dataset exceeds 1000 rows — any UNPAGINATED read of match_player_stats');
+  console.log('  is silently truncated by PostgREST. All app aggregate writers paginate today');
+  console.log('  (refreshPlayerStats.ts, fix-stats, the inline sync); keep it that way.\n');
 }
 
 // ── 2. Recompute all three aggregates ───────────────────────────────────────
@@ -161,7 +161,7 @@ if (d1 + d2 + d3 === 0) {
 } else {
   console.log(`✗ Drift confirmed in ${[d1 && 'player_statistics', d2 && 'player_career_stats', d3 && 'player_tournament_stats'].filter(Boolean).join(', ')}.`);
   console.log('  This proves saves wrote match stats without the aggregates following.');
-  console.log('  Recovery: /dashboard/refresh-stats rebuilds the two cache tables correctly');
-  console.log('  (it paginates). Avoid /dashboard/fix-stats while total rows > 1000 — its');
-  console.log('  unpaginated read would write truncated (undercounted) totals.');
+  console.log('  Recovery: /dashboard/refresh-stats (or scripts/refresh-player-stats.ts)');
+  console.log('  rebuilds the two cache tables; /dashboard/fix-stats re-syncs the legacy');
+  console.log('  player_statistics totals. Both paginate.');
 }

@@ -2,9 +2,21 @@
 // with the service-role client and carry no auth checks of their own, so they
 // must not be compiled into publicly invokable Server Action endpoints. Auth
 // lives in the routes/actions that call them.
+//
+// All aggregation math lives in playerStatsAggregation.ts (pure, unit-tested);
+// this module only does the I/O around it. Write failures THROW — callers
+// already wrap these functions in try/catch and must not report success when
+// a cache write was dropped.
 import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import {
+  aggregateCareerBuckets,
+  aggregateTournamentBuckets,
+  aggregateLegacyTotals,
+  chunk,
+  type MpsRow,
+} from "@/app/lib/playerStatsAggregation";
 
 const BATCH_SIZE = 300;
 
@@ -12,12 +24,8 @@ const BATCH_SIZE = 300;
 // large .limit() does NOT override it. All reads here must paginate.
 const PAGE_SIZE = 500;
 
-/** Split an array into chunks */
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
+const MPS_COLUMNS =
+  "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper";
 
 /** Fetch all rows matching `idColumn IN ids`, paginating past the row cap */
 async function fetchInBatches<T>(
@@ -47,46 +55,6 @@ async function fetchInBatches<T>(
   return out;
 }
 
-// ─── Types ──────────────────────────────────────────────────────────
-
-type MpsRow = {
-  player_id: number;
-  match_id: number;
-  team_id: number;
-  goals: number | null;
-  assists: number | null;
-  yellow_cards: number | null;
-  red_cards: number | null;
-  blue_cards: number | null;
-  mvp: boolean | null;
-  best_goalkeeper: boolean | null;
-};
-
-type CareerBucket = {
-  total_matches: number;
-  total_goals: number;
-  total_assists: number;
-  total_yellow_cards: number;
-  total_red_cards: number;
-  total_blue_cards: number;
-  total_mvp: number;
-  total_best_gk: number;
-  total_wins: number;
-  primary_team_id: number | null;
-};
-
-type TournamentBucket = {
-  matches: number;
-  goals: number;
-  assists: number;
-  yellow_cards: number;
-  red_cards: number;
-  blue_cards: number;
-  mvp_count: number;
-  best_gk_count: number;
-  wins: number;
-};
-
 // ─── Core: refresh career stats for a set of players ────────────────
 
 export async function refreshCareerStatsForPlayers(playerIds: number[]) {
@@ -97,7 +65,7 @@ export async function refreshCareerStatsForPlayers(playerIds: number[]) {
     "match_player_stats",
     "player_id",
     playerIds,
-    "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
+    MPS_COLUMNS,
   );
 
   // 2. Fetch match winners for those matches
@@ -110,64 +78,9 @@ export async function refreshCareerStatsForPlayers(playerIds: number[]) {
   );
   const winnerByMatch = new Map(winnerRows.map((m) => [m.id, m.winner_team_id]));
 
-  // 3. Aggregate
-  const statsMap = new Map<number, CareerBucket>();
-  const matchesPerPlayer = new Map<number, Set<number>>();
-  const matchesPerPlayerTeam = new Map<string, number>();
-
-  // Initialize all players with zeroes (handles players whose stats were deleted)
-  for (const pid of playerIds) {
-    statsMap.set(pid, {
-      total_matches: 0,
-      total_goals: 0,
-      total_assists: 0,
-      total_yellow_cards: 0,
-      total_red_cards: 0,
-      total_blue_cards: 0,
-      total_mvp: 0,
-      total_best_gk: 0,
-      total_wins: 0,
-      primary_team_id: null,
-    });
-  }
-
-  for (const r of allMps) {
-    const s = statsMap.get(r.player_id)!;
-
-    // Unique matches
-    if (!matchesPerPlayer.has(r.player_id)) matchesPerPlayer.set(r.player_id, new Set());
-    matchesPerPlayer.get(r.player_id)!.add(r.match_id);
-
-    // Matches per (player, team) for primary team calc
-    const ptKey = `${r.player_id}:${r.team_id}`;
-    matchesPerPlayerTeam.set(ptKey, (matchesPerPlayerTeam.get(ptKey) ?? 0) + 1);
-
-    s.total_goals += r.goals ?? 0;
-    s.total_assists += r.assists ?? 0;
-    s.total_yellow_cards += r.yellow_cards ?? 0;
-    s.total_red_cards += r.red_cards ?? 0;
-    s.total_blue_cards += r.blue_cards ?? 0;
-    if (r.mvp) s.total_mvp += 1;
-    if (r.best_goalkeeper) s.total_best_gk += 1;
-
-    const winner = winnerByMatch.get(r.match_id);
-    if (winner != null && winner === r.team_id) s.total_wins += 1;
-  }
-
-  // Set match counts + primary team
-  for (const pid of playerIds) {
-    const s = statsMap.get(pid)!;
-    s.total_matches = matchesPerPlayer.get(pid)?.size ?? 0;
-
-    // Primary team = team with the most match appearances
-    let maxMatches = 0;
-    for (const [key, count] of matchesPerPlayerTeam) {
-      if (key.startsWith(`${pid}:`) && count > maxMatches) {
-        maxMatches = count;
-        s.primary_team_id = Number(key.split(":")[1]);
-      }
-    }
-  }
+  // 3. Aggregate (seeding zero buckets so players whose stats were all deleted
+  //    get their stale cache row overwritten with zeroes)
+  const statsMap = aggregateCareerBuckets(allMps, winnerByMatch, playerIds);
 
   // 4. Upsert
   const upserts = Array.from(statsMap.entries()).map(([pid, s]) => ({
@@ -181,7 +94,7 @@ export async function refreshCareerStatsForPlayers(playerIds: number[]) {
     const { error } = await supabaseAdmin
       .from("player_career_stats")
       .upsert(batch, { onConflict: "player_id" });
-    if (error) console.error("[refreshCareerStats] upsert error:", error.message);
+    if (error) throw new Error(`Failed upserting player_career_stats: ${error.message}`);
   }
 }
 
@@ -193,73 +106,44 @@ export async function refreshTournamentStatsForPlayers(
 ) {
   if (playerIds.length === 0) return;
 
-  // 1. Get matches for this tournament
-  const { data: tournamentMatches } = await supabaseAdmin
-    .from("matches")
-    .select("id, winner_team_id")
-    .eq("tournament_id", tournamentId);
+  // 1. Get matches for this tournament (paginated — a busy tournament can
+  //    exceed the PostgREST row cap)
+  const tournamentMatches: { id: number; winner_team_id: number | null }[] = [];
+  {
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabaseAdmin
+        .from("matches")
+        .select("id, winner_team_id")
+        .eq("tournament_id", tournamentId)
+        .order("id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (error) throw new Error(`Failed reading matches: ${error.message}`);
+      if (!data || data.length === 0) break;
+      tournamentMatches.push(...(data as typeof tournamentMatches));
+      if (data.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
+  }
 
-  const tMatchIds = (tournamentMatches ?? []).map((m) => m.id as number);
-  const winnerByMatch = new Map(
-    (tournamentMatches ?? []).map((m) => [m.id as number, m.winner_team_id as number | null]),
-  );
+  const winnerByMatch = new Map(tournamentMatches.map((m) => [m.id, m.winner_team_id]));
 
   // 2. Get match_player_stats for these players in these tournament matches
   let mpsRows: MpsRow[] = [];
-  if (tMatchIds.length > 0) {
+  if (tournamentMatches.length > 0) {
     // We need rows where player_id IN playerIds AND match_id IN tMatchIds
     // Fetch by player, then filter by match
     const allRows = await fetchInBatches<MpsRow>(
       "match_player_stats",
       "player_id",
       playerIds,
-      "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
+      MPS_COLUMNS,
     );
-    const tMatchSet = new Set(tMatchIds);
-    mpsRows = allRows.filter((r) => tMatchSet.has(r.match_id));
+    mpsRows = allRows.filter((r) => winnerByMatch.has(r.match_id));
   }
 
   // 3. Aggregate
-  const statsMap = new Map<number, TournamentBucket>();
-  const matchesPerPlayer = new Map<number, Set<number>>();
-
-  for (const pid of playerIds) {
-    statsMap.set(pid, {
-      matches: 0,
-      goals: 0,
-      assists: 0,
-      yellow_cards: 0,
-      red_cards: 0,
-      blue_cards: 0,
-      mvp_count: 0,
-      best_gk_count: 0,
-      wins: 0,
-    });
-  }
-
-  for (const r of mpsRows) {
-    const s = statsMap.get(r.player_id);
-    if (!s) continue;
-
-    if (!matchesPerPlayer.has(r.player_id)) matchesPerPlayer.set(r.player_id, new Set());
-    matchesPerPlayer.get(r.player_id)!.add(r.match_id);
-
-    s.goals += r.goals ?? 0;
-    s.assists += r.assists ?? 0;
-    s.yellow_cards += r.yellow_cards ?? 0;
-    s.red_cards += r.red_cards ?? 0;
-    s.blue_cards += r.blue_cards ?? 0;
-    if (r.mvp) s.mvp_count += 1;
-    if (r.best_goalkeeper) s.best_gk_count += 1;
-
-    const winner = winnerByMatch.get(r.match_id);
-    if (winner != null && winner === r.team_id) s.wins += 1;
-  }
-
-  for (const pid of playerIds) {
-    const s = statsMap.get(pid)!;
-    s.matches = matchesPerPlayer.get(pid)?.size ?? 0;
-  }
+  const statsMap = aggregateTournamentBuckets(mpsRows, winnerByMatch, playerIds);
 
   // 4. Upsert rows with stats, delete rows with 0 matches (after revert)
   const upserts = Array.from(statsMap.entries())
@@ -275,22 +159,22 @@ export async function refreshTournamentStatsForPlayers(
     .filter(([, s]) => s.matches === 0)
     .map(([pid]) => pid);
 
-  if (upserts.length > 0) {
-    for (const batch of chunk(upserts, BATCH_SIZE)) {
-      const { error } = await supabaseAdmin
-        .from("player_tournament_stats")
-        .upsert(batch, { onConflict: "player_id,tournament_id" });
-      if (error) console.error("[refreshTournamentStats] upsert error:", error.message);
-    }
+  for (const batch of chunk(upserts, BATCH_SIZE)) {
+    const { error } = await supabaseAdmin
+      .from("player_tournament_stats")
+      .upsert(batch, { onConflict: "player_id,tournament_id" });
+    if (error) throw new Error(`Failed upserting player_tournament_stats: ${error.message}`);
   }
 
   if (deleteIds.length > 0) {
-    const { error } = await supabaseAdmin
-      .from("player_tournament_stats")
-      .delete()
-      .in("player_id", deleteIds)
-      .eq("tournament_id", tournamentId);
-    if (error) console.error("[refreshTournamentStats] delete error:", error.message);
+    for (const batch of chunk(deleteIds, BATCH_SIZE)) {
+      const { error } = await supabaseAdmin
+        .from("player_tournament_stats")
+        .delete()
+        .in("player_id", batch)
+        .eq("tournament_id", tournamentId);
+      if (error) throw new Error(`Failed deleting player_tournament_stats: ${error.message}`);
+    }
   }
 }
 
@@ -301,36 +185,14 @@ export async function refreshTournamentStatsForPlayers(
 export async function syncPlayerStatisticsForPlayers(playerIds: number[]) {
   if (playerIds.length === 0) return;
 
-  const rows = await fetchInBatches<{
-    player_id: number;
-    goals: number | null;
-    assists: number | null;
-    yellow_cards: number | null;
-    red_cards: number | null;
-    blue_cards: number | null;
-  }>(
+  const rows = await fetchInBatches<MpsRow>(
     "match_player_stats",
     "player_id",
     playerIds,
     "player_id, goals, assists, yellow_cards, red_cards, blue_cards",
   );
 
-  const totals = new Map<
-    number,
-    { total_goals: number; total_assists: number; yellow_cards: number; red_cards: number; blue_cards: number }
-  >();
-  for (const pid of playerIds) {
-    totals.set(pid, { total_goals: 0, total_assists: 0, yellow_cards: 0, red_cards: 0, blue_cards: 0 });
-  }
-  for (const r of rows) {
-    const t = totals.get(r.player_id);
-    if (!t) continue;
-    t.total_goals += r.goals ?? 0;
-    t.total_assists += r.assists ?? 0;
-    t.yellow_cards += r.yellow_cards ?? 0;
-    t.red_cards += r.red_cards ?? 0;
-    t.blue_cards += r.blue_cards ?? 0;
-  }
+  const totals = aggregateLegacyTotals(rows, playerIds);
 
   const upserts = Array.from(totals.entries()).map(([pid, t]) => ({ player_id: pid, ...t }));
   for (const batch of chunk(upserts, BATCH_SIZE)) {
@@ -399,17 +261,20 @@ export async function fetchAllRows<T>(
 }
 
 // ─── Public: full backfill of ALL players ───────────────────────────
+// Non-destructive: upserts recomputed rows first, then deletes only the rows
+// that no longer have any source stats. Public readers never see an empty
+// cache mid-rebuild (the previous delete-all-then-reinsert did exactly that,
+// and a crash mid-run left the caches gutted until the next manual run).
 
 export async function refreshAllPlayerStats(): Promise<{
   careerRows: number;
   tournamentRows: number;
   mpsRowsProcessed: number;
+  staleCareerRowsDeleted: number;
+  staleTournamentRowsDeleted: number;
 }> {
   // 1. Paginate through ALL match_player_stats rows
-  const rows = await fetchAllRows<MpsRow>(
-    "match_player_stats",
-    "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper",
-  );
+  const rows = await fetchAllRows<MpsRow>("match_player_stats", MPS_COLUMNS);
 
   // 2. Get ALL matches (for tournament_id + winner) — via batched ID lookup
   const matchIds = [...new Set(rows.map((r) => r.match_id))];
@@ -420,107 +285,38 @@ export async function refreshAllPlayerStats(): Promise<{
   }>("matches", "id", matchIds, "id, tournament_id, winner_team_id");
 
   const matchInfo = new Map(matchRows.map((m) => [m.id, m]));
+  const winnerByMatch = new Map(matchRows.map((m) => [m.id, m.winner_team_id]));
 
-  // 3. Aggregate career stats
-  const careerMap = new Map<number, CareerBucket>();
-  const matchesPerPlayer = new Map<number, Set<number>>();
-  const matchesPerPlayerTeam = new Map<string, number>();
+  // 3. Aggregate career stats (same pure function the incremental path uses)
+  const careerMap = aggregateCareerBuckets(rows, winnerByMatch);
 
+  // 4. Aggregate tournament stats: group rows by tournament, then reuse the
+  //    per-tournament aggregator
+  const rowsByTournament = new Map<number, MpsRow[]>();
   for (const r of rows) {
-    if (!careerMap.has(r.player_id)) {
-      careerMap.set(r.player_id, {
-        total_matches: 0,
-        total_goals: 0,
-        total_assists: 0,
-        total_yellow_cards: 0,
-        total_red_cards: 0,
-        total_blue_cards: 0,
-        total_mvp: 0,
-        total_best_gk: 0,
-        total_wins: 0,
-        primary_team_id: null,
-      });
-    }
-    const s = careerMap.get(r.player_id)!;
-
-    if (!matchesPerPlayer.has(r.player_id)) matchesPerPlayer.set(r.player_id, new Set());
-    matchesPerPlayer.get(r.player_id)!.add(r.match_id);
-
-    const ptKey = `${r.player_id}:${r.team_id}`;
-    matchesPerPlayerTeam.set(ptKey, (matchesPerPlayerTeam.get(ptKey) ?? 0) + 1);
-
-    s.total_goals += r.goals ?? 0;
-    s.total_assists += r.assists ?? 0;
-    s.total_yellow_cards += r.yellow_cards ?? 0;
-    s.total_red_cards += r.red_cards ?? 0;
-    s.total_blue_cards += r.blue_cards ?? 0;
-    if (r.mvp) s.total_mvp += 1;
-    if (r.best_goalkeeper) s.total_best_gk += 1;
-
-    const mi = matchInfo.get(r.match_id);
-    if (mi?.winner_team_id != null && mi.winner_team_id === r.team_id) s.total_wins += 1;
+    const tid = matchInfo.get(r.match_id)?.tournament_id;
+    if (!tid) continue;
+    if (!rowsByTournament.has(tid)) rowsByTournament.set(tid, []);
+    rowsByTournament.get(tid)!.push(r);
   }
 
-  for (const [pid, s] of careerMap) {
-    s.total_matches = matchesPerPlayer.get(pid)?.size ?? 0;
-    let maxMatches = 0;
-    for (const [key, count] of matchesPerPlayerTeam) {
-      if (key.startsWith(`${pid}:`) && count > maxMatches) {
-        maxMatches = count;
-        s.primary_team_id = Number(key.split(":")[1]);
-      }
-    }
-  }
-
-  // 4. Aggregate tournament stats
-  const tourneyKey = (pid: number, tid: number) => `${pid}:${tid}`;
-  const tourneyMap = new Map<string, TournamentBucket & { player_id: number; tournament_id: number }>();
-  const tourneyMatchesPerPlayer = new Map<string, Set<number>>();
-
-  for (const r of rows) {
-    const mi = matchInfo.get(r.match_id);
-    if (!mi?.tournament_id) continue;
-    const tid = mi.tournament_id;
-    const key = tourneyKey(r.player_id, tid);
-
-    if (!tourneyMap.has(key)) {
-      tourneyMap.set(key, {
-        player_id: r.player_id,
+  const tourneyUpserts: Record<string, unknown>[] = [];
+  const liveTourneyKeys = new Set<string>();
+  for (const [tid, tRows] of rowsByTournament) {
+    const buckets = aggregateTournamentBuckets(tRows, winnerByMatch);
+    for (const [pid, s] of buckets) {
+      if (s.matches === 0) continue;
+      liveTourneyKeys.add(`${pid}:${tid}`);
+      tourneyUpserts.push({
+        player_id: pid,
         tournament_id: tid,
-        matches: 0,
-        goals: 0,
-        assists: 0,
-        yellow_cards: 0,
-        red_cards: 0,
-        blue_cards: 0,
-        mvp_count: 0,
-        best_gk_count: 0,
-        wins: 0,
+        ...s,
+        updated_at: new Date().toISOString(),
       });
     }
-    const s = tourneyMap.get(key)!;
-
-    if (!tourneyMatchesPerPlayer.has(key)) tourneyMatchesPerPlayer.set(key, new Set());
-    tourneyMatchesPerPlayer.get(key)!.add(r.match_id);
-
-    s.goals += r.goals ?? 0;
-    s.assists += r.assists ?? 0;
-    s.yellow_cards += r.yellow_cards ?? 0;
-    s.red_cards += r.red_cards ?? 0;
-    s.blue_cards += r.blue_cards ?? 0;
-    if (r.mvp) s.mvp_count += 1;
-    if (r.best_goalkeeper) s.best_gk_count += 1;
-
-    if (mi.winner_team_id != null && mi.winner_team_id === r.team_id) s.wins += 1;
   }
 
-  for (const [key, s] of tourneyMap) {
-    s.matches = tourneyMatchesPerPlayer.get(key)?.size ?? 0;
-  }
-
-  // 5. Clear and upsert career stats
-  await supabaseAdmin.from("player_career_stats").delete().gte("player_id", 0);
-
+  // 5. Upsert career stats, then delete rows for players with no stats left
   const careerUpserts = Array.from(careerMap.entries()).map(([pid, s]) => ({
     player_id: pid,
     ...s,
@@ -531,27 +327,80 @@ export async function refreshAllPlayerStats(): Promise<{
     const { error } = await supabaseAdmin
       .from("player_career_stats")
       .upsert(batch, { onConflict: "player_id" });
-    if (error) console.error("[backfill career] upsert error:", error.message);
+    if (error) throw new Error(`Failed upserting player_career_stats: ${error.message}`);
   }
 
-  // 6. Clear and upsert tournament stats
-  await supabaseAdmin.from("player_tournament_stats").delete().gte("player_id", 0);
+  const existingCareerIds = await fetchAllRows<{ player_id: number }>(
+    "player_career_stats",
+    "player_id",
+    "player_id",
+  );
+  const staleCareerIds = existingCareerIds
+    .map((r) => r.player_id)
+    .filter((pid) => !careerMap.has(pid));
 
-  const tourneyUpserts = Array.from(tourneyMap.values()).map((s) => ({
-    ...s,
-    updated_at: new Date().toISOString(),
-  }));
+  for (const batch of chunk(staleCareerIds, BATCH_SIZE)) {
+    const { error } = await supabaseAdmin
+      .from("player_career_stats")
+      .delete()
+      .in("player_id", batch);
+    if (error) throw new Error(`Failed deleting stale player_career_stats: ${error.message}`);
+  }
 
+  // 6. Upsert tournament stats, then delete stale (player, tournament) rows
   for (const batch of chunk(tourneyUpserts, BATCH_SIZE)) {
     const { error } = await supabaseAdmin
       .from("player_tournament_stats")
       .upsert(batch, { onConflict: "player_id,tournament_id" });
-    if (error) console.error("[backfill tournament] upsert error:", error.message);
+    if (error) throw new Error(`Failed upserting player_tournament_stats: ${error.message}`);
+  }
+
+  // player_tournament_stats has a composite PK, so paginate with a stable
+  // two-column order (a single non-unique order column can skip/dup rows
+  // across pages)
+  const existingTourneyKeys: { player_id: number; tournament_id: number }[] = [];
+  {
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabaseAdmin
+        .from("player_tournament_stats")
+        .select("player_id, tournament_id")
+        .order("player_id", { ascending: true })
+        .order("tournament_id", { ascending: true })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (error) throw new Error(`Failed reading player_tournament_stats: ${error.message}`);
+      if (!data || data.length === 0) break;
+      existingTourneyKeys.push(...(data as typeof existingTourneyKeys));
+      if (data.length < PAGE_SIZE) break;
+      offset += PAGE_SIZE;
+    }
+  }
+
+  const staleByTournament = new Map<number, number[]>();
+  for (const k of existingTourneyKeys) {
+    if (liveTourneyKeys.has(`${k.player_id}:${k.tournament_id}`)) continue;
+    if (!staleByTournament.has(k.tournament_id)) staleByTournament.set(k.tournament_id, []);
+    staleByTournament.get(k.tournament_id)!.push(k.player_id);
+  }
+
+  let staleTournamentRowsDeleted = 0;
+  for (const [tid, pids] of staleByTournament) {
+    for (const batch of chunk(pids, BATCH_SIZE)) {
+      const { error } = await supabaseAdmin
+        .from("player_tournament_stats")
+        .delete()
+        .eq("tournament_id", tid)
+        .in("player_id", batch);
+      if (error) throw new Error(`Failed deleting stale player_tournament_stats: ${error.message}`);
+      staleTournamentRowsDeleted += batch.length;
+    }
   }
 
   return {
     careerRows: careerUpserts.length,
     tournamentRows: tourneyUpserts.length,
     mpsRowsProcessed: rows.length,
+    staleCareerRowsDeleted: staleCareerIds.length,
+    staleTournamentRowsDeleted,
   };
 }
