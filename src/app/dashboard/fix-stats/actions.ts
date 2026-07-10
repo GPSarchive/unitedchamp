@@ -59,6 +59,7 @@ export async function applySyncFix() {
 
   revalidatePath("/dashboard/fix-stats");
   revalidatePath("/paiktes");
+  revalidatePath("/"); // home top-players section reads player_statistics
 
   return { updated: upserts.length };
 }

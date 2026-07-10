@@ -3,6 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { revalidateTournamentSurfaces } from '@/app/lib/revalidatePublicPages';
 import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
@@ -1224,7 +1225,8 @@ export async function updateTournamentAction(formData: FormData) {
     }
   }
 
-  revalidatePath('/tournaments');
+  revalidateTournamentSurfaces(tournamentId);
+  revalidatePath('/');
   redirect(`/tournaments/${payload.tournament.slug ?? existing.slug ?? ''}`);
 }
 
@@ -1265,6 +1267,8 @@ export async function deleteTournamentAction(tournamentId: number) {
   const delTournament = await supabaseAdmin.from('tournaments').delete().eq('id', tournamentId);
   if (delTournament.error) return { ok: false, error: delTournament.error.message };
 
-  revalidatePath('/tournaments');
+  revalidateTournamentSurfaces(tournamentId);
+  revalidatePath('/');
+  revalidatePath('/matches');
   return { ok: true };
 }

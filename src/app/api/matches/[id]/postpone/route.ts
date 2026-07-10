@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { formatMatchDateTime } from "@/app/lib/datetime";
+import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 /* =======================
    Same-origin guard
@@ -164,6 +165,7 @@ export async function POST(
         status,
         team_a_id,
         team_b_id,
+        tournament_id,
         postponement_reason,
         original_match_date,
         teamA:teams!matches_team_a_id_fkey(id, name, logo),
@@ -289,6 +291,14 @@ export async function POST(
     const message = newDateFormatted
       ? `Match postponed successfully from ${oldDateFormatted} to ${newDateFormatted}`
       : `Match postponed successfully (new date TBD)`;
+
+    // Date/status changed → refresh the ISR-cached public pages showing it.
+    revalidateMatchSurfaces({
+      id,
+      tournament_id: current.tournament_id,
+      team_a_id: current.team_a_id,
+      team_b_id: current.team_b_id,
+    });
 
     return NextResponse.json({
       ok: true,

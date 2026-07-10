@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
 
 export const runtime = "nodejs";
 export const revalidate = 0;
@@ -247,6 +248,8 @@ export async function POST(
 
     // Return current matches in the KO stage (after seeding)
     const matches = await listStageMatches(koStageId);
+    // Standings/KO pairings changed → refresh the ISR-cached tournament pages.
+    revalidateTournamentSurfaces(ko.tournament_id);
     return NextResponse.json({ ok: true, matches });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || "Unexpected error" }, { status: 500 });

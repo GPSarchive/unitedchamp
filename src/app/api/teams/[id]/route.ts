@@ -1,6 +1,7 @@
 // app/api/teams/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { revalidateTeamSurfaces } from "@/app/lib/revalidatePublicPages";
 
 /* =========================
    Storage / Bucket settings
@@ -281,6 +282,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    revalidateTeamSurfaces(id);
+
     return NextResponse.json({
       team: { ...data, logo: await signLogoIfNeededSafe(supa, data.id, data.logo) },
     });
@@ -326,6 +329,8 @@ export async function DELETE(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Delete failed" }, { status: 400 });
     }
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    revalidateTeamSurfaces(id);
 
     return NextResponse.json({
       ok: true,

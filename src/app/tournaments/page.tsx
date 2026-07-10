@@ -1,4 +1,7 @@
 // app/tournaments/page.tsx - Using Reusable Utility
+// ISR: must stay well under the 5-min signed-logo TTL (signTournamentLogos.ts)
+export const revalidate = 60;
+
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import TournamentsClients from "./TournamentsClient";
 import type { Tournament } from "@/app/tournaments/useTournamentData";

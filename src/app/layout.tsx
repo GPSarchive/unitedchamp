@@ -1,7 +1,6 @@
 // /src/app/layout.tsx
 import React, { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
 import Script from "next/script";
 import "./globals.css";
 
@@ -57,7 +56,12 @@ export const viewport: Viewport = {
 };
 
 // Helper — reuse whenever you add external/inline scripts in the future.
-// Every <Script> that goes through this gets the CSP nonce automatically.
+// CSP lives in src/proxy.ts: public routes get a nonce-less policy (their
+// HTML is ISR-cached, so a per-request nonce would mismatch and block every
+// script), the force-dynamic /dashboard keeps the strict nonce policy and
+// Next stamps its scripts from the x-nonce request header automatically.
+// Do NOT read headers()/cookies() in this layout: any dynamic API at the
+// root opts every route out of static rendering / ISR.
 function NoncedScript(
   props: Omit<React.ComponentProps<typeof Script>, "nonce"> & { nonce?: string }
 ) {
@@ -68,8 +72,6 @@ function NoncedScript(
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-
   const htmlClass = [
     robotoCondensed.variable,
     ubuntuCondensed.variable,
@@ -93,12 +95,9 @@ export default async function RootLayout({
         "head",
         { key: "head" },
         [
-          // ────────────────────────────────────────────────────────
-          // Nonced inline style — safe, sets CSS custom property.
-          // ────────────────────────────────────────────────────────
           React.createElement(
             "style",
-            { key: "nonce-style", nonce },
+            { key: "brand-style" },
             `:root { --brand-h: 220 }`
           ),
 

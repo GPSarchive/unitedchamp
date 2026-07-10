@@ -1,5 +1,6 @@
 // app/api/articles/[id]/route.ts
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
@@ -120,6 +121,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidatePath("/"); // home + navbar news sections render this content
     return NextResponse.json({ data });
   } catch (e: any) {
     const msg = String(e?.message ?? "");
@@ -152,6 +154,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    revalidatePath("/"); // home + navbar news sections render this content
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     const msg = String(e?.message ?? "");

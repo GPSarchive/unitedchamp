@@ -1,3 +1,13 @@
+export const revalidate = 60;
+
+// Required for ISR on a dynamic segment: without generateStaticParams the App
+// Router renders every request dynamically even when `revalidate` is set.
+// Empty array = no build-time prerender; each id is generated on first
+// request and then cached for the revalidate window.
+export function generateStaticParams() {
+  return [];
+}
+
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   type Team,
