@@ -14,7 +14,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
-  computeGeneralStandings,
+  computeGeneralStandingsCached,
   NO_SEASON_LABEL,
   POINTS,
   type SeasonMode,
@@ -810,7 +810,9 @@ export default async function StandingsViewGrand({
   const requested = requestedSeason?.trim();
 
   const [standings, teamsRes] = await Promise.all([
-    computeGeneralStandings({ seasonMode }),
+    // Cached (60s / tag-invalidated): this component renders on a dynamic
+    // route, so the raw compute would otherwise full-scan 5 tables per view.
+    computeGeneralStandingsCached({ seasonMode }),
     // Active teams only — soft-deleted (deleted_at set) teams are excluded from the
     // standings so a disbanded team stops appearing in every season it ever played.
     supabaseAdmin.from("teams").select("id, name, logo").is("deleted_at", null),

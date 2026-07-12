@@ -4,7 +4,7 @@
 // Server Actions are public POST endpoints — every action re-checks that the
 // caller is an admin before touching season_team_adjustments.
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { isAdmin } from "@/app/lib/supabase/apiAuth";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
@@ -13,6 +13,7 @@ import {
   makeCancelTag,
   type AdjustmentKind,
 } from "@/app/geniki-katataxi/rules";
+import { GENIKI_KATATAXI_CACHE_TAG } from "@/app/geniki-katataxi/points";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -29,6 +30,9 @@ async function requireAdminUser() {
 function revalidate() {
   revalidatePath("/geniki-katataxi");
   revalidatePath("/dashboard/geniki-katataxi");
+  // The public page is dynamically rendered; the cached points compute is
+  // keyed by this tag, so drop it for an instant refresh after an adjustment.
+  revalidateTag(GENIKI_KATATAXI_CACHE_TAG);
 }
 
 export async function addAdjustment(input: {

@@ -1,5 +1,10 @@
 import "server-only";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+
+/** unstable_cache tag for the Γενική Κατάταξη points compute. Kept here (not
+ *  imported from points.ts) so this module stays dependency-free; the value
+ *  must match GENIKI_KATATAXI_CACHE_TAG in geniki-katataxi/points.ts. */
+const GENIKI_KATATAXI_TAG = "geniki-katataxi";
 
 /**
  * Central ISR invalidation for the public site.
@@ -22,7 +27,10 @@ export function revalidateMatchSurfaces(match: {
   revalidatePath("/");
   revalidatePath("/matches");
   revalidatePath(`/matches/${match.id}`);
+  // /geniki-katataxi is dynamically rendered (season tabs) — the path call is
+  // a no-op there; the tag is what actually drops the cached points compute.
   revalidatePath("/geniki-katataxi");
+  revalidateTag(GENIKI_KATATAXI_TAG);
   revalidatePath("/paiktes");
   if (match.tournament_id != null) revalidateTournamentSurfaces(match.tournament_id);
   const teamIds = new Set(
@@ -54,4 +62,5 @@ export function revalidateTeamSurfaces(teamId: number | string) {
   revalidatePath("/OMADES");
   revalidatePath("/");
   revalidatePath("/geniki-katataxi");
+  revalidateTag(GENIKI_KATATAXI_TAG);
 }
