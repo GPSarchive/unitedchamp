@@ -1990,16 +1990,42 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           });
         }
   
-        // clear phase-4 dirties
+        // clear phase-4 dirties — EXCEPT rows we sent that never came back
+        // with a db_id (the server skips natural-key duplicates instead of
+        // inserting them). Those stay dirty so they aren't silently lost on
+        // the next hydrate, and the save surfaces an error for the admin.
+        const stAfter = get();
+        const unsavedUids = Array.from(sentUids).filter((uid) => {
+          const row = stAfter.draftMatches.find((r) => r.uid === uid);
+          if (!row) return false; // row gone (deleted meanwhile)
+          const id = row.db_id ?? stAfter.dbOverlayByUid[uid]?.db_id ?? null;
+          return id == null;
+        });
+
         set((curr) => ({
           dirty: {
             ...curr.dirty,
-            matches: new Set(),
+            matches: new Set(unsavedUids),
             stageSlots: new Set(),
             intakeMappings: false,
             deletedMatchIds: new Set(), // clear deletions after success
           },
         }));
+
+        if (unsavedUids.length) {
+          const skipped = (resp4 as any)?.skippedDuplicateMatches as
+            | Array<{ key: string }>
+            | undefined;
+          throw new Error(
+            `${unsavedUids.length} αγώνας/ες δεν αποθηκεύτηκαν` +
+              (skipped?.length
+                ? ` — ο server τους απέρριψε ως διπλότυπα υπαρχόντων αγώνων (${skipped
+                    .map((s) => s.key)
+                    .join(", ")})`
+                : " — δεν επιβεβαιώθηκαν από τον server") +
+              `. Παραμένουν ως μη αποθηκευμένοι· αλλάξτε αγωνιστική/ομάδες ή διαγράψτε το διπλότυπο και αποθηκεύστε ξανά.`
+          );
+        }
       }
     } finally {
       set({ busy: false });

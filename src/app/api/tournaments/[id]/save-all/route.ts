@@ -119,6 +119,21 @@ type SaveAllResponse = {
   stageSlots?: StageSlotRow[];
   intakeMappings?: IntakeMappingRow[];
   matches?: MatchRow[];
+  /** New rows NOT inserted because their natural key collided with an
+   *  existing row (or another row in the same batch). Never silent: the
+   *  client keeps these dirty and surfaces them to the admin. */
+  skippedDuplicateMatches?: Array<{
+    kind: "ko" | "lg";
+    key: string;
+    stage_id: number | null;
+    group_id?: number | null;
+    matchday?: number | null;
+    round?: number | null;
+    bracket_pos?: number | null;
+    leg?: number | null;
+    team_a_id?: number | null;
+    team_b_id?: number | null;
+  }>;
 };
 
 type Params = { id: string };
@@ -600,6 +615,7 @@ if (body.matches?.upsert?.length) {
   // Creates via upsert on natural keys to avoid duplicates
   const strip = ({ id:_1, updated_at:_2, ...rest }: any) => rest;
   const created: any[] = [];
+  const skippedDuplicates: NonNullable<SaveAllResponse["skippedDuplicateMatches"]> = [];
 
   // KO Matches — natural key is (stage_id, round, bracket_pos, leg). Two-legged
   // ties share (stage,round,bracket_pos) and differ only by leg, so the leg MUST
@@ -633,7 +649,18 @@ if (body.matches?.upsert?.length) {
     const seenInBatch = new Set<string>();
     const dedupedKO = toCreateKO.filter((m: any) => {
       const k = koKey(m);
-      if (existingKOKeys.has(k) || seenInBatch.has(k)) return false;
+      if (existingKOKeys.has(k) || seenInBatch.has(k)) {
+        // NEVER drop silently — report so the client can keep the row dirty.
+        skippedDuplicates.push({
+          kind: "ko",
+          key: k,
+          stage_id: m.stage_id ?? null,
+          round: m.round ?? null,
+          bracket_pos: m.bracket_pos ?? null,
+          leg: m.leg ?? null,
+        });
+        return false;
+      }
       seenInBatch.add(k);
       return true;
     });
@@ -661,7 +688,25 @@ if (body.matches?.upsert?.length) {
       .is("round", null);
 
     const existingKeys = new Set((existingMatches ?? []).map(matchNaturalKey));
-    const deduped = toCreateLG.filter(m => !existingKeys.has(matchNaturalKey(m)));
+    const deduped = toCreateLG.filter(m => {
+      const k = matchNaturalKey(m);
+      if (existingKeys.has(k)) {
+        // NEVER drop silently — identical TBD skeletons on one matchday
+        // collide on this key by design; the client must learn the row
+        // was not created so it stays dirty instead of vanishing on reload.
+        skippedDuplicates.push({
+          kind: "lg",
+          key: k,
+          stage_id: m.stage_id ?? null,
+          group_id: m.group_id ?? null,
+          matchday: m.matchday ?? null,
+          team_a_id: m.team_a_id ?? null,
+          team_b_id: m.team_b_id ?? null,
+        });
+        return false;
+      }
+      return true;
+    });
 
     if (deduped.length) {
       const { data, error } = await supabaseAdmin
@@ -674,6 +719,13 @@ if (body.matches?.upsert?.length) {
   }
 
   out.matches = [...updated, ...created];
+  if (skippedDuplicates.length) {
+    console.warn(
+      `[save-all] skipped ${skippedDuplicates.length} duplicate match insert(s):`,
+      skippedDuplicates.map((s) => s.key).join(", ")
+    );
+    out.skippedDuplicateMatches = skippedDuplicates;
+  }
 }
 
     // ===== KO ID RESOLUTION (no RPC) ======================================
