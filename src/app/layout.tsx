@@ -58,8 +58,10 @@ export const viewport: Viewport = {
 // Helper — reuse whenever you add external/inline scripts in the future.
 // CSP lives in src/proxy.ts: public routes get a nonce-less policy (their
 // HTML is ISR-cached, so a per-request nonce would mismatch and block every
-// script), the force-dynamic /dashboard keeps the strict nonce policy and
-// Next stamps its scripts from the x-nonce request header automatically.
+// script). The force-dynamic /dashboard keeps the strict nonce policy: the
+// proxy forwards the full CSP on the *request* headers, which is where Next
+// reads the nonce from to stamp its own inline scripts (x-nonce alone is
+// only a convention for app code and is invisible to the framework).
 // Do NOT read headers()/cookies() in this layout: any dynamic API at the
 // root opts every route out of static rendering / ISR.
 function NoncedScript(
