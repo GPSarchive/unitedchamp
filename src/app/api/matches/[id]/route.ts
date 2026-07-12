@@ -393,10 +393,14 @@ export async function PATCH(
               : "Knockout matches cannot finish level — enter the penalty shootout result."
           );
         }
-        if (!effWinner) update.winner_team_id = res.winnerTeamId;
-        else if (![teamA, teamB].includes(effWinner) || effWinner !== res.winnerTeamId) {
+        // Validate only a winner EXPLICITLY sent in this PATCH; the stored
+        // winner must not veto the resolution, or a pens-only correction
+        // (flipping the shootout direction) could never re-stamp the winner.
+        const sentWinner = "winner_team_id" in update ? update.winner_team_id : null;
+        if (sentWinner != null && sentWinner !== res.winnerTeamId) {
           return jsonError(400, "winner_team_id must match the scores/penalties for KO.");
         }
+        update.winner_team_id = res.winnerTeamId;
         // Pens persist only when they decided the match; clear stray input on a
         // score win so a later resolution can't misread them.
         if (res.via !== "penalties") {

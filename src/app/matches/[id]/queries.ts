@@ -24,7 +24,8 @@ type TournamentLite = {
 export type MatchWithTournament = MatchWithTeams & {
   tournament: TournamentLite | null;
   video_url: string | null; // ✅ NEW: per-match YouTube URL/ID
-  // two-legged KO
+  // KO context (single-leg pens + two-legged deciders)
+  is_ko: boolean | null;
   leg: number | null;
   tie_leg1_match_id: number | null;
   penalty_a: number | null;
@@ -43,7 +44,8 @@ export async function fetchMatch(id: Id) {
         "team_b_score",
         "referee",
         "video_url", // ✅ NEW: load from DB
-        // two-legged KO
+        // KO context (single-leg pens + two-legged deciders)
+        "is_ko",
         "leg",
         "tie_leg1_match_id",
         "penalty_a",

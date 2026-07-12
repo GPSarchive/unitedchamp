@@ -425,8 +425,19 @@ export type TournamentState = {
   upsertIntakeMapping: (m: DbIntakeMapping) => void;
   removeIntakeMapping: (predicate: (m: DbIntakeMapping) => boolean) => void;
 
-  // Persist everything dirty via /save-all
-  saveAll: () => Promise<void>;
+  // Persist everything dirty via /save-all.
+  // Returns a summary when match rows were sent: rows in unsavedMatchUids were
+  // sent but never confirmed with a db_id (the server skips natural-key
+  // duplicates instead of inserting) and are KEPT DIRTY. In create mode this
+  // is expected for every fixture (createTournamentAction already inserted
+  // them); in edit mode the caller must surface it and skip any rehydrate
+  // that would wipe the kept-dirty rows.
+  saveAll: () => Promise<SaveAllClientResult | void>;
+};
+
+export type SaveAllClientResult = {
+  unsavedMatchUids: string[];
+  skippedDuplicateMatches?: Array<{ kind: "ko" | "lg"; key: string }>;
 };
 
 /* =========================================================
@@ -2012,20 +2023,14 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           },
         }));
 
-        if (unsavedUids.length) {
-          const skipped = (resp4 as any)?.skippedDuplicateMatches as
-            | Array<{ key: string }>
-            | undefined;
-          throw new Error(
-            `${unsavedUids.length} αγώνας/ες δεν αποθηκεύτηκαν` +
-              (skipped?.length
-                ? ` — ο server τους απέρριψε ως διπλότυπα υπαρχόντων αγώνων (${skipped
-                    .map((s) => s.key)
-                    .join(", ")})`
-                : " — δεν επιβεβαιώθηκαν από τον server") +
-              `. Παραμένουν ως μη αποθηκευμένοι· αλλάξτε αγωνιστική/ομάδες ή διαγράψτε το διπλότυπο και αποθηκεύστε ξανά.`
-          );
-        }
+        // NOT a throw: in create mode every fixture legitimately dedupes
+        // against the rows createTournamentAction just inserted, and the
+        // post-save rehydrate reconciles them. The CALLER decides whether
+        // unsaved rows are an error (edit mode) or expected (create mode).
+        return {
+          unsavedMatchUids: unsavedUids,
+          skippedDuplicateMatches: (resp4 as any)?.skippedDuplicateMatches,
+        } satisfies SaveAllClientResult;
       }
     } finally {
       set({ busy: false });
