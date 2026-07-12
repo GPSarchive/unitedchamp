@@ -28,6 +28,10 @@ import {
 
 // Matches in a window from 60 days ago to 90 days ahead, with team + tournament joins.
 // Wrapped in `cache()` so multiple callers in the same request share one query.
+//
+// Paginated: PostgREST caps every response at ~1000 rows, and with ascending
+// date order the rows silently cut off would be the LATEST — upcoming fixtures
+// vanishing from the calendar with no error. Same fix as the tournament loader.
 export const fetchMatchesWithTeams = cache(async () => {
   const now = new Date();
   const windowStart = new Date(now);
@@ -35,27 +39,34 @@ export const fetchMatchesWithTeams = cache(async () => {
   const windowEnd = new Date(now);
   windowEnd.setDate(now.getDate() + 90);
 
-  const { data, error } = await supabaseAdmin
-    .from("matches")
-    .select(
+  const PAGE = 1000;
+  const all: MatchRowRaw[] = [];
+  for (let fromIdx = 0; ; fromIdx += PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("matches")
+      .select(
+        `
+        id, match_date, team_a_id, team_b_id, team_a_score, team_b_score,
+        status, stage_id, group_id, matchday, round,
+        teamA:teams!matches_team_a_id_fkey (name, logo),
+        teamB:teams!matches_team_b_id_fkey (name, logo),
+        tournament:tournament_id (id, name, logo)
       `
-      id, match_date, team_a_id, team_b_id, team_a_score, team_b_score,
-      status, stage_id, group_id, matchday, round,
-      teamA:teams!matches_team_a_id_fkey (name, logo),
-      teamB:teams!matches_team_b_id_fkey (name, logo),
-      tournament:tournament_id (id, name, logo)
-    `
-    )
-    .gte("match_date", windowStart.toISOString())
-    .lte("match_date", windowEnd.toISOString())
-    .order("match_date", { ascending: true })
-    .order("id", { ascending: true });
+      )
+      .gte("match_date", windowStart.toISOString())
+      .lte("match_date", windowEnd.toISOString())
+      .order("match_date", { ascending: true })
+      .order("id", { ascending: true })
+      .range(fromIdx, fromIdx + PAGE - 1);
 
-  if (error) {
-    console.error("[home/data] fetchMatchesWithTeams failed:", error.message);
-    return [] as MatchRowRaw[];
+    if (error) {
+      console.error("[home/data] fetchMatchesWithTeams failed:", error.message);
+      return [] as MatchRowRaw[];
+    }
+    all.push(...((data ?? []) as unknown as MatchRowRaw[]));
+    if (!data || data.length < PAGE) break;
   }
-  return (data ?? []) as unknown as MatchRowRaw[];
+  return all;
 });
 
 // Six most-recent tournaments, with team + match counts and signed logo URLs.
