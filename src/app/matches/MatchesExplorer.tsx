@@ -234,11 +234,15 @@ export default function MatchesExplorer({ tournaments }: Props) {
         }
 
         const isUpcoming = tab === "upcoming";
+        // The two tabs must PARTITION all dated matches — nothing may vanish
+        // from both. upcoming = future-dated and not finished; past = finished
+        // OR past-dated (so an unscored/postponed yesterday match stays
+        // visible here instead of disappearing until an admin finishes it).
         q = isUpcoming
           ? q
               .gte("match_date", currentISO)
               .or("status.is.null,status.neq.finished")
-          : q.eq("status", "finished");
+          : q.or(`status.eq.finished,match_date.lt.${currentISO}`);
 
         q = q.order("match_date", { ascending: isUpcoming });
 
