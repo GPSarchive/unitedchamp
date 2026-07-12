@@ -33,6 +33,14 @@ type Props = {
   leg1Ready: boolean;
   savedPenaltyA: number | null;
   savedPenaltyB: number | null;
+  /**
+   * "decider" (default): leg 2 of a two-legged tie — pens required when the
+   * live leg WINS are level. "single": a one-off KO match — pens required when
+   * the live SCORE is level (leg-1 props are ignored). Both mirror the exact
+   * cases where the server (decideTwoLeggedTie / decideSingleLegKO) demands a
+   * shootout to finish.
+   */
+  mode?: "decider" | "single";
 };
 
 /** Sum goals + own-goals from the live form into leg-2 A/B scores (mirrors the server). */
@@ -81,7 +89,9 @@ export default function TwoLeggedPenaltyPanel({
   leg1Ready,
   savedPenaltyA,
   savedPenaltyB,
+  mode = "decider",
 }: Props) {
+  const isSingle = mode === "single";
   const [live, setLive] = React.useState<{ a: number; b: number }>({ a: 0, b: 0 });
   const rootRef = React.useRef<HTMLDivElement>(null);
 
@@ -112,9 +122,12 @@ export default function TwoLeggedPenaltyPanel({
   const winsB =
     (leg1Winner === teamBId ? 1 : 0) + (leg2Winner === teamBId ? 1 : 0);
 
-  // Penalties are required only when leg 1 has a score and the (live) leg wins
-  // are level — exactly the server's resolveKoFinishPatch rejection case.
-  const penaltiesRequired = leg1Ready && winsA === winsB;
+  // Penalties are required exactly when the server would refuse to finish
+  // without them: single-leg — the live SCORE is level; decider — leg 1 has a
+  // score and the live leg WINS are level.
+  const penaltiesRequired = isSingle
+    ? live.a === live.b
+    : leg1Ready && winsA === winsB;
 
   const aggA = leg1Ready && leg1AScore != null ? leg1AScore + live.a : null;
   const aggB = leg1Ready && leg1BScore != null ? leg1BScore + live.b : null;
@@ -133,30 +146,52 @@ export default function TwoLeggedPenaltyPanel({
           penaltiesRequired ? "text-amber-200" : "text-cyan-200"
         }`}
       >
-        Δεύτερο σκέλος (νοκ-άουτ διπλών αγώνων)
+        {isSingle ? "Νοκ-άουτ (μονός αγώνας)" : "Δεύτερο σκέλος (νοκ-άουτ διπλών αγώνων)"}
       </p>
       <p className="mt-1 text-xs text-white/60">
-        Ο νικητής κρίνεται στις <strong>νίκες σκελών</strong>: όποια ομάδα κερδίσει
-        περισσότερα σκέλη προκρίνεται. Αν κάθε ομάδα κερδίσει από ένα σκέλος (1–1),
-        αποφασίζουν τα <strong>πέναλτι</strong>.
-        {leg1Ready ? (
+        {isSingle ? (
           <>
-            {" "}Νίκες σκελών (βάσει των στατιστικών που εισάγεις):{" "}
+            Ο νικητής κρίνεται στο σκορ· αν ο αγώνας λήξει <strong>ισόπαλος</strong>,
+            αποφασίζουν τα <strong>πέναλτι</strong>.{" "}
+            Σκορ (βάσει των στατιστικών που εισάγεις):{" "}
             <strong className="text-white/80">
-              {teamAName} {winsA} – {winsB} {teamBName}
+              {teamAName} {live.a} – {live.b} {teamBName}
             </strong>
-            {" "}(συνολικό σκορ {aggA ?? "–"}–{aggB ?? "–"}, δεν κρίνει).{" "}
+            .{" "}
             {penaltiesRequired ? (
               <strong className="text-amber-200">
-                Ισοπαλία σε νίκες — συμπλήρωσε υποχρεωτικά τα πέναλτι πριν την
+                Ισόπαλο σκορ — συμπλήρωσε υποχρεωτικά τα πέναλτι πριν την
                 αποθήκευση.
               </strong>
             ) : (
-              "Υπάρχει νικητής στα σκέλη — τα πέναλτι δεν χρειάζονται."
+              "Υπάρχει νικητής στο σκορ — τα πέναλτι δεν χρειάζονται."
             )}
           </>
         ) : (
-          <> Ολοκλήρωσε πρώτα το πρώτο σκέλος για να κριθεί ο νικητής.</>
+          <>
+            Ο νικητής κρίνεται στις <strong>νίκες σκελών</strong>: όποια ομάδα κερδίσει
+            περισσότερα σκέλη προκρίνεται. Αν κάθε ομάδα κερδίσει από ένα σκέλος (1–1),
+            αποφασίζουν τα <strong>πέναλτι</strong>.
+            {leg1Ready ? (
+              <>
+                {" "}Νίκες σκελών (βάσει των στατιστικών που εισάγεις):{" "}
+                <strong className="text-white/80">
+                  {teamAName} {winsA} – {winsB} {teamBName}
+                </strong>
+                {" "}(συνολικό σκορ {aggA ?? "–"}–{aggB ?? "–"}, δεν κρίνει).{" "}
+                {penaltiesRequired ? (
+                  <strong className="text-amber-200">
+                    Ισοπαλία σε νίκες — συμπλήρωσε υποχρεωτικά τα πέναλτι πριν την
+                    αποθήκευση.
+                  </strong>
+                ) : (
+                  "Υπάρχει νικητής στα σκέλη — τα πέναλτι δεν χρειάζονται."
+                )}
+              </>
+            ) : (
+              <> Ολοκλήρωσε πρώτα το πρώτο σκέλος για να κριθεί ο νικητής.</>
+            )}
+          </>
         )}
       </p>
 

@@ -274,7 +274,11 @@ async function resolveTwoLeggedTie(leg2: MatchRow): Promise<TieResolution> {
     .eq("id", leg2.tie_leg1_match_id)
     .maybeSingle<MatchRow>();
 
-  if (error || !leg1) return { kind: "single" }; // leg 1 vanished → fall back
+  // A query ERROR must abort like every other lookup in this module — falling
+  // back to single-match logic here would silently keep (and propagate) a
+  // stale winner on the decider. Only a genuinely missing row falls back.
+  must(error, `loading leg-1 match ${leg2.tie_leg1_match_id} for decider ${leg2.id}`);
+  if (!leg1) return { kind: "single" }; // leg 1 vanished → fall back
   if (leg1.status !== "finished") return { kind: "pending" };
 
   return decideTwoLeggedTie(leg2, leg1);

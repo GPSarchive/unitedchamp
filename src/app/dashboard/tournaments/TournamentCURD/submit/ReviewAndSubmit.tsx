@@ -214,7 +214,10 @@ function validateStagesGraph(payload: NewTournamentPayload): { errors: string[] 
    Stable selectors (fixes Next/Zustand getServerSnapshot warning)
 ----------------------------------------------------------------- */
 const selectBusy = (s: any) => s.busy as boolean;
-const selectSaveAll = (s: any) => s.saveAll as () => Promise<void>;
+const selectSaveAll = (s: any) =>
+  s.saveAll as () => Promise<
+    { unsavedMatchUids: string[]; skippedDuplicateMatches?: Array<{ key: string }> } | void
+  >;
 const selectSeedFromWizard = (s: any) =>
   s.seedFromWizard as
     | ((payload: NewTournamentPayload, teams: TeamDraft[], draftMatches: DraftMatch[]) => void)
@@ -350,7 +353,10 @@ export default function ReviewAndSubmit({
           // 3) NOW seed wizard state into the store (marking things dirty)
           seedFromWizard?.(canon, teams, draftMatches);
 
-          // 4) Persist via /save-all
+          // 4) Persist via /save-all. Unsaved/skipped rows are EXPECTED in
+          //    create mode: createTournamentAction already inserted every
+          //    fixture, so this re-send dedupes against them and the
+          //    rehydrate below adopts the real DB rows.
           await saveAll();
 
           // 5) Rehydrate after success
@@ -360,7 +366,22 @@ export default function ReviewAndSubmit({
 
         // =============== EDIT MODE ===============
         // Simplified: Directly call saveAll without load/seed/retry
-        await saveAll();
+        const result = await saveAll();
+
+        if (result?.unsavedMatchUids?.length) {
+          // The server skipped these as duplicates of existing fixtures; they
+          // are still dirty in the store. Do NOT rehydrate — that would wipe
+          // them from the editor and silently lose the admin's rows.
+          const keys = (result.skippedDuplicateMatches ?? [])
+            .map((s) => s.key)
+            .join(", ");
+          setError(
+            `${result.unsavedMatchUids.length} αγώνας/ες δεν αποθηκεύτηκαν — ο server τους απέρριψε ως διπλότυπα υπαρχόντων αγώνων` +
+              (keys ? ` (${keys})` : "") +
+              `. Αλλάξτε αγωνιστική/ομάδες ή διαγράψτε το διπλότυπο και αποθηκεύστε ξανά.`
+          );
+          return;
+        }
 
         // Refresh from DB after save
         if (meta?.id) await loadTournamentIntoStore(meta.id);

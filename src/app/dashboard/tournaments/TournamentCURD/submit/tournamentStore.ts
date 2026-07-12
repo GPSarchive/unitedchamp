@@ -425,8 +425,19 @@ export type TournamentState = {
   upsertIntakeMapping: (m: DbIntakeMapping) => void;
   removeIntakeMapping: (predicate: (m: DbIntakeMapping) => boolean) => void;
 
-  // Persist everything dirty via /save-all
-  saveAll: () => Promise<void>;
+  // Persist everything dirty via /save-all.
+  // Returns a summary when match rows were sent: rows in unsavedMatchUids were
+  // sent but never confirmed with a db_id (the server skips natural-key
+  // duplicates instead of inserting) and are KEPT DIRTY. In create mode this
+  // is expected for every fixture (createTournamentAction already inserted
+  // them); in edit mode the caller must surface it and skip any rehydrate
+  // that would wipe the kept-dirty rows.
+  saveAll: () => Promise<SaveAllClientResult | void>;
+};
+
+export type SaveAllClientResult = {
+  unsavedMatchUids: string[];
+  skippedDuplicateMatches?: Array<{ kind: "ko" | "lg"; key: string }>;
 };
 
 /* =========================================================
@@ -1815,6 +1826,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
       }
   
       // matches upserts (only dirty rows, keyed by uid)
+      // sentUids: exactly the rows in this save's upsert payload — the only
+      // rows allowed to claim a NEW server row during reconcile below.
+      const sentUids = new Set<string>();
       if (st4.dirty.matches.size) {
         const upserts: DbMatchRow[] = [];
         const dirtyUids = new Set(st4.dirty.matches);
@@ -1861,6 +1875,7 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
             penalty_b: (r as any).penalty_b ?? null,
             updated_at: r.updated_at ?? (ov as any).updated_at ?? null,
           } as any);
+          sentUids.add(r.uid);
         }
   
         if (upserts.length) {
@@ -1891,15 +1906,37 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
         // Matches reconcile: match server rows to draft rows, then write the
         // authoritative bits onto each row AND its uid-keyed overlay entry.
         //
-        // The server doesn't know client uids, so rows are matched by matchSig
-        // as QUEUES consumed one-to-one: two TBD skeleton fixtures share a sig,
-        // and a last-row-wins map would hand both draft rows the same db_id
-        // (the old duplicate/lost-fixture corruption). Each draft row pops its
-        // own server row, so identities stay distinct.
+        // Two tiers, because matchSig is only a fingerprint and TBD skeleton
+        // fixtures collide on it:
+        //   1) A draft row that already owns a db_id matches its server row
+        //      BY ID — it can never claim (or lose) another row's identity.
+        //   2) Server rows not claimed by id are new inserts; they go into
+        //      sig-keyed QUEUES consumed one-to-one, and only by rows that
+        //      were actually in this save's upsert payload (sentUids) and
+        //      don't have a db_id yet. Without both filters, a clean row
+        //      sharing a sig with the saved row could pop the queue first,
+        //      steal the saved row's db_id, and a later delete would then
+        //      destroy the wrong DB match.
         if (resp4.matches) {
           const st2 = get();
-          const serverRowsBySig = new Map<string, (DbMatchRow & { updated_at?: string | null })[]>();
+          type ServerRow = DbMatchRow & { updated_at?: string | null };
+
+          const serverById = new Map<number, ServerRow>();
           for (const m of resp4.matches) {
+            if (m.id != null) serverById.set(m.id, m);
+          }
+
+          // ids already owned by a draft row (row db_id or its overlay)
+          const ownedIds = new Set<number>();
+          for (const r of st2.draftMatches) {
+            const ownId =
+              r.db_id ?? (r.uid ? st2.dbOverlayByUid[r.uid]?.db_id : null) ?? null;
+            if (ownId != null && serverById.has(ownId)) ownedIds.add(ownId);
+          }
+
+          const serverRowsBySig = new Map<string, ServerRow[]>();
+          for (const m of resp4.matches) {
+            if (m.id != null && ownedIds.has(m.id)) continue; // claimed by id
             const stageIdx = (st2.ids.stageIndexById as any)[m.stage_id] ?? -1;
             const groupIdx =
               m.group_id != null
@@ -1930,7 +1967,14 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           set((curr) => {
             const overlay = { ...curr.dbOverlayByUid };
             const draftMatches = curr.draftMatches.map((r) => {
-              const m = r.uid ? serverRowsBySig.get(matchSig(r))?.shift() : undefined;
+              if (!r.uid) return r;
+              const ownId = r.db_id ?? overlay[r.uid]?.db_id ?? null;
+              const m =
+                ownId != null
+                  ? serverById.get(ownId)
+                  : sentUids.has(r.uid)
+                    ? serverRowsBySig.get(matchSig(r))?.shift()
+                    : undefined;
               if (!m) return r;
 
               const prev = overlay[r.uid!] ?? {};
@@ -1957,16 +2001,36 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
           });
         }
   
-        // clear phase-4 dirties
+        // clear phase-4 dirties — EXCEPT rows we sent that never came back
+        // with a db_id (the server skips natural-key duplicates instead of
+        // inserting them). Those stay dirty so they aren't silently lost on
+        // the next hydrate, and the save surfaces an error for the admin.
+        const stAfter = get();
+        const unsavedUids = Array.from(sentUids).filter((uid) => {
+          const row = stAfter.draftMatches.find((r) => r.uid === uid);
+          if (!row) return false; // row gone (deleted meanwhile)
+          const id = row.db_id ?? stAfter.dbOverlayByUid[uid]?.db_id ?? null;
+          return id == null;
+        });
+
         set((curr) => ({
           dirty: {
             ...curr.dirty,
-            matches: new Set(),
+            matches: new Set(unsavedUids),
             stageSlots: new Set(),
             intakeMappings: false,
             deletedMatchIds: new Set(), // clear deletions after success
           },
         }));
+
+        // NOT a throw: in create mode every fixture legitimately dedupes
+        // against the rows createTournamentAction just inserted, and the
+        // post-save rehydrate reconciles them. The CALLER decides whether
+        // unsaved rows are an error (edit mode) or expected (create mode).
+        return {
+          unsavedMatchUids: unsavedUids,
+          skippedDuplicateMatches: (resp4 as any)?.skippedDuplicateMatches,
+        } satisfies SaveAllClientResult;
       }
     } finally {
       set({ busy: false });

@@ -4,10 +4,24 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { fetchAllRows } from "@/app/lib/refreshPlayerStats";
 import { aggregateLegacyTotals, chunk, type LegacyTotals } from "@/app/lib/playerStatsAggregation";
 import { revalidatePath } from "next/cache";
+import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 const BATCH_SIZE = 300;
 
 export async function applySyncFix() {
+  // Server Actions are public POST endpoints — verify the caller before
+  // rewriting player_statistics with the service-role client (same guard as
+  // runFullBackfill in refresh-stats/actions.ts).
+  const authClient = await createSupabaseRouteClient();
+  const {
+    data: { user },
+    error: authErr,
+  } = await authClient.auth.getUser();
+  if (authErr || !user || !canEditContent(user)) {
+    throw new Error("Unauthorized");
+  }
+
   // 1. Aggregate all-time stats from match_player_stats.
   //    Paginated: a plain .select() is capped at ~1000 rows by PostgREST and
   //    would silently write truncated (undercounted) totals.

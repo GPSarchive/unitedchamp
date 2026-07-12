@@ -3,6 +3,11 @@
 
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
+import {
+  decideTwoLeggedTie,
+  decideSingleLegKO,
+} from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
+import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 export interface MatchUpdatePayload {
   matchId: number;
@@ -14,6 +19,8 @@ export interface MatchUpdatePayload {
   team_a_id?: number | null;
   team_b_id?: number | null;
   match_date?: string | null;
+  penalty_a?: number | null;
+  penalty_b?: number | null;
 }
 
 /**
@@ -70,14 +77,80 @@ export async function updateMatchFromPlanner(payload: MatchUpdatePayload) {
         return { success: false, error: "Scores are required when finishing a match" };
       }
 
-      // Handle winner logic based on stage kind
+      // Handle winner logic based on stage kind — same rules as the PATCH
+      // route and the stats-editor path (shared resolvers, leg-aware).
       if (stageKind === "knockout") {
-        if (scoreA === scoreB) {
-          return { success: false, error: "Knockout matches cannot end in a draw" };
-        }
-        // Auto-set winner if not provided
-        if (!updateData.winner_team_id) {
-          updateData.winner_team_id = scoreA > scoreB ? teamA : teamB;
+        const leg = (currentMatch.leg ?? null) as number | null;
+        const tieLeg1Id = (currentMatch.tie_leg1_match_id ?? null) as number | null;
+        const penA = updateData.penalty_a ?? currentMatch.penalty_a ?? null;
+        const penB = updateData.penalty_b ?? currentMatch.penalty_b ?? null;
+
+        if (leg === 1) {
+          // Leg 1 of a two-legged tie: any score (incl. level) is allowed and
+          // carries no winner — the tie is decided when leg 2 finishes.
+          updateData.winner_team_id = null;
+        } else if (leg === 2 && tieLeg1Id != null) {
+          const { data: leg1 } = await supabase
+            .from("matches")
+            .select("team_a_id, team_b_id, team_a_score, team_b_score, status")
+            .eq("id", tieLeg1Id)
+            .maybeSingle();
+          if (!leg1 || leg1.team_a_score == null || leg1.team_b_score == null) {
+            return { success: false, error: "Finish leg 1 before finishing leg 2 of this tie" };
+          }
+          const res = decideTwoLeggedTie(
+            {
+              team_a_id: teamA,
+              team_b_id: teamB,
+              team_a_score: scoreA,
+              team_b_score: scoreB,
+              penalty_a: penA,
+              penalty_b: penB,
+            },
+            leg1 as any
+          );
+          if (res.kind === "undecided") {
+            return {
+              success: false,
+              error: "Leg wins are level — enter the penalty shootout result on the decider",
+            };
+          }
+          if (res.kind !== "decided") {
+            return { success: false, error: "Could not resolve the two-legged tie" };
+          }
+          updateData.winner_team_id = res.winnerTeamId;
+          if (res.via !== "penalties") {
+            updateData.penalty_a = null;
+            updateData.penalty_b = null;
+          }
+        } else {
+          // Single-leg KO: winner from the score, or from the shootout when level.
+          const res = decideSingleLegKO({
+            team_a_id: teamA,
+            team_b_id: teamB,
+            team_a_score: scoreA,
+            team_b_score: scoreB,
+            penalty_a: penA,
+            penalty_b: penB,
+          });
+          if (res.kind !== "decided") {
+            return {
+              success: false,
+              error:
+                res.reason === "level-pens"
+                  ? "Penalty shootout cannot end level — enter a winner on penalties"
+                  : "Knockout matches cannot end in a draw — enter the penalty shootout result",
+            };
+          }
+          if (!updateData.winner_team_id) {
+            updateData.winner_team_id = res.winnerTeamId;
+          } else if (updateData.winner_team_id !== res.winnerTeamId) {
+            return { success: false, error: "winner_team_id must match the scores/penalties" };
+          }
+          if (res.via !== "penalties") {
+            updateData.penalty_a = null;
+            updateData.penalty_b = null;
+          }
         }
       } else {
         // Groups/league: allow draws
@@ -94,11 +167,13 @@ export async function updateMatchFromPlanner(payload: MatchUpdatePayload) {
       return { success: false, error: "Cannot revert a finished match to scheduled" };
     }
 
-    // Clear scores/winner when scheduling
+    // Clear scores/winner/pens when scheduling
     if (updateData.status === "scheduled") {
       updateData.team_a_score = null;
       updateData.team_b_score = null;
       updateData.winner_team_id = null;
+      updateData.penalty_a = null;
+      updateData.penalty_b = null;
     }
 
     // Update the match
@@ -121,6 +196,15 @@ export async function updateMatchFromPlanner(payload: MatchUpdatePayload) {
         console.error("Progression failed for match", matchId, progErr);
       }
     }
+
+    // Public pages must reflect the change (result, teams, kickoff) immediately.
+    revalidateMatchSurfaces({
+      id: matchId,
+      tournament_id: currentMatch.tournament_id ?? null,
+      team_a_id: updateData.team_a_id ?? currentMatch.team_a_id ?? null,
+      team_b_id: updateData.team_b_id ?? currentMatch.team_b_id ?? null,
+      previous_team_ids: [currentMatch.team_a_id, currentMatch.team_b_id],
+    });
 
     return { success: true };
   } catch (error: any) {

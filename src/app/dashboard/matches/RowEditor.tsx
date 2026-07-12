@@ -181,6 +181,11 @@ export default function RowEditor({
   const twoLegged = isLeg1 || isLeg2Decider;
   const isDraw = isFinished && (allowDraws || twoLegged) && scoresEqual;
 
+  // Single-leg KO: a level score is legal WITH a shootout — the winner is then
+  // derived server-side from penalty_a/b (decideSingleLegKO), never picked here.
+  const isSingleLegKo = !allowDraws && !twoLegged;
+  const singlePensNeeded = isSingleLegKo && isFinished && scoresEqual;
+
   // Leg-2 decider row (current edits, in team_a/team_b orientation).
   const leg2Row = { team_a_id: form.team_a_id ?? null, team_b_id: form.team_b_id ?? null, team_a_score: aScore, team_b_score: bScore };
 
@@ -213,12 +218,14 @@ export default function RowEditor({
   const penA = form.penalty_a ?? null;
   const penB = form.penalty_b ?? null;
 
-  // Auto-clear winner for draws (finished + equal + draws allowed)
+  // Auto-clear winner for draws (finished + equal + draws allowed) and for a
+  // level single-leg KO (the shootout decides — a stale manual winner would be
+  // rejected by the server if it contradicts the pens).
   useEffect(() => {
-    if (isDraw && form.winner_team_id != null) {
+    if ((isDraw || singlePensNeeded) && form.winner_team_id != null) {
       setForm((f) => ({ ...f, winner_team_id: null }));
     }
-  }, [isDraw, form.winner_team_id]);
+  }, [isDraw, singlePensNeeded, form.winner_team_id]);
 
   const validationError = useMemo(() => {
     if (!form.team_a_id || !form.team_b_id) return "Select both teams";
@@ -245,6 +252,12 @@ export default function RowEditor({
       if (allowDraws && scoresEqual) {
         // Draw is valid → winner must be empty
         if (form.winner_team_id != null) return "Winner must be empty for a draw.";
+      } else if (scoresEqual) {
+        // Single-leg KO level score → the shootout decides (winner derived
+        // server-side from the pens, so no manual winner is required).
+        if (penA == null || penB == null) return "Score is level — enter the penalty shootout result.";
+        if (penA < 0 || penB < 0) return "Penalty scores cannot be negative.";
+        if (penA === penB) return "Penalty shootout cannot end level.";
       } else {
         // Not a draw case → require winner
         if (!form.winner_team_id) return "Winner is required when status is 'finished'.";
@@ -275,14 +288,23 @@ export default function RowEditor({
         team_a_score: form.team_a_score,
         team_b_score: form.team_b_score,
         // For draws, persist winner as null even when finished.
-        // Two-legged rows let the server derive the winner (aggregate/pens).
-        winner_team_id: twoLegged ? null : isFinished ? (isDraw ? null : form.winner_team_id) : null,
+        // Two-legged rows and a level single-leg KO let the server derive the
+        // winner (leg wins / penalties).
+        winner_team_id: twoLegged
+          ? null
+          : isFinished
+          ? (isDraw || singlePensNeeded ? null : form.winner_team_id)
+          : null,
       };
 
-      // Penalties only matter on a leg-2 decider when leg wins are level.
+      // Penalties only matter on a leg-2 decider when leg wins are level, or
+      // on a level single-leg KO.
       if (isLeg2Decider) {
         payload.penalty_a = winsLevel ? form.penalty_a ?? null : null;
         payload.penalty_b = winsLevel ? form.penalty_b ?? null : null;
+      } else if (isSingleLegKo) {
+        payload.penalty_a = singlePensNeeded ? form.penalty_a ?? null : null;
+        payload.penalty_b = singlePensNeeded ? form.penalty_b ?? null : null;
       }
 
       const res = await fetch(isEdit ? `/api/matches/${form.id}` : `/api/matches`, {
@@ -474,6 +496,41 @@ export default function RowEditor({
             </p>
           )}
 
+          {/* SINGLE-LEG KO: level score → penalty shootout decides */}
+          {singlePensNeeded && (
+            <div className="rounded-md border border-amber-400/25 bg-amber-400/5 p-4 space-y-2">
+              <p className="text-xs text-amber-300">
+                Score is level — a single-leg knockout is decided on penalties. Enter the
+                shootout result; the winner is derived from it automatically.
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/70 w-20 truncate">Pens (A)</span>
+                <input
+                  aria-label="Penalty A"
+                  type="number"
+                  min={0}
+                  value={form.penalty_a ?? ""}
+                  onChange={(e) =>
+                    set("penalty_a" as any, e.target.value === "" ? null : Number(e.target.value))
+                  }
+                  className="w-16 h-10 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <span className="text-white/60">—</span>
+                <input
+                  aria-label="Penalty B"
+                  type="number"
+                  min={0}
+                  value={form.penalty_b ?? ""}
+                  onChange={(e) =>
+                    set("penalty_b" as any, e.target.value === "" ? null : Number(e.target.value))
+                  }
+                  className="w-16 h-10 text-center px-2 rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <span className="text-xs text-white/60">Pens (B)</span>
+              </div>
+            </div>
+          )}
+
           {/* STATUS + TIME */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Section title="Match timing" icon={<CalendarClock className="h-4 w-4" />}> 
@@ -558,7 +615,9 @@ export default function RowEditor({
                   <span className="mt-1 text-xs text-emerald-300">Scores are equal and draws are allowed — winner will be saved as empty.</span>
                 )}
                 {!twoLegged && isFinished && !allowDraws && scoresEqual && !form.winner_team_id && (
-                  <span className="mt-1 text-xs text-rose-300">Draws are not allowed for this stage — pick a winner.</span>
+                  <span className="mt-1 text-xs text-amber-300">
+                    Score is level — the winner is decided on penalties (see the shootout panel above).
+                  </span>
                 )}
               </label>
             </Section>

@@ -105,3 +105,45 @@ export function decideTwoLeggedTie(leg2: TieLegLite, leg1: TieLegLite): TieResol
   if (pa == null || pb == null || pa === pb) return { kind: "undecided" };
   return { kind: "decided", winnerTeamId: pa > pb ? teamA : teamB, via: "penalties" };
 }
+
+/**
+ * Result of deciding a SINGLE-LEG knockout match:
+ *  - { kind: "decided", winnerTeamId, via } → winner from the score, or from the
+ *    shootout when the score is level. Callers null the stored pens when
+ *    `via === "score"` (stray input) and persist them when `via === "penalties"`.
+ *  - { kind: "undecided", reason } → level score with a missing or level
+ *    shootout; the caller rejects with a message matched to `reason`.
+ */
+export type SingleLegResolution =
+  | { kind: "decided"; winnerTeamId: Id; via: "score" | "penalties" }
+  | { kind: "undecided"; reason: "missing-teams" | "missing-pens" | "level-pens" };
+
+/**
+ * Decide a single-leg KO match (leg null, or a leg-2 row whose leg 1 was
+ * deleted) from its scores + optional penalty shootout.
+ *
+ * A drawn single-leg KO is a legal state **when a shootout result accompanies
+ * it** — the winner advances on penalties while the level score stands (e.g.
+ * 4–4, pens 5–4). This is the ONE shared implementation for every write path;
+ * before it existed the five writers each hand-rolled "KO cannot draw" and a
+ * real penalties result could not be entered at all (prod match 2566 needed a
+ * service-role repair script).
+ */
+export function decideSingleLegKO(m: TieLegLite): SingleLegResolution {
+  const teamA = m.team_a_id;
+  const teamB = m.team_b_id;
+  if (teamA == null || teamB == null) return { kind: "undecided", reason: "missing-teams" };
+
+  const sa = m.team_a_score ?? 0;
+  const sb = m.team_b_score ?? 0;
+  if (sa > sb) return { kind: "decided", winnerTeamId: teamA, via: "score" };
+  if (sb > sa) return { kind: "decided", winnerTeamId: teamB, via: "score" };
+
+  // Level score → the shootout decides. Same orientation rule as the decider:
+  // penalty_a belongs to team_a_id, penalty_b to team_b_id.
+  const pa = m.penalty_a;
+  const pb = m.penalty_b;
+  if (pa == null || pb == null) return { kind: "undecided", reason: "missing-pens" };
+  if (pa === pb) return { kind: "undecided", reason: "level-pens" };
+  return { kind: "decided", winnerTeamId: pa > pb ? teamA : teamB, via: "penalties" };
+}

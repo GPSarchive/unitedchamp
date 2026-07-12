@@ -341,6 +341,81 @@ export async function proxy(req: NextRequest) {
   const reqHeaders = new Headers(req.headers)
   if (nonce) reqHeaders.set('x-nonce', nonce)
 
+  // ─────────────────────────────────────────────────────────────
+  // CSP — Content Security Policy
+  //
+  // Built BEFORE NextResponse.next() because Next only stamps the nonce
+  // onto its own inline scripts (bootstrap / RSC payload) when it finds it
+  // in the Content-Security-Policy header of the *request* — a nonce-only
+  // response header ships HTML whose inline scripts carry no nonce, and the
+  // browser blocks them all (dashboard renders but never hydrates).
+  // ─────────────────────────────────────────────────────────────
+  const imgSrc = [
+    "'self'",
+    'data:',
+    'blob:',
+    supabaseOrigin,
+    appOrigin,
+    ...(CDN_DOMAIN ? [`https://${CDN_DOMAIN}`] : []),
+    'https://lh3.googleusercontent.com',
+    'https://avatars.githubusercontent.com',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const connectSrc = [
+    "'self'",
+    'https://*.supabase.co',
+    'wss://*.supabase.co',
+    supabaseOrigin,
+    appOrigin,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  // Dashboard: strict nonce policy (dynamic pages, fresh nonce each request).
+  // Public: 'unsafe-inline' is required for Next's inline hydration scripts on
+  // cached pages; external script origins stay pinned to self + the CDN.
+  const scriptSrcParts = nonce
+    ? ["'self'", `'nonce-${nonce}'`, 'https://cdnjs.cloudflare.com']
+    : ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com']
+  if (process.env.NODE_ENV !== 'production') scriptSrcParts.push("'unsafe-eval'")
+  const scriptSrc = scriptSrcParts.join(' ')
+
+  const styleSources = [
+    "'self'",
+    "'unsafe-inline'",
+    'https://fonts.googleapis.com',
+    'https://cdnjs.cloudflare.com',
+    'https://cdn.jsdelivr.net',
+    'https://unpkg.com',
+  ].join(' ')
+
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'self' https://digitalfootprint.gr https://www.digitalfootprint.gr",
+    `img-src ${imgSrc}`,
+    `script-src ${scriptSrc}`,
+    `style-src ${styleSources}`,
+    `style-src-elem ${styleSources}`,
+    `style-src-attr 'unsafe-inline'`,
+    "font-src 'self' data: https://fonts.gstatic.com",
+    `connect-src ${connectSrc}`,
+    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+    "worker-src 'self' blob:",
+    "form-action 'self'",
+    "object-src 'none'",
+    'upgrade-insecure-requests',
+  ].join('; ')
+
+  const cspHeaderName = REPORT_ONLY
+    ? 'Content-Security-Policy-Report-Only'
+    : 'Content-Security-Policy'
+  // Forward on the request so Next's renderer picks the nonce up (it reads
+  // either the enforced or report-only CSP request header).
+  if (nonce) reqHeaders.set(cspHeaderName, csp)
+
   const res = NextResponse.next({
     request: { headers: reqHeaders },
   })
@@ -456,72 +531,7 @@ export async function proxy(req: NextRequest) {
     'camera=(), microphone=(), geolocation=(), interest-cohort=()'
   )
 
-  // ──────────────────────���──────────────────────────────────────
-  // CSP — Content Security Policy
-  // ─────────────────────────────────────────────────────────────
-  const imgSrc = [
-    "'self'",
-    'data:',
-    'blob:',
-    supabaseOrigin,
-    appOrigin,
-    ...(CDN_DOMAIN ? [`https://${CDN_DOMAIN}`] : []),
-    'https://lh3.googleusercontent.com',
-    'https://avatars.githubusercontent.com',
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const connectSrc = [
-    "'self'",
-    'https://*.supabase.co',
-    'wss://*.supabase.co',
-    supabaseOrigin,
-    appOrigin,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  // Dashboard: strict nonce policy (dynamic pages, fresh nonce each request).
-  // Public: 'unsafe-inline' is required for Next's inline hydration scripts on
-  // cached pages; external script origins stay pinned to self + the CDN.
-  const scriptSrcParts = nonce
-    ? ["'self'", `'nonce-${nonce}'`, 'https://cdnjs.cloudflare.com']
-    : ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com']
-  if (process.env.NODE_ENV !== 'production') scriptSrcParts.push("'unsafe-eval'")
-  const scriptSrc = scriptSrcParts.join(' ')
-
-  const styleSources = [
-    "'self'",
-    "'unsafe-inline'",
-    'https://fonts.googleapis.com',
-    'https://cdnjs.cloudflare.com',
-    'https://cdn.jsdelivr.net',
-    'https://unpkg.com',
-  ].join(' ')
-
-  const csp = [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "frame-ancestors 'self' https://digitalfootprint.gr https://www.digitalfootprint.gr",
-    `img-src ${imgSrc}`,
-    `script-src ${scriptSrc}`,
-    `style-src ${styleSources}`,
-    `style-src-elem ${styleSources}`,
-    `style-src-attr 'unsafe-inline'`,
-    "font-src 'self' data: https://fonts.gstatic.com",
-    `connect-src ${connectSrc}`,
-    "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
-    "worker-src 'self' blob:",
-    "form-action 'self'",
-    "object-src 'none'",
-    'upgrade-insecure-requests',
-  ].join('; ')
-
-  res.headers.set(
-    REPORT_ONLY ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy',
-    csp
-  )
+  res.headers.set(cspHeaderName, csp)
 
   return res
 }

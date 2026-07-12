@@ -39,61 +39,77 @@ export async function GET(req: Request) {
   const limit = limitParam ? Number(limitParam) : null;
   const include = (url.searchParams.get("include") || "").trim();
 
-  // Read with service role so RLS on child tables can't hide stats
-  let query = supabaseAdmin
-    .from("player")
-    .select(`
-      id,
-      first_name,
-      last_name,
-      photo,
-      height_cm,
-      position,
-      birth_date,
-      player_number,
-      deleted_at,
-      player_statistics (
+  // Read with service role so RLS on child tables can't hide stats.
+  // Built per page: without an explicit ?limit the query must paginate —
+  // PostgREST caps every response at ~1000 rows, and the admin players list
+  // fetches with no limit expecting the FULL roster (players sorted past the
+  // cap would silently never appear).
+  const buildQuery = () => {
+    let query = supabaseAdmin
+      .from("player")
+      .select(`
         id,
-        age,
-        total_goals,
-        total_assists,
-        yellow_cards,
-        red_cards,
-        blue_cards,
-        updated_at
-      ),
-      player_teams (
-        team_id,
-        teams (
+        first_name,
+        last_name,
+        photo,
+        height_cm,
+        position,
+        birth_date,
+        player_number,
+        deleted_at,
+        player_statistics (
           id,
-          name,
-          logo
+          age,
+          total_goals,
+          total_assists,
+          yellow_cards,
+          red_cards,
+          blue_cards,
+          updated_at
+        ),
+        player_teams (
+          team_id,
+          teams (
+            id,
+            name,
+            logo
+          )
         )
-      )
-    `)
-    .order("last_name", { ascending: true })
-    .order("id", { foreignTable: "player_statistics", ascending: false })
-    .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
+      `)
+      .order("last_name", { ascending: true })
+      .order("id", { ascending: true }) // stable tiebreak so pages don't overlap
+      .order("id", { foreignTable: "player_statistics", ascending: false })
+      .limit(1, { foreignTable: "player_statistics" }); // only 1 stats row per player
 
+    // Soft-delete filtering (same pattern as teams)
+    if (include === "archived") {
+      query = query.not("deleted_at", "is", null);   // archived only
+    } else if (include === "all") {
+      // no filter — return both active and archived
+    } else {
+      query = query.is("deleted_at", null);           // active only (default)
+    }
+
+    if (q) {
+      query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+    }
+    return query;
+  };
+
+  let rows: any[] = [];
   if (limit && Number.isFinite(limit) && limit > 0) {
-    query = query.limit(limit);
-  }
-
-  // Soft-delete filtering (same pattern as teams)
-  if (include === "archived") {
-    query = query.not("deleted_at", "is", null);   // archived only
-  } else if (include === "all") {
-    // no filter — return both active and archived
+    const { data, error } = await buildQuery().limit(limit);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    rows = data ?? [];
   } else {
-    query = query.is("deleted_at", null);           // active only (default)
+    const PAGE = 1000;
+    for (let fromIdx = 0; ; fromIdx += PAGE) {
+      const { data, error } = await buildQuery().range(fromIdx, fromIdx + PAGE - 1);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
   }
-
-  if (q) {
-    query = query.or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
-  }
-
-  const { data: rows, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   if (Number.isFinite(excludeTeamId)) {
     const { data: links, error: linkErr } = await supabaseAdmin

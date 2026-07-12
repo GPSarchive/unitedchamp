@@ -105,8 +105,12 @@ export default async function Page({
   const hasScores = match.team_a_score !== null && match.team_b_score !== null;
   const showWelcomeMessage = isScheduled && !hasParticipants && !hasScores;
 
-  // ----- Two-legged KO context (leg-2 decider) -----
+  // ----- KO context -----
   const isLeg2Decider = match.leg === 2 && match.tie_leg1_match_id != null;
+  // Single-leg KO (or a leg-2 whose leg 1 was deleted): a level score is
+  // decided on penalties, so the pens panel must render here too. Leg 1 of a
+  // tie is excluded — it may end level with no shootout.
+  const isSingleLegKo = !!match.is_ko && !isLeg2Decider && match.leg !== 1;
   const leg1 = isLeg2Decider
     ? await fetchLegOneScores(match.tie_leg1_match_id as Id)
     : null;
@@ -308,8 +312,9 @@ export default async function Page({
                   </div>
                 </MatchAwardsProvider>
 
-                {isLeg2Decider && (
+                {(isLeg2Decider || isSingleLegKo) && (
                   <TwoLeggedPenaltyPanel
+                    mode={isLeg2Decider ? "decider" : "single"}
                     teamAId={match.team_a.id}
                     teamBId={match.team_b.id}
                     teamAName={match.team_a.name}

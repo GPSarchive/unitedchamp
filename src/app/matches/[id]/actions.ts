@@ -17,7 +17,7 @@ import {
   refreshCareerStatsForPlayers,
   refreshTournamentStatsForPlayers,
 } from '@/app/lib/refreshPlayerStats';
-import { decideTwoLeggedTie } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
+import { decideTwoLeggedTie, decideSingleLegKO } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
 
 /** =========================
  *  Content-editor guard (server-side)
@@ -47,7 +47,8 @@ async function assertAdmin() {
  *   - Leg 1: any result allowed, no winner (the tie is decided after leg 2).
  *   - Leg 2 decider: winner from LEG WINS (then penalties). Pens are passed in
  *     and are required when leg wins are level (1–1 or both legs drawn).
- *   - Single-leg KO: a level result is rejected (unchanged behaviour).
+ *   - Single-leg KO: winner from the score, or from the penalty shootout when
+ *     the score is level (form pens, falling back to the stored row's pens).
  *  Returns the patch to apply to the match row (scores + winner) or throws.
  *  ------------------------------- */
 async function resolveKoFinishPatch(
@@ -66,7 +67,7 @@ async function resolveKoFinishPatch(
 
   const { data: m, error } = await supabase
     .from('matches')
-    .select('is_ko, leg, tie_leg1_match_id')
+    .select('is_ko, leg, tie_leg1_match_id, penalty_a, penalty_b')
     .eq('id', matchId)
     .single();
   if (error) throw error;
@@ -75,6 +76,12 @@ async function resolveKoFinishPatch(
   const tieLeg1Id = (m?.tie_leg1_match_id ?? null) as number | null;
   const isKo = !!m?.is_ko;
   const isTie = aGoals === bGoals;
+
+  // The stats form only submits pens when the penalty panel is rendered; fall
+  // back to the pens already stored on the row so a plain stat re-save on a
+  // pens-decided match keeps the shootout instead of erroring or wiping it.
+  const effPenA = penA ?? ((m?.penalty_a ?? null) as number | null);
+  const effPenB = penB ?? ((m?.penalty_b ?? null) as number | null);
 
   // Leg 1 of a two-legged tie: store scores, no winner, never reject a level leg.
   if (leg === 1) {
@@ -94,7 +101,7 @@ async function resolveKoFinishPatch(
     }
 
     const res = decideTwoLeggedTie(
-      { team_a_id: teamAId, team_b_id: teamBId, team_a_score: aGoals, team_b_score: bGoals, penalty_a: penA, penalty_b: penB },
+      { team_a_id: teamAId, team_b_id: teamBId, team_a_score: aGoals, team_b_score: bGoals, penalty_a: effPenA, penalty_b: effPenB },
       leg1 as any
     );
     if (res.kind === 'undecided') {
@@ -110,14 +117,39 @@ async function resolveKoFinishPatch(
       team_a_score: aGoals,
       team_b_score: bGoals,
       winner_team_id: res.winnerTeamId,
-      penalty_a: decidedByPens ? penA : null,
-      penalty_b: decidedByPens ? penB : null,
+      penalty_a: decidedByPens ? effPenA : null,
+      penalty_b: decidedByPens ? effPenB : null,
     };
   }
 
-  // Single-leg KO (or leg-2 whose leg 1 was deleted): unchanged — no ties.
-  if (isKo && isTie) {
-    throw new Error('Knockout matches cannot end in a tie. A winner must be determined.');
+  // Single-leg KO (or leg-2 whose leg 1 was deleted): winner from the score,
+  // or from the shootout when the score is level. Shared resolver — a drawn
+  // single-leg KO with pens entered (4–4, pens 5–4) is a legal state and must
+  // survive re-saves without wiping the stored shootout.
+  if (isKo) {
+    const res = decideSingleLegKO({
+      team_a_id: teamAId,
+      team_b_id: teamBId,
+      team_a_score: aGoals,
+      team_b_score: bGoals,
+      penalty_a: effPenA,
+      penalty_b: effPenB,
+    });
+    if (res.kind !== 'decided') {
+      throw new Error(
+        res.reason === 'level-pens'
+          ? 'Penalty shootout cannot end level — enter a winner on penalties.'
+          : 'Knockout matches cannot end in a tie — enter the penalty shootout result.'
+      );
+    }
+    const decidedByPens = res.via === 'penalties';
+    return {
+      team_a_score: aGoals,
+      team_b_score: bGoals,
+      winner_team_id: res.winnerTeamId,
+      penalty_a: decidedByPens ? effPenA : null,
+      penalty_b: decidedByPens ? effPenB : null,
+    };
   }
   return {
     team_a_score: aGoals,
@@ -496,7 +528,7 @@ export async function saveAllStatsAction(formData: FormData) {
     }
   }
 
-  // Penalty shootout result (two-legged decider only; ignored otherwise).
+  // Penalty shootout result (two-legged decider, or a level single-leg KO).
   const penAraw = formData.get('penalty_a');
   const penBraw = formData.get('penalty_b');
   const penA = penAraw == null || penAraw === '' ? null : Number(penAraw);

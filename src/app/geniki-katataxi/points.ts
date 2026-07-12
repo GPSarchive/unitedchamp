@@ -12,6 +12,7 @@
 //   Διεθνής διάκριση +1000 · Διεθνής συμμετοχή +300 · Αποχώρηση −100 · Διακοπή −30,
 //   plus manual grants of any other rule via the dashboard (/dashboard/geniki-katataxi).
 
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
   ADJUSTMENT_PRESETS,
@@ -503,4 +504,43 @@ export async function computeGeneralStandings(
   });
 
   return { seasons, bySeason: result, events, adjustmentsAvailable };
+}
+
+/* =========================================================
+   Cached variant — the public pages MUST use this one.
+
+   /geniki-katataxi awaits searchParams (season tabs), which makes the route
+   dynamically rendered in Next: its `revalidate = 60` never applies, so the
+   raw compute above (5 paginated full-table scans) would run on EVERY view.
+   unstable_cache restores the ≤1-recompute-per-60s contract and is
+   invalidated eagerly via the "geniki-katataxi" tag by the revalidation
+   helpers and the adjustments dashboard.
+
+   GeneralStandings holds a Map, which JSON round-tripping (how unstable_cache
+   stores values) would silently turn into {} — so the cached payload carries
+   the entries as an array and the Map is rebuilt per call.
+   ========================================================= */
+
+export const GENIKI_KATATAXI_CACHE_TAG = "geniki-katataxi";
+
+type CachedStandings = Omit<GeneralStandings, "bySeason"> & {
+  bySeasonEntries: Array<[string, TeamSeasonLine[]]>;
+};
+
+const computeGeneralStandingsRawCached = unstable_cache(
+  async (seasonMode: SeasonMode): Promise<CachedStandings> => {
+    const { bySeason, ...rest } = await computeGeneralStandings({ seasonMode });
+    return { ...rest, bySeasonEntries: [...bySeason.entries()] };
+  },
+  ["geniki-katataxi-standings"],
+  { revalidate: 60, tags: [GENIKI_KATATAXI_CACHE_TAG] }
+);
+
+export async function computeGeneralStandingsCached(
+  options: ComputeOptions = {}
+): Promise<GeneralStandings> {
+  const { bySeasonEntries, ...rest } = await computeGeneralStandingsRawCached(
+    options.seasonMode ?? "field"
+  );
+  return { ...rest, bySeason: new Map(bySeasonEntries) };
 }
