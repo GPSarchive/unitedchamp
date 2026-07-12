@@ -11,6 +11,7 @@ import {
   decideTwoLeggedTie,
   decideSingleLegKO,
 } from '../util/functions/twoLeggedTie';
+import { revalidateMatchSurfaces } from '@/app/lib/revalidatePublicPages';
 
 type PlayerStatInput = {
   player_id: number;
@@ -71,7 +72,7 @@ export async function revertMatchToScheduledAction(matchId: number) {
     // 1. Get match info to know which stage to recalculate
     const { data: match, error: matchErr } = await supabase
       .from('matches')
-      .select('id, stage_id, status, tournament_id')
+      .select('id, stage_id, status, tournament_id, team_a_id, team_b_id')
       .eq('id', matchId)
       .single();
 
@@ -115,6 +116,8 @@ export async function revertMatchToScheduledAction(matchId: number) {
         team_a_score: null,
         team_b_score: null,
         winner_team_id: null,
+        penalty_a: null,
+        penalty_b: null,
         status: 'scheduled',
       })
       .eq('id', matchId);
@@ -147,6 +150,14 @@ export async function revertMatchToScheduledAction(matchId: number) {
       }
     }
 
+    // 7. Public pages must stop showing the reverted result immediately.
+    revalidateMatchSurfaces({
+      id: matchId,
+      tournament_id: match.tournament_id ?? null,
+      team_a_id: match.team_a_id ?? null,
+      team_b_id: match.team_b_id ?? null,
+    });
+
     return { success: true };
 
   } catch (error) {
@@ -169,7 +180,7 @@ export async function awardForfeitWinAction(matchId: number, winningTeam: 'A' | 
     // 1. Get match info
     const { data: match, error: matchErr } = await supabase
       .from('matches')
-      .select('id, team_a_id, team_b_id, status')
+      .select('id, team_a_id, team_b_id, status, tournament_id')
       .eq('id', matchId)
       .single();
 
@@ -193,6 +204,8 @@ export async function awardForfeitWinAction(matchId: number, winningTeam: 'A' | 
         team_a_score,
         team_b_score,
         winner_team_id,
+        penalty_a: null,
+        penalty_b: null,
         status: 'finished',
       })
       .eq('id', matchId);
@@ -209,6 +222,14 @@ export async function awardForfeitWinAction(matchId: number, winningTeam: 'A' | 
       console.error('Progression error (non-fatal):', progError);
       // Don't fail the save if progression fails
     }
+
+    // 5. Public pages must show the forfeit result immediately.
+    revalidateMatchSurfaces({
+      id: matchId,
+      tournament_id: match.tournament_id ?? null,
+      team_a_id: match.team_a_id ?? null,
+      team_b_id: match.team_b_id ?? null,
+    });
 
     return { success: true, team_a_score, team_b_score };
 
@@ -489,6 +510,14 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
         console.error('Failed to sync player aggregates (non-fatal):', err);
       }
     }
+
+    // 8. Public pages must show the new result/stats immediately.
+    revalidateMatchSurfaces({
+      id: matchId,
+      tournament_id: match.tournament_id != null ? Number(match.tournament_id) : null,
+      team_a_id: teamAId,
+      team_b_id: teamBId,
+    });
 
     return { success: true };
 

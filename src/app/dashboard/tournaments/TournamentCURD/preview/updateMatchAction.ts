@@ -7,6 +7,7 @@ import {
   decideTwoLeggedTie,
   decideSingleLegKO,
 } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
+import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 export interface MatchUpdatePayload {
   matchId: number;
@@ -195,6 +196,15 @@ export async function updateMatchFromPlanner(payload: MatchUpdatePayload) {
         console.error("Progression failed for match", matchId, progErr);
       }
     }
+
+    // Public pages must reflect the change (result, teams, kickoff) immediately.
+    revalidateMatchSurfaces({
+      id: matchId,
+      tournament_id: currentMatch.tournament_id ?? null,
+      team_a_id: updateData.team_a_id ?? currentMatch.team_a_id ?? null,
+      team_b_id: updateData.team_b_id ?? currentMatch.team_b_id ?? null,
+      previous_team_ids: [currentMatch.team_a_id, currentMatch.team_b_id],
+    });
 
     return { success: true };
   } catch (error: any) {
