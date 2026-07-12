@@ -32,7 +32,7 @@ function revalidate() {
   revalidatePath("/dashboard/geniki-katataxi");
   // The public page is dynamically rendered; the cached points compute is
   // keyed by this tag, so drop it for an instant refresh after an adjustment.
-  revalidateTag(GENIKI_KATATAXI_CACHE_TAG);
+  revalidateTag(GENIKI_KATATAXI_CACHE_TAG, "max");
 }
 
 export async function addAdjustment(input: {

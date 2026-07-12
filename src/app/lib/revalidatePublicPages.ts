@@ -30,7 +30,7 @@ export function revalidateMatchSurfaces(match: {
   // /geniki-katataxi is dynamically rendered (season tabs) — the path call is
   // a no-op there; the tag is what actually drops the cached points compute.
   revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG);
+  revalidateTag(GENIKI_KATATAXI_TAG, "max");
   revalidatePath("/paiktes");
   if (match.tournament_id != null) revalidateTournamentSurfaces(match.tournament_id);
   const teamIds = new Set(
@@ -62,5 +62,5 @@ export function revalidateTeamSurfaces(teamId: number | string) {
   revalidatePath("/OMADES");
   revalidatePath("/");
   revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG);
+  revalidateTag(GENIKI_KATATAXI_TAG, "max");
 }
