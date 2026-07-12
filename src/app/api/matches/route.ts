@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -351,14 +352,32 @@ export async function POST(req: Request) {
       }
 
       if (stageKind === "knockout") {
-        // KO: cannot draw; enforce winner matches scores (auto-pick if omitted)
-        if (a === b) {
-          return jsonError(400, "Knockout matches cannot finish level; set a winner (pens).");
+        // KO: winner from the score, or from the shootout when the score is
+        // level (penalty_a/b are whitelisted payload fields). Shared resolver.
+        const res = decideSingleLegKO({
+          team_a_id: payload.team_a_id ?? null,
+          team_b_id: payload.team_b_id ?? null,
+          team_a_score: a,
+          team_b_score: b,
+          penalty_a: payload.penalty_a ?? null,
+          penalty_b: payload.penalty_b ?? null,
+        });
+        if (res.kind !== "decided") {
+          return jsonError(
+            400,
+            res.reason === "level-pens"
+              ? "Penalty shootout cannot end level — enter a winner on penalties."
+              : "Knockout matches cannot finish level — enter the penalty shootout result."
+          );
         }
-        const expected = a > b ? payload.team_a_id : payload.team_b_id;
-        if (!payload.winner_team_id) payload.winner_team_id = expected;
-        else if (![payload.team_a_id, payload.team_b_id].includes(payload.winner_team_id) || payload.winner_team_id !== expected) {
-          return jsonError(400, "winner_team_id must match the scores for KO.");
+        if (!payload.winner_team_id) payload.winner_team_id = res.winnerTeamId;
+        else if (![payload.team_a_id, payload.team_b_id].includes(payload.winner_team_id) || payload.winner_team_id !== res.winnerTeamId) {
+          return jsonError(400, "winner_team_id must match the scores/penalties for KO.");
+        }
+        // Pens persist only when they decided the match.
+        if (res.via !== "penalties") {
+          payload.penalty_a = null;
+          payload.penalty_b = null;
         }
       } else {
         // groups/league or no stage: draws allowed; otherwise enforce consistency

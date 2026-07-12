@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decideTwoLeggedTie, scoreForTeam, type TieLegLite } from "../twoLeggedTie";
+import { decideTwoLeggedTie, decideSingleLegKO, scoreForTeam, type TieLegLite } from "../twoLeggedTie";
 
 const A = 11;
 const B = 22;
@@ -98,5 +98,51 @@ describe("decideTwoLeggedTie — guards", () => {
       leg1(0, 0)
     );
     expect(res.kind).toBe("single");
+  });
+});
+
+describe("decideSingleLegKO — score first, then penalties (the match-2566 case)", () => {
+  const m = (aScore: number | null, bScore: number | null, penA?: number | null, penB?: number | null): TieLegLite => ({
+    team_a_id: A,
+    team_b_id: B,
+    team_a_score: aScore,
+    team_b_score: bScore,
+    penalty_a: penA ?? null,
+    penalty_b: penB ?? null,
+    status: "finished",
+  });
+
+  it("non-level score decides via score (either direction)", () => {
+    expect(decideSingleLegKO(m(2, 1))).toEqual({ kind: "decided", winnerTeamId: A, via: "score" });
+    expect(decideSingleLegKO(m(0, 3))).toEqual({ kind: "decided", winnerTeamId: B, via: "score" });
+  });
+
+  it("level score + pens decides via penalties (4-4, pens 5-4)", () => {
+    expect(decideSingleLegKO(m(4, 4, 5, 4))).toEqual({ kind: "decided", winnerTeamId: A, via: "penalties" });
+    expect(decideSingleLegKO(m(0, 0, 2, 3))).toEqual({ kind: "decided", winnerTeamId: B, via: "penalties" });
+  });
+
+  it("level score without pens is undecided (missing-pens)", () => {
+    expect(decideSingleLegKO(m(1, 1))).toEqual({ kind: "undecided", reason: "missing-pens" });
+    expect(decideSingleLegKO(m(1, 1, 3, null))).toEqual({ kind: "undecided", reason: "missing-pens" });
+  });
+
+  it("level score + level pens is undecided (level-pens)", () => {
+    expect(decideSingleLegKO(m(2, 2, 4, 4))).toEqual({ kind: "undecided", reason: "level-pens" });
+  });
+
+  it("stray pens on a non-level score do not change the winner (via score)", () => {
+    // Callers null the stored pens when via === "score".
+    expect(decideSingleLegKO(m(3, 1, 2, 4))).toEqual({ kind: "decided", winnerTeamId: A, via: "score" });
+  });
+
+  it("0 goals is a real score, not a missing one (falsy-zero)", () => {
+    expect(decideSingleLegKO(m(0, 1))).toEqual({ kind: "decided", winnerTeamId: B, via: "score" });
+    // pens 0-x: 0 must not be treated as missing
+    expect(decideSingleLegKO(m(1, 1, 0, 2))).toEqual({ kind: "decided", winnerTeamId: B, via: "penalties" });
+  });
+
+  it("missing teams cannot be decided", () => {
+    expect(decideSingleLegKO({ ...m(1, 0), team_a_id: null })).toEqual({ kind: "undecided", reason: "missing-teams" });
   });
 });

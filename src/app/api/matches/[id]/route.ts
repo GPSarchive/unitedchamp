@@ -4,7 +4,7 @@ import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 // ⬇️ Run tournament progression after finishing a match
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
-import { decideTwoLeggedTie } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
+import { decideTwoLeggedTie, decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
@@ -374,14 +374,34 @@ export async function PATCH(
           update.penalty_b = null;
         }
       } else if (stageKind === "knockout") {
-        // Single-leg KO (or leg-2 whose leg 1 was deleted): unchanged behaviour.
-        if (effAS === effBS) {
-          return jsonError(400, "Knockout matches cannot finish level; set a winner (pens).");
+        // Single-leg KO (or leg-2 whose leg 1 was deleted): winner from the
+        // score, or from the shootout when the score is level (4–4 pens 5–4 is
+        // a legal, enterable state). Shared resolver with every other writer.
+        const res = decideSingleLegKO({
+          team_a_id: teamA,
+          team_b_id: teamB,
+          team_a_score: effAS,
+          team_b_score: effBS,
+          penalty_a: effPenA,
+          penalty_b: effPenB,
+        });
+        if (res.kind !== "decided") {
+          return jsonError(
+            400,
+            res.reason === "level-pens"
+              ? "Penalty shootout cannot end level — enter a winner on penalties."
+              : "Knockout matches cannot finish level — enter the penalty shootout result."
+          );
         }
-        const expected = effAS > effBS ? teamA : teamB;
-        if (!effWinner) update.winner_team_id = expected;
-        else if (![teamA, teamB].includes(effWinner) || effWinner !== expected) {
-          return jsonError(400, "winner_team_id must match the scores for KO.");
+        if (!effWinner) update.winner_team_id = res.winnerTeamId;
+        else if (![teamA, teamB].includes(effWinner) || effWinner !== res.winnerTeamId) {
+          return jsonError(400, "winner_team_id must match the scores/penalties for KO.");
+        }
+        // Pens persist only when they decided the match; clear stray input on a
+        // score win so a later resolution can't misread them.
+        if (res.via !== "penalties") {
+          update.penalty_a = null;
+          update.penalty_b = null;
         }
       } else {
         // groups/league: allow draw with NULL winner; if unequal, enforce consistency
