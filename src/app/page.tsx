@@ -10,6 +10,8 @@ import { loadHomeData } from "@/app/home/data";
 
 // Existing home wrappers (backgrounds kept for Welcome / Videos / Features / Testimonials)
 import HomeHero from "@/app/home/HomeHero";
+import SeasonRecapOverlay from "@/app/home/SeasonRecapModal";
+import { loadSeasonRecap } from "@/app/home/seasonRecap";
 import GridBgSection from "@/app/home/GridBgSection";
 import VantaSection from "@/app/home/VantaSection";
 import HomeArticles from "@/app/home/HomeArticles";
@@ -140,12 +142,14 @@ const SectionHeader: React.FC<{
 // Page
 // ───────────────────────────────────────────────────────────────────────
 export default async function Home() {
-  const { events: eventsToPass, tournaments, recentContentCount, videoMatches } =
-    await loadHomeData();
+  const [{ events: eventsToPass, tournaments, recentContentCount, videoMatches }, seasonRecap] =
+    await Promise.all([loadHomeData(), loadSeasonRecap()]);
+
+  const fontClassName = `${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable}`;
 
   return (
     <div
-      className={`${fraunces.variable} ${archivoBlack.variable} ${jetbrains.variable} ${figtree.variable} font-[var(--f-body)] min-h-screen flex flex-col overflow-x-hidden bg-zinc-950`}
+      className={`${fontClassName} font-[var(--f-body)] min-h-screen flex flex-col overflow-x-hidden bg-zinc-950`}
     >
       {/* ═══ Hero — photo carousel ═══ */}
       <HomeHero
@@ -390,6 +394,9 @@ export default async function Home() {
       </GridBgSection>
 
       <LeftSideBubbles count={recentContentCount} />
+
+      {/* ═══ Seasonal recap — auto-opens during August, launcher chip Jul–Sep ═══ */}
+      <SeasonRecapOverlay data={seasonRecap} fontClassName={fontClassName} />
     </div>
   );
 }
