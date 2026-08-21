@@ -6,6 +6,10 @@ import { revalidatePath, revalidateTag } from "next/cache";
  *  must match GENIKI_KATATAXI_CACHE_TAG in geniki-katataxi/points.ts. */
 const GENIKI_KATATAXI_TAG = "geniki-katataxi";
 
+/** unstable_cache tag for the home-page season recap. Must match
+ *  SEASON_RECAP_CACHE_TAG in home/seasonRecap.ts. */
+const SEASON_RECAP_TAG = "season-recap";
+
 /**
  * Central ISR invalidation for the public site.
  *
@@ -31,6 +35,7 @@ export function revalidateMatchSurfaces(match: {
   // a no-op there; the tag is what actually drops the cached points compute.
   revalidatePath("/geniki-katataxi");
   revalidateTag(GENIKI_KATATAXI_TAG, "max");
+  revalidateTag(SEASON_RECAP_TAG, "max");
   revalidatePath("/paiktes");
   if (match.tournament_id != null) revalidateTournamentSurfaces(match.tournament_id);
   const teamIds = new Set(
@@ -63,4 +68,5 @@ export function revalidateTeamSurfaces(teamId: number | string) {
   revalidatePath("/");
   revalidatePath("/geniki-katataxi");
   revalidateTag(GENIKI_KATATAXI_TAG, "max");
+  revalidateTag(SEASON_RECAP_TAG, "max");
 }
