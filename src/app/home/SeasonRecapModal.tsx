@@ -1,6 +1,6 @@
 "use client";
 
-// SeasonRecapModal — the "Ετήσια Έκδοση" season-recap overlay.
+// SeasonRecapModal — the "Ετήσιο Συγκεντρωτικό" season-recap overlay.
 //
 // Design: a printed annual-edition sheet over the home page. Masthead with a
 // colophon data strip, the Γενική Κατάταξη podium built from typography
@@ -318,7 +318,7 @@ export const SeasonRecapModal: React.FC<{
         {/* Top bar */}
         <div className="relative z-20 flex items-center justify-between gap-4 px-5 md:px-10 py-4 border-b border-[#F3EFE6]/15 bg-[#0b0b14]/95">
           <span className="font-mono text-[9px] md:text-[10px] uppercase tracking-[0.32em] text-[#fb923c]">
-            UltraChamp — Ετήσια Έκδοση
+            UltraChamp — Ετήσιο Συγκεντρωτικό
           </span>
           <div className="flex items-center gap-4">
             <span className="hidden sm:block font-mono text-[10px] tracking-[0.32em] text-[#F3EFE6]/45">
