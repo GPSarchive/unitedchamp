@@ -148,7 +148,10 @@ const AwardCard: React.FC<{
         src={award.photo ?? award.teamLogo ?? "/player-placeholder.svg"}
         fallback="/player-placeholder.svg"
         alt={award.name}
-        className="h-full w-full object-cover object-top"
+        // Squad photos are a mix of tall portraits and wide landscape shots;
+        // anchoring just above centre keeps faces in frame for both, where
+        // object-top crops landscape photos to the wall above the subject.
+        className="h-full w-full object-cover [object-position:50%_30%]"
         loading="lazy"
       />
     </div>
@@ -257,7 +260,7 @@ export const SeasonRecapModal: React.FC<{
 
   const { totals, podium, honours, awards, records } = data;
 
-  // Podium display order: 2 — 1 — 3 on desktop.
+  // Podium display order: 2 — 1 — 3, at every width.
   const podiumOrdered = useMemo(() => {
     if (podium.length < 3) return podium.map((t, i) => ({ team: t, rank: i + 1 }));
     return [
@@ -267,7 +270,6 @@ export const SeasonRecapModal: React.FC<{
     ];
   }, [podium]);
 
-  const plinthHeight = (rank: number) => (rank === 1 ? 148 : rank === 2 ? 104 : 76);
   const rankColor = (rank: number) =>
     rank === 1 ? "#fb923c" : rank === 2 ? "#F3EFE6" : "rgba(243,239,230,0.45)";
 
@@ -303,6 +305,15 @@ export const SeasonRecapModal: React.FC<{
         className={`relative w-full max-w-[1060px] bg-[#0b0b14] text-white outline-none border border-[#F3EFE6]/25 shadow-[0_40px_120px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden transition-all duration-500 motion-reduce:transition-none ${
           entered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
         }`}
+        // Plinth heights scale with the viewport so the 2–1–3 silhouette
+        // survives on phones, capped at the desktop sizes.
+        style={
+          {
+            "--plinth-1": "min(148px, 30vw)",
+            "--plinth-2": "min(104px, 21vw)",
+            "--plinth-3": "min(76px, 15.5vw)",
+          } as React.CSSProperties
+        }
       >
         {/* inner hairline + corner ticks (printed-edition frame) */}
         <div aria-hidden className="pointer-events-none absolute inset-[6px] border border-[#F3EFE6]/10 z-10" />
@@ -408,33 +419,41 @@ export const SeasonRecapModal: React.FC<{
           {podium.length > 0 && (
             <>
               <SectionRule eyebrow="Γενική Κατάταξη — Το Βάθρο" index="Ι" />
-              <div className="grid grid-cols-1 md:grid-cols-3 items-end gap-6 md:gap-4 pt-2">
+              {/* Three columns at every width — the 2–1–3 arrangement is the
+                  point of a podium, so phones keep it and scale down instead. */}
+              <div className="grid grid-cols-3 items-end gap-2 sm:gap-3 md:gap-4 pt-2">
                 {podiumOrdered.map(({ team, rank }) => (
-                  <div
-                    key={team.teamId}
-                    className={`flex flex-col items-center text-center md:order-none ${
-                      rank === 1 ? "order-1" : rank === 2 ? "order-2" : "order-3"
-                    }`}
-                  >
+                  <div key={team.teamId} className="flex flex-col items-center text-center min-w-0">
                     {team.logo ? (
                       <SafeImg
                         src={team.logo}
                         alt=""
                         className={`${
-                          rank === 1 ? "h-20 w-20 md:h-24 md:w-24" : "h-14 w-14 md:h-16 md:w-16"
+                          rank === 1
+                            ? "h-12 w-12 sm:h-16 sm:w-16 md:h-24 md:w-24"
+                            : "h-9 w-9 sm:h-12 sm:w-12 md:h-16 md:w-16"
                         } object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]`}
                         loading="lazy"
                       />
                     ) : (
-                      <Trophy className="h-12 w-12 text-[#F3EFE6]/30" />
+                      <Trophy
+                        className={`${
+                          rank === 1 ? "h-12 w-12 md:h-20 md:w-20" : "h-9 w-9 md:h-14 md:w-14"
+                        } text-[#F3EFE6]/30`}
+                      />
                     )}
                     <div
-                      className="mt-3 font-[var(--f-display)] font-black italic leading-none text-white"
-                      style={{ fontSize: rank === 1 ? "clamp(1.6rem,3vw,2.3rem)" : "clamp(1.2rem,2.2vw,1.7rem)" }}
+                      className="mt-2 md:mt-3 w-full font-[var(--f-display)] font-black italic leading-[1.05] text-white hyphens-auto break-words"
+                      style={{
+                        fontSize:
+                          rank === 1
+                            ? "clamp(0.8rem, 2.6vw, 2.3rem)"
+                            : "clamp(0.7rem, 2.1vw, 1.7rem)",
+                      }}
                     >
                       {team.name}
                     </div>
-                    <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em]">
+                    <div className="mt-1.5 md:mt-2 font-mono text-[9px] sm:text-[10px] md:text-[11px] uppercase tracking-[0.12em] md:tracking-[0.2em]">
                       <span className="font-bold tabular-nums" style={{ color: rankColor(rank) }}>
                         {nf.format(team.points)} π.
                       </span>
@@ -446,9 +465,9 @@ export const SeasonRecapModal: React.FC<{
                     </div>
                     {/* Plinth */}
                     <div
-                      className="mt-4 w-full max-w-[240px] border border-[#F3EFE6]/15 relative overflow-hidden transition-transform duration-700 motion-reduce:transition-none origin-bottom"
+                      className="mt-3 md:mt-4 w-full max-w-[240px] border border-[#F3EFE6]/15 relative overflow-hidden transition-transform duration-700 motion-reduce:transition-none origin-bottom"
                       style={{
-                        height: plinthHeight(rank),
+                        height: `var(--plinth-${rank})`,
                         transform: entered ? "scaleY(1)" : "scaleY(0)",
                         transitionDelay: `${rank * 120}ms`,
                         background:
@@ -458,7 +477,11 @@ export const SeasonRecapModal: React.FC<{
                       <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: rankColor(rank) }} />
                       <span
                         className="absolute inset-0 flex items-center justify-center font-mono font-bold tabular-nums"
-                        style={{ color: rankColor(rank), fontSize: rank === 1 ? "2.6rem" : "1.9rem", opacity: 0.9 }}
+                        style={{
+                          color: rankColor(rank),
+                          fontSize: rank === 1 ? "clamp(1.1rem,4.5vw,2.6rem)" : "clamp(0.85rem,3.4vw,1.9rem)",
+                          opacity: 0.9,
+                        }}
                       >
                         {rank === 1 ? "1ος" : rank === 2 ? "2ος" : "3ος"}
                       </span>

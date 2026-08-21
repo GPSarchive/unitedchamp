@@ -105,9 +105,21 @@ export interface SeasonRecapData {
 /**
  * Display-only winner overrides for the recap. The DB rows stay untouched —
  * these fill honours whose tournament has no winner_team_id recorded.
- * UL-GL PLAYOUTS 2025-2026 (#33) was won by ΜΠΑΜΠΑΔΕΣ (#64).
+ * UL-GL PLAYOUTS 2025-2026 (#33) was won by ΦΟΝΙΚΑ ΡΑΚΟΥΝ Β (#57) — note the
+ * B side, which is a separate team row from ΦΟΝΙΚΑ ΡΑΚΟΥΝ (#42) and carries
+ * its own logo.
  */
-const MANUAL_WINNER_OVERRIDES: Record<number, number> = { 33: 64 };
+const MANUAL_WINNER_OVERRIDES: Record<number, number> = { 33: 57 };
+
+/**
+ * Which player wins an award when the tally is tied. Editorial calls, not
+ * data corrections: the stats stay as they are and the pick only applies
+ * among players already level at the top.
+ *
+ * bgk — ΗΛΙΑΣ ΚΑΡΑΛΙΔΗΣ (#111), tied on 14 with ΜΠΑΚΟΓΙΑΝΝΗΣ and
+ * ΘΕΟΔΟΥΛΙΔΗΣ; the league owner asked for him to be the one shown.
+ */
+const TIEBREAK_PREFERENCE: Record<string, number> = { bgk: 111 };
 
 type PlayerAgg = {
   player_id: number;
@@ -244,8 +256,23 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
   }
 
   // ── Award leaders (skip deleted/dummy players at lookup time).
+  //
+  // Ties are broken by TIEBREAK_PREFERENCE first, then by fewer matches (the
+  // same tally in less football is the better season). Without an explicit
+  // rule a tie resolves arbitrarily by row order, which is how the GK award —
+  // a three-way tie on 14 this season — could otherwise change between runs.
+  const rank = (p: PlayerAgg, key: keyof PlayerAgg) => {
+    const preferred = TIEBREAK_PREFERENCE[key as string] === p.player_id ? 1 : 0;
+    return { value: p[key] as number, preferred, matches: p.matches };
+  };
   const topIdsByKey = (key: keyof PlayerAgg, n = 3) =>
-    [...players].sort((a, b) => (b[key] as number) - (a[key] as number)).slice(0, n);
+    [...players]
+      .sort((a, b) => {
+        const ra = rank(a, key);
+        const rb = rank(b, key);
+        return rb.value - ra.value || rb.preferred - ra.preferred || ra.matches - rb.matches;
+      })
+      .slice(0, n);
   const candidateIds = [
     ...new Set(
       (["goals", "assists", "mvp", "bgk", "matches"] as (keyof PlayerAgg)[]).flatMap((k) =>
@@ -494,7 +521,7 @@ const loadSeasonRecapCached = unstable_cache(
   },
   // Version the key when the payload shape changes so a deploy never serves
   // a stale-shaped entry from the incremental cache.
-  ["season-recap-v2"],
+  ["season-recap-v3"],
   { revalidate: 3600, tags: [SEASON_RECAP_CACHE_TAG] }
 );
 
