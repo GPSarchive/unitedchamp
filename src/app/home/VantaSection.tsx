@@ -59,8 +59,23 @@ export default function VantaSection({
   ]);
 
   useEffect(() => {
-    init(); // in case scripts are cached
+    init(); // works if scripts already loaded (e.g. cached or later mounts)
+
+    // Next.js deduplicates <Script> tags, so onLoad only fires for the first
+    // instance. Poll until p5 + VANTA are available for all other instances.
+    let pollId: ReturnType<typeof setInterval> | null = null;
+    if (!effectRef.current) {
+      pollId = setInterval(() => {
+        init();
+        if (effectRef.current && pollId) {
+          clearInterval(pollId);
+          pollId = null;
+        }
+      }, 100);
+    }
+
     return () => {
+      if (pollId) clearInterval(pollId);
       try { effectRef.current?.destroy?.(); } catch {}
       effectRef.current = null;
     };
