@@ -81,6 +81,25 @@ export default function TournamentBasicsForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSeason]);
 
+  // The season the form opened with (edit: the stored one; create: the active
+  // default). Changing it is a season MOVE: the server re-snapshots both sides.
+  const initialSeason = useRef<string | null>(null);
+  useEffect(() => {
+    if (initialSeason.current == null && value.season) initialSeason.current = value.season;
+  }, [value.season]);
+  const seasonNotice = useMemo(() => {
+    const chosen = value.season ?? null;
+    if (!chosen) return null;
+    const initial = initialSeason.current;
+    if (initial && chosen !== initial) {
+      return `Αλλαγή σεζόν (${initial} → ${chosen}): με την αποθήκευση ξαναγράφονται τα αποθηκευμένα στατιστικά, η κατάταξη και το recap και των δύο σεζόν.`;
+    }
+    if (activeSeason && chosen !== activeSeason) {
+      return `Αρχειοθετημένη σεζόν: με την αποθήκευση ξαναγράφεται το αποθηκευμένο snapshot της ${chosen}.`;
+    }
+    return null;
+  }, [value.season, activeSeason]);
+
   // Informational only: where the dates would put it under the Sept-30 rule.
   const draftMatches = useTournamentStore((s) => s.draftMatches);
   const suggestedSeason = useMemo(() => {
@@ -354,6 +373,11 @@ export default function TournamentBasicsForm({
               ? `Με βάση την ημερομηνία (όριο 30 Σεπ) θα ανήκε στη ${suggestedSeason}.`
               : "Η σεζόν ορίζεται από τη λίστα (/dashboard/seasons)· τα νέα τουρνουά μπαίνουν στην ενεργή."}
           </p>
+          {seasonNotice && (
+            <p className="mt-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
+              {seasonNotice}
+            </p>
+          )}
         </div>
         <select
           className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"

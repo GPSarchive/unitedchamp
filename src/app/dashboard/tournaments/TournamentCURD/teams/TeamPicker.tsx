@@ -35,7 +35,7 @@ export default function TeamPicker({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +43,7 @@ export default function TeamPicker({
     try {
       // ✅ Use relative URL for deployment safety (client-side component)
       const params = new URLSearchParams({ sign: "1" });
-      if (showArchived) params.set("include", "all");
+      if (showDeleted) params.set("include", "all");
       const res = await fetch(`/api/teams?${params.toString()}`, {
         credentials: "include",
       });
@@ -68,7 +68,7 @@ export default function TeamPicker({
     } finally {
       setLoading(false);
     }
-  }, [showArchived]);
+  }, [showDeleted]);
 
   useEffect(() => {
     void load();
@@ -84,12 +84,12 @@ export default function TeamPicker({
   // ---- filtering ----
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const list = catalog.filter((t) => (showArchived ? true : !t.deleted_at));
+    const list = catalog.filter((t) => (showDeleted ? true : !t.deleted_at));
     if (!term) return list;
     return list.filter(
       (t) => t.name.toLowerCase().includes(term) || String(t.id).includes(term)
     );
-  }, [catalog, q, showArchived]);
+  }, [catalog, q, showDeleted]);
 
   // ---- selection ops (store name/logo too) ----
   const addOne = (id: number) => {
@@ -192,10 +192,10 @@ export default function TeamPicker({
           <label className="inline-flex items-center gap-2 px-2 py-1 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-300 text-sm">
             <input
               type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
+              checked={showDeleted}
+              onChange={(e) => setShowDeleted(e.target.checked)}
             />
-            <span className="text-sm">Show archived</span>
+            <span className="text-sm">Show deleted teams</span>
           </label>
           <button
             onClick={load}
@@ -268,7 +268,7 @@ export default function TeamPicker({
             <ul className="max-h-72 overflow-auto divide-y divide-white/5">
               {filtered.map((t) => {
                 const selected = isSelected(teams, t.id);
-                const archived = !!t.deleted_at;
+                const deleted = !!t.deleted_at;
                 return (
                   <li key={t.id} className="px-3 py-2.5 flex items-center gap-3 hover:bg-white/4 transition-colors">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -280,8 +280,8 @@ export default function TeamPicker({
                       <div className="truncate text-white/90">
                         {t.name} <span className="text-white/40 text-xs">#{t.id}</span>
                       </div>
-                      {archived && (
-                        <div className="text-xs text-amber-300/80">Archived</div>
+                      {deleted && (
+                        <div className="text-xs text-amber-300/80">Deleted</div>
                       )}
                     </div>
                     <label className="inline-flex items-center gap-2 text-xs text-zinc-300">

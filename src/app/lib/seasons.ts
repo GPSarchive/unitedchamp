@@ -5,6 +5,8 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { chunk } from "@/app/lib/playerStatsAggregation";
+import { teamSeasonMismatches, type TeamSeasonRow } from "@/app/lib/seasonChecks";
 
 export type SeasonStatus = "active" | "archived";
 
@@ -77,4 +79,59 @@ export async function listTournamentIdsForSeason(label: string): Promise<number[
     .order("id", { ascending: true });
   if (error) throw new Error(`Failed reading tournaments for season ${label}: ${error.message}`);
   return (data ?? []).map((t) => t.id as number);
+}
+
+/**
+ * The season a tournament is ASSIGNED to (plans/seasonal-data-contract.md):
+ * the requested label, which must exist in public.seasons; else `fallback`
+ * (an existing row's current label); else the active season. Dates never
+ * decide the season. Throws an admin-readable Error so API routes can answer
+ * 400 and actions can return it verbatim.
+ */
+export async function resolveSeasonLabel(
+  requested: string | null | undefined,
+  fallback?: string | null,
+): Promise<string> {
+  const label = (requested ?? "").trim();
+  if (label) {
+    const row = await getSeasonByLabel(label);
+    if (!row) {
+      throw new Error(`Άγνωστη σεζόν «${label}» — δημιούργησέ την πρώτα στο /dashboard/seasons.`);
+    }
+    return row.label;
+  }
+  const fb = (fallback ?? "").trim();
+  if (fb) return fb;
+  const active = await getActiveSeason();
+  if (!active) throw new Error("Δεν υπάρχει ενεργή σεζόν — όρισε μία στο /dashboard/seasons.");
+  return active.label;
+}
+
+/**
+ * Teams are per-season rows (contract D1): every team attached to a
+ * tournament or one of its matches must carry that tournament's season.
+ * Throws naming the offending ids (an unknown id counts as a mismatch).
+ * Nulls and non-positive ids (TBD slots) are ignored.
+ */
+export async function assertTeamsInSeason(
+  teamIds: Iterable<number | null | undefined>,
+  seasonLabel: string,
+): Promise<void> {
+  const ids = [...new Set([...teamIds].filter((t): t is number => typeof t === "number" && t > 0))];
+  if (ids.length === 0) return;
+  const rows: TeamSeasonRow[] = [];
+  for (const batch of chunk(ids, 300)) {
+    const { data, error } = await supabaseAdmin
+      .from("teams")
+      .select("id, season_label")
+      .in("id", batch);
+    if (error) throw new Error(`Failed reading teams: ${error.message}`);
+    rows.push(...((data ?? []) as TeamSeasonRow[]));
+  }
+  const bad = teamSeasonMismatches(ids, rows, seasonLabel);
+  if (bad.length > 0) {
+    throw new Error(
+      `Οι ομάδες #${bad.join(", #")} δεν ανήκουν στη σεζόν ${seasonLabel} — κάθε ομάδα είναι εγγραφή μίας σεζόν.`,
+    );
+  }
 }

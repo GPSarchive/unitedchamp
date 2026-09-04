@@ -2,6 +2,8 @@
 
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { recomputeStandingsNow } from '../progression';
+import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
+import { revalidateStandingsSurfaces, revalidateTournamentSurfaces } from '@/app/lib/revalidatePublicPages';
 
 async function assertAdmin() {
   const supabase = await createSupabaseRouteClient();
@@ -36,30 +38,21 @@ type PointAdjustmentInput = {
  */
 export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
   try {
-    console.log('[DEBUG] applyPointAdjustmentAction called with:', input);
-
     const { supabase, user } = await assertAdmin();
-    console.log('[DEBUG] Admin check passed, user:', user.id);
 
     const { stageId, groupId, teamId, pointsAdjustment, reason } = input;
 
     if (!stageId || !teamId) {
-      console.error('[DEBUG] Missing stageId or teamId');
       return { success: false, error: 'Stage ID and Team ID are required' };
     }
-
     if (pointsAdjustment === 0) {
-      console.error('[DEBUG] Point adjustment is zero');
       return { success: false, error: 'Point adjustment cannot be zero' };
     }
-
     if (!reason || reason.trim().length === 0) {
-      console.error('[DEBUG] Reason is empty');
       return { success: false, error: 'Reason is required for point adjustments' };
     }
 
     // 1. Get tournament_id for audit trail
-    console.log('[DEBUG] Fetching stage:', stageId);
     const { data: stage, error: stageError } = await supabase
       .from('tournament_stages')
       .select('tournament_id')
@@ -67,10 +60,8 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       .single();
 
     if (stageError || !stage) {
-      console.error('[DEBUG] Stage not found:', stageError);
       return { success: false, error: 'Stage not found' };
     }
-    console.log('[DEBUG] Stage found, tournament_id:', stage.tournament_id);
 
     // 2. Get current standings for this team (for reporting)
     const { data: currentStanding, error: standingError } = await supabase
@@ -91,17 +82,7 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
     // Normalize group_id: league stages (groupId=0) should be stored as NULL
     const normalizedGroupId = (groupId === null || groupId === 0) ? null : groupId;
 
-    console.log('[DEBUG] Inserting into disciplinary_actions:', {
-      tournament_id: stage.tournament_id,
-      stage_id: stageId,
-      team_id: teamId,
-      group_id: normalizedGroupId,
-      points_adjustment: pointsAdjustment,
-      reason: reason.trim(),
-      applied_by: user.id,
-    });
-
-    const { data: insertData, error: auditError } = await supabase
+    const { error: auditError } = await supabase
       .from('disciplinary_actions')
       .insert({
         tournament_id: stage.tournament_id,
@@ -116,10 +97,9 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       .select();
 
     if (auditError) {
-      console.error('[DEBUG] Failed to create audit trail:', auditError);
+      console.error('[applyPointAdjustmentAction] audit insert failed:', auditError);
       return { success: false, error: `Failed to create audit trail: ${auditError.message}` };
     }
-    console.log('[DEBUG] Audit trail created successfully:', insertData);
 
     // 4. Recalculate standings (this will apply all disciplinary actions)
     try {
@@ -129,7 +109,14 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       // Don't fail the entire operation if standings recalc fails
     }
 
-    // 5. Get new points after recalculation
+    // 5. A stage-points change reorders the group → qualification/progression
+    //    → Γενική Κατάταξη. Rewrite the stored season rows (never throws) and
+    //    regenerate the public pages that render this tournament's tables.
+    await refreshActiveSeasonStandings('applyPointAdjustmentAction');
+    revalidateTournamentSurfaces(stage.tournament_id);
+    revalidateStandingsSurfaces();
+
+    // 6. Get new points after recalculation
     const { data: updatedStanding } = await supabase
       .from('stage_standings')
       .select('points')

@@ -263,22 +263,29 @@ export async function POST(req: Request) {
     // colour (optional, hex color string)
     let colourRaw = typeof body.colour === "string" ? body.colour.trim() : null;
 
-    // Season: assigned, never derived. Defaults to the active season.
+    // Season: assigned, never derived, and ALWAYS the active season — new team
+    // rows are created for the season being played (contract Phase 5); an
+    // archived season's team list is frozen history.
+    const active = await getActiveSeason();
+    if (!active) return NextResponse.json({ error: "No active season" }, { status: 409 });
     const seasonLabelRaw = typeof body.season_label === "string" ? body.season_label.trim() : "";
-    let seasonLabel: string;
-    if (seasonLabelRaw) {
+    if (seasonLabelRaw && seasonLabelRaw !== active.label) {
       const row = await getSeasonByLabel(seasonLabelRaw);
-      if (!row) return NextResponse.json({ error: `Unknown season ${seasonLabelRaw}` }, { status: 400 });
-      seasonLabel = row.label;
-    } else {
-      const active = await getActiveSeason();
-      if (!active) return NextResponse.json({ error: "No active season" }, { status: 409 });
-      seasonLabel = active.label;
+      return NextResponse.json(
+        {
+          error: row
+            ? `Teams can only be created in the active season (${active.label}); ${seasonLabelRaw} is archived.`
+            : `Unknown season ${seasonLabelRaw}`,
+        },
+        { status: 400 },
+      );
     }
+    const seasonLabel = active.label;
 
     // Lineage ("create from old team"): copy logo/colour from the source row
     // when the caller did not supply them. The source's logo path stays valid —
-    // it is just referenced by a second row.
+    // it is just referenced by a second row. The source must be a row of a
+    // PREVIOUS season: copying within the active season would only duplicate.
     let copiedFrom: number | null = null;
     let inheritedLogo: string | null = null;
     if (body.copied_from_team_id != null) {
@@ -288,10 +295,16 @@ export async function POST(req: Request) {
       }
       const { data: src, error: srcErr } = await supa
         .from("teams")
-        .select("id, logo, colour")
+        .select("id, logo, colour, season_label")
         .eq("id", srcId)
         .maybeSingle();
       if (srcErr || !src) return NextResponse.json({ error: "Source team not found" }, { status: 400 });
+      if (src.season_label === seasonLabel) {
+        return NextResponse.json(
+          { error: "copied_from_team_id must be a team of a previous season" },
+          { status: 400 },
+        );
+      }
       copiedFrom = src.id;
       if (!logoCandidate) inheritedLogo = src.logo ?? null;
       if (!colourRaw) colourRaw = src.colour ?? null;

@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin'; // service role for writes (bypass RLS)
-import { getActiveSeason, getSeasonByLabel } from '@/app/lib/seasons';
+import { assertTeamsInSeason, getActiveSeason, resolveSeasonLabel } from '@/app/lib/seasons';
 
 /* =========================================================
    Local server-only types (avoid importing from Client code)
@@ -102,25 +102,6 @@ const PayloadSchema = z.object({
   })).min(1),
   tournament_team_ids: z.array(z.number().int()).optional(),
 });
-
-/**
- * The season a tournament is ASSIGNED to (plans/seasonal-data-contract.md):
- * the label the form submitted, which must exist in public.seasons (FK), or
- * the active season when none was chosen. Dates never decide the season.
- */
-async function resolveSeasonLabel(
-  requested: string | null | undefined
-): Promise<{ label: string } | { error: string }> {
-  const label = (requested ?? '').trim();
-  if (label) {
-    const row = await getSeasonByLabel(label);
-    if (!row) return { error: `Άγνωστη σεζόν «${label}» — δημιούργησέ την πρώτα στο /dashboard/seasons.` };
-    return { label };
-  }
-  const active = await getActiveSeason();
-  if (!active) return { error: 'Δεν υπάρχει ενεργή σεζόν — όρισε μία στο /dashboard/seasons.' };
-  return { label: active.label };
-}
 
 const TeamDraftSchema = z.object({
   id: z.number().int(),
@@ -266,16 +247,26 @@ export async function createTournamentAction(formData: FormData) {
     return { ok: false, error: e.message || 'Forbidden' };
   }
 
-  // 1) Tournament
-  const seasonRes = await resolveSeasonLabel(payload.tournament.season);
-  if ('error' in seasonRes) return { ok: false, error: seasonRes.error };
+  // 1) Tournament. The season is ASSIGNED (validated label, default active),
+  //    and every team in the draft must be a row of that season (contract D1)
+  //    — checked before the tournament row exists so nothing needs cleanup.
+  let seasonLabel: string;
+  try {
+    seasonLabel = await resolveSeasonLabel(payload.tournament.season);
+    await assertTeamsInSeason(
+      [...teams.map((t) => t.id), ...draftMatches.flatMap((m) => [m.team_a_id, m.team_b_id])],
+      seasonLabel,
+    );
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Invalid season' };
+  }
   const { data: tRow, error: tErr } = await supabaseAdmin
     .from('tournaments')
     .insert({
       name: payload.tournament.name,
       slug: payload.tournament.slug,
       logo: payload.tournament.logo || null,
-      season: seasonRes.label,
+      season: seasonLabel,
       status: payload.tournament.status ?? 'scheduled',
       format: payload.tournament.format ?? 'mixed',
       start_date: (payload as any).tournament?.start_date ?? null,
@@ -597,6 +588,12 @@ export async function createTournamentAction(formData: FormData) {
     return { ok: false, error: e?.message || 'Tournament creation failed, rolled back.' };
   }
 
+  // New participations/matches → rewrite the stored Γενική Κατάταξη rows and
+  // regenerate the public pages. The wizard follows up with /save-all, which
+  // does the same; this keeps the stored rows right even if that call fails.
+  await refreshActiveSeasonStandings('createTournamentAction');
+  revalidateTournamentSurfaces(tRow.id);
+  revalidateStandingsSurfaces();
   revalidatePath('/tournoua');
   redirect(`/tournoua/${tRow.slug ?? payload.tournament.slug ?? ''}`);
 }
@@ -858,434 +855,3 @@ export async function getTournamentForEditAction(tournamentId: number): Promise<
   };
 }
 
-/* =========================
-   UPDATE (replace children; persist live fields)
-   ========================= */
-
-export async function updateTournamentAction(formData: FormData) {
-  const idStr = String(formData.get('tournament_id') ?? '');
-  const tournamentId = Number(idStr);
-  if (!Number.isFinite(tournamentId)) return { ok: false, error: 'Invalid tournament id' };
-
-  const payloadStr = String(formData.get('payload') ?? '');
-  const teamsStr = String(formData.get('teams') ?? '[]');
-  const draftMatchesStr = String(formData.get('draftMatches') ?? '[]');
-
-  let payload: NewTournamentPayload;
-  let teams: TeamDraftServer[];
-  let draftMatches: DraftMatchServer[];
-
-  try {
-    payload = PayloadSchema.parse(JSON.parse(payloadStr));
-    teams = z.array(TeamDraftSchema).parse(JSON.parse(teamsStr));
-    draftMatches = z.array(DraftMatchSchema).parse(JSON.parse(draftMatchesStr));
-  } catch (e: any) {
-    return { ok: false, error: 'Invalid data: ' + e.message };
-  }
-
-  try {
-    await requireAdmin();
-  } catch (e: any) {
-    return { ok: false, error: e.message || 'Forbidden' };
-  }
-
-  // Ensure exists
-  const { data: existing, error: exErr } = await supabaseAdmin
-    .from('tournaments')
-    .select('id,slug,season')
-    .eq('id', tournamentId)
-    .single();
-
-  if (exErr || !existing) return { ok: false, error: exErr?.message || 'Tournament not found' };
-
-  // Update base
-  const seasonRes = await resolveSeasonLabel(payload.tournament.season ?? existing.season);
-  if ('error' in seasonRes) return { ok: false, error: seasonRes.error };
-  {
-    const { error } = await supabaseAdmin
-      .from('tournaments')
-      .update({
-        name: payload.tournament.name,
-        slug: payload.tournament.slug,
-        logo: payload.tournament.logo || null,
-        season: seasonRes.label,
-        status: payload.tournament.status ?? 'scheduled',
-        format: payload.tournament.format ?? 'mixed',
-        start_date: (payload as any).tournament?.start_date ?? null,
-        end_date: (payload as any).tournament?.end_date ?? null,
-        winner_team_id: (payload as any).tournament?.winner_team_id ?? null,
-      })
-      .eq('id', tournamentId);
-
-    if (error) return { ok: false, error: error.message };
-  }
-
-  // Delete children (FK-safe)
-  await supabaseAdmin.from('matches').delete().eq('tournament_id', tournamentId).throwOnError();
-  await supabaseAdmin.from('tournament_teams').delete().eq('tournament_id', tournamentId).throwOnError();
-
-  const { data: stageIds } = await supabaseAdmin
-    .from('tournament_stages')
-    .select('id')
-    .eq('tournament_id', tournamentId);
-
-  if (stageIds?.length) {
-    const ids = stageIds.map(s => s.id);
-    await supabaseAdmin.from('tournament_groups').delete().in('stage_id', ids).throwOnError();
-    // NEW: also clear intake_mappings for all previous stages of this tournament
-    await supabaseAdmin.from('intake_mappings').delete().in('target_stage_id', ids as any).throwOnError();
-  }
-
-  await supabaseAdmin.from('tournament_stages').delete().eq('tournament_id', tournamentId).throwOnError();
-
-  // Re-insert stages
-  const stagesInsert = payload.stages.map((s, i) => ({
-    tournament_id: tournamentId,
-    name: s.name,
-    kind: s.kind,
-    ordering: s.ordering ?? i + 1,
-    config: s.config ?? null,
-  }));
-
-  const { data: stageRows, error: sErr } = await supabaseAdmin
-    .from('tournament_stages')
-    .insert(stagesInsert)
-    .select('id, name, kind, ordering');
-
-  if (sErr || !stageRows) return { ok: false, error: sErr?.message || 'Failed to create stages' };
-
-  const stageIdByIndex: number[] = [];
-  payload.stages.forEach((s, i) => {
-    const found = stageRows.find(r => (r.ordering ?? i + 1) === (s.ordering ?? i + 1) && r.name === s.name && r.kind === s.kind);
-    stageIdByIndex[i] = found!.id;
-  });
-
-  // NEW: normalize KO configs -> persist from_stage_id AND advancers_total (for League→KO)
-  const koConfigUpdatesEdit: { id: number; config: any }[] = [];
-  for (let i = 0; i < payload.stages.length; i++) {
-    const st = payload.stages[i];
-    if (st.kind !== 'knockout') continue;
-
-    const cfg = { ...(st.config ?? {}) } as any;
-    const fromIdx = Number(cfg.from_stage_idx ?? cfg.fromStageIdx);
-    const hasFromIdx = Number.isFinite(fromIdx);
-
-    if (hasFromIdx) {
-      const fromId = stageIdByIndex[fromIdx];
-      if (fromId) {
-        cfg.from_stage_id = fromId;
-        cfg.from_stage_idx = fromIdx; // keep idx for client too
-      }
-
-      const srcKind = payload.stages[fromIdx]?.kind;
-      if (srcKind === 'league') {
-        if (cfg.advancers_total == null && cfg.advancers_per_group != null) {
-          cfg.advancers_total = Number(cfg.advancers_per_group);
-        }
-        if (cfg.advancers_total == null) cfg.advancers_total = 4;
-      }
-    }
-
-    koConfigUpdatesEdit.push({ id: stageIdByIndex[i], config: cfg });
-  }
-
-  if (koConfigUpdatesEdit.length) {
-    // UPDATE, not upsert: these rows already exist, and an upsert would attempt
-    // an INSERT with only { id, config }, violating tournament_id NOT NULL.
-    for (const u of koConfigUpdatesEdit) {
-      await supabaseAdmin
-        .from('tournament_stages')
-        .update({ config: u.config })
-        .eq('id', u.id)
-        .throwOnError();
-    }
-  }
-
-  type GroupRecord = { id: number; stage_id: number; name: string };
-  const allGroups: GroupRecord[] = [];
-
-  for (let i = 0; i < payload.stages.length; i++) {
-    const s = payload.stages[i];
-    if (s.kind !== 'groups') continue;
-    const stage_id = stageIdByIndex[i];
-    const names = (s.groups ?? []).map(g => g.name);
-
-    if (names.length) {
-      const { data: gRows, error: gErr } = await supabaseAdmin
-        .from('tournament_groups')
-        .insert(names.map((name, idx) => ({ stage_id, name, ordering: idx })))
-        .select('id, stage_id, name');
-
-      if (gErr) return { ok: false, error: gErr.message };
-      allGroups.push(...(gRows ?? []));
-    }
-  }
-
-  const groupIdByStageIdxAndOrder = (stageIdx: number, groupIdx: number | null | undefined): number | null => {
-    if (groupIdx == null) return null;
-    const stage = payload.stages[stageIdx];
-    const wantedName = stage.groups?.[groupIdx]?.name;
-    if (!wantedName) return null;
-    const stage_id = stageIdByIndex[stageIdx];
-    const rec = allGroups.find(g => g.stage_id === stage_id && g.name === wantedName);
-    return rec?.id ?? null;
-  };
-
-  // NEW: persist intake_mappings for every groups stage that uses KO→Groups intake
-  for (let i = 0; i < payload.stages.length; i++) {
-    if (payload.stages[i].kind === 'groups') {
-      await upsertIntakeMappingsForGroupsStage({ payload, stageIdx: i, stageIdByIndex });
-    }
-  }
-
-  // Participation
-  type ParticipationRow = {
-    tournament_id: number;
-    team_id: number;
-    stage_id: number | null;
-    group_id: number | null;
-    seed: number | null;
-  };
-
-  const participation: ParticipationRow[] = [];
-  const seenTeam = new Set<string>();
-
-  for (const t of teams) {
-    const key = `${tournamentId}:${t.id}`;
-    if (seenTeam.has(key)) continue;
-    seenTeam.add(key);
-
-    let inserted = false;
-    for (let sIdx = 0; sIdx < payload.stages.length; sIdx++) {
-      const s = payload.stages[sIdx];
-      const gIdx = t.groupsByStage?.[String(sIdx)];
-      if (s.kind === 'groups' && gIdx != null && gIdx >= 0) {
-        participation.push({
-          tournament_id: tournamentId,
-          team_id: t.id,
-          stage_id: stageIdByIndex[sIdx],
-          group_id: groupIdByStageIdxAndOrder(sIdx, gIdx),
-          seed: (t.seed ?? null) as number | null,
-        });
-        inserted = true;
-        // no break: a team can belong to different groups in multiple group stages
-      }
-    }
-
-    if (!inserted) {
-      participation.push({
-        tournament_id: tournamentId,
-        team_id: t.id,
-        stage_id: null,
-        group_id: null,
-        seed: (t.seed ?? null) as number | null,
-      });
-    }
-  }
-
-  if (participation.length) {
-    const { error: pErr } = await supabaseAdmin
-      .from('tournament_teams')
-      .upsert(participation, { onConflict: 'tournament_id,team_id,stage_id' });
-
-    if (pErr) return { ok: false, error: pErr.message };
-  }
-
-  // Matches — insert, then link sources (IDs + stable pointers) with live fields
-  if (draftMatches.length) {
-    const matchRows = draftMatches.map((m) => ({
-      tournament_id: tournamentId,
-      stage_id: stageIdByIndex[m.stageIdx],
-      group_id: groupIdByStageIdxAndOrder(m.stageIdx, m.groupIdx ?? null),
-      team_a_id: m.team_a_id ?? null,
-      team_b_id: m.team_b_id ?? null,
-      matchday: m.matchday ?? null,
-      round: m.round ?? null,
-      bracket_pos: m.bracket_pos ?? null,
-
-      // two-legged KO (tie_leg1_match_id linked in the second pass)
-      leg: m.leg ?? null,
-      tie_leg1_match_id: null,
-      penalty_a: null,
-      penalty_b: null,
-
-      // live fields
-      status: m.status ?? 'scheduled',
-      team_a_score: m.team_a_score ?? null,
-      team_b_score: m.team_b_score ?? null,
-      winner_team_id: m.winner_team_id ?? null,
-
-      match_date: m.match_date ? new Date(m.match_date).toISOString() : null,
-
-      home_source_match_id: null,
-      home_source_outcome: m.home_source_outcome ?? null,
-      away_source_match_id: null,
-      away_source_outcome: m.away_source_outcome ?? null,
-
-      // stable pointers
-      home_source_round: m.home_source_round ?? null,
-      home_source_bracket_pos: m.home_source_bracket_pos ?? null,
-      away_source_round: m.away_source_round ?? null,
-      away_source_bracket_pos: m.away_source_bracket_pos ?? null,
-    }));
-
-    const { data: inserted, error: mErr } = await supabaseAdmin
-      .from('matches')
-      .insert(matchRows)
-      .select('id');
-
-    if (mErr) return { ok: false, error: mErr.message };
-    const idByIdx = (inserted ?? []).map((r) => r.id as number);
-
-    const linkUpdates = draftMatches
-      .map((m, i) => {
-        const upd: any = { id: idByIdx[i] };
-
-        if (m.home_source_match_idx != null) {
-          const sid = idByIdx[m.home_source_match_idx];
-          if (Number.isFinite(sid)) {
-            upd.home_source_match_id = sid;
-            upd.home_source_outcome = m.home_source_outcome ?? 'W';
-          }
-          const src = draftMatches[m.home_source_match_idx];
-          if (src) {
-            upd.home_source_round = src.round ?? null;
-            upd.home_source_bracket_pos = src.bracket_pos ?? null;
-          }
-        }
-        if (m.away_source_match_idx != null) {
-          const sid = idByIdx[m.away_source_match_idx];
-          if (Number.isFinite(sid)) {
-            upd.away_source_match_id = sid;
-            upd.away_source_outcome = m.away_source_outcome ?? 'W';
-          }
-          const src = draftMatches[m.away_source_match_idx];
-          if (src) {
-            upd.away_source_round = src.round ?? null;
-            upd.away_source_bracket_pos = src.bracket_pos ?? null;
-          }
-        }
-
-        // keep any explicit stable pointers provided
-        upd.home_source_round ??= m.home_source_round ?? null;
-        upd.home_source_bracket_pos ??= m.home_source_bracket_pos ?? null;
-        upd.away_source_round ??= m.away_source_round ?? null;
-        upd.away_source_bracket_pos ??= m.away_source_bracket_pos ?? null;
-
-        // two-legged KO: link leg 2 → leg 1
-        if (m.tie_leg1_match_idx != null) {
-          const lid = idByIdx[m.tie_leg1_match_idx];
-          if (Number.isFinite(lid)) upd.tie_leg1_match_id = lid;
-        }
-
-        const hasAny =
-          upd.home_source_match_id != null ||
-          upd.away_source_match_id != null ||
-          upd.home_source_round != null ||
-          upd.home_source_bracket_pos != null ||
-          upd.away_source_round != null ||
-          upd.away_source_bracket_pos != null ||
-          upd.tie_leg1_match_id != null;
-
-        return hasAny ? upd : null;
-      })
-      .filter(Boolean) as Array<{
-        id: number;
-        home_source_match_id?: number | null;
-        home_source_outcome?: 'W' | 'L' | null;
-        away_source_match_id?: number | null;
-        away_source_outcome?: 'W' | 'L' | null,
-        home_source_round?: number | null;
-        home_source_bracket_pos?: number | null;
-        away_source_round?: number | null;
-        away_source_bracket_pos?: number | null;
-        tie_leg1_match_id?: number | null;
-      }>;
-
-    if (linkUpdates.length) {
-      const { error } = await supabaseAdmin
-        .from('matches')
-        .upsert(linkUpdates, { onConflict: 'id' });
-      if (error) return { ok: false, error: error.message };
-    }
-  }
-
-  // NEW: Auto-seed KO stages from their source stages (league/groups)
-  const progression = await import('@/app/dashboard/tournaments/TournamentCURD/progression');
-  for (let i = 0; i < payload.stages.length; i++) {
-    const stage = payload.stages[i];
-    if (stage.kind === 'knockout') {
-      const cfg = (stage.config ?? {}) as any;
-      const fromIdx = Number(cfg.from_stage_idx);
-      if (Number.isFinite(fromIdx) && fromIdx < i) {
-        const srcStage = payload.stages[fromIdx];
-        const srcStageId = stageIdByIndex[fromIdx];
-        if (srcStageId) {
-          try {
-            if (srcStage.kind === 'groups') {
-              await progression.seedNextKnockoutFromGroupsIfConfigured(srcStageId, { reseed: true, allowEarly: true });
-            } else if (srcStage.kind === 'league') {
-              await progression.seedNextKnockoutFromLeagueIfConfigured(srcStageId, { reseed: true, allowEarly: true });
-            }
-          } catch (err) {
-            console.error(`Failed to auto-seed KO stage ${i}:`, err);
-            // Don't block tournament update on seeding failure
-          }
-        }
-      }
-    }
-  }
-
-  // Winner/season/teams may have changed → rewrite the stored Γενική Κατάταξη.
-  await refreshActiveSeasonStandings('updateTournamentAction');
-  revalidateTournamentSurfaces(tournamentId);
-  revalidateStandingsSurfaces();
-  revalidatePath('/');
-  redirect(`/tournaments/${payload.tournament.slug ?? existing.slug ?? ''}`);
-}
-
-/* =========================
-   DELETE (hard delete in FK order)
-   ========================= */
-
-export async function deleteTournamentAction(tournamentId: number) {
-  try {
-    await requireAdmin();
-  } catch (e: any) {
-    return { ok: false, error: e.message || 'Forbidden' };
-  }
-
-  const delMatches = await supabaseAdmin.from('matches').delete().eq('tournament_id', tournamentId);
-  if (delMatches.error) return { ok: false, error: delMatches.error.message };
-
-  const delParts = await supabaseAdmin.from('tournament_teams').delete().eq('tournament_id', tournamentId);
-  if (delParts.error) return { ok: false, error: delParts.error.message };
-
-  const { data: stageIds } = await supabaseAdmin
-    .from('tournament_stages')
-    .select('id')
-    .eq('tournament_id', tournamentId);
-
-  if (stageIds?.length) {
-    const ids = stageIds.map(s => s.id);
-    const delGroups = await supabaseAdmin.from('tournament_groups').delete().in('stage_id', ids);
-    if (delGroups.error) return { ok: false, error: delGroups.error.message };
-    // NEW: remove intake_mappings for these stages as well
-    const delMaps = await supabaseAdmin.from('intake_mappings').delete().in('target_stage_id', ids as any);
-    if (delMaps.error) return { ok: false, error: delMaps.error.message };
-  }
-
-  const delStages = await supabaseAdmin.from('tournament_stages').delete().eq('tournament_id', tournamentId);
-  if (delStages.error) return { ok: false, error: delStages.error.message };
-
-  const delTournament = await supabaseAdmin.from('tournaments').delete().eq('id', tournamentId);
-  if (delTournament.error) return { ok: false, error: delTournament.error.message };
-
-  // Every point the tournament awarded is gone → rewrite the stored standings.
-  await refreshActiveSeasonStandings('deleteTournamentAction');
-  revalidateTournamentSurfaces(tournamentId);
-  revalidateStandingsSurfaces();
-  revalidatePath('/');
-  revalidatePath('/matches');
-  return { ok: true };
-}

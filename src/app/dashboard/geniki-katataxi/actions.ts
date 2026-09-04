@@ -15,6 +15,7 @@ import {
 } from "@/app/geniki-katataxi/rules";
 import { GENIKI_KATATAXI_CACHE_TAG } from "@/app/geniki-katataxi/points";
 import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
+import { getActiveSeason } from "@/app/lib/seasons";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -28,13 +29,19 @@ async function requireAdminUser() {
   return user;
 }
 
-async function revalidate() {
-  // An adjustment changes points → rewrite the stored rows of the active
-  // season (an archived season's rows change only via re-snapshot), then
-  // regenerate the static public page and drop the cached unscoped compute.
-  await refreshActiveSeasonStandings("dashboard/geniki-katataxi");
+async function revalidate(seasonLabel: string | null) {
+  // An adjustment changes points → rewrite the stored rows of the ACTIVE
+  // season when that is the season touched. An archived season's rows change
+  // only via re-snapshot (/dashboard/seasons/[label]), so its adjustments are
+  // stored without rebuilding anything. Then regenerate the static public
+  // page and drop the cached unscoped compute.
+  const active = await getActiveSeason();
+  if (active && seasonLabel === active.label) {
+    await refreshActiveSeasonStandings("dashboard/geniki-katataxi");
+  }
   revalidatePath("/geniki-katataxi");
   revalidatePath("/dashboard/geniki-katataxi");
+  if (seasonLabel) revalidatePath(`/dashboard/seasons/${encodeURIComponent(seasonLabel)}`);
   revalidateTag(GENIKI_KATATAXI_CACHE_TAG, "max");
 }
 
@@ -69,7 +76,7 @@ export async function addAdjustment(input: {
     });
     if (error) return { success: false, error: error.message };
 
-    await revalidate();
+    await revalidate(season);
     return { success: true };
   } catch (err) {
     console.error("[addAdjustment] error:", err);
@@ -82,13 +89,22 @@ export async function deleteAdjustment(id: number): Promise<ActionResult> {
     const user = await requireAdminUser();
     if (!user) return { success: false, error: "Unauthorized" };
 
+    // Read the season first: the refresh decision needs it after the row is gone.
+    const { data: row, error: readErr } = await supabaseAdmin
+      .from("season_team_adjustments")
+      .select("season")
+      .eq("id", id)
+      .maybeSingle();
+    if (readErr) return { success: false, error: readErr.message };
+    if (!row) return { success: false, error: "Η προσαρμογή δεν βρέθηκε." };
+
     const { error } = await supabaseAdmin
       .from("season_team_adjustments")
       .delete()
       .eq("id", id);
     if (error) return { success: false, error: error.message };
 
-    await revalidate();
+    await revalidate((row.season as string | null) ?? null);
     return { success: true };
   } catch (err) {
     console.error("[deleteAdjustment] error:", err);
@@ -148,7 +164,7 @@ export async function cancelEvent(input: {
     });
     if (error) return { success: false, error: error.message };
 
-    await revalidate();
+    await revalidate(season);
     return { success: true };
   } catch (err) {
     console.error("[cancelEvent] error:", err);
