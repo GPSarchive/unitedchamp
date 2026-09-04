@@ -17,6 +17,7 @@ import {
   formatSeason,
 } from "@/app/geniki-katataxi/rules";
 import { computeGeneralStandingsCached } from "@/app/geniki-katataxi/points";
+import { getSeasonStandings } from "@/app/lib/refreshStandings";
 
 export interface RecapPodiumTeam {
   teamId: number;
@@ -100,6 +101,8 @@ export interface SeasonRecapData {
     mostTeamWins: { teamName: string; teamLogo: string | null; wins: number } | null;
     mostAppearances: { playerName: string; matches: number } | null;
   };
+  /** Finished matches per calendar month ("YYYY-MM"), chronological — archive sparkline. */
+  months: { month: string; matches: number }[];
 }
 
 /**
@@ -151,10 +154,15 @@ function startYearOfLabel(label: string): number | null {
   return m ? +m[1] : null;
 }
 
-async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
-  // ── Which season? Current by the Sept-30 cutoff; if the DB has no
-  // tournaments for it yet (e.g. right after the cutoff), fall back to the
-  // newest season present in the data.
+/**
+ * @param forLabel  When given, build the recap of exactly that season label
+ *                  (used to snapshot a season into season_recaps at close /
+ *                  re-snapshot); null if the label has no tournaments.
+ *                  When omitted: the current season by the Sept-30 cutoff,
+ *                  falling back to the newest season present in the data
+ *                  (the home-page modal's behaviour).
+ */
+async function computeSeasonRecap(forLabel?: string | null): Promise<SeasonRecapData | null> {
   const todayIso = new Date().toISOString().slice(0, 10);
   const currentLabel = seasonLabelFromDate(todayIso);
 
@@ -165,10 +173,15 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
   if (tErr || !allTours?.length) return null;
 
   const seasonsPresent = [...new Set(allTours.map((t) => t.season).filter(Boolean))] as string[];
-  let seasonLabel = currentLabel && seasonsPresent.includes(currentLabel) ? currentLabel : null;
-  if (!seasonLabel) {
-    seasonLabel =
-      seasonsPresent.sort((a, b) => (startYearOfLabel(b) ?? 0) - (startYearOfLabel(a) ?? 0))[0] ?? null;
+  let seasonLabel: string | null;
+  if (forLabel != null) {
+    seasonLabel = seasonsPresent.includes(forLabel) ? forLabel : null;
+  } else {
+    seasonLabel = currentLabel && seasonsPresent.includes(currentLabel) ? currentLabel : null;
+    if (!seasonLabel) {
+      seasonLabel =
+        seasonsPresent.sort((a, b) => (startYearOfLabel(b) ?? 0) - (startYearOfLabel(a) ?? 0))[0] ?? null;
+    }
   }
   if (!seasonLabel) return null;
 
@@ -240,18 +253,25 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
   const totalAssists = players.reduce((s, p) => s + p.assists, 0);
   const totalMvps = players.reduce((s, p) => s + p.mvp, 0);
 
-  // ── Γενική Κατάταξη podium (top 3 of this season).
+  // ── Γενική Κατάταξη podium (top 3 of this season): the STORED rows
+  // (season_team_standings, written before the recap in every snapshot), with
+  // the cached engine as fallback for a season that has no rows yet.
   let podiumLines: { teamId: number; points: number; titles: number; wins: number }[] = [];
   try {
-    const standings = await computeGeneralStandingsCached();
-    const lines =
-      standings.bySeason.get(seasonDisplay) ??
-      (standings.seasons.length ? standings.bySeason.get(standings.seasons[0]) : undefined) ??
-      [];
-    podiumLines = lines
-      .slice(0, 3)
-      .map((l) => ({ teamId: l.teamId, points: l.points, titles: l.titles, wins: l.wins }));
-  } catch {
+    const stored = await getSeasonStandings(seasonLabel);
+    if (stored.length > 0) {
+      podiumLines = stored
+        .slice(0, 3)
+        .map((r) => ({ teamId: r.team_id, points: r.points, titles: r.titles, wins: r.wins }));
+    } else {
+      const standings = await computeGeneralStandingsCached();
+      const lines = standings.bySeason.get(seasonLabel) ?? [];
+      podiumLines = lines
+        .slice(0, 3)
+        .map((l) => ({ teamId: l.teamId, points: l.points, titles: l.titles, wins: l.wins }));
+    }
+  } catch (e) {
+    console.error("[seasonRecap] podium lookup failed:", e);
     podiumLines = [];
   }
 
@@ -505,7 +525,23 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
         ? { playerName: mostAppsPlayer.name, matches: mostAppsPlayer.matches }
         : null,
     },
+    months: (() => {
+      const byMonth = new Map<string, number>();
+      for (const m of finished) {
+        if (!m.match_date) continue;
+        const key = m.match_date.slice(0, 7);
+        byMonth.set(key, (byMonth.get(key) ?? 0) + 1);
+      }
+      return [...byMonth.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([month, matches]) => ({ month, matches }));
+    })(),
   };
+}
+
+/** Recap of exactly one season label (no cache) — for season_recaps snapshots. */
+export async function computeSeasonRecapFor(seasonLabel: string): Promise<SeasonRecapData | null> {
+  return computeSeasonRecap(seasonLabel);
 }
 
 export const SEASON_RECAP_CACHE_TAG = "season-recap";
@@ -521,7 +557,7 @@ const loadSeasonRecapCached = unstable_cache(
   },
   // Version the key when the payload shape changes so a deploy never serves
   // a stale-shaped entry from the incremental cache.
-  ["season-recap-v3"],
+  ["season-recap-v4"],
   { revalidate: 3600, tags: [SEASON_RECAP_CACHE_TAG] }
 );
 

@@ -144,6 +144,9 @@ Then `node scripts/audit-rls.mjs` (extended with the new tables) → anon reads 
 
 ---
 
+## 3.6 Phase 3 (admin) — written 2026-09-04
+`/dashboard/seasons` (list + action sheet), `/dashboard/seasons/[label]` (stored vs live standings with a drift banner, tournaments → editor links, teams, adjustments panel with the season fixed), server actions `preflightCloseSeason` / `closeSeason` / `resnapshotSeason` / `refreshActiveSeason` / `setActiveSeason` (admin-only). `lib/seasonSnapshot.ts` = stats → standings → recap (`season_recaps` written by `lib/refreshSeasonRecap.ts` from `computeSeasonRecapFor(label)`); CLI `scripts/snapshot-season.ts --season=`. Wizard: season is a dropdown from `GET /api/seasons` defaulting to the active season; the server validates the label exists (`resolveSeasonLabel`), `deriveSeason` deleted. `season_recaps('2025-2026')` written 2026-09-04.
+
 ## 4. What "closing a season" does to the data
 
 1. Final refresh of `player_season_stats` and `season_team_standings` for the closing season.

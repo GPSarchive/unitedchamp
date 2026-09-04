@@ -49,12 +49,41 @@ export default function TournamentBasicsForm({
     return list.sort((a, b) => a.name.localeCompare(b.name, "el"));
   }, [tournamentTeams, teamsById, value.winner_team_id]);
 
-  // Season is auto-derived from the tournament's date (Sept 30 cutoff): prefer
-  // start_date, else the earliest dated match. This mirrors the server's
-  // deriveSeason() so the admin sees exactly what will be saved. When no date
-  // exists anywhere the field falls back to a manual entry.
+  // Season is ASSIGNED, not date-derived (plans/seasonal-data-contract.md):
+  // a dropdown of the seasons table, defaulting to the active season for a new
+  // tournament. The Sept-30 date rule survives only as the hint under the field.
+  type SeasonOption = { label: string; display_label: string; status: "active" | "archived" };
+  const [seasonOptions, setSeasonOptions] = useState<SeasonOption[] | null>(null);
+  const [activeSeason, setActiveSeason] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/seasons", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((b: { active: string | null; seasons: SeasonOption[] }) => {
+        if (cancelled) return;
+        setSeasonOptions(b.seasons ?? []);
+        setActiveSeason(b.active ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSeasonOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A new tournament defaults to the active season once the list is known.
+  useEffect(() => {
+    if (!value.season && activeSeason) {
+      onChange({ ...value, season: activeSeason });
+      updateTournament({ season: activeSeason } as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSeason]);
+
+  // Informational only: where the dates would put it under the Sept-30 rule.
   const draftMatches = useTournamentStore((s) => s.draftMatches);
-  const derivedSeason = useMemo(() => {
+  const suggestedSeason = useMemo(() => {
     const fromStart = seasonLabelFromDate(value.start_date ?? null);
     if (fromStart) return fromStart;
     const earliest = draftMatches.reduce<string | null>((min, m) => {
@@ -64,16 +93,6 @@ export default function TournamentBasicsForm({
     }, null);
     return seasonLabelFromDate(earliest);
   }, [value.start_date, draftMatches]);
-
-  // Keep the payload's season in sync with the derived value so the review
-  // step and any manual save reflect it before the server recomputes.
-  useEffect(() => {
-    if (derivedSeason && derivedSeason !== value.season) {
-      onChange({ ...value, season: derivedSeason });
-      updateTournament({ season: derivedSeason } as any);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [derivedSeason]);
 
   const editedSlug = useRef(false);
   const [uploading, setUploading] = useState(false);
@@ -314,18 +333,26 @@ export default function TournamentBasicsForm({
           }}
         />
         <div className="w-full">
-          <input
-            className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full disabled:opacity-70 disabled:cursor-not-allowed"
-            placeholder="Season (auto από ημερομηνία, π.χ. 2025-2026)"
+          <select
+            className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60 transition-colors w-full"
             value={value.season ?? ""}
-            readOnly={!!derivedSeason}
-            disabled={!!derivedSeason}
             onChange={(e) => onChange({ ...value, season: e.target.value || null })}
-          />
+            aria-label="Σεζόν"
+          >
+            <option value="">{seasonOptions === null ? "Φόρτωση σεζόν…" : "— Σεζόν —"}</option>
+            {value.season && !(seasonOptions ?? []).some((s) => s.label === value.season) && (
+              <option value={value.season}>{value.season}</option>
+            )}
+            {(seasonOptions ?? []).map((s) => (
+              <option key={s.label} value={s.label}>
+                {s.display_label} ({s.label}){s.status === "active" ? " · ενεργή" : ""}
+              </option>
+            ))}
+          </select>
           <p className="mt-1 text-[11px] text-zinc-400">
-            {derivedSeason
-              ? `Αυτόματα από την ημερομηνία (όριο 30 Σεπ) → ${derivedSeason}`
-              : "Χωρίς ημερομηνία αγώνα ακόμη — όρισε τη σεζόν χειροκίνητα ή πρόσθεσε ημερομηνίες."}
+            {suggestedSeason && suggestedSeason !== value.season
+              ? `Με βάση την ημερομηνία (όριο 30 Σεπ) θα ανήκε στη ${suggestedSeason}.`
+              : "Η σεζόν ορίζεται από τη λίστα (/dashboard/seasons)· τα νέα τουρνουά μπαίνουν στην ενεργή."}
           </p>
         </div>
         <select

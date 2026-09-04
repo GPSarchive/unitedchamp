@@ -55,6 +55,24 @@ export function revalidateStandingsSurfaces() {
   revalidateTag(SEASON_RECAP_TAG, "max");
 }
 
+/** unstable_cache tag for the season list / active pointer. Must match
+ *  SEASONS_CACHE_TAG in lib/seasons.ts. */
+const SEASONS_TAG = "seasons";
+
+/**
+ * Everything that depends on WHICH season is active or on a season's stored
+ * snapshot: called after closing / re-snapshotting / re-activating a season.
+ * Pass the label(s) touched so their archive pages regenerate too.
+ */
+export function revalidateSeasonSurfaces(...labels: string[]) {
+  revalidateTag(SEASONS_TAG, "max");
+  revalidateStandingsSurfaces();
+  for (const p of ["/", "/paiktes", "/OMADES", "/matches", "/tournaments", "/seasons"]) {
+    revalidatePath(p);
+  }
+  for (const label of labels) revalidatePath(`/seasons/${label}`);
+}
+
 /** The tournament detail routes (all three variants render the same loader). */
 export function revalidateTournamentSurfaces(tournamentId: number | string) {
   revalidatePath("/tournaments");

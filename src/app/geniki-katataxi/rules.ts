@@ -93,6 +93,24 @@ export interface TeamSeasonLine {
   points: number;
 }
 
+/** Start year of a "YYYY-YYYY" storage label (e.g. "2025-2026" → 2025), or null. */
+export function startYearOfSeasonLabel(label: string | null | undefined): number | null {
+  const m = /^(\d{4})-(\d{4})$/.exec((label ?? "").trim());
+  return m ? +m[1] : null;
+}
+
+/** The label that follows a "YYYY-YYYY" label ("2025-2026" → "2026-2027"), or null. */
+export function nextSeasonLabel(label: string | null | undefined): string | null {
+  const y = startYearOfSeasonLabel(label);
+  return y == null ? null : `${y + 1}-${y + 2}`;
+}
+
+/** Display form of a storage label ("2025-2026" → "2025/26"); falls back to the label itself. */
+export function displayLabelForSeason(label: string): string {
+  const y = startYearOfSeasonLabel(label);
+  return y == null ? label : formatSeason(y);
+}
+
 /** Every rule an admin can grant manually, with its default points (null = free amount). */
 export const ADJUSTMENT_PRESETS = {
   international: { label: "Διεθνής διάκριση", points: POINTS.international },

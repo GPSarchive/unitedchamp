@@ -9,7 +9,7 @@ import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin'; // service role for writes (bypass RLS)
-import { seasonLabelFromDate } from '@/app/geniki-katataxi/rules'; // date → "YYYY-YYYY" season
+import { getActiveSeason, getSeasonByLabel } from '@/app/lib/seasons';
 
 /* =========================================================
    Local server-only types (avoid importing from Client code)
@@ -104,24 +104,22 @@ const PayloadSchema = z.object({
 });
 
 /**
- * The season label ("YYYY-YYYY") a tournament belongs to, derived from its
- * date via the Sept 30 cutoff. Prefers the tournament's start_date, then the
- * earliest dated draft match (matches are the real dated records; start_date
- * is often left blank). Returns null when no date is available anywhere — in
- * that case we keep whatever the form supplied rather than blanking it.
+ * The season a tournament is ASSIGNED to (plans/seasonal-data-contract.md):
+ * the label the form submitted, which must exist in public.seasons (FK), or
+ * the active season when none was chosen. Dates never decide the season.
  */
-function deriveSeason(
-  tournament: { season?: string | null; start_date?: string | null },
-  draftMatches: DraftMatchServer[]
-): string | null {
-  const fromStart = seasonLabelFromDate(tournament.start_date ?? null);
-  if (fromStart) return fromStart;
-  const earliest = draftMatches.reduce<string | null>((min, m) => {
-    const d = m.match_date ?? null;
-    if (!d) return min;
-    return min == null || d < min ? d : min;
-  }, null);
-  return seasonLabelFromDate(earliest) ?? tournament.season ?? null;
+async function resolveSeasonLabel(
+  requested: string | null | undefined
+): Promise<{ label: string } | { error: string }> {
+  const label = (requested ?? '').trim();
+  if (label) {
+    const row = await getSeasonByLabel(label);
+    if (!row) return { error: `Άγνωστη σεζόν «${label}» — δημιούργησέ την πρώτα στο /dashboard/seasons.` };
+    return { label };
+  }
+  const active = await getActiveSeason();
+  if (!active) return { error: 'Δεν υπάρχει ενεργή σεζόν — όρισε μία στο /dashboard/seasons.' };
+  return { label: active.label };
 }
 
 const TeamDraftSchema = z.object({
@@ -269,13 +267,15 @@ export async function createTournamentAction(formData: FormData) {
   }
 
   // 1) Tournament
+  const seasonRes = await resolveSeasonLabel(payload.tournament.season);
+  if ('error' in seasonRes) return { ok: false, error: seasonRes.error };
   const { data: tRow, error: tErr } = await supabaseAdmin
     .from('tournaments')
     .insert({
       name: payload.tournament.name,
       slug: payload.tournament.slug,
       logo: payload.tournament.logo || null,
-      season: deriveSeason(payload.tournament, draftMatches),
+      season: seasonRes.label,
       status: payload.tournament.status ?? 'scheduled',
       format: payload.tournament.format ?? 'mixed',
       start_date: (payload as any).tournament?.start_date ?? null,
@@ -884,13 +884,15 @@ export async function updateTournamentAction(formData: FormData) {
   // Ensure exists
   const { data: existing, error: exErr } = await supabaseAdmin
     .from('tournaments')
-    .select('id,slug')
+    .select('id,slug,season')
     .eq('id', tournamentId)
     .single();
 
   if (exErr || !existing) return { ok: false, error: exErr?.message || 'Tournament not found' };
 
   // Update base
+  const seasonRes = await resolveSeasonLabel(payload.tournament.season ?? existing.season);
+  if ('error' in seasonRes) return { ok: false, error: seasonRes.error };
   {
     const { error } = await supabaseAdmin
       .from('tournaments')
@@ -898,7 +900,7 @@ export async function updateTournamentAction(formData: FormData) {
         name: payload.tournament.name,
         slug: payload.tournament.slug,
         logo: payload.tournament.logo || null,
-        season: deriveSeason(payload.tournament, draftMatches),
+        season: seasonRes.label,
         status: payload.tournament.status ?? 'scheduled',
         format: payload.tournament.format ?? 'mixed',
         start_date: (payload as any).tournament?.start_date ?? null,
