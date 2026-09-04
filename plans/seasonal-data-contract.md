@@ -1,6 +1,6 @@
 # Seasonal system — DATA CHANGES CONTRACT (for approval)
 
-Status: **APPROVED 2026-09-04 (D1=A, D2=yes, D3=retire, D4=`'2025-2026'`, D5=stamp all 62 teams). Phase 0 migrations are written from this file on branch `feat/seasonal-system`; nothing has been run in Supabase yet.**
+Status: **APPROVED 2026-09-04 (D1=A, D2=yes, D3=retire, D4=`'2025-2026'`, D5=stamp all 62 teams). Phase 0 APPLIED IN PROD 2026-09-04: add-seasons.sql, add-season-aggregates.sql and seasonal-phase0-merge.sql ran in the Supabase SQL editor; all 7 verify checks true; `scripts/audit-rls.mjs` clean (pre-flight grid in `migrations/records/`).**
 Pre-flight against prod ran read-only on 2026-09-04 — results are inlined in §3.0 so they are on record.
 Companion: [seasonal-system-plan-v3.md](seasonal-system-plan-v3.md) (code/phases). This file is only about
 **what happens to the data**. Once approved, migrations are written from this file and nothing else.
