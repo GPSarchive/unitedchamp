@@ -609,6 +609,8 @@ export async function listTournamentsAction(opts?: {
   search?: string;
   page?: number;
   pageSize?: number;
+  /** Season label, or "all". Defaults to the ACTIVE season (admin is current-season only). */
+  season?: string;
 }) {
   try {
     await requireAdmin();
@@ -630,6 +632,12 @@ export async function listTournamentsAction(opts?: {
   if (opts?.search?.trim()) {
     const s = opts.search.trim();
     q = q.or(`name.ilike.%${s}%,slug.ilike.%${s}%`);
+  }
+
+  const seasonOpt = (opts?.season ?? '').trim();
+  if (seasonOpt.toLowerCase() !== 'all') {
+    const label = seasonOpt || (await getActiveSeason())?.label || '__no-active-season__';
+    q = q.eq('season', label);
   }
 
   const { data, error, count } = await q;

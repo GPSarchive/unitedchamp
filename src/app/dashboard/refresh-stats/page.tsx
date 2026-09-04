@@ -13,6 +13,10 @@ export default async function RefreshStatsPage() {
     .from("player_tournament_stats")
     .select("*", { count: "exact", head: true });
 
+  const { count: seasonCount } = await supabaseAdmin
+    .from("player_season_stats")
+    .select("*", { count: "exact", head: true });
+
   // Source table count — the backfill should process exactly this many rows
   const { count: mpsCount } = await supabaseAdmin
     .from("match_player_stats")
@@ -48,10 +52,11 @@ export default async function RefreshStatsPage() {
       <h1 className="text-2xl font-bold">Refresh Player Stats Cache</h1>
 
       <p className="text-gray-400">
-        This page lets you run a full backfill of the <code>player_career_stats</code> and{" "}
-        <code>player_tournament_stats</code> tables. These tables are normally updated
-        automatically when matches finish, but you can run this to populate them for the
-        first time or to fix any drift.
+        This page lets you run a full backfill of the <code>player_career_stats</code>,{" "}
+        <code>player_tournament_stats</code> and (active season) <code>player_season_stats</code>{" "}
+        tables. These tables are normally updated automatically when matches finish, but you
+        can run this to populate them for the first time or to fix any drift. Per-season
+        snapshots (standings + recap included) live in <code>/dashboard/seasons</code>.
       </p>
 
       <div className="flex flex-wrap gap-4 text-sm">
@@ -66,6 +71,10 @@ export default async function RefreshStatsPage() {
         <div className="p-3 bg-gray-800 rounded-lg">
           <span className="text-gray-400">Tournament stats rows:</span>{" "}
           <span className="font-mono font-bold">{tournamentCount ?? 0}</span>
+        </div>
+        <div className="p-3 bg-gray-800 rounded-lg">
+          <span className="text-gray-400">Season stats rows:</span>{" "}
+          <span className="font-mono font-bold">{seasonCount ?? 0}</span>
         </div>
       </div>
 

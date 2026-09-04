@@ -1,5 +1,6 @@
 //app/dashboard/tournaments/TournamentCURD/page.tsx
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import TournamentWizard from "./TournamentCURD/TournamentWizard";
 import { getTournamentForEditAction } from "./TournamentCURD/actions";
 
@@ -16,10 +17,13 @@ export default async function TournamentsPage({
   const tidParam = sp.tid ?? "";
   const selectedTid = tidParam ? Number(tidParam) : null;
 
-  // Λίστα διοργανώσεων για το dropdown
+  // Λίστα διοργανώσεων για το dropdown — μόνο η ενεργή σεζόν (contract Phase 5).
+  // Παλαιότερες: /dashboard/seasons/[label] → "Editor" ανά διοργάνωση.
+  const activeSeason = await getActiveSeasonCached();
   const { data: tournamentsList, error: tournamentsErr } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, slug, created_at")
+    .eq("season", activeSeason?.label ?? NO_SEASON)
     .order("created_at", { ascending: false });
 
   if (tournamentsErr) {
