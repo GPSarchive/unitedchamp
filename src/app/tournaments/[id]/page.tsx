@@ -11,7 +11,7 @@ export function generateStaticParams() {
 }
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import { getActiveSeasonCached } from "@/app/lib/seasonScope";
+import { getSeasonStatusCached } from "@/app/lib/seasonScope";
 import { loadTournamentIntoStore } from "@/app/tournaments/loadTournamentIntoStore";
 import { signSingleTournamentLogo } from "@/app/tournaments/signTournamentLogos";
 import TournamentClientV2Dark from "./v2-dark/TournamentClientV2Dark";
@@ -40,10 +40,10 @@ export default async function TournamentPage(
   }
 
   // An archived season's tournament lives under /seasons — old links follow.
-  // (redirect() throws, so it must stay outside the try/catch above.)
-  const activeSeason = await getActiveSeasonCached();
+  // Decided by the row's own season status, so it holds even while no season
+  // is active. (redirect() throws, so it must stay outside the try/catch.)
   const season = data.tournament.season;
-  if (season && activeSeason && season !== activeSeason.label) {
+  if (season && (await getSeasonStatusCached(season)) === "archived") {
     redirect(`/seasons/${encodeURIComponent(season)}/tournaments/${tournamentId}`);
   }
 

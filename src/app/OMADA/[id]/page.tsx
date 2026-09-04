@@ -9,7 +9,7 @@ export function generateStaticParams() {
 }
 
 import { redirect } from "next/navigation";
-import { getActiveSeasonCached } from "@/app/lib/seasonScope";
+import { getSeasonStatusCached } from "@/app/lib/seasonScope";
 import { loadTeamPageData } from "./loadTeamPage";
 import TeamClient from "./TeamClient";
 
@@ -30,7 +30,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     );
   }
 
-  const [res, activeSeason] = await Promise.all([loadTeamPageData(teamId), getActiveSeasonCached()]);
+  const res = await loadTeamPageData(teamId);
 
   if (!res.ok) {
     return (
@@ -40,10 +40,11 @@ export default async function TeamPage({ params }: TeamPageProps) {
     );
   }
 
-  // A team row belongs to one season. Archived seasons' teams live under
-  // /seasons — old links follow the redirect.
+  // A team row belongs to one season. An ARCHIVED season's team lives under
+  // /seasons — old links follow the redirect. Decided by the row's own season
+  // status, so it holds even while no season is active.
   const seasonLabel = res.data.team.season_label;
-  if (seasonLabel && activeSeason && seasonLabel !== activeSeason.label) {
+  if (seasonLabel && (await getSeasonStatusCached(seasonLabel)) === "archived") {
     redirect(`/seasons/${encodeURIComponent(seasonLabel)}/teams/${teamId}`);
   }
 

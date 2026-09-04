@@ -22,9 +22,6 @@ export interface SeasonRow {
   created_at: string;
 }
 
-/** Cache tag for anything that renders the season list / active pointer. */
-export const SEASONS_CACHE_TAG = "seasons";
-
 const SEASON_COLUMNS =
   "label, display_label, status, started_on, ended_on, archived_at, created_at";
 

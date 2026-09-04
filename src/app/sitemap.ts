@@ -19,9 +19,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/epikoinonia`, changeFrequency: 'monthly', priority: 0.4 },
   ]
 
-  const [tournaments, teams, matches, announcements, articles] = await Promise.all([
-    supabaseAdmin.from('tournaments').select('id, updated_at'),
-    supabaseAdmin.from('teams').select('id, created_at').is('deleted_at', null),
+  const [tournaments, teams, matches, announcements, articles, seasons] = await Promise.all([
+    supabaseAdmin.from('tournaments').select('id, season, updated_at'),
+    supabaseAdmin.from('teams').select('id, season_label, created_at').is('deleted_at', null),
     supabaseAdmin.from('matches').select('id, updated_at'),
     supabaseAdmin
       .from('announcements')
@@ -31,25 +31,46 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('articles')
       .select('slug, updated_at')
       .eq('status', 'published'),
+    supabaseAdmin.from('seasons').select('label, status, archived_at'),
   ])
 
   const dynamicRoutes: MetadataRoute.Sitemap = []
 
+  // Seasons: the archive hub and each season's pages. Archived seasons' rows
+  // are listed under their /seasons URLs (their live URLs only redirect there).
+  const archived = new Set<string>()
+  dynamicRoutes.push({ url: `${BASE}/seasons`, changeFrequency: 'monthly', priority: 0.6 })
+  for (const s of seasons.data ?? []) {
+    const label = encodeURIComponent(s.label as string)
+    const lastModified = s.archived_at ? new Date(s.archived_at) : undefined
+    if (s.status === 'archived') archived.add(s.label as string)
+    dynamicRoutes.push({ url: `${BASE}/seasons/${label}`, lastModified, changeFrequency: 'monthly', priority: 0.6 })
+    dynamicRoutes.push({ url: `${BASE}/seasons/${label}/katataxi`, lastModified, changeFrequency: 'monthly', priority: 0.5 })
+  }
+
   for (const t of tournaments.data ?? []) {
+    const season = t.season as string | null
+    const isArchived = !!season && archived.has(season)
     dynamicRoutes.push({
-      url: `${BASE}/tournaments/${t.id}`,
+      url: isArchived
+        ? `${BASE}/seasons/${encodeURIComponent(season!)}/tournaments/${t.id}`
+        : `${BASE}/tournaments/${t.id}`,
       lastModified: t.updated_at ? new Date(t.updated_at) : undefined,
-      changeFrequency: 'daily',
-      priority: 0.8,
+      changeFrequency: isArchived ? 'monthly' : 'daily',
+      priority: isArchived ? 0.5 : 0.8,
     })
   }
 
   for (const t of teams.data ?? []) {
+    const season = t.season_label as string | null
+    const isArchived = !!season && archived.has(season)
     dynamicRoutes.push({
-      url: `${BASE}/OMADA/${t.id}`,
+      url: isArchived
+        ? `${BASE}/seasons/${encodeURIComponent(season!)}/teams/${t.id}`
+        : `${BASE}/OMADA/${t.id}`,
       lastModified: t.created_at ? new Date(t.created_at) : undefined,
-      changeFrequency: 'weekly',
-      priority: 0.7,
+      changeFrequency: isArchived ? 'monthly' : 'weekly',
+      priority: isArchived ? 0.5 : 0.7,
     })
   }
 

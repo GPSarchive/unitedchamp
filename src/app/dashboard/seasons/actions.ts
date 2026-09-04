@@ -6,7 +6,8 @@
 // Data contract: plans/seasonal-data-contract.md §4. Closing a season is a
 // pointer flip on public.seasons after a final snapshot; no other row is
 // touched. An archived season's stored numbers change ONLY through
-// resnapshotSeason().
+// resnapshotSeason(). The flip itself runs in ONE database transaction
+// (migrations/add-season-flip-fn.sql) so readers never see zero active rows.
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
@@ -43,10 +44,30 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function revalidateAdmin(...labels: string[]) {
   revalidatePath("/dashboard/seasons");
-  for (const l of labels) revalidatePath(`/dashboard/seasons/${l}`);
+  for (const l of labels) revalidatePath(`/dashboard/seasons/${encodeURIComponent(l)}`);
   revalidatePath("/dashboard/geniki-katataxi");
   revalidatePath("/dashboard/tournaments");
   revalidatePath("/dashboard/teams");
+}
+
+/**
+ * The Vercel preview deployment shares the PRODUCTION database, so flipping
+ * the pointer there would close the real season. Refused unless explicitly
+ * allowed (ALLOW_SEASON_POINTER_ON_PREVIEW=1). Returns the refusal text.
+ */
+function pointerWriteRefusal(): string | null {
+  if (process.env.VERCEL_ENV === "preview" && process.env.ALLOW_SEASON_POINTER_ON_PREVIEW !== "1") {
+    return "Το κλείσιμο/άνοιγμα σεζόν επιτρέπεται μόνο από το production deployment — το preview μοιράζεται τη βάση της παραγωγής.";
+  }
+  return null;
+}
+
+/** A missing SQL function means the migration was not run — say so plainly. */
+function describeRpcError(err: { code?: string; message: string }, fn: string): string {
+  if (err.code === "42883" || err.code === "PGRST202") {
+    return `Λείπει η συνάρτηση ${fn} στη βάση — τρέξε migrations/add-season-flip-fn.sql στο Supabase SQL editor και ξαναδοκίμασε.`;
+  }
+  return err.message;
 }
 
 // ─── Preflight ─────────────────────────────────────────────────────────────
@@ -196,6 +217,8 @@ export async function closeSeason(input: {
   try {
     const user = await requireAdminUser();
     if (!user) return { success: false, error: "Unauthorized" };
+    const refusal = pointerWriteRefusal();
+    if (refusal) return { success: false, error: refusal };
 
     const currentLabel = (input.currentLabel ?? "").trim();
     const nextLabel = (input.nextLabel ?? "").trim();
@@ -223,42 +246,19 @@ export async function closeSeason(input: {
     // 1) Final snapshot of the closing season. Throws → nothing flipped.
     const snapshot = await snapshotSeason(currentLabel);
 
-    // 2) Make sure the next season row exists (archived until the flip).
-    if (!existingNext) {
-      const { error } = await supabaseAdmin.from("seasons").insert({
-        label: nextLabel,
-        display_label: nextDisplay,
-        status: "archived",
-        started_on: input.nextStartedOn || todayIso(),
-      });
-      if (error) return { success: false, error: `Δημιουργία νέας σεζόν: ${error.message}` };
-    }
-
-    // 3) Archive the current season.
-    const now = new Date().toISOString();
-    {
-      const { error } = await supabaseAdmin
-        .from("seasons")
-        .update({ status: "archived", archived_at: now, archived_by: user.id, ended_on: todayIso() })
-        .eq("label", currentLabel)
-        .eq("status", "active");
-      if (error) return { success: false, error: `Αρχειοθέτηση: ${error.message}` };
-    }
-
-    // 4) Activate the next one. On failure restore the previous pointer so the
-    //    site is never left without an active season.
-    {
-      const { error } = await supabaseAdmin
-        .from("seasons")
-        .update({ status: "active", archived_at: null, archived_by: null })
-        .eq("label", nextLabel);
-      if (error) {
-        await supabaseAdmin
-          .from("seasons")
-          .update({ status: "active", archived_at: null, archived_by: null, ended_on: null })
-          .eq("label", currentLabel);
-        return { success: false, error: `Ενεργοποίηση νέας σεζόν: ${error.message}` };
-      }
+    // 2) Flip the pointer in ONE transaction (migrations/add-season-flip-fn.sql):
+    //    the next row is created as needed, the current one archived with
+    //    ended_on, the next activated. Readers never observe zero active rows
+    //    and a concurrent close fails cleanly on the one-active index.
+    const { error: flipErr } = await supabaseAdmin.rpc("flip_active_season", {
+      p_current: currentLabel,
+      p_next: nextLabel,
+      p_next_display: nextDisplay,
+      p_next_started_on: input.nextStartedOn || todayIso(),
+      p_actor: user.id,
+    });
+    if (flipErr) {
+      return { success: false, error: `Αλλαγή ενεργής σεζόν: ${describeRpcError(flipErr, "flip_active_season")}` };
     }
 
     revalidateSeasonSurfaces(currentLabel, nextLabel);
@@ -311,41 +311,27 @@ export async function refreshActiveSeason(): Promise<Result<{ snapshot: SeasonSn
 /**
  * Make `label` the active season (archiving the current one). Recovery tool
  * for a half-done close and the way to "reopen" a season. No snapshot runs.
+ * One transaction (set_active_season in migrations/add-season-flip-fn.sql).
  */
 export async function setActiveSeason(label: string): Promise<Result<{ previous: string | null }>> {
   try {
     const user = await requireAdminUser();
     if (!user) return { success: false, error: "Unauthorized" };
+    const refusal = pointerWriteRefusal();
+    if (refusal) return { success: false, error: refusal };
     const target = await getSeasonByLabel(label);
     if (!target) return { success: false, error: "Άγνωστη σεζόν." };
-    const current = await getActiveSeason();
-    if (current?.label === label) return { success: true, previous: label };
 
-    const now = new Date().toISOString();
-    if (current) {
-      const { error } = await supabaseAdmin
-        .from("seasons")
-        .update({ status: "archived", archived_at: now, archived_by: user.id })
-        .eq("label", current.label);
-      if (error) return { success: false, error: error.message };
-    }
-    const { error } = await supabaseAdmin
-      .from("seasons")
-      .update({ status: "active", archived_at: null, archived_by: null, ended_on: null })
-      .eq("label", label);
-    if (error) {
-      if (current) {
-        await supabaseAdmin
-          .from("seasons")
-          .update({ status: "active", archived_at: null, archived_by: null })
-          .eq("label", current.label);
-      }
-      return { success: false, error: error.message };
-    }
+    const { data, error } = await supabaseAdmin.rpc("set_active_season", {
+      p_label: label,
+      p_actor: user.id,
+    });
+    if (error) return { success: false, error: describeRpcError(error, "set_active_season") };
+    const previous = ((data as { previous?: string | null } | null)?.previous ?? null) as string | null;
 
-    revalidateSeasonSurfaces(label, ...(current ? [current.label] : []));
-    revalidateAdmin(label, ...(current ? [current.label] : []));
-    return { success: true, previous: current?.label ?? null };
+    revalidateSeasonSurfaces(label, ...(previous ? [previous] : []));
+    revalidateAdmin(label, ...(previous ? [previous] : []));
+    return { success: true, previous };
   } catch (err) {
     console.error("[setActiveSeason] error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };

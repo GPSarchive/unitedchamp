@@ -91,5 +91,26 @@ async function main() {
     }
     console.log(pad(table, 26) + pad(sel, 22) + ins);
   }
+
+  // Service-role-only SQL functions (migrations/add-progression-integrity.sql,
+  // migrations/add-season-flip-fn.sql): the anon key must not be able to
+  // EXECUTE them. 42501 = permission denied (good); PGRST202 = the function is
+  // not deployed yet (run its migration); anything else means it ran.
+  const RPCS = {
+    replace_stage_standings: { p_stage_id: -1, p_group_id: -1, p_rows: [] },
+    flip_active_season: { p_current: "__probe__", p_next: "__probe2__", p_next_display: "x", p_next_started_on: null, p_actor: null },
+    set_active_season: { p_label: "__probe__", p_actor: null },
+  };
+  console.log("\n" + pad("function", 26) + "anon EXECUTE");
+  console.log("-".repeat(78));
+  for (const [fn, args] of Object.entries(RPCS)) {
+    const r = await anon.rpc(fn, args);
+    let out;
+    if (!r.error) out = "*** EXECUTED (VERY BAD) ***";
+    else if (r.error.code === "42501" || /permission denied/i.test(r.error.message)) out = "blocked (good)";
+    else if (r.error.code === "PGRST202" || /could not find the function/i.test(r.error.message)) out = "missing — run its migration";
+    else out = `*** EXECUTABLE (BAD): ${r.error.message.slice(0, 50)} ***`;
+    console.log(pad(fn, 26) + out);
+  }
 }
 main().catch((e) => { console.error(e); process.exit(1); });

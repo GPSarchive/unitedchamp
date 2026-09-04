@@ -55,22 +55,34 @@ export function revalidateStandingsSurfaces() {
   revalidateTag(SEASON_RECAP_TAG, "max");
 }
 
-/** unstable_cache tag for the season list / active pointer. Must match
- *  SEASONS_CACHE_TAG in lib/seasons.ts. */
-const SEASONS_TAG = "seasons";
-
 /**
  * Everything that depends on WHICH season is active or on a season's stored
- * snapshot: called after closing / re-snapshotting / re-activating a season.
- * Pass the label(s) touched so their archive pages regenerate too.
+ * snapshot: called after closing / re-snapshotting / re-activating a season,
+ * and after a tournament moves between seasons. The active pointer itself is
+ * not cached (lib/seasons.ts reads it per request; the pages are ISR), so
+ * this is purely path revalidation.
  */
 export function revalidateSeasonSurfaces(...labels: string[]) {
-  revalidateTag(SEASONS_TAG, "max");
   revalidateStandingsSurfaces();
-  for (const p of ["/", "/paiktes", "/OMADES", "/matches", "/tournaments", "/seasons"]) {
+  for (const p of ["/", "/paiktes", "/OMADES", "/matches", "/tournaments", "/seasons", "/sitemap.xml"]) {
     revalidatePath(p);
   }
-  for (const label of labels) revalidatePath(`/seasons/${label}`);
+  // Per-entity live routes: after a close every cached team/tournament page
+  // must re-render — archived rows start redirecting, the new season's rows
+  // render live. The "page" form drops every cached instance of the route.
+  for (const p of ["/OMADA/[id]", "/tournaments/[id]", "/tournaments/[id]/v2", "/tournaments/[id]/v2-dark"]) {
+    revalidatePath(p, "page");
+  }
+  // Archive routes: the touched hubs, plus every nested archive page (they
+  // read the stored snapshot that a re-snapshot just rewrote).
+  for (const label of labels) revalidatePath(`/seasons/${encodeURIComponent(label)}`);
+  for (const p of [
+    "/seasons/[season]/katataxi",
+    "/seasons/[season]/teams/[id]",
+    "/seasons/[season]/tournaments/[id]",
+  ]) {
+    revalidatePath(p, "page");
+  }
 }
 
 /** The tournament detail routes (all three variants render the same loader). */
