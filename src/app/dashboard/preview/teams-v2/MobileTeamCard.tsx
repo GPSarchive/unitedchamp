@@ -11,7 +11,6 @@ export type TeamCardRow = {
   am: string | null;
   logo: string | null;
   colour: string | null;
-  season_score: number | null;
   created_at: string | null;
   deleted_at: string | null;
   raw: TeamRow;

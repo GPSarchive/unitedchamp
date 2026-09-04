@@ -26,7 +26,6 @@ export interface TeamRow {
   colour: string | null;
   created_at: string | null;
   am?: string | null;
-  season_score?: number | null;
   /** Soft-delete timestamp (null = active) */
   deleted_at: string | null;
   is_dummy?: boolean;
@@ -184,10 +183,7 @@ export interface PlayerAssociation {
  * View models (UI-facing shapes)
  * ---------------------------------
  */
-export type Team = Pick<
-  TeamRow,
-  "id" | "name" | "logo" | "colour" | "created_at" | "am" | "season_score"
->;
+export type Team = Pick<TeamRow, "id" | "name" | "logo" | "colour" | "created_at" | "am">;
 
 /**
  * Compact player card/list item used by the Players page.

@@ -3,8 +3,7 @@
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { progressAfterMatch, recomputeStandingsNow } from '../progression';
 import {
-  refreshCareerStatsForPlayers,
-  refreshTournamentStatsForPlayers,
+  refreshStatsForPlayersInTournament,
   syncPlayerStatisticsForPlayers,
 } from '@/app/lib/refreshPlayerStats';
 import {
@@ -141,9 +140,8 @@ export async function revertMatchToScheduledAction(matchId: number) {
     // 6. Refresh pre-computed player stats cache + legacy totals for affected players
     if (affectedPlayerIds.length > 0) {
       try {
-        await refreshCareerStatsForPlayers(affectedPlayerIds);
         if (match.tournament_id) {
-          await refreshTournamentStatsForPlayers(affectedPlayerIds, match.tournament_id);
+          await refreshStatsForPlayersInTournament(affectedPlayerIds, match.tournament_id);
         }
         await syncPlayerStatisticsForPlayers(affectedPlayerIds);
       } catch (err) {
@@ -504,9 +502,8 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
         const removedPlayerIds = prevPlayerIds.filter(id => !participatedIds.includes(id));
         const needCacheRefresh = status === 'finished' ? removedPlayerIds : affectedPlayerIds;
         if (needCacheRefresh.length > 0) {
-          await refreshCareerStatsForPlayers(needCacheRefresh);
           if (match.tournament_id) {
-            await refreshTournamentStatsForPlayers(needCacheRefresh, Number(match.tournament_id));
+            await refreshStatsForPlayersInTournament(needCacheRefresh, Number(match.tournament_id));
           }
         }
       } catch (err) {

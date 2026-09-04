@@ -163,7 +163,7 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score, season_label, copied_from_team_id");
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id");
 
     // Apply ids filter if provided (everything else stays the same)
     if (ids.length > 0) {
@@ -205,7 +205,6 @@ export async function GET(req: Request) {
         colour: t.colour,
         created_at: t.created_at,
         deleted_at: t.deleted_at,
-        season_score: t.season_score,
         season_label: t.season_label,
         copied_from_team_id: t.copied_from_team_id,
         logo: await signLogoIfNeededSafe(supa, t.id, t.logo),
@@ -221,7 +220,7 @@ export async function GET(req: Request) {
 
 /* ======================================
    POST /api/teams  (admin only)
-   Body: { name, am?, logo?, colour?, season_score?, season_label?, copied_from_team_id? }
+   Body: { name, am?, logo?, colour?, season_label?, copied_from_team_id? }
    - season_label defaults to the ACTIVE season (must exist in public.seasons)
    - copied_from_team_id = "create from old team": the new row records its
      lineage and inherits the source's logo/colour when none are supplied
@@ -257,16 +256,6 @@ export async function POST(req: Request) {
     const amRaw = typeof body.am === "string" ? body.am.trim() : "";
     if (amRaw && amRaw.length > 64) {
       return NextResponse.json({ error: "AM too long (max 64 characters)" }, { status: 400 });
-    }
-
-    // season_score (optional, non-negative integer)
-    let seasonScoreRaw: number | null = null;
-    if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
-      const n = Number(body.season_score);
-      if (!Number.isInteger(n) || n < 0) {
-        return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
-      }
-      seasonScoreRaw = n;
     }
 
     const logoCandidate = toStoragePathOrUrlSafe(body.logo);
@@ -319,11 +308,10 @@ export async function POST(req: Request) {
         am: amRaw || null, // NEW
         logo: initialLogo,
         colour: colourRaw,
-        season_score: seasonScoreRaw ?? 0,
         season_label: seasonLabel,
         copied_from_team_id: copiedFrom,
       })
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score, season_label, copied_from_team_id")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
       .single();
 
     if (insErr || !created) {
@@ -344,7 +332,7 @@ export async function POST(req: Request) {
           .from("teams")
           .update({ logo: logoCandidate })
           .eq("id", team.id)
-          .select("id, name, am, logo, colour, created_at, deleted_at, season_score, season_label, copied_from_team_id")
+          .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
           .single();
 
         if (upErr) {

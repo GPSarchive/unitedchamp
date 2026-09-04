@@ -16,8 +16,7 @@ import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
 import {
   syncPlayerStatisticsForPlayers,
-  refreshCareerStatsForPlayers,
-  refreshTournamentStatsForPlayers,
+  refreshStatsForPlayersInTournament,
 } from '@/app/lib/refreshPlayerStats';
 import { decideTwoLeggedTie, decideSingleLegKO } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
 
@@ -574,9 +573,8 @@ export async function saveAllStatsAction(formData: FormData) {
     // players whose stats were removed need an explicit cache refresh too.
     if (removedPlayerIds.length > 0) {
       try {
-        await refreshCareerStatsForPlayers(removedPlayerIds);
         if (tournamentId) {
-          await refreshTournamentStatsForPlayers(removedPlayerIds, tournamentId);
+          await refreshStatsForPlayersInTournament(removedPlayerIds, tournamentId);
         }
       } catch (err) {
         console.error('[saveAllStats] removed-player cache refresh error:', err);

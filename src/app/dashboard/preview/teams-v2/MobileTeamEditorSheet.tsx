@@ -27,9 +27,6 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved, onAutoSaved
 
   const [name, setName] = useState(initial?.name ?? "");
   const [am, setAm] = useState<string>(((initial as any)?.am as string) ?? "");
-  const [seasonScore, setSeasonScore] = useState<string>(
-    (initial as any)?.season_score != null ? String((initial as any).season_score) : ""
-  );
   const [logo, setLogo] = useState<string>(initial?.logo ?? "");
   const [preview, setPreview] = useState<string | null>(null);
   const [colour, setColour] = useState<string>(((initial as any)?.colour as string) ?? "");
@@ -78,18 +75,12 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved, onAutoSaved
     if (!name.trim()) return "Όνομα υποχρεωτικό";
     if (name.trim().length < 2) return "Όνομα τουλάχιστον 2 χαρακτήρες";
     if (am && am.length > 64) return "ΑΜ έως 64 χαρακτήρες";
-    if (seasonScore !== "" && !Number.isInteger(Number(seasonScore))) {
-      return "Σκορ σεζόν: μη αρνητικός ακέραιος";
-    }
-    if (seasonScore !== "" && Number(seasonScore) < 0) {
-      return "Σκορ σεζόν: μη αρνητικός ακέραιος";
-    }
     const v = logo.trim();
     if (v && !isUrl(v) && !isStoragePath(v)) {
       return "Λογότυπο: https URL ή teams/<id>/file.ext";
     }
     return null;
-  }, [name, am, seasonScore, logo]);
+  }, [name, am, logo]);
 
   function pickFile(file: File) {
     setPendingFile(file);
@@ -237,7 +228,6 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved, onAutoSaved
         am: am.trim() || null,
         colour: colour.trim() || null,
       };
-      if (seasonScore !== "") payload.season_score = Number(seasonScore);
 
       const res = await fetch(isEdit ? `/api/teams/${initial!.id}` : "/api/teams", {
         method: isEdit ? "PATCH" : "POST",
@@ -380,18 +370,6 @@ function MobileTeamEditorSheetComponent({ initial, onClose, onSaved, onAutoSaved
                 value={am}
                 onChange={(e) => setAm(e.target.value)}
                 placeholder="AM-12345"
-                className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-white/55">Σκορ σεζόν</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={seasonScore}
-                onChange={(e) => setSeasonScore(e.target.value)}
-                placeholder="0"
                 className="rounded-lg border border-white/15 bg-zinc-900 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-colors"
               />
             </label>

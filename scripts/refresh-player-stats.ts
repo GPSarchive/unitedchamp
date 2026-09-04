@@ -2,6 +2,7 @@
  * refresh-player-stats.ts
  *
  * Runs the REAL refreshAllPlayerStats() from src/app/lib/refreshPlayerStats.ts
+ * (per-tournament + active-season rows; the career table is retired)
  * against the database in .env.local — the same code the
  * /dashboard/refresh-stats button executes. Non-destructive: upserts
  * recomputed rows, then deletes only rows with no remaining source stats.
@@ -62,11 +63,10 @@ async function main() {
 
   const { refreshAllPlayerStats } = await import("../src/app/lib/refreshPlayerStats");
 
-  console.log("Rebuilding player_career_stats + player_tournament_stats + active-season player_season_stats…");
+  console.log("Rebuilding player_tournament_stats + active-season player_season_stats…");
   const result = await refreshAllPlayerStats();
   console.log(
-    `Done. career rows upserted: ${result.careerRows}, tournament rows upserted: ${result.tournamentRows},\n` +
-      `stale career rows deleted: ${result.staleCareerRowsDeleted}, stale tournament rows deleted: ${result.staleTournamentRowsDeleted},\n` +
+    `Done. tournament rows upserted: ${result.tournamentRows}, stale tournament rows deleted: ${result.staleTournamentRowsDeleted},\n` +
       `season ${result.seasonLabel ?? "(none active)"}: rows upserted ${result.seasonRows}, stale deleted ${result.staleSeasonRowsDeleted},\n` +
       `match_player_stats rows processed: ${result.mpsRowsProcessed}`,
   );

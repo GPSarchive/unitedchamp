@@ -59,7 +59,7 @@ export async function loadTeamPageData(
   ] = await Promise.all([
     supabaseAdmin
       .from("teams")
-      .select("id, name, logo, colour, am, created_at, season_score, season_label, deleted_at")
+      .select("id, name, logo, colour, am, created_at, season_label, deleted_at")
       .eq("id", teamId)
       .single(),
     // Tournament memberships (dedup per tournament — a team can be linked via multiple groups)

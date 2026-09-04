@@ -34,7 +34,7 @@ async function main() {
   console.log("=== Table row counts (public-read tables) ===");
   const tables = ["tournaments", "tournament_stages", "tournament_groups", "tournament_teams",
     "matches", "stage_standings", "match_player_stats", "match_participants", "player",
-    "teams", "tournament_awards", "player_statistics", "player_career_stats", "player_tournament_stats"];
+    "teams", "tournament_awards", "player_statistics", "player_season_stats", "player_tournament_stats"];
   for (const t of tables) console.log(`${t}: ${await count(t)}`);
 
   // biggest tournament by matches
@@ -63,7 +63,7 @@ async function main() {
   await step("tournament_groups select(*)", supa.from("tournament_groups").select("*").in("stage_id", stageIds));
   const matches = await step("matches select(*)", supa.from("matches").select("*").eq("tournament_id", tid).order("match_date"));
   await step("stage_standings (13 cols)", supa.from("stage_standings").select("stage_id,group_id,team_id,played,won,drawn,lost,gf,ga,gd,points,rank").in("stage_id", stageIds));
-  const tt = await step("tournament_teams (*+teams join)", supa.from("tournament_teams").select("*, team:teams(id, name, logo, colour, season_score), stage_id, group_id, seed").eq("tournament_id", tid));
+  const tt = await step("tournament_teams (*+teams join)", supa.from("tournament_teams").select("*, team:teams(id, name, logo, colour), stage_id, group_id, seed").eq("tournament_id", tid));
   const matchIds = matches.map(m => m.id);
   const teamIds = [...new Set(tt.map(x => x.team?.id).filter(Boolean))];
   const stats = await step("match_player_stats (12 cols)", supa.from("match_player_stats").select("player_id,team_id,match_id,goals,assists,yellow_cards,red_cards,blue_cards,mvp,best_goalkeeper,is_captain").in("match_id", matchIds).in("team_id", teamIds));

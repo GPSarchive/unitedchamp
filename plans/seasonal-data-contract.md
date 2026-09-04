@@ -153,6 +153,11 @@ Live pages read the ACTIVE season only via `lib/seasonScope.ts`: `/OMADES` (`tea
 ## 3.8 Phase 5 (admin current-season only) — written 2026-09-04
 `GET /api/teams` gains `season=active|all|<label>` (default active); `POST /api/teams` stamps `season_label` (active unless a valid label is sent) and accepts `copied_from_team_id` (inherits logo/colour when not supplied). `/dashboard/teams` lists the active season's rows + "Δημιουργία από παλιά ομάδα" (`CopyFromOldTeam.tsx`, sources = every other season's rows). `/dashboard/matches`, `/dashboard/tournaments` (+ `listTournamentsAction` `season` opt), `/dashboard/geniki-katataxi` (scoped compute, link to /dashboard/seasons) and `/dashboard/refresh-stats` (season rows tile) are active-season only. Team pickers in the wizard/players tools use the API default → active-season teams.
 
+## 3.9 Phase 6 (retirements) + Phase 7 (drop) — written 2026-09-04
+**Done in code:** `teams.season_score` has no readers/writers left (API GET/POST/PATCH, both team editors, OMADES, OMADA, types; dead `TeamMeta.tsx`/`TeamSidebar.tsx` deleted). `player_career_stats` has no readers/writers left: `refreshCareerStatsForPlayers` removed, `refreshAllPlayerStats` rebuilds tournament + active-season rows only, the removed-player refresh sites use `refreshStatsForPlayersInTournament` (tournament + active-season rows), `/dashboard/refresh-stats` and `/dashboard/audit-stats` (`auditPlayerStats.ts`) read/audit `player_season_stats` instead; scripts retargeted (`audit-player-stats-drift.mjs` no longer checks career/equivalence).
+**Deferred (explicit scope cut):** legacy `player_statistics` stays — it feeds ~20 admin player screens (`dashboard/players/*`, team roster panels, `api/players/*`, `api/teams/[id]/players/*`) and carries the hand-typed `age`. Its retirement (readers → `player_season_stats`, `age` → `player`, then drop) is a follow-up; `syncPlayerStatisticsForPlayers` keeps running until then.
+**Phase 7 files:** `migrations/prepare-drop-retired-columns.sql` (run BEFORE deploying: relaxes `teams.season_score` NOT NULL) and `migrations/drop-retired-columns.sql` (run AFTER deploy: drops `teams.season_score` + `player_career_stats`). Neither has been run.
+
 ## 4. What "closing a season" does to the data
 
 1. Final refresh of `player_season_stats` and `season_team_standings` for the closing season.

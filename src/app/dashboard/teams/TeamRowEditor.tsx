@@ -31,10 +31,6 @@ export default function TeamRowEditor({
     typeof (initial as any)?.am === "string" ? (initial as any).am : ""
   );
 
-  // NEW: season_score (non-negative integer). Allow empty '' while typing.
-  const initialSeasonScore =
-    typeof (initial as any)?.season_score === "number" ? (initial as any).season_score : "";
-  const [seasonScore, setSeasonScore] = useState<number | "">(initialSeasonScore);
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -244,7 +240,6 @@ export default function TeamRowEditor({
         am: am.trim() || null,
         colour: colour.trim() || null,
       };
-      if (seasonScore !== "") payload.season_score = seasonScore;
 
       const res = await fetch(isEdit ? `/api/teams/${initial!.id}` : "/api/teams", {
         method: isEdit ? "PATCH" : "POST",
@@ -286,10 +281,6 @@ export default function TeamRowEditor({
     // AM: cap length (adjust if you want stricter rules/regex)
     if (am && am.length > 64) return "AM must be at most 64 characters";
 
-    // season_score: must be non-negative integer when provided
-    if (seasonScore !== "" && (!Number.isInteger(seasonScore) || seasonScore < 0)) {
-      return "Season score must be a non-negative integer";
-    }
 
     const v = logo.trim();
     if (v) {
@@ -300,7 +291,7 @@ export default function TeamRowEditor({
     }
 
     return null;
-  }, [name, logo, am, seasonScore]);
+  }, [name, logo, am]);
 
   return (
     <div className="p-3 rounded-xl border border-white/15 bg-black/50 space-y-3">
@@ -313,22 +304,6 @@ export default function TeamRowEditor({
             onChange={(e) => setName(e.target.value)}
             className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
             placeholder="e.g. Athens City FC"
-          />
-        </label>
-
-        {/* Season score */}
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-white/80">Season score</span>
-          <input
-            type="number"
-            min={0}
-            value={seasonScore === "" ? "" : seasonScore}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSeasonScore(val === "" ? "" : Number(val));
-            }}
-            className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-            placeholder="e.g. 0"
           />
         </label>
 

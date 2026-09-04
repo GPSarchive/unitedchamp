@@ -269,13 +269,12 @@ export default async function TeamsPage({
         colour: row.colour,
         created_at: null,
         am: null,
-        season_score: null,
       }));
     }
   } else {
     const { data, error: queryError, count: queryCount } = await supabaseAdmin
       .from("teams")
-      .select("id, name, logo, colour, created_at, am, season_score", {
+      .select("id, name, logo, colour, created_at, am", {
         count: "exact",
       })
       .eq("season_label", seasonLabel)

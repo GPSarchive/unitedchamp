@@ -44,7 +44,6 @@ const PROBES = {
   player: { payload: { first_name: "__RLS_PROBE__", last_name: "__DELETE_ME__" }, cleanup: true },
   player_teams: { payload: { player_id: -1, team_id: -1 }, cleanup: false },
   player_statistics: { payload: { player_id: -1 }, cleanup: false },
-  player_career_stats: { payload: { player_id: -1 }, cleanup: false },
   player_tournament_stats: { payload: { player_id: -1, tournament_id: -1 }, cleanup: false },
   articles: { payload: { title: "__RLS_PROBE_DELETE_ME__", status: "draft" }, cleanup: true },
   announcements: { payload: { title: "__RLS_PROBE_DELETE_ME__", body: "x", status: "draft" }, cleanup: true },
