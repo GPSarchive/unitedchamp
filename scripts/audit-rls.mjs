@@ -51,6 +51,13 @@ const PROBES = {
   disciplinary_actions: { payload: { team_id: -1 }, cleanup: false },
   season_team_adjustments: { payload: { team_id: -1, season: "x", kind: "probe", points: 0 }, cleanup: false },
   tournament_awards: { payload: { tournament_id: -1 }, cleanup: false },
+  // Seasonal system (migrations/add-seasons.sql + add-season-aggregates.sql):
+  // seasons is public-read; the four result tables are staff_read.
+  seasons: { payload: { label: "__RLS_PROBE__", display_label: "x", status: "archived" }, cleanup: true, key: "label" },
+  player_season_stats: { payload: { player_id: -1, season_label: "x" }, cleanup: false },
+  season_team_standings: { payload: { season_label: "x", team_id: -1, rank: 1 }, cleanup: false },
+  season_recaps: { payload: { season_label: "x", payload: {} }, cleanup: false },
+  team_season_score_archive: { payload: { team_id: -1, score: 0 }, cleanup: false },
 };
 
 const pad = (s, n) => String(s).padEnd(n);
@@ -76,7 +83,10 @@ async function main() {
     } else {
       ins = "*** ROW CREATED (VERY BAD) ***";
       if (probe.cleanup && w.data?.length) {
-        for (const row of w.data) await svc.from(table).delete().eq("id", row.id);
+        for (const row of w.data) {
+          const key = probe.key ?? "id";
+          await svc.from(table).delete().eq(key, row[key]);
+        }
         ins += " [cleaned up]";
       }
     }
