@@ -30,7 +30,6 @@ await show('player by last_name zzz', sb.from('player').select('id, first_name, 
 
 // dependent stats for these players
 await show('player_statistics', sb.from('player_statistics').select('id, player_id').in('player_id', playerIds.length ? playerIds : [-1]));
-await show('player_career_stats', sb.from('player_career_stats').select('player_id').in('player_id', playerIds.length ? playerIds : [-1]));
 await show('player_tournament_stats', sb.from('player_tournament_stats').select('player_id').in('player_id', playerIds.length ? playerIds : [-1]));
 await show('match_player_stats', sb.from('match_player_stats').select('id, player_id').in('player_id', playerIds.length ? playerIds : [-1]));
 

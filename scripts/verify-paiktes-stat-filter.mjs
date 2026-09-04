@@ -33,13 +33,13 @@ async function count(table, mods = (q) => q) {
 }
 
 const players = await count("player", (q) => q.is("deleted_at", null));
-const careerRows = await count("player_season_stats");
+const seasonRows = await count("player_season_stats");
 const tourneyRows = await count("player_tournament_stats");
 console.log(
-  `\nrow counts → player(live)=${players}  player_season_stats=${careerRows}  player_tournament_stats=${tourneyRows}`,
+  `\nrow counts → player(live)=${players}  player_season_stats=${seasonRows}  player_tournament_stats=${tourneyRows}`,
 );
 check("player count well under 10k ceiling", players < 9000, `(${players})`);
-check("season stats under 10k ceiling", careerRows < 9000, `(${careerRows})`);
+check("season stats under 10k ceiling", seasonRows < 9000, `(${seasonRows})`);
 
 // ── SQL .gte filter == JS filter over full career table ─────────────
 // Pull the whole career table once (small), filter in JS, compare to the

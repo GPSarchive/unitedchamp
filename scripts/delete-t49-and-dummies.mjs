@@ -39,7 +39,6 @@ await del('match_participants (t49 matches)', sb.from('match_participants').dele
 await del('match_participants (dummy players)', sb.from('match_participants').delete().in('player_id', pIds));
 
 console.log('\n[2] Player stat rows (dummy players)');
-await del('player_career_stats', sb.from('player_career_stats').delete().in('player_id', pIds));
 await del('player_tournament_stats', sb.from('player_tournament_stats').delete().in('player_id', pIds));
 await del('player_statistics', sb.from('player_statistics').delete().in('player_id', pIds));
 

@@ -6,9 +6,8 @@
  * stored in the three aggregate tables:
  *
  *   1. player_statistics       (legacy per-player totals, synced inline on save)
- *   2. (player_career_stats — RETIRED, see plans/seasonal-data-contract.md)
- *   3. player_tournament_stats (per-tournament cache, same path)
- *   4. player_season_stats     (per-season cache, refreshSeasonStats.ts — active
+ *   2. player_tournament_stats (per-tournament cache, same path)
+ *   3. player_season_stats     (per-season cache, refreshSeasonStats.ts — active
  *                               season live, archived seasons via re-snapshot)
  *
  *
@@ -178,7 +177,7 @@ console.log('\n─────────────────────�
 if (d1 + d3 + d4 === 0) {
   console.log('✓ No drift: every aggregate matches a fresh recompute from match_player_stats.');
 } else {
-  console.log(`✗ Drift confirmed in ${[d1 && 'player_statistics', d3 && 'player_tournament_stats', d4 && 'player_season_stats', false].filter(Boolean).join(', ')}.`);
+  console.log(`✗ Drift confirmed in ${[d1 && 'player_statistics', d3 && 'player_tournament_stats', d4 && 'player_season_stats'].filter(Boolean).join(', ')}.`);
   console.log('  This proves saves wrote match stats without the aggregates following.');
   console.log('  Recovery: /dashboard/refresh-stats (or scripts/refresh-player-stats.ts)');
   console.log('  rebuilds the cache tables (add --season=<label> for one season only);');

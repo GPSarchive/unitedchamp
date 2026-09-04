@@ -135,6 +135,10 @@ function zeroTournament(): TournamentBucket {
  * affected player ids so a player whose last stats row was deleted gets an
  * explicit zero row (overwriting the stale cache) instead of being skipped.
  * The full rebuild omits it — players absent from `rows` are deleted instead.
+ *
+ * No production caller since the career table was retired (contract D3): kept
+ * as the reference oracle for the season/tournament parity assertions in
+ * __tests__/playerStatsAggregation.test.ts.
  */
 export function aggregateCareerBuckets(
   rows: MpsRow[],

@@ -159,10 +159,11 @@ create index idx_teams_season on public.teams (season_label);
 
 ## Verification
 
-- **Vitest**: `aggregateSeasonBuckets` cases; new `src/app/geniki-katataxi/__tests__/points.test.ts` (seasonScope yields only that season).
-- **Backfill equivalence**: after Phase 1, `player_season_stats` for `'2025-2026'` must equal `player_career_stats` row-for-row (everything is one season) — script-diff them; after Phase 2, `getSeasonStandings('2025-2026')` must match the live geniki page pre-change.
-- **Drift audits**: extend `scripts/audit-player-stats-drift.mjs` for `player_season_stats`; add recompute-vs-stored diff for `season_team_standings` (safety net for missed triggers). `audit-rls.mjs` covers the new tables.
-- **Manual smokes**: finish a test match → standings + season stats rows update without a page visit; test close on a copy → archive freezes, new season empty everywhere (OMADES/paiktes/matches/tournaments/geniki empty states), re-run idempotent; old URLs redirect (`/tournaments/[old]` → `/seasons/2025-2026/tournaments/[old]`, `/OMADA/[old]` → nested); re-snapshot after an old-season adjustment updates the hub.
+- **Vitest** (`npm test`, 114 tests): `aggregateSeasonBuckets` (sums parity, primary-team tiebreak, seeded zero bucket, season == career identity); `geniki-katataxi/__tests__/points.test.ts` over the pure engine (`engine.ts`): seasonScope yields only that season, W/D/L/participation/qualification/title/runner-up points, cancel-tag pairing, forfeit/leg rules; `standingsShape` (dense rank, extras, `rankVisible`); `seasonChecks` (team↔season mismatches, season-move labels).
+- **Engine equivalence on prod data**: `npx tsx scripts/audit-season-standings.ts` (read-only) recomputes with the scoped loader + pure engine and diffs against the stored rows — 0 drift after the split (2026-09-04).
+- **Drift audits**: `scripts/audit-player-stats-drift.mjs` covers `player_season_stats`; `scripts/audit-season-standings.ts` covers `season_team_standings`. `scripts/audit-rls.mjs` covers the new tables AND proves the anon key cannot execute `flip_active_season` / `set_active_season`.
+- **Close flow**: `migrations/add-season-flip-fn.sql` carries a `BEGIN … ROLLBACK` block that exercises both functions against the real rows without committing (one active row at every step, `ended_on` set/cleared). The actions refuse to run on the preview deployment.
+- **Manual smokes**: finish a test match → standings + season stats rows update without a page visit; old URLs redirect (`/tournaments/[old]` and both `/v2*` variants → `/seasons/2025-2026/tournaments/[old]`, `/OMADA/[old]` → nested); a team's "#" on `/OMADA/[id]` equals its row on `/geniki-katataxi`; `/paiktes?tournament_id=<archived>` shows the unfiltered directory; re-snapshot after an old-season adjustment updates the hub AND its nested pages.
 
 ## Risks / edge cases
 
