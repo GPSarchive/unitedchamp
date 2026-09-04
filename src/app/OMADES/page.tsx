@@ -4,6 +4,7 @@ import SearchBar from "@/app/OMADES/SearchBar";
 import Pagination from "@/app/OMADES/Pagination";
 import TeamCard from "@/app/OMADES/TeamCard";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import type { Team } from "@/app/lib/types";
 import {
   Fraunces,
@@ -122,7 +123,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 // ───────────────────────────────────────────────────────────────────────
 // Page header
 // ───────────────────────────────────────────────────────────────────────
-function PageHeader({ total }: { total: number }) {
+function PageHeader({ total, season }: { total: number; season: string | null }) {
   return (
     <header className="relative border-b-2 border-[#F3EFE6]/20">
       <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-6 md:pt-10 md:pb-8">
@@ -148,6 +149,11 @@ function PageHeader({ total }: { total: number }) {
             </h1>
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+            {season && (
+              <span className="border border-[#fb923c]/40 bg-[#13131d] px-2.5 py-1 text-[#fb923c]">
+                Σεζόν · {season}
+              </span>
+            )}
             <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
               Σύνολο · {pad2(total)}
             </span>
@@ -231,19 +237,32 @@ export default async function TeamsPage({
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
+  // Live pages show the ACTIVE season's teams only (teams are per-season rows;
+  // older seasons live under /seasons). Soft-deleted teams stay hidden.
+  const activeSeason = await getActiveSeasonCached();
+  const seasonLabel = activeSeason?.label ?? NO_SEASON;
+
   let teams: Team[] = [];
   let count = 0;
   let error: { message?: string } | null = null;
 
   if (search) {
-    const { data: teamsData, error: rpcError } = await supabaseAdmin.rpc(
-      "search_teams_fuzzy",
-      { search_term: search, page_limit: limit, page_offset: from }
-    );
+    // The fuzzy RPC knows nothing about seasons: pull a generous page and keep
+    // only the active season's teams, then paginate the survivors here.
+    const [{ data: teamsData, error: rpcError }, { data: seasonTeams }] = await Promise.all([
+      supabaseAdmin.rpc("search_teams_fuzzy", {
+        search_term: search,
+        page_limit: 500,
+        page_offset: 0,
+      }),
+      supabaseAdmin.from("teams").select("id").eq("season_label", seasonLabel).is("deleted_at", null),
+    ]);
     error = rpcError as any;
     if (!error && teamsData) {
-      const rows = teamsData as TeamWithCountRPC[];
-      teams = rows.map((row) => ({
+      const allowed = new Set((seasonTeams ?? []).map((t) => t.id as number));
+      const rows = (teamsData as TeamWithCountRPC[]).filter((r) => allowed.has(r.id));
+      count = rows.length;
+      teams = rows.slice(from, to + 1).map((row) => ({
         id: row.id,
         name: row.name,
         logo: row.logo,
@@ -252,7 +271,6 @@ export default async function TeamsPage({
         am: null,
         season_score: null,
       }));
-      count = rows.length > 0 ? rows[0].total_count : 0;
     }
   } else {
     const { data, error: queryError, count: queryCount } = await supabaseAdmin
@@ -260,6 +278,7 @@ export default async function TeamsPage({
       .select("id, name, logo, colour, created_at, am, season_score", {
         count: "exact",
       })
+      .eq("season_label", seasonLabel)
       .is("deleted_at", null)
       .order("name", { ascending: true })
       .range(from, to);
@@ -274,7 +293,7 @@ export default async function TeamsPage({
 
   return (
     <Shell>
-      <PageHeader total={count} />
+      <PageHeader total={count} season={activeSeason?.display_label ?? null} />
 
       <section className="relative">
         <div className="mx-auto max-w-[1400px] px-6 py-10 md:py-14">
@@ -311,7 +330,7 @@ export default async function TeamsPage({
               body={
                 search
                   ? "Δοκιμάστε άλλους όρους αναζήτησης."
-                  : "Αναμείνατε — το μητρώο ενημερώνεται."
+                  : "Οι ομάδες της νέας σεζόν έρχονται σύντομα — οι παλαιότερες βρίσκονται στο Αρχείο Σεζόν."
               }
             />
           ) : (

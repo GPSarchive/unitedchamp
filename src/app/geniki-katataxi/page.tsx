@@ -34,6 +34,7 @@ export default async function GenikiKataxiPage() {
       seasonDisplay={active?.display_label ?? "—"}
       rows={rows}
       teams={(teamsRes.data ?? []) as TeamInfo[]}
+      archiveHref="/seasons"
     />
   );
 }

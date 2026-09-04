@@ -97,6 +97,10 @@ type Props = {
   playerAssociations: PlayerAssociation[];
   seasonStatsByPlayer: Record<number, SeasonStats>;
   matches: Match[] | null;
+  /** The team's Γενική Κατάταξη line for its season (stored), if any. */
+  standing?: { rank: number; points: number } | null;
+  /** Season display label ("2025/26") when rendered as an ARCHIVED team page. */
+  archiveSeason?: string | null;
 };
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
@@ -183,7 +187,9 @@ const Masthead: React.FC<{
   accent: string;
   wins: TournamentWin[];
   totals: { players: number; tournaments: number; titles: number };
-}> = ({ team, accent, wins, totals }) => {
+  standing: { rank: number; points: number } | null;
+  archiveSeason: string | null;
+}> = ({ team, accent, wins, totals, standing, archiveSeason }) => {
   const lastWin = wins[0];
   const accentIsLight = hexIsLight(accent);
 
@@ -237,9 +243,14 @@ const Masthead: React.FC<{
                   })}
                 </span>
               )}
-              {typeof team.season_score === "number" && (
-                <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 text-[#F3EFE6]/70">
-                  Σκορ Σεζόν · {team.season_score}
+              {standing && (
+                <span className="border border-[#e8c66b]/40 bg-[#13131d] px-2.5 py-1 text-[#e8c66b]">
+                  Γενική Κατάταξη · #{pad2(standing.rank)} · {standing.points} π.
+                </span>
+              )}
+              {archiveSeason && (
+                <span className="border border-[#fb923c]/40 bg-[#13131d] px-2.5 py-1 text-[#fb923c]">
+                  Αρχείο · Σεζόν {archiveSeason}
                 </span>
               )}
             </div>
@@ -1285,6 +1296,8 @@ const TeamClient: React.FC<Props> = ({
   playerAssociations,
   seasonStatsByPlayer,
   matches,
+  standing = null,
+  archiveSeason = null,
 }) => {
   const accent = useMemo(() => {
     const c = team.colour;
@@ -1339,7 +1352,14 @@ const TeamClient: React.FC<Props> = ({
 
       <PageHeader team={team} />
 
-      <Masthead team={team} accent={accent} wins={wins} totals={totals} />
+      <Masthead
+        team={team}
+        accent={accent}
+        wins={wins}
+        totals={totals}
+        standing={standing}
+        archiveSeason={archiveSeason}
+      />
 
       <HonoursSection wins={wins} />
 

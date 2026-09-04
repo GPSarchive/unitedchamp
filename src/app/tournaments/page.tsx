@@ -3,16 +3,19 @@
 export const revalidate = 60;
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import TournamentsClients from "./TournamentsClient";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
 import { signTournamentLogos } from "./signTournamentLogos"; // ✅ Import utility
 
 export default async function TournamentsPage() {
   try {
-    // 1) Fetch all tournaments
+    // 1) The ACTIVE season's tournaments only. Older seasons: /seasons.
+    const activeSeason = await getActiveSeasonCached();
     const { data: tournamentsData, error: tournamentsError } = await supabaseAdmin
       .from('tournaments')
       .select('id, name, slug, format, season, logo, status, winner_team_id, winner_team:teams!winner_team_id(name)')
+      .eq('season', activeSeason?.label ?? NO_SEASON)
       .order('id', { ascending: true });
 
     if (tournamentsError || !tournamentsData) {

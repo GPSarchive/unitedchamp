@@ -224,7 +224,15 @@ function TitleStars({ count, tone = GOLD }: { count: number; tone?: string }) {
 // ───────────────────────────────────────────────────────────────────────
 // Masthead — centered, monumental
 // ───────────────────────────────────────────────────────────────────────
-function Masthead({ season, teamCount }: { season: string; teamCount: number }) {
+function Masthead({
+  season,
+  teamCount,
+  archiveHref,
+}: {
+  season: string;
+  teamCount: number;
+  archiveHref?: string;
+}) {
   return (
     <header className="relative">
       <div className="mx-auto max-w-[1400px] px-6 pt-8">
@@ -236,9 +244,19 @@ function Masthead({ season, teamCount }: { season: string; teamCount: number }) 
             <span>/</span>
             <span className="text-[#F3EFE6]">Γενική Κατάταξη</span>
           </div>
-          <span className="hidden border border-[#F3EFE6]/20 bg-[#13131d]/80 px-2.5 py-1 sm:inline-block">
-            Ομάδες · {pad2(teamCount)}
-          </span>
+          <div className="flex items-center gap-2">
+            {archiveHref && (
+              <Link
+                href={archiveHref}
+                className="border border-[#fb923c]/40 bg-[#13131d]/80 px-2.5 py-1 text-[#fb923c] transition-colors hover:bg-[#fb923c] hover:text-[#0a0a14]"
+              >
+                Αρχείο σεζόν →
+              </Link>
+            )}
+            <span className="hidden border border-[#F3EFE6]/20 bg-[#13131d]/80 px-2.5 py-1 sm:inline-block">
+              Ομάδες · {pad2(teamCount)}
+            </span>
+          </div>
         </nav>
       </div>
 
@@ -765,6 +783,8 @@ export interface StandingsViewGrandProps {
   teams: TeamInfo[];
   /** Optional banner rendered above the standings. */
   banner?: React.ReactNode;
+  /** Link to the season archive (live page) or back to a season hub (archive page). */
+  archiveHref?: string;
 }
 
 export default function StandingsViewGrand({
@@ -772,6 +792,7 @@ export default function StandingsViewGrand({
   rows,
   teams: teamList,
   banner,
+  archiveHref,
 }: StandingsViewGrandProps) {
   const teams = new Map<number, TeamInfo>(teamList.map((t) => [t.id, t]));
   const visible = rows.filter((r) => teams.has(r.team_id));
@@ -796,7 +817,7 @@ export default function StandingsViewGrand({
 
   return (
     <Shell>
-      <Masthead season={seasonDisplay} teamCount={ranked.length} />
+      <Masthead season={seasonDisplay} teamCount={ranked.length} archiveHref={archiveHref} />
 
       <section className="relative">
         <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-10 md:pb-14">

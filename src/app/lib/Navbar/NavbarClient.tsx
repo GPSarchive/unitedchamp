@@ -25,6 +25,7 @@ const COLUMN_2 = [
   { href: "/kanonismos", label: "ΚΑΝΟΝΙΣΜΟΣ" },
   { href: "/epikoinonia", label: "ΕΠΙΚΟΙΝΩΝΙΑ" },
   { href: "/geniki-katataxi", label: "ΓΕΝΙΚΗ ΚΑΤΑΤΑΞΗ" },
+  { href: "/seasons", label: "ΑΡΧΕΙΟ ΣΕΖΟΝ" },
 ];
 
 /* ================================================================ *

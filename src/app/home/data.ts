@@ -9,6 +9,7 @@
 
 import { cache } from "react";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveScope, NO_SEASON } from "@/app/lib/seasonScope";
 import { fetchRecentNewsCount } from "@/app/lib/fetchRecentNewsCount";
 import { MatchRowRaw, CalendarEvent, normalizeTeam } from "@/app/lib/types";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
@@ -33,6 +34,10 @@ import {
 // date order the rows silently cut off would be the LATEST — upcoming fixtures
 // vanishing from the calendar with no error. Same fix as the tournament loader.
 export const fetchMatchesWithTeams = cache(async () => {
+  // Active season only: the calendar/recent strips never show archived matches.
+  const { season, tournamentIds } = await getActiveScope();
+  if (!season || tournamentIds.length === 0) return [] as MatchRowRaw[];
+
   const now = new Date();
   const windowStart = new Date(now);
   windowStart.setDate(now.getDate() - 60);
@@ -53,6 +58,7 @@ export const fetchMatchesWithTeams = cache(async () => {
         tournament:tournament_id (id, name, logo)
       `
       )
+      .in("tournament_id", tournamentIds)
       .gte("match_date", windowStart.toISOString())
       .lte("match_date", windowEnd.toISOString())
       .order("match_date", { ascending: true })
@@ -71,12 +77,14 @@ export const fetchMatchesWithTeams = cache(async () => {
 
 // Six most-recent tournaments, with team + match counts and signed logo URLs.
 export const fetchTournaments = cache(async (): Promise<Tournament[]> => {
+  const { season } = await getActiveScope();
   const { data, error } = await supabaseAdmin
     .from("tournaments")
     .select(
       `id, name, slug, format, season, logo, status, winner_team_id,
        tournament_teams(count), matches(count)`
     )
+    .eq("season", season?.label ?? NO_SEASON)
     .order("id", { ascending: false })
     .limit(6);
 

@@ -11,10 +11,11 @@ export function generateStaticParams() {
 }
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached } from "@/app/lib/seasonScope";
 import { loadTournamentIntoStore } from "@/app/tournaments/loadTournamentIntoStore";
 import { signSingleTournamentLogo } from "@/app/tournaments/signTournamentLogos";
 import TournamentClientV2Dark from "./v2-dark/TournamentClientV2Dark";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function TournamentPage(
   { params }: { params: Promise<{ id: string }> } // Next 15: params is a Promise
@@ -26,11 +27,9 @@ export default async function TournamentPage(
     notFound();
   }
 
+  let data: Awaited<ReturnType<typeof loadTournamentIntoStore>>;
   try {
-    const data = await loadTournamentIntoStore(tournamentId, supabaseAdmin);
-    const signedLogo = await signSingleTournamentLogo(data.tournament.logo);
-    const tournament = { ...data.tournament, logo: signedLogo };
-    return <TournamentClientV2Dark initialData={{ ...data, tournament }} />;
+    data = await loadTournamentIntoStore(tournamentId, supabaseAdmin);
   } catch (error) {
     console.error("Error loading tournament data:", error);
     return (
@@ -39,4 +38,16 @@ export default async function TournamentPage(
       </div>
     );
   }
+
+  // An archived season's tournament lives under /seasons — old links follow.
+  // (redirect() throws, so it must stay outside the try/catch above.)
+  const activeSeason = await getActiveSeasonCached();
+  const season = data.tournament.season;
+  if (season && activeSeason && season !== activeSeason.label) {
+    redirect(`/seasons/${encodeURIComponent(season)}/tournaments/${tournamentId}`);
+  }
+
+  const signedLogo = await signSingleTournamentLogo(data.tournament.logo);
+  const tournament = { ...data.tournament, logo: signedLogo };
+  return <TournamentClientV2Dark initialData={{ ...data, tournament }} />;
 }
