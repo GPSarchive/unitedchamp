@@ -3,6 +3,7 @@ import type { PointsEvent, TeamSeasonLine } from "../rules";
 import {
   lineFromStoredRow,
   rankLines,
+  rankVisible,
   storedRowFromLine,
   teamSeasonExtras,
   type SeasonStandingRow,
@@ -65,6 +66,41 @@ describe("rankLines", () => {
 
   it("handles an empty season", () => {
     expect(rankLines([])).toEqual([]);
+  });
+});
+
+describe("rankVisible", () => {
+  const stored = (teamId: number, rank: number, points: number): SeasonStandingRow => ({
+    ...storedRowFromLine("2025-2026", { ...line(teamId, points), rank }, []),
+    refreshed_at: "2026-09-04T00:00:00Z",
+  });
+  // Stored ranks cover every team of the season, a deleted team (2) included.
+  const rows = [stored(1, 1, 300), stored(2, 2, 200), stored(3, 3, 100), stored(4, 3, 100)];
+
+  it("with every team visible reproduces the stored rank (the archive view)", () => {
+    const out = rankVisible(rows, new Set([1, 2, 3, 4]));
+    expect(out.map((l) => [l.teamId, l.rank])).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [4, 3],
+    ]);
+  });
+
+  it("hiding a team closes the ranks up (the live view) — and the team page must agree", () => {
+    const out = rankVisible(rows, new Set([1, 3, 4]));
+    expect(out.map((l) => [l.teamId, l.rank])).toEqual([
+      [1, 1],
+      [3, 2],
+      [4, 2],
+    ]);
+    expect(out.find((l) => l.teamId === 3)!.rank).toBe(2); // not the stored 3
+  });
+
+  it("ignores rows whose team is unknown and never mutates its input", () => {
+    const copy = rows.map((r) => ({ ...r }));
+    expect(rankVisible(rows, new Set([99]))).toEqual([]);
+    expect(rows).toEqual(copy);
   });
 });
 

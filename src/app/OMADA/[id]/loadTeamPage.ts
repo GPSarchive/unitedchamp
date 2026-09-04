@@ -6,6 +6,8 @@ import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { getSeasonStandings } from "@/app/lib/refreshStandings";
+import { getSeasonByLabel } from "@/app/lib/seasons";
+import { rankVisible } from "@/app/geniki-katataxi/standingsShape";
 import {
   type Team,
   type PlayerAssociation,
@@ -40,13 +42,19 @@ export type TeamPageData = {
   playerAssociations: PlayerAssociation[];
   seasonStatsByPlayer: Record<number, SeasonStats>;
   matches: Match[] | null;
-  /** The team's stored Γενική Κατάταξη line for its season, if any. */
+  /**
+   * The team's Γενική Κατάταξη position for its season, ranked with the same
+   * rule as the standings page it links to (see standingsShape.rankVisible).
+   */
   standing: { rank: number; points: number } | null;
 };
 
-export async function loadTeamPageData(
-  teamId: number,
-): Promise<{ ok: true; data: TeamPageData } | { ok: false; error: string }> {
+export type TeamPageResult =
+  | { ok: true; data: TeamPageData }
+  /** `notFound` = no such team row (callers answer 404, not an error card). */
+  | { ok: false; error: string; notFound?: boolean };
+
+export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> {
   // Independent reads batched in one round-trip wave. The stats aggregation
   // below is the only query that needs a prior result (the finished-match ids).
   const [
@@ -61,7 +69,7 @@ export async function loadTeamPageData(
       .from("teams")
       .select("id, name, logo, colour, am, created_at, season_label, deleted_at")
       .eq("id", teamId)
-      .single(),
+      .maybeSingle(),
     // Tournament memberships (dedup per tournament — a team can be linked via multiple groups)
     supabaseAdmin
       .from("tournament_teams")
@@ -122,9 +130,8 @@ export async function loadTeamPageData(
       .order("match_date", { ascending: false }),
   ]);
 
-  if (teamError || !team) {
-    return { ok: false, error: teamError?.message || "Η ομάδα δεν βρέθηκε" };
-  }
+  if (teamError) return { ok: false, error: teamError.message };
+  if (!team) return { ok: false, error: "Η ομάδα δεν βρέθηκε", notFound: true };
 
   const seen = new Set<number>();
   const tournaments = (tournamentMembership ?? [])
@@ -143,7 +150,8 @@ export async function loadTeamPageData(
 
   // Aggregate player stats from match_player_stats for this team's finished matches
   const matchIds = (teamMatches ?? []).map((m) => m.id);
-  const [{ data: matchPlayerStats }, standingRows] = await Promise.all([
+  const seasonLabel = (team.season_label as string | null) ?? null;
+  const [{ data: matchPlayerStats }, standingRows, seasonRow] = await Promise.all([
     matchIds.length
       ? supabaseAdmin
           .from("match_player_stats")
@@ -151,13 +159,31 @@ export async function loadTeamPageData(
           .in("match_id", matchIds)
           .eq("team_id", teamId)
       : Promise.resolve({ data: null }),
-    team.season_label
-      ? getSeasonStandings(team.season_label as string).catch((err) => {
+    seasonLabel
+      ? getSeasonStandings(seasonLabel).catch((err) => {
           console.error("[loadTeamPageData] standings:", err);
           return [];
         })
       : Promise.resolve([]),
+    seasonLabel ? getSeasonByLabel(seasonLabel).catch(() => null) : Promise.resolve(null),
   ]);
+
+  // Γενική Κατάταξη position with the SAME rule as the table the page links
+  // to (standingsShape.rankVisible): the live page hides soft-deleted teams
+  // and closes the ranks up, the archive shows every team of the season.
+  let standing: TeamPageData["standing"] = null;
+  if (seasonLabel && standingRows.length > 0) {
+    let visibleQuery = supabaseAdmin.from("teams").select("id").eq("season_label", seasonLabel);
+    if (seasonRow?.status === "active") visibleQuery = visibleQuery.is("deleted_at", null);
+    const { data: visibleTeams, error: visibleErr } = await visibleQuery;
+    if (visibleErr) console.error("[loadTeamPageData] visible teams:", visibleErr.message);
+    const ranked = rankVisible(
+      standingRows,
+      new Set((visibleTeams ?? []).map((t) => t.id as number)),
+    );
+    const mine = ranked.find((l) => l.teamId === teamId);
+    standing = mine ? { rank: mine.rank, points: mine.points } : null;
+  }
 
   const seasonStatsByPlayer: Record<number, SeasonStats> = {};
   for (const stat of matchPlayerStats ?? []) {
@@ -184,8 +210,6 @@ export async function loadTeamPageData(
     ps.best_gk += stat.best_goalkeeper ? 1 : 0;
   }
 
-  const standingRow = standingRows.find((r) => r.team_id === teamId) ?? null;
-
   return {
     ok: true,
     data: {
@@ -195,7 +219,7 @@ export async function loadTeamPageData(
       playerAssociations,
       seasonStatsByPlayer,
       matches: (matchesData as unknown as Match[] | null) ?? null,
-      standing: standingRow ? { rank: standingRow.rank, points: standingRow.points } : null,
+      standing,
     },
   };
 }

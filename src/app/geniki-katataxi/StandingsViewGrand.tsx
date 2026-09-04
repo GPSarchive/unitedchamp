@@ -13,12 +13,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { POINTS, type PointsEvent } from "./rules";
-import {
-  lineFromStoredRow,
-  rankLines,
-  type RankedLine,
-  type SeasonStandingRow,
-} from "./standingsShape";
+import { rankVisible, type RankedLine, type SeasonStandingRow } from "./standingsShape";
 import PointsLog, { type LogTeam } from "./PointsLog";
 import MarqueeText from "@/app/home/cards/MarqueeText";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
@@ -797,9 +792,11 @@ export default function StandingsViewGrand({
   const teams = new Map<number, TeamInfo>(teamList.map((t) => [t.id, t]));
   const visible = rows.filter((r) => teams.has(r.team_id));
 
-  // Dense rank over the visible lines (stored rank covers every team of the
-  // season, deleted ones included — the archive's view; here ranks close up).
-  const ranked: RankedLine[] = rankLines(visible.map(lineFromStoredRow));
+  // The shared rank rule (standingsShape.rankVisible): dense rank over the
+  // visible lines. Stored ranks cover every team of the season, deleted ones
+  // included — the archive passes them all; the live page passes the active
+  // teams only, so ranks close up. The team page uses the same helper.
+  const ranked: RankedLine[] = rankVisible(rows, new Set(teams.keys()));
 
   const seasonEvents: PointsEvent[] = visible
     .flatMap((r) => r.events)

@@ -6,7 +6,7 @@
 // revalidateStandingsSurfaces() after refreshing the rows.
 import type { Metadata } from "next";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
-import { getActiveSeason } from "@/app/lib/seasons";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import { getSeasonStandings } from "@/app/lib/refreshStandings";
 import StandingsViewGrand, { type TeamInfo } from "./StandingsViewGrand";
 
@@ -18,14 +18,19 @@ export const metadata: Metadata = {
 };
 
 export default async function GenikiKataxiPage() {
-  const active = await getActiveSeason();
+  const active = await getActiveSeasonCached();
 
   const [rows, teamsRes] = await Promise.all([
     active ? getSeasonStandings(active.label) : Promise.resolve([]),
-    // Active teams only — soft-deleted (deleted_at set) teams are excluded so a
-    // disbanded team stops appearing; their stored rows stay for the archive.
-    // (Phase 4 narrows this to teams.season_label = active as well.)
-    supabaseAdmin.from("teams").select("id, name, logo").is("deleted_at", null),
+    // The active season's teams, soft-deleted ones excluded: a disbanded team
+    // stops appearing and the ranks close up (their stored rows stay for the
+    // archive, which shows every team of the season). The team page ranks
+    // with exactly this set — see standingsShape.rankVisible.
+    supabaseAdmin
+      .from("teams")
+      .select("id, name, logo")
+      .eq("season_label", active?.label ?? NO_SEASON)
+      .is("deleted_at", null),
   ]);
   if (teamsRes.error) throw new Error(`[geniki-katataxi] teams: ${teamsRes.error.message}`);
 

@@ -104,8 +104,12 @@ export const fetchTournaments = cache(async (): Promise<Tournament[]> => {
   return signTournamentLogos(withCounts as Tournament[]);
 });
 
-// Most-recent 20 matches that have a video_url, with team logos resolved.
+// Most-recent 20 matches of the ACTIVE season that have a video_url, with
+// team logos resolved. Archived seasons' highlights live with their season.
 export const fetchVideoMatches = cache(async () => {
+  const { season, tournamentIds } = await getActiveScope();
+  if (!season || tournamentIds.length === 0) return [];
+
   const { data, error } = await supabaseAdmin
     .from("matches")
     .select(
@@ -116,6 +120,7 @@ export const fetchVideoMatches = cache(async () => {
       tournament:tournament_id (name)
     `
     )
+    .in("tournament_id", tournamentIds)
     .not("video_url", "is", null)
     .neq("video_url", "")
     .order("created_at", { ascending: false })

@@ -25,6 +25,7 @@ export default async function ArchivedTeamPage({
   const [season, res] = await Promise.all([getSeasonByLabel(label), loadTeamPageData(teamId)]);
   if (!season) notFound();
   if (!res.ok) {
+    if (res.notFound) notFound();
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
         Σφάλμα φόρτωσης ομάδας: {res.error}

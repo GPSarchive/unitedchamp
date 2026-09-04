@@ -115,7 +115,7 @@ export default async function PaiktesPage({
   // `?tournament_id=abc` (NaN), `?tournament_id=` (absent) and `?tournament_id=0`
   // all cleanly mean "no tournament".
   const rawTournamentId = sp?.tournament_id ? Number(sp.tournament_id) : NaN;
-  const activeTournamentId: number | null =
+  const requestedTournamentId: number | null =
     Number.isFinite(rawTournamentId) && rawTournamentId > 0
       ? rawTournamentId
       : null;
@@ -141,6 +141,15 @@ export default async function PaiktesPage({
     .order("created_at", { ascending: false });
 
   if (tErr) console.error("[paiktes] tournaments query error:", tErr.message);
+
+  // Only an ACTIVE-season tournament may overlay the directory; an archived id
+  // (hand-typed or a stale link) means "no tournament" rather than last
+  // season's numbers next to this season's roster.
+  const activeTournamentId: number | null =
+    requestedTournamentId != null &&
+    (tournamentRows ?? []).some((t) => t.id === requestedTournamentId)
+      ? requestedTournamentId
+      : null;
   const tournaments = (tournamentRows ?? []) as {
     id: number;
     name: string;

@@ -118,6 +118,18 @@ export function lineFromStoredRow(row: SeasonStandingRow): TeamSeasonLine {
   };
 }
 
+/**
+ * THE rank rule every surface shares: keep only the rows whose team is in
+ * `visibleTeamIds`, then dense-rank the survivors (ranks close up). The live
+ * standings page passes the season's non-deleted teams; the archive passes
+ * every team of the season (which reproduces the stored rank); the team page
+ * passes whichever set the page it links to would use — so the "#" a team
+ * shows is the "#" the table shows.
+ */
+export function rankVisible(rows: SeasonStandingRow[], visibleTeamIds: Set<number>): RankedLine[] {
+  return rankLines(rows.filter((r) => visibleTeamIds.has(r.team_id)).map(lineFromStoredRow));
+}
+
 /** Engine line + its events → stored row (minus refreshed_at, set by the writer). */
 export function storedRowFromLine(
   seasonLabel: string,

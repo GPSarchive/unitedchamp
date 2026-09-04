@@ -8,7 +8,7 @@ export function generateStaticParams() {
   return [];
 }
 
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSeasonStatusCached } from "@/app/lib/seasonScope";
 import { loadTeamPageData } from "./loadTeamPage";
 import TeamClient from "./TeamClient";
@@ -33,6 +33,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const res = await loadTeamPageData(teamId);
 
   if (!res.ok) {
+    if (res.notFound) notFound();
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a14] text-[#F3EFE6] p-8 font-mono text-sm">
         Σφάλμα φόρτωσης ομάδας: {res.error}
