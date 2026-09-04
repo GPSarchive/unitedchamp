@@ -25,10 +25,12 @@ import {
   type EventKind,
   type MatchDetail,
   type PointsEvent,
+  type TeamSeasonLine,
 } from "./rules";
+import { compareLines } from "./standingsShape";
 
 export { ADJUSTMENT_PRESETS, NO_SEASON_LABEL, POINTS } from "./rules";
-export type { AdjustmentKind, EventKind, PointsEvent } from "./rules";
+export type { AdjustmentKind, EventKind, PointsEvent, TeamSeasonLine } from "./rules";
 
 export interface SeasonAdjustment {
   id: number;
@@ -37,20 +39,6 @@ export interface SeasonAdjustment {
   kind: AdjustmentKind;
   points: number;
   reason: string | null;
-}
-
-export interface TeamSeasonLine {
-  teamId: number;
-  participations: number;
-  qualifications: number;
-  titles: number;
-  runnerUps: number;
-  wins: number;
-  draws: number;
-  losses: number;
-  adjustmentPoints: number;
-  adjustmentCount: number;
-  points: number;
 }
 
 export interface GeneralStandings {
@@ -137,12 +125,19 @@ export type SeasonMode = "field" | "date";
 
 export interface ComputeOptions {
   seasonMode?: SeasonMode;
+  /**
+   * Restrict the compute to ONE season label: tournaments and adjustments of
+   * other seasons are skipped up front. Used by the stored-standings writer
+   * (lib/refreshStandings.ts); the unscoped compute still serves the recap.
+   */
+  seasonScope?: { onlyLabel: string };
 }
 
 export async function computeGeneralStandings(
   options: ComputeOptions = {}
 ): Promise<GeneralStandings> {
   const seasonMode: SeasonMode = options.seasonMode ?? "field";
+  const onlyLabel = options.seasonScope?.onlyLabel ?? null;
   const [tournaments, stages, participations, matches] = await Promise.all([
     fetchAll<TournamentRow>("tournaments", "id, name, season, status, winner_team_id, start_date"),
     fetchAll<StageRow>("tournament_stages", "id, tournament_id, kind, ordering"),
@@ -231,6 +226,7 @@ export async function computeGeneralStandings(
       seasonMode === "date"
         ? seasonFromDate(tDate) ?? seasonKey(t.season)
         : seasonKey(t.season);
+    if (onlyLabel != null && season !== onlyLabel) continue;
     const tName = (t.name ?? "").trim() || `Τουρνουά #${t.id}`;
     // Emit one aggregated automatic event, tagged with a stable source key so the
     // admin panel can cancel/override it with a counter-adjustment. Optional `date`
@@ -451,6 +447,7 @@ export async function computeGeneralStandings(
 
   for (const adj of adjustments) {
     const season = seasonKey(adj.season);
+    if (onlyLabel != null && season !== onlyLabel) continue;
     const l = line(season, adj.team_id);
     l.adjustmentPoints += adj.points;
     l.adjustmentCount += 1;
@@ -493,7 +490,7 @@ export async function computeGeneralStandings(
         l.losses * POINTS.loss +
         l.adjustmentPoints,
     }));
-    lines.sort((a, b) => b.points - a.points || b.wins - a.wins || a.teamId - b.teamId);
+    lines.sort(compareLines);
     result.set(season, lines);
   }
 

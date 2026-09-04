@@ -139,7 +139,7 @@ Then `node scripts/audit-rls.mjs` (extended with the new tables) → anon reads 
 
 ### 3.4 Backfills (Phase 1–2, scripts, re-runnable)
 - `player_season_stats` for `'2025-2026'` ← recompute from `match_player_stats`. **Must equal `player_career_stats` row-for-row** (everything is one season). Diff script is the acceptance test. **DONE 2026-09-04**: `npx tsx scripts/refresh-player-stats.ts --season=2025-2026` → 623 matches, 6639 rows, 752 season rows; `scripts/audit-player-stats-drift.mjs` → 0 drift, equivalence 0 of 756 (the 4 career-only rows are 0-match rows the season table deliberately omits).
-- `season_team_standings` for `'2025-2026'` ← run the existing Γενική engine once, scoped. **Must match the live `/geniki-katataxi` page** before the page is switched to read the table.
+- `season_team_standings` for `'2025-2026'` ← run the existing Γενική engine once, scoped. **Must match the live `/geniki-katataxi` page** before the page is switched to read the table. **DONE 2026-09-04**: `npx tsx scripts/refresh-standings.ts --season=2025-2026` → 60 rows (45 live + 15 that left); `scripts/audit-season-standings.ts` → 0 drift, GF = GA = 4578, matches_played Σ = W+D+L Σ = 1114. `/geniki-katataxi` now reads the stored rows (static ISR, no season tabs); every points-affecting mutation site calls `refreshActiveSeasonStandings()` before revalidating.
 - `team_season_score_archive` ← `insert ... select id, season_score from teams where season_score is not null` (5 rows expected).
 
 ---

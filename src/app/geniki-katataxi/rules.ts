@@ -78,6 +78,21 @@ export function seasonLabelFromDate(
   return startYear == null ? null : `${startYear}-${startYear + 1}`;
 }
 
+/** One team's totals for one season, as computed by the points engine (points.ts). */
+export interface TeamSeasonLine {
+  teamId: number;
+  participations: number;
+  qualifications: number;
+  titles: number;
+  runnerUps: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  adjustmentPoints: number;
+  adjustmentCount: number;
+  points: number;
+}
+
 /** Every rule an admin can grant manually, with its default points (null = free amount). */
 export const ADJUSTMENT_PRESETS = {
   international: { label: "Διεθνής διάκριση", points: POINTS.international },

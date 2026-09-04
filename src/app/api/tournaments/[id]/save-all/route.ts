@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
-import { revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
+import { revalidateStandingsSurfaces, revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -824,9 +825,12 @@ if (body.matches?.upsert?.length) {
     }
     // ======================================================================
 
-    // Editor saved matches/stages/teams — regenerate the ISR-cached public
-    // pages that render this tournament.
+    // Editor saved matches/stages/teams — rewrite the stored Γενική Κατάταξη
+    // rows (results/participants/ties may have changed), then regenerate the
+    // ISR-cached public pages that render this tournament.
+    await refreshActiveSeasonStandings("POST /api/tournaments/[id]/save-all");
     revalidateTournamentSurfaces(id);
+    revalidateStandingsSurfaces();
     revalidatePath("/");
     revalidatePath("/matches");
 

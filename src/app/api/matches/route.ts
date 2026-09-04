@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 import { decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
@@ -422,6 +423,7 @@ export async function POST(req: Request) {
       return jsonError(mapped.status, mapped.msg, error);
     }
 
+    await refreshActiveSeasonStandings("POST /api/matches");
     revalidateMatchSurfaces({
       id: data.id,
       tournament_id: payload.tournament_id ?? null,

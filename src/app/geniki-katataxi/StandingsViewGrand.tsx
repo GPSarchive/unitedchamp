@@ -12,14 +12,13 @@
 //     scrollable ledger from rank 04 down.
 import Image from "next/image";
 import Link from "next/link";
-import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { POINTS, type PointsEvent } from "./rules";
 import {
-  computeGeneralStandingsCached,
-  NO_SEASON_LABEL,
-  POINTS,
-  type SeasonMode,
-  type TeamSeasonLine,
-} from "./points";
+  lineFromStoredRow,
+  rankLines,
+  type RankedLine,
+  type SeasonStandingRow,
+} from "./standingsShape";
 import PointsLog, { type LogTeam } from "./PointsLog";
 import MarqueeText from "@/app/home/cards/MarqueeText";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
@@ -271,47 +270,10 @@ function Masthead({ season, teamCount }: { season: string; teamCount: number }) 
 // ───────────────────────────────────────────────────────────────────────
 // Season picker — the epoch selector
 // ───────────────────────────────────────────────────────────────────────
-function SeasonTabs({
-  seasons,
-  active,
-  basePath,
-}: {
-  seasons: string[];
-  active: string;
-  basePath: string;
-}) {
-  if (seasons.length <= 1) return null;
-  return (
-    <div className="mb-14 flex flex-wrap items-center justify-center gap-2">
-      <span className="mr-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55">
-        Σεζόν
-      </span>
-      {seasons.map((s) => {
-        const isActive = s === active;
-        return (
-          <Link
-            key={s}
-            href={`${basePath}?season=${encodeURIComponent(s)}`}
-            className={`border px-4 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
-              isActive
-                ? "border-[#e8c66b] bg-[#e8c66b] font-bold text-[#08070f]"
-                : "border-[#F3EFE6]/25 bg-[#13131d]/80 text-[#F3EFE6]/75 hover:border-[#e8c66b]/70 hover:text-[#e8c66b]"
-            }`}
-            style={isActive ? { boxShadow: "0 0 22px rgba(232,198,107,0.35)" } : undefined}
-          >
-            {s}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
 // ───────────────────────────────────────────────────────────────────────
 // Shared bits for podium cards
 // ───────────────────────────────────────────────────────────────────────
-type TeamInfo = { id: number; name: string | null; logo: string | null };
-type RankedLine = TeamSeasonLine & { rank: number };
+export type TeamInfo = { id: number; name: string | null; logo: string | null };
 
 function TeamCrest({
   team,
@@ -791,63 +753,39 @@ function StateBlock({ kicker, title, body }: { kicker: string; title: string; bo
 // View
 // ───────────────────────────────────────────────────────────────────────
 export interface StandingsViewGrandProps {
-  /** Which season model to use. "field" = live, "date" = Sept 30 cutoff (preview). */
-  seasonMode: SeasonMode;
-  /** Base route the season tabs link to. */
-  basePath: string;
-  /** Requested ?season= value (already un-arrayed). */
-  requestedSeason?: string;
+  /** Season display label, e.g. "2025/26" (seasons.display_label). */
+  seasonDisplay: string;
+  /** Stored season_team_standings rows for the season (any order). */
+  rows: SeasonStandingRow[];
+  /**
+   * Teams to render. Rows whose team is not in this list are dropped and the
+   * survivors are re-ranked — the live page passes active teams only, so a
+   * disbanded team stops appearing without touching the stored rows.
+   */
+  teams: TeamInfo[];
   /** Optional banner rendered above the standings. */
   banner?: React.ReactNode;
 }
 
-export default async function StandingsViewGrand({
-  seasonMode,
-  basePath,
-  requestedSeason,
+export default function StandingsViewGrand({
+  seasonDisplay,
+  rows,
+  teams: teamList,
   banner,
 }: StandingsViewGrandProps) {
-  const requested = requestedSeason?.trim();
+  const teams = new Map<number, TeamInfo>(teamList.map((t) => [t.id, t]));
+  const visible = rows.filter((r) => teams.has(r.team_id));
 
-  const [standings, teamsRes] = await Promise.all([
-    // Cached (60s / tag-invalidated): this component renders on a dynamic
-    // route, so the raw compute would otherwise full-scan 5 tables per view.
-    computeGeneralStandingsCached({ seasonMode }),
-    // Active teams only — soft-deleted (deleted_at set) teams are excluded from the
-    // standings so a disbanded team stops appearing in every season it ever played.
-    supabaseAdmin.from("teams").select("id, name, logo").is("deleted_at", null),
-  ]);
+  // Dense rank over the visible lines (stored rank covers every team of the
+  // season, deleted ones included — the archive's view; here ranks close up).
+  const ranked: RankedLine[] = rankLines(visible.map(lineFromStoredRow));
 
-  const teams = new Map<number, TeamInfo>(
-    ((teamsRes.data ?? []) as TeamInfo[]).map((t) => [t.id, t])
-  );
-
-  const season =
-    requested && standings.seasons.includes(requested)
-      ? requested
-      : standings.seasons.find((s) => s !== NO_SEASON_LABEL) ?? standings.seasons[0] ?? "—";
-
-  // The points engine derives teams from participation/match rows and knows nothing
-  // about soft-deletes, so drop any line for a team that's no longer active. Ranks
-  // below recompute over the surviving lines.
-  const lines = (standings.bySeason.get(season) ?? []).filter((l) => teams.has(l.teamId));
-  const seasonEvents = standings.events.filter(
-    (e) => e.season === season && !e.cancelsSourceKey && teams.has(e.teamId)
-  );
+  const seasonEvents: PointsEvent[] = visible
+    .flatMap((r) => r.events)
+    .filter((e) => !e.cancelsSourceKey);
   const logTeams: Record<number, LogTeam> = Object.fromEntries(
     [...teams].map(([id, t]) => [id, { name: t.name ?? `Ομάδα #${id}`, logo: t.logo }])
   );
-
-  // Dense rank: teams with equal points share a rank.
-  let lastPts: number | null = null;
-  let rank = 0;
-  const ranked: RankedLine[] = lines.map((l) => {
-    if (lastPts === null || l.points !== lastPts) {
-      rank += 1;
-      lastPts = l.points;
-    }
-    return { ...l, rank };
-  });
 
   // Podium split. Dense ranking means ties can put several teams on one step —
   // every co-holder gets the full ceremonial treatment.
@@ -858,12 +796,11 @@ export default async function StandingsViewGrand({
 
   return (
     <Shell>
-      <Masthead season={season} teamCount={ranked.length} />
+      <Masthead season={seasonDisplay} teamCount={ranked.length} />
 
       <section className="relative">
         <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-10 md:pb-14">
           {banner}
-          <SeasonTabs seasons={standings.seasons} active={season} basePath={basePath} />
 
           {ranked.length === 0 ? (
             <StateBlock
@@ -879,7 +816,7 @@ export default async function StandingsViewGrand({
                     key={c.teamId}
                     line={c}
                     team={teams.get(c.teamId)}
-                    season={season}
+                    season={seasonDisplay}
                   />
                 ))}
 
@@ -915,8 +852,6 @@ export default async function StandingsViewGrand({
 
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.15em] text-[#F3EFE6]/40">
             Οι πόντοι υπολογίζονται αυτόματα από τα τουρνουά και τους αγώνες κάθε σεζόν.
-            {!standings.adjustmentsAvailable &&
-              " · Οι χειροκίνητες προσαρμογές θα ενεργοποιηθούν με την επόμενη ενημέρωση της βάσης."}
           </p>
         </div>
       </section>
@@ -924,7 +859,7 @@ export default async function StandingsViewGrand({
       <footer className="border-t border-[#e8c66b]/25 bg-[#0c0b16] text-[#F3EFE6]">
         <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-6 py-6 md:flex-row md:items-center">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
-            Γενική Κατάταξη · Σεζόν {season}
+            Γενική Κατάταξη · Σεζόν {seasonDisplay}
           </p>
           <Link
             href="/"

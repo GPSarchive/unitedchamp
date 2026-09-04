@@ -31,11 +31,7 @@ export function revalidateMatchSurfaces(match: {
   revalidatePath("/");
   revalidatePath("/matches");
   revalidatePath(`/matches/${match.id}`);
-  // /geniki-katataxi is dynamically rendered (season tabs) — the path call is
-  // a no-op there; the tag is what actually drops the cached points compute.
-  revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG, "max");
-  revalidateTag(SEASON_RECAP_TAG, "max");
+  revalidateStandingsSurfaces();
   revalidatePath("/paiktes");
   if (match.tournament_id != null) revalidateTournamentSurfaces(match.tournament_id);
   const teamIds = new Set(
@@ -44,6 +40,19 @@ export function revalidateMatchSurfaces(match: {
     )
   );
   for (const teamId of teamIds) revalidatePath(`/OMADA/${teamId}`);
+}
+
+/**
+ * Γενική Κατάταξη surfaces. /geniki-katataxi is a static ISR page reading the
+ * stored season_team_standings rows, so the path call regenerates it; the tags
+ * drop the cached unscoped points compute (recap) and anything else keyed on it.
+ * Call AFTER refreshActiveSeasonStandings() so the regenerated page sees the
+ * fresh rows.
+ */
+export function revalidateStandingsSurfaces() {
+  revalidatePath("/geniki-katataxi");
+  revalidateTag(GENIKI_KATATAXI_TAG, "max");
+  revalidateTag(SEASON_RECAP_TAG, "max");
 }
 
 /** The tournament detail routes (all three variants render the same loader). */
@@ -66,7 +75,5 @@ export function revalidateTeamSurfaces(teamId: number | string) {
   revalidatePath(`/OMADA/${teamId}`);
   revalidatePath("/OMADES");
   revalidatePath("/");
-  revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG, "max");
-  revalidateTag(SEASON_RECAP_TAG, "max");
+  revalidateStandingsSurfaces();
 }

@@ -3,7 +3,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { revalidateTournamentSurfaces } from '@/app/lib/revalidatePublicPages';
+import { revalidateStandingsSurfaces, revalidateTournamentSurfaces } from '@/app/lib/revalidatePublicPages';
+import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
 import { z } from 'zod';
 import type { NewTournamentPayload } from '@/app/lib/types';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer'; // auth check (roles)
@@ -1225,7 +1226,10 @@ export async function updateTournamentAction(formData: FormData) {
     }
   }
 
+  // Winner/season/teams may have changed → rewrite the stored Γενική Κατάταξη.
+  await refreshActiveSeasonStandings('updateTournamentAction');
   revalidateTournamentSurfaces(tournamentId);
+  revalidateStandingsSurfaces();
   revalidatePath('/');
   redirect(`/tournaments/${payload.tournament.slug ?? existing.slug ?? ''}`);
 }
@@ -1267,7 +1271,10 @@ export async function deleteTournamentAction(tournamentId: number) {
   const delTournament = await supabaseAdmin.from('tournaments').delete().eq('id', tournamentId);
   if (delTournament.error) return { ok: false, error: delTournament.error.message };
 
+  // Every point the tournament awarded is gone → rewrite the stored standings.
+  await refreshActiveSeasonStandings('deleteTournamentAction');
   revalidateTournamentSurfaces(tournamentId);
+  revalidateStandingsSurfaces();
   revalidatePath('/');
   revalidatePath('/matches');
   return { ok: true };

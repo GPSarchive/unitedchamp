@@ -8,6 +8,7 @@ import {
   decideSingleLegKO,
 } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
 export interface MatchUpdatePayload {
   matchId: number;
@@ -198,6 +199,7 @@ export async function updateMatchFromPlanner(payload: MatchUpdatePayload) {
     }
 
     // Public pages must reflect the change (result, teams, kickoff) immediately.
+    await refreshActiveSeasonStandings("updateMatchFromPlanner");
     revalidateMatchSurfaces({
       id: matchId,
       tournament_id: currentMatch.tournament_id ?? null,

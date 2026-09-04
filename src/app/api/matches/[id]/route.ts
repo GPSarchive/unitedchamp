@@ -6,6 +6,7 @@ import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
 import { decideTwoLeggedTie, decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -536,7 +537,9 @@ export async function PATCH(
       }
     }
 
-    // Public pages are ISR-cached; regenerate the ones showing this match.
+    // Result/teams may have changed → rewrite the stored Γενική Κατάταξη rows
+    // of the active season, then regenerate the ISR-cached public pages.
+    await refreshActiveSeasonStandings("PATCH /api/matches/[id]");
     revalidateMatchSurfaces({
       id,
       tournament_id: current.tournament_id,
@@ -680,6 +683,7 @@ export async function PATCH(
       }
       if (!data) return jsonError(404, "Not found");
 
+      await refreshActiveSeasonStandings("DELETE /api/matches/[id]");
       revalidateMatchSurfaces({
         id,
         tournament_id: current.tournament_id,

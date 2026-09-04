@@ -14,6 +14,7 @@ import {
   type AdjustmentKind,
 } from "@/app/geniki-katataxi/rules";
 import { GENIKI_KATATAXI_CACHE_TAG } from "@/app/geniki-katataxi/points";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
 type ActionResult = { success: boolean; error?: string };
 
@@ -27,11 +28,13 @@ async function requireAdminUser() {
   return user;
 }
 
-function revalidate() {
+async function revalidate() {
+  // An adjustment changes points → rewrite the stored rows of the active
+  // season (an archived season's rows change only via re-snapshot), then
+  // regenerate the static public page and drop the cached unscoped compute.
+  await refreshActiveSeasonStandings("dashboard/geniki-katataxi");
   revalidatePath("/geniki-katataxi");
   revalidatePath("/dashboard/geniki-katataxi");
-  // The public page is dynamically rendered; the cached points compute is
-  // keyed by this tag, so drop it for an instant refresh after an adjustment.
   revalidateTag(GENIKI_KATATAXI_CACHE_TAG, "max");
 }
 
@@ -66,7 +69,7 @@ export async function addAdjustment(input: {
     });
     if (error) return { success: false, error: error.message };
 
-    revalidate();
+    await revalidate();
     return { success: true };
   } catch (err) {
     console.error("[addAdjustment] error:", err);
@@ -85,7 +88,7 @@ export async function deleteAdjustment(id: number): Promise<ActionResult> {
       .eq("id", id);
     if (error) return { success: false, error: error.message };
 
-    revalidate();
+    await revalidate();
     return { success: true };
   } catch (err) {
     console.error("[deleteAdjustment] error:", err);
@@ -145,7 +148,7 @@ export async function cancelEvent(input: {
     });
     if (error) return { success: false, error: error.message };
 
-    revalidate();
+    await revalidate();
     return { success: true };
   } catch (err) {
     console.error("[cancelEvent] error:", err);
