@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   aggregateCareerBuckets,
   aggregateTournamentBuckets,
+  aggregateSeasonBuckets,
   aggregateLegacyTotals,
   chunk,
   type MpsRow,
@@ -198,6 +199,83 @@ describe("aggregateTournamentBuckets", () => {
       best_gk_count: career.total_best_gk,
       wins: career.total_wins,
     });
+  });
+});
+
+describe("aggregateSeasonBuckets", () => {
+  it("is the tournament bucket plus primary_team_id", () => {
+    const winners = new Map<number, number | null>([[10, 100]]);
+    const rows = [row({ player_id: 1, match_id: 10, team_id: 100, goals: 1, mvp: true })];
+    const season = aggregateSeasonBuckets(rows, winners).get(1)!;
+    const tourney = aggregateTournamentBuckets(rows, winners).get(1)!;
+    expect(season).toEqual({ ...tourney, primary_team_id: 100 });
+  });
+
+  it("primary team = most appearances; ties resolve to the first team in row order (career rule)", () => {
+    const rows = [
+      row({ player_id: 1, match_id: 10, team_id: 100 }),
+      row({ player_id: 1, match_id: 11, team_id: 200 }),
+      row({ player_id: 1, match_id: 12, team_id: 200 }),
+      row({ player_id: 2, match_id: 13, team_id: 300 }),
+      row({ player_id: 2, match_id: 14, team_id: 400 }),
+    ];
+    const out = aggregateSeasonBuckets(rows, new Map());
+    expect(out.get(1)!.primary_team_id).toBe(200);
+    expect(out.get(2)!.primary_team_id).toBe(300);
+    const career = aggregateCareerBuckets(rows, new Map());
+    expect(out.get(1)!.primary_team_id).toBe(career.get(1)!.primary_team_id);
+    expect(out.get(2)!.primary_team_id).toBe(career.get(2)!.primary_team_id);
+  });
+
+  it("seeded players with no rows get a 0-match bucket with no primary team (delete signal)", () => {
+    const out = aggregateSeasonBuckets([], new Map(), [7]);
+    expect(out.get(7)).toEqual({
+      matches: 0,
+      goals: 0,
+      assists: 0,
+      yellow_cards: 0,
+      red_cards: 0,
+      blue_cards: 0,
+      mvp_count: 0,
+      best_gk_count: 0,
+      wins: 0,
+      primary_team_id: null,
+    });
+  });
+
+  it("Phase 1 acceptance identity: when one season holds every match, season == career field for field", () => {
+    const winners = new Map<number, number | null>([
+      [10, 100],
+      [11, null],
+      [12, 200],
+      [21, 100], // leg-2 decider
+      [20, null], // leg 1
+    ]);
+    const rows = [
+      row({ player_id: 1, match_id: 10, team_id: 100, goals: 2, assists: 1, yellow_cards: 1, mvp: true }),
+      row({ player_id: 1, match_id: 11, team_id: 100, goals: 1, blue_cards: 1, best_goalkeeper: true }),
+      row({ player_id: 1, match_id: 12, team_id: 300, red_cards: 1 }),
+      row({ player_id: 1, match_id: 20, team_id: 100, goals: 3 }),
+      row({ player_id: 1, match_id: 21, team_id: 100 }),
+      row({ player_id: 2, match_id: 12, team_id: 200, goals: 4 }),
+    ];
+    const career = aggregateCareerBuckets(rows, winners);
+    const season = aggregateSeasonBuckets(rows, winners);
+    expect(season.size).toBe(career.size);
+    for (const [pid, c] of career) {
+      expect(season.get(pid)).toEqual({
+        matches: c.total_matches,
+        goals: c.total_goals,
+        assists: c.total_assists,
+        yellow_cards: c.total_yellow_cards,
+        red_cards: c.total_red_cards,
+        blue_cards: c.total_blue_cards,
+        mvp_count: c.total_mvp,
+        best_gk_count: c.total_best_gk,
+        wins: c.total_wins,
+        primary_team_id: c.primary_team_id,
+      });
+    }
   });
 });
 

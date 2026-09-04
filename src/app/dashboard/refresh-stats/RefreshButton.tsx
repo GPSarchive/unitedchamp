@@ -9,6 +9,8 @@ export default function RefreshButton() {
     careerRows?: number;
     tournamentRows?: number;
     mpsRowsProcessed?: number;
+    seasonLabel?: string | null;
+    seasonRows?: number;
     error?: string;
   } | null>(null);
 
@@ -23,6 +25,8 @@ export default function RefreshButton() {
           careerRows: res.careerRows,
           tournamentRows: res.tournamentRows,
           mpsRowsProcessed: res.mpsRowsProcessed,
+          seasonLabel: res.seasonLabel,
+          seasonRows: res.seasonRows,
         });
       } else {
         setStatus("error");
@@ -54,6 +58,10 @@ export default function RefreshButton() {
           <p>match_player_stats rows processed: {result.mpsRowsProcessed}</p>
           <p>Career stats rows written: {result.careerRows}</p>
           <p>Tournament stats rows written: {result.tournamentRows}</p>
+          <p>
+            Season stats rows written ({result.seasonLabel ?? "no active season"}):{" "}
+            {result.seasonRows ?? 0}
+          </p>
           <p className="text-xs text-green-400 mt-2">
             Verify: the &quot;rows processed&quot; count should match your total match_player_stats
             row count in Supabase.

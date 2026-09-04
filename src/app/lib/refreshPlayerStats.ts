@@ -17,43 +17,15 @@ import {
   chunk,
   type MpsRow,
 } from "@/app/lib/playerStatsAggregation";
+import { BATCH_SIZE, PAGE_SIZE, fetchAllRows, fetchInBatches } from "@/app/lib/supabasePaging";
+import { getActiveSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
+import { refreshAllSeasonStats, refreshSeasonStatsForPlayers } from "@/app/lib/refreshSeasonStats";
 
-const BATCH_SIZE = 300;
-
-// PostgREST caps every response at ~1000 rows (server max-rows setting); a
-// large .limit() does NOT override it. All reads here must paginate.
-const PAGE_SIZE = 500;
+// Kept as a named export: dashboard/fix-stats imports it from here.
+export { fetchAllRows };
 
 const MPS_COLUMNS =
   "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper";
-
-/** Fetch all rows matching `idColumn IN ids`, paginating past the row cap */
-async function fetchInBatches<T>(
-  table: string,
-  idColumn: string,
-  ids: number[],
-  selectColumns: string,
-): Promise<T[]> {
-  if (ids.length === 0) return [];
-  const out: T[] = [];
-  for (const batch of chunk(ids, BATCH_SIZE)) {
-    let offset = 0;
-    for (;;) {
-      const { data, error } = await supabaseAdmin
-        .from(table)
-        .select(selectColumns)
-        .in(idColumn, batch)
-        .order("id", { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1);
-      if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
-      if (!data || data.length === 0) break;
-      out.push(...(data as T[]));
-      if (data.length < PAGE_SIZE) break;
-      offset += PAGE_SIZE;
-    }
-  }
-  return out;
-}
 
 // ─── Core: refresh career stats for a set of players ────────────────
 
@@ -229,35 +201,18 @@ export async function refreshStatsForMatch(matchId: number) {
   // 4. Refresh tournament stats (if match belongs to a tournament)
   if (match.tournament_id) {
     await refreshTournamentStatsForPlayers(playerIds, match.tournament_id);
+
+    // 5. Season stats — ONLY when the tournament belongs to the active
+    //    season. Archived seasons are frozen and change only via an explicit
+    //    re-snapshot (plans/seasonal-data-contract.md §4).
+    const [seasonLabel, active] = await Promise.all([
+      getTournamentSeasonLabel(match.tournament_id),
+      getActiveSeason(),
+    ]);
+    if (seasonLabel && active && seasonLabel === active.label) {
+      await refreshSeasonStatsForPlayers(playerIds, seasonLabel);
+    }
   }
-}
-
-// ─── Helper: paginate through an entire table ───────────────────────
-// Supabase PostgREST caps responses at ~1000 rows (server max-rows setting).
-// A single .limit(100000) does NOT override this. We must paginate with .range().
-
-export async function fetchAllRows<T>(
-  table: string,
-  selectColumns: string,
-  orderColumn = "id",
-): Promise<T[]> {
-  const all: T[] = [];
-  let offset = 0;
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from(table)
-      .select(selectColumns)
-      .order(orderColumn, { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    all.push(...(data as T[]));
-    if (data.length < PAGE_SIZE) break; // last page
-    offset += PAGE_SIZE;
-  }
-  return all;
 }
 
 // ─── Public: full backfill of ALL players ───────────────────────────
@@ -272,6 +227,10 @@ export async function refreshAllPlayerStats(): Promise<{
   mpsRowsProcessed: number;
   staleCareerRowsDeleted: number;
   staleTournamentRowsDeleted: number;
+  /** Active season that was rebuilt (null when no season is active). */
+  seasonLabel: string | null;
+  seasonRows: number;
+  staleSeasonRowsDeleted: number;
 }> {
   // 1. Paginate through ALL match_player_stats rows
   const rows = await fetchAllRows<MpsRow>("match_player_stats", MPS_COLUMNS);
@@ -396,11 +355,25 @@ export async function refreshAllPlayerStats(): Promise<{
     }
   }
 
+  // 7. Season stats for the ACTIVE season only (the manual safety net covers
+  //    the live season; archived seasons are re-snapshotted deliberately).
+  const active = await getActiveSeason();
+  let seasonRows = 0;
+  let staleSeasonRowsDeleted = 0;
+  if (active) {
+    const r = await refreshAllSeasonStats(active.label);
+    seasonRows = r.seasonRows;
+    staleSeasonRowsDeleted = r.staleSeasonRowsDeleted;
+  }
+
   return {
     careerRows: careerUpserts.length,
     tournamentRows: tourneyUpserts.length,
     mpsRowsProcessed: rows.length,
     staleCareerRowsDeleted: staleCareerIds.length,
     staleTournamentRowsDeleted,
+    seasonLabel: active?.label ?? null,
+    seasonRows,
+    staleSeasonRowsDeleted,
   };
 }

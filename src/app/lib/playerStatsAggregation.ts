@@ -63,7 +63,34 @@ export type LegacyTotals = {
   blue_cards: number;
 };
 
+/**
+ * Per-season bucket (player_season_stats): the per-tournament shape plus the
+ * player's primary team for that season. Seasons are per-season-team rows
+ * (plans/seasonal-data-contract.md D1), so primary_team_id always points at
+ * a team row of the same season.
+ */
+export type SeasonBucket = TournamentBucket & {
+  primary_team_id: number | null;
+};
+
 const num = (v: number | null | undefined) => Number(v) || 0;
+
+/**
+ * primary team = the team with the most stats rows (appearances); ties
+ * resolve to the team first encountered in row order. Shared by the career
+ * and season aggregators so the two cannot drift.
+ */
+function primaryTeamFromCounts(counts: Map<number, number> | undefined): number | null {
+  let best: number | null = null;
+  let max = 0;
+  for (const [teamId, count] of counts ?? []) {
+    if (count > max) {
+      max = count;
+      best = teamId;
+    }
+  }
+  return best;
+}
 
 /** Split an array into chunks */
 export function chunk<T>(arr: T[], size: number): T[][] {
@@ -149,13 +176,7 @@ export function aggregateCareerBuckets(
 
   for (const [pid, s] of statsMap) {
     s.total_matches = matchesPerPlayer.get(pid)?.size ?? 0;
-    let maxMatches = 0;
-    for (const [teamId, count] of teamCounts.get(pid) ?? []) {
-      if (count > maxMatches) {
-        maxMatches = count;
-        s.primary_team_id = teamId;
-      }
-    }
+    s.primary_team_id = primaryTeamFromCounts(teamCounts.get(pid));
   }
 
   return statsMap;
@@ -203,6 +224,35 @@ export function aggregateTournamentBuckets(
   }
 
   return statsMap;
+}
+
+/**
+ * Aggregate per-season buckets from stats rows ALREADY FILTERED to the
+ * matches of one season's tournaments. Same numbers as the per-tournament
+ * aggregator over the same rows, plus primary_team_id with the career
+ * tie-break rule. Same seeding contract: callers delete rows whose bucket
+ * ends up with 0 matches.
+ */
+export function aggregateSeasonBuckets(
+  rows: MpsRow[],
+  winnerByMatch: Map<number, number | null>,
+  seedPlayerIds?: number[],
+): Map<number, SeasonBucket> {
+  const base = aggregateTournamentBuckets(rows, winnerByMatch, seedPlayerIds);
+
+  // per-player insertion-ordered team counts; first-seen team wins count ties
+  const teamCounts = new Map<number, Map<number, number>>();
+  for (const r of rows) {
+    if (!teamCounts.has(r.player_id)) teamCounts.set(r.player_id, new Map());
+    const tc = teamCounts.get(r.player_id)!;
+    tc.set(r.team_id, (tc.get(r.team_id) ?? 0) + 1);
+  }
+
+  const out = new Map<number, SeasonBucket>();
+  for (const [pid, s] of base) {
+    out.set(pid, { ...s, primary_team_id: primaryTeamFromCounts(teamCounts.get(pid)) });
+  }
+  return out;
 }
 
 /** Aggregate the legacy player_statistics totals (goals/assists/cards only). */
