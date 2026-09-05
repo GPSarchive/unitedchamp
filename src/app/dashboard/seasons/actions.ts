@@ -20,6 +20,7 @@ import {
 } from "@/app/lib/seasons";
 import { snapshotSeason, type SeasonSnapshotResult } from "@/app/lib/seasonSnapshot";
 import {
+  revalidateMatchSurfaces,
   revalidateSeasonSurfaces,
   revalidateTournamentSurfaces,
 } from "@/app/lib/revalidatePublicPages";
@@ -302,7 +303,7 @@ async function buildPreflight(label: string): Promise<ClosePreflight> {
   const warnings: string[] = [];
   if (unfinishedPast > 0) {
     blockers.push(
-      `${unfinishedPast} αγώνες με παρελθούσα ημερομηνία δεν έχουν ολοκληρωθεί — ολοκλήρωσε, ανέβαλε ή κατακύρωσέ τους παρακάτω (ή κλείσε με «παράβλεψη»).`,
+      `${unfinishedPast} αγώνες με παρελθούσα ημερομηνία δεν έχουν ολοκληρωθεί — αν δεν παίχτηκαν, σβήσε τις ημερομηνίες τους παρακάτω· αλλιώς ολοκλήρωσε, κατακύρωσε ή ανέβαλέ τους (ή κλείσε με «παράβλεψη»).`,
     );
   }
   if (tournamentsOpen > 0) {
@@ -539,6 +540,83 @@ export async function completeTournament(input: {
     return { success: true, status: "completed" };
   } catch (err) {
     console.error("[completeTournament] error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+/**
+ * Forgotten fixtures: matches that were never played and never will be.
+ * Clears match_date (the original is kept in original_match_date, the column
+ * postponement already uses) so the match stops blocking the close. Status is
+ * untouched, no announcement is posted, no result is invented; standings,
+ * progression and player stats are unaffected. Only non-finished, dated
+ * matches of `seasonLabel`'s tournaments qualify — anything else is skipped.
+ */
+export async function clearMatchDates(input: {
+  seasonLabel: string;
+  matchIds: number[];
+}): Promise<Result<{ cleared: number; skipped: number }>> {
+  try {
+    if (!(await requireAdminUser())) return { success: false, error: "Unauthorized" };
+    const ids = positiveIds(input.matchIds ?? []);
+    if (ids.length === 0) return { success: true, cleared: 0, skipped: 0 };
+    const seasonTournaments = new Set(await listTournamentIdsForSeason(input.seasonLabel));
+
+    type Row = {
+      id: number;
+      tournament_id: number | null;
+      status: string | null;
+      match_date: string | null;
+      original_match_date: string | null;
+      team_a_id: number | null;
+      team_b_id: number | null;
+    };
+    const rows: Row[] = [];
+    for (const batch of chunk(ids, 300)) {
+      const { data, error } = await supabaseAdmin
+        .from("matches")
+        .select("id, tournament_id, status, match_date, original_match_date, team_a_id, team_b_id")
+        .in("id", batch);
+      if (error) return { success: false, error: error.message };
+      rows.push(...((data ?? []) as Row[]));
+    }
+
+    const eligible = rows.filter(
+      (r) =>
+        r.tournament_id != null &&
+        seasonTournaments.has(r.tournament_id) &&
+        r.status !== "finished" &&
+        r.match_date != null,
+    );
+
+    let cleared = 0;
+    for (const r of eligible) {
+      const { error } = await supabaseAdmin
+        .from("matches")
+        .update({ match_date: null, original_match_date: r.original_match_date ?? r.match_date })
+        .eq("id", r.id);
+      if (error) {
+        return {
+          success: false,
+          error: `Αγώνας #${r.id}: ${error.message} (${cleared} από ${eligible.length} καθαρίστηκαν πριν το σφάλμα).`,
+        };
+      }
+      cleared += 1;
+      // The date is printed on the home calendar, /matches, the match page,
+      // the tournament pages and both team pages.
+      revalidateMatchSurfaces({
+        id: r.id,
+        tournament_id: r.tournament_id,
+        team_a_id: r.team_a_id,
+        team_b_id: r.team_b_id,
+      });
+    }
+
+    revalidatePath("/dashboard/matches");
+    revalidateAdmin(input.seasonLabel);
+    return { success: true, cleared, skipped: ids.length - cleared };
+  } catch (err) {
+    console.error("[clearMatchDates] error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
 }
