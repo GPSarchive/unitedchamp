@@ -206,6 +206,7 @@ From `season_team_standings`:
 From `player_season_stats`:
 - **Player leaderboards** for the season: goals, assists, cards, MVP, best GK, wins, appearances — sortable, same component as `/paiktes`.
 - **Per-team rosters with season stats** on the archived team page (roster = `player_teams` of that team row; numbers from `player_season_stats` + `primary_team_id`).
+  *Implemented differently (Phase 4, confirmed 2026-09-05):* the numbers are per-team sums of the team row's own `match_player_stats`, not the season table — a player who moved teams mid-season shows on each team page only what they did for that team (32 such players in 2025/26 have stats for 2+ teams). Age comes from `player.birth_date` (`lib/playerAge.ts`); the team page no longer joins the legacy `player_statistics` table.
 
 From existing tables, already season-scoped through `tournament_id`:
 - **Tournament list** of the season, each opening the full archived tournament (bracket, groups, standings, every match) via the existing tournament renderer.
