@@ -143,12 +143,12 @@ function DeletePhotoButton({
 export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: Props) {
   const isEdit = !!player?.id;
   const s = player?.player_statistics?.[0];
+  // ACTIVE season numbers (read-only here: they come from the matches)
+  const ss = player?.season_stats ?? null;
 
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [age, setAge] = useState<string>("");
-  const [goals, setGoals] = useState<string>("");
-  const [assists, setAssists] = useState<string>("");
 
   // ΝΕΑ πεδία
   const [photo, setPhoto] = useState(""); // διαδρομή αποθήκευσης (ιδιωτικό bucket)
@@ -156,9 +156,6 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
   const [position, setPosition] = useState("");
   const [birth, setBirth] = useState("");
   const [playerNumber, setPlayerNumber] = useState("");
-  const [yc, setYC] = useState("");
-  const [rc, setRC] = useState("");
-  const [bc, setBC] = useState("");
 
   // Υπολογισμός ονόματος φακέλου για μεταφορτώσεις (π.χ. "john-doe-12")
   const dirName = useMemo(() => {
@@ -173,10 +170,8 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
     setFirst(player?.first_name ?? "");
     setLast(player?.last_name ?? "");
 
-    // Βασικά στατιστικά από τη σχετική γραμμή
+    // Ηλικία (χειροκίνητη, legacy). Τα νούμερα δεν επεξεργάζονται εδώ.
     setAge(s?.age == null ? "" : String(s.age));
-    setGoals(s?.total_goals == null ? "" : String(s.total_goals));
-    setAssists(s?.total_assists == null ? "" : String(s.total_assists));
 
     // Εκτεταμένα πεδία παίκτη
     setPhoto(player?.photo ?? ""); // διαδρομή
@@ -184,11 +179,6 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
     setPosition(player?.position ?? "");
     setBirth(player?.birth_date ? String(player.birth_date).slice(0, 10) : "");
     setPlayerNumber(player?.player_number == null ? "" : String(player.player_number));
-
-    // Μετρητές καρτών
-    setYC(s?.yellow_cards == null ? "" : String(s.yellow_cards));
-    setRC(s?.red_cards == null ? "" : String(s.red_cards));
-    setBC(s?.blue_cards == null ? "" : String(s.blue_cards));
   }, [open, player?.id]);
 
   const valid = useMemo(() => first.trim() && last.trim(), [first, last]);
@@ -200,8 +190,6 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
       first_name: first.trim(),
       last_name: last.trim(),
       age: age === "" ? null : Number(age),
-      total_goals: goals === "" ? 0 : Number(goals),
-      total_assists: assists === "" ? 0 : Number(assists),
 
       // ΝΕΑ πεδία
       photo: photo.trim() || null, // διαδρομή αποθήκευσης
@@ -209,11 +197,6 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
       position: position.trim() || null,
       birth_date: birth ? new Date(birth).toISOString() : null,
       player_number: playerNumber === "" ? null : Number(playerNumber),
-
-      // Μετρητές στατιστικών
-      yellow_cards: yc === "" ? 0 : Number(yc),
-      red_cards: rc === "" ? 0 : Number(rc),
-      blue_cards: bc === "" ? 0 : Number(bc),
     };
 
     await onSubmit(payload);
@@ -288,26 +271,25 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
               placeholder="π.χ. 23"
             />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Σύνολο γκολ</span>
-            <input
-              value={goals}
-              onChange={(e) => setGoals(e.target.value)}
-              inputMode="numeric"
-              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="0"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Σύνολο ασίστ</span>
-            <input
-              value={assists}
-              onChange={(e) => setAssists(e.target.value)}
-              inputMode="numeric"
-              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="0"
-            />
-          </label>
+          <div className="sm:col-span-2 rounded-lg border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm">
+            <div className="text-white/60">
+              Στατιστικά σεζόν{ss ? ` ${ss.season_label}` : ""}{" "}
+              <span className="text-white/40">(από τους αγώνες· δεν επεξεργάζονται εδώ)</span>
+            </div>
+            {ss ? (
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-mono text-white/85">
+                <span>Αγ. {ss.matches}</span>
+                <span>Γκολ {ss.goals}</span>
+                <span>Ασίστ {ss.assists}</span>
+                <span>ΚΚ {ss.yellow_cards}</span>
+                <span>ΚΟΚ {ss.red_cards}</span>
+                <span>ΜΠΛ {ss.blue_cards}</span>
+                <span>MVP {ss.mvp_count}</span>
+              </div>
+            ) : (
+              <div className="mt-1 text-white/45">Χωρίς συμμετοχή στην τρέχουσα σεζόν.</div>
+            )}
+          </div>
 
           {/* Εκτεταμένο βιογραφικό & μεταδεδομένα */}
           <label className="flex flex-col gap-1 sm:col-span-2">
@@ -381,38 +363,6 @@ export default function PlayerEditorDrawer({ open, onClose, player, onSubmit }: 
               inputMode="numeric"
               className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
               placeholder="π.χ. 10"
-            />
-          </label>
-
-          {/* Κάρτες */}
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Κίτρινες κάρτες</span>
-            <input
-              value={yc}
-              onChange={(e) => setYC(e.target.value)}
-              inputMode="numeric"
-              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="0"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Κόκκινες κάρτες</span>
-            <input
-              value={rc}
-              onChange={(e) => setRC(e.target.value)}
-              inputMode="numeric"
-              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="0"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-white/80">Μπλε κάρτες</span>
-            <input
-              value={bc}
-              onChange={(e) => setBC(e.target.value)}
-              inputMode="numeric"
-              className="px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="0"
             />
           </label>
 

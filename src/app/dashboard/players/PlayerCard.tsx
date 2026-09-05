@@ -1,9 +1,14 @@
 //app/dashboard/players/PlayerCard.tsx
 "use client";
 
+// One player in the admin grid. Numbers are the ACTIVE season's
+// (player_season_stats via GET /api/players); age is derived from birth_date,
+// falling back to the legacy hand-typed value while that column still exists.
+
 import React from "react";
 import type { PlayerWithStats } from "./types";
-import PlayerPhoto from "./PlayerPhoto"; // <-- add this import
+import PlayerPhoto from "./PlayerPhoto";
+import { ageFromBirthDate } from "@/app/lib/playerAge";
 
 type Props = {
   player: PlayerWithStats;
@@ -12,25 +17,11 @@ type Props = {
   onRestore?: () => void;
 };
 
-function num(v: unknown, fallback = 0) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
-
 export default function PlayerCard({ player, onEdit, onDelete, onRestore }: Props) {
-  const raw: any | undefined = player.player_statistics?.[0];
+  const legacy: { age?: number | null } | undefined = player.player_statistics?.[0];
+  const ss = player.season_stats ?? null;
   const isArchived = !!(player as any).deleted_at;
-
-  const stats = {
-    age: raw?.age ?? null,
-    total_goals: num(raw?.total_goals),
-    total_assists: num(raw?.total_assists),
-    yellow_cards: num(raw?.yellow_cards),
-    red_cards: num(raw?.red_cards),
-    blue_cards: num(raw?.blue_cards),
-    updated_at: raw?.updated_at ?? raw?.created_at ?? null,
-  };
-
+  const age = ageFromBirthDate(player.birth_date) ?? legacy?.age ?? null;
   const fullName = `${player.first_name} ${player.last_name}`;
 
   return (
@@ -45,29 +36,30 @@ export default function PlayerCard({ player, onEdit, onDelete, onRestore }: Prop
               </span>
             )}
           </p>
-          <p className="text-white/70 text-sm mt-1">Age: {stats.age ?? "N/A"}</p>
+          <p className="text-white/70 text-sm mt-1">
+            Ηλικία: {age ?? "—"}
+            {player.position ? <span className="text-white/50"> · {player.position}</span> : null}
+          </p>
 
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-              Goals: {stats.total_goals}
-            </span>
-            <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">
-              Assists: {stats.total_assists}
-            </span>
-            <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-300">
-              YC: {stats.yellow_cards}
-            </span>
-            <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-red-300">
-              RC: {stats.red_cards}
-            </span>
-            <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-300">
-              BC: {stats.blue_cards}
-            </span>
-          </div>
+          {ss ? (
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/80">Αγ. {ss.matches}</span>
+              <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">Γκολ {ss.goals}</span>
+              <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300">Ασίστ {ss.assists}</span>
+              <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-yellow-300">ΚΚ {ss.yellow_cards}</span>
+              <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-red-300">ΚΟΚ {ss.red_cards}</span>
+              <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-300">ΜΠΛ {ss.blue_cards}</span>
+              {ss.mvp_count > 0 && (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-300">MVP {ss.mvp_count}</span>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-white/45">Χωρίς συμμετοχή στην τρέχουσα σεζόν.</p>
+          )}
 
-          {stats.updated_at && (
+          {ss?.updated_at && (
             <p className="mt-2 text-[11px] text-white/50">
-              Last updated: {new Date(stats.updated_at).toLocaleString()}
+              Σεζόν {ss.season_label} · ενημέρωση {new Date(ss.updated_at).toLocaleString("el-GR")}
             </p>
           )}
         </div>

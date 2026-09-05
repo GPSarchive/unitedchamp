@@ -559,3 +559,24 @@ export interface MatchParticipantRow {
   created_at?: string | null;
   updated_at?: string | null;
 }
+
+/**
+ * One row of public.player_season_stats (seasonal system, Phase 1): a
+ * player's numbers for ONE season, written by the stats engine. This is what
+ * admin and public surfaces show; the all-time player_statistics table is
+ * legacy (contract §2.4) and must not be used for numbers.
+ */
+export type PlayerSeasonStatsRow = {
+  season_label: string;
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp_count: number;
+  best_gk_count: number;
+  wins: number;
+  primary_team_id: number | null;
+  updated_at: string | null;
+};

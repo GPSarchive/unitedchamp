@@ -13,6 +13,8 @@ export default function AdminPlayersCRUD() {
   const [players, setPlayers] = useState<PlayerWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which season the numbers on the cards belong to (from GET /api/players).
+  const [activeSeason, setActiveSeason] = useState<{ label: string; display_label: string } | null>(null);
 
   // search
   const [q, setQ] = useState("");
@@ -57,8 +59,8 @@ export default function AdminPlayersCRUD() {
         name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
         hasStats: !!s,
         age: s?.age ?? null,
-        goals: s?.total_goals ?? 0,
-        assists: s?.total_assists ?? 0,
+        goals: (p as any).season_stats?.goals ?? 0,
+        assists: (p as any).season_stats?.assists ?? 0,
         is_dummy_raw:
           p?.is_dummy ??
           p?.isDummy ??
@@ -141,6 +143,7 @@ export default function AdminPlayersCRUD() {
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
 
       const rows = (body?.players as PlayerWithStats[]) ?? [];
+      setActiveSeason(body?.active_season ?? null);
 
       // [DIAG-LOG] RAW payload from API
       if (DEBUG) {
@@ -397,6 +400,12 @@ export default function AdminPlayersCRUD() {
         teamId={teamId}
         onTeamChange={setTeamId}
       />
+
+      <p className="mb-2 text-xs text-white/50">
+        Τα νούμερα είναι της ενεργής σεζόν
+        {activeSeason ? ` (${activeSeason.display_label})` : ""} και υπολογίζονται από τους αγώνες.
+        Παλαιότερες σεζόν: /dashboard/seasons.
+      </p>
 
       {loading ? (
         <p className="text-white/70">Loading…</p>
