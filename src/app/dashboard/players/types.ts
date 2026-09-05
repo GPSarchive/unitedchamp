@@ -1,20 +1,27 @@
-import type { PlayerRow as Player, PlayerStatisticsRow as PlayerStat } from "@/app/lib/types";
+import type {
+  PlayerRow as Player,
+  PlayerStatisticsRow as PlayerStat,
+  PlayerSeasonStatsRow,
+} from "@/app/lib/types";
 
-export type PlayerWithStats = Player & { player_statistics?: PlayerStat[] };
+/**
+ * A player as GET /api/players returns it. season_stats = the ACTIVE
+ * season's numbers (null = no appearances yet); player_statistics is the
+ * legacy all-time row, kept only for its hand-typed age.
+ */
+export type PlayerWithStats = Player & {
+  player_statistics?: PlayerStat[];
+  season_stats?: PlayerSeasonStatsRow | null;
+};
 
+/** What the editor drawer submits. Numbers are never typed by hand any more. */
 export type PlayerFormPayload = {
   first_name: string;
   last_name: string;
   age: number | null;
-  total_goals: number;
-  total_assists: number;
-  // NEW
   photo?: string | null;
   height_cm?: number | null;
   position?: string | null;
-  birth_date?: string | null; // 'YYYY-MM-DD'
-  player_number?: number | null; // Player's jersey/shirt number (not unique)
-  yellow_cards?: number;
-  red_cards?: number;
-  blue_cards?: number;
+  birth_date?: string | null; // YYYY-MM-DD
+  player_number?: number | null; // jersey number (not unique)
 };

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withActiveSeasonStats } from "@/app/lib/activeSeasonPlayerStats";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
@@ -79,7 +80,12 @@ export async function GET(_req: Request, ctx: Ctx) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   if (!data) return NextResponse.json({ error: "Player not found" }, { status: 404 });
-  return NextResponse.json({ player: data });
+  try {
+    const { active, rows } = await withActiveSeasonStats([data as { id: number }]);
+    return NextResponse.json({ player: { ...data, season_stats: rows[0]?.season_stats ?? null }, active_season: active });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed reading season stats" }, { status: 500 });
+  }
 }
 
 /* --------------------------------  PATCH /api/players/:id (admin)  -------------------------------- */

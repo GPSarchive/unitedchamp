@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // ← service role (server-only)
+import { withActiveSeasonStats } from "@/app/lib/activeSeasonPlayerStats";
 
 /* same-origin guard (like matches) */
 function ensureSameOrigin(req: Request) {
@@ -119,10 +120,18 @@ export async function GET(req: Request) {
     if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 400 });
 
     const linked = new Set((links ?? []).map((l: any) => l.player_id));
-    return NextResponse.json({ players: (rows ?? []).filter((p: any) => !linked.has(p.id)) });
+    rows = (rows ?? []).filter((p: any) => !linked.has(p.id));
   }
 
-  return NextResponse.json({ players: rows ?? [] });
+  // Numbers shown anywhere in the admin are the ACTIVE season's
+  // (player_season_stats); the legacy player_statistics join above survives
+  // only for its hand-typed age (contract §2.4, retirement deferred).
+  try {
+    const { active, rows: players } = await withActiveSeasonStats(rows ?? []);
+    return NextResponse.json({ players, active_season: active });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed reading season stats" }, { status: 500 });
+  }
 }
 
 /* ---------- POST (create player + stats) ---------- */
