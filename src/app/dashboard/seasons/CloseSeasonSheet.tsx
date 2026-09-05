@@ -6,6 +6,8 @@
 //
 // The pending lists let the admin resolve a match without leaving the sheet.
 // Each control calls the SAME writer the rest of the admin uses:
+//   Σβήσιμο ημερομηνίας → clearMatchDates  (forgotten fixture: date → null,
+//                 original kept; no result, no announcement, nothing else moves)
 //   Ολοκλήρωση  → PATCH /api/matches/[id]  (scores → winner rules, progression,
 //                 standings refresh, revalidation)
 //   Κατακύρωση  → awardForfeitWinAction     (3–0, finished, no player stats)
@@ -16,9 +18,10 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { AlertTriangle, Ban, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Ban, CalendarX, CheckCircle2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import BottomSheet from "./BottomSheet";
 import {
+  clearMatchDates,
   closeSeason,
   completeTournament,
   preflightCloseSeason,
@@ -48,12 +51,14 @@ function PendingMatchRow({
   onFinish,
   onForfeit,
   onPostpone,
+  onClearDate,
 }: {
   m: PreflightMatch;
   busy: boolean;
   onFinish: (m: PreflightMatch, s: { a: number; b: number; pa?: number; pb?: number }) => Promise<string | null>;
   onForfeit: (m: PreflightMatch, side: "A" | "B") => Promise<string | null>;
   onPostpone: (m: PreflightMatch) => Promise<string | null>;
+  onClearDate: (m: PreflightMatch) => Promise<string | null>;
 }) {
   const [mode, setMode] = useState<"idle" | "finish" | "forfeit">("idle");
   const [a, setA] = useState("");
@@ -111,6 +116,14 @@ function PendingMatchRow({
 
       {mode === "idle" && (
         <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            disabled={busy || !m.match_date}
+            onClick={() => void run(() => onClearDate(m))}
+            title="Δεν παίχτηκε: σβήνει μόνο την ημερομηνία (κρατιέται η αρχική), χωρίς σκορ ή ανακοίνωση"
+            className={`${smallBtn} inline-flex items-center gap-1 border-white/20 bg-zinc-950 text-white/85 hover:bg-zinc-800`}
+          >
+            <CalendarX className="h-3.5 w-3.5" /> Σβήσιμο ημερομηνίας
+          </button>
           <button
             disabled={busy || !hasTeams}
             onClick={() => setMode("finish")}
@@ -379,6 +392,27 @@ export default function CloseSeasonSheet({
       return r.success ? null : r.error;
     });
 
+  // Forgotten fixtures: date → null, nothing else. One row or every blocker.
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const clearDates = (ids: number[]) =>
+    withBusy(`clear:${ids.join(",")}`, async () => {
+      const r = await clearMatchDates({ seasonLabel: label, matchIds: ids });
+      return r.success ? null : r.error;
+    });
+  const clearOne = (m: PreflightMatch) => clearDates([m.id]);
+  const blockerIds = (pre?.unfinishedMatches ?? []).filter((m) => m.past && m.match_date).map((m) => m.id);
+  const clearAllBlockers = () => {
+    if (blockerIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Σβήσιμο ημερομηνίας σε ${blockerIds.length} ξεχασμένους αγώνες; Δεν γράφεται σκορ, δεν βγαίνει ανακοίνωση, η αρχική ημερομηνία κρατιέται. Οι αγώνες παύουν να μπλοκάρουν το κλείσιμο.`,
+      )
+    )
+      return;
+    setBulkError(null);
+    void clearDates(blockerIds).then((e) => setBulkError(e));
+  };
+
   // ── close ──
   const blocked = (pre?.blockers.length ?? 0) > 0 && !force;
   const labelOk = /^\S+$/.test(nextLabel) && nextLabel !== label;
@@ -488,14 +522,27 @@ export default function CloseSeasonSheet({
 
             {pre.unfinishedMatches.length > 0 && (
               <section className="rounded-lg border border-white/10 bg-zinc-900">
-                <div className="flex items-center justify-between gap-2 px-3 py-2">
-                  <div className="font-semibold">
-                    Αγώνες σε εκκρεμότητα <span className="font-normal text-white/50">({pre.unfinishedMatches.length})</span>
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                  <div>
+                    <div className="font-semibold">
+                      Αγώνες σε εκκρεμότητα <span className="font-normal text-white/50">({pre.unfinishedMatches.length})</span>
+                    </div>
+                    <div className="text-[11px] text-white/45">
+                      {pre.info.unfinishedPast} μπλοκάρουν · {pre.info.unfinishedFuture} προειδοποίηση
+                    </div>
                   </div>
-                  <div className="text-[11px] text-white/45">
-                    {pre.info.unfinishedPast} μπλοκάρουν · {pre.info.unfinishedFuture} προειδοποίηση
-                  </div>
+                  {blockerIds.length > 0 && (
+                    <button
+                      disabled={busyKey != null}
+                      onClick={clearAllBlockers}
+                      title="Ξεχασμένοι αγώνες που δεν παίχτηκαν: σβήνει μόνο τις ημερομηνίες τους"
+                      className={`${smallBtn} inline-flex items-center gap-1 border-amber-500/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20`}
+                    >
+                      <CalendarX className="h-3.5 w-3.5" /> Σβήσιμο ημερομηνιών στους {blockerIds.length} που μπλοκάρουν
+                    </button>
+                  )}
                 </div>
+                {bulkError && <p className="px-3 pb-2 text-xs text-red-300">{bulkError}</p>}
                 <ul className="max-h-80 divide-y divide-white/5 overflow-y-auto border-t border-white/10">
                   {pre.unfinishedMatches.map((m) => (
                     <PendingMatchRow
@@ -505,6 +552,7 @@ export default function CloseSeasonSheet({
                       onFinish={finishMatch}
                       onForfeit={forfeitMatch}
                       onPostpone={postponeMatch}
+                      onClearDate={clearOne}
                     />
                   ))}
                 </ul>
