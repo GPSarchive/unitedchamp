@@ -49,7 +49,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
     redirect(`/seasons/${encodeURIComponent(seasonLabel)}/teams/${teamId}`);
   }
 
-  const { team, tournaments, wins, playerAssociations, seasonStatsByPlayer, matches, standing } =
+  const { team, tournaments, wins, playerAssociations, seasonStatsByPlayer, agesByPlayer, matches, standing } =
     res.data;
 
   return (
@@ -60,6 +60,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
       wins={wins}
       playerAssociations={playerAssociations}
       seasonStatsByPlayer={seasonStatsByPlayer}
+      agesByPlayer={agesByPlayer}
       matches={matches}
       standing={standing}
     />

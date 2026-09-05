@@ -35,7 +35,7 @@ export default async function ArchivedTeamPage({
   if (res.data.team.season_label !== label) notFound();
   if (season.status === "active") redirect(`/OMADA/${teamId}`);
 
-  const { team, tournaments, wins, playerAssociations, seasonStatsByPlayer, matches, standing } =
+  const { team, tournaments, wins, playerAssociations, seasonStatsByPlayer, agesByPlayer, matches, standing } =
     res.data;
 
   return (
@@ -46,6 +46,7 @@ export default async function ArchivedTeamPage({
       wins={wins}
       playerAssociations={playerAssociations}
       seasonStatsByPlayer={seasonStatsByPlayer}
+      agesByPlayer={agesByPlayer}
       matches={matches}
       standing={standing}
       archiveSeason={season.display_label}
