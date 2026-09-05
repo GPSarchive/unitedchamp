@@ -1,16 +1,19 @@
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import RefreshButton from "./RefreshButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function RefreshStatsPage() {
-  // Show current counts so you can verify the backfill worked
-  const { count: careerCount } = await supabaseAdmin
-    .from("player_career_stats")
-    .select("*", { count: "exact", head: true });
+  const active = await getActiveSeasonCached();
+  const seasonLabel = active?.label ?? NO_SEASON;
 
   const { count: tournamentCount } = await supabaseAdmin
     .from("player_tournament_stats")
+    .select("*", { count: "exact", head: true });
+
+  const { count: seasonCount } = await supabaseAdmin
+    .from("player_season_stats")
     .select("*", { count: "exact", head: true });
 
   // Source table count — the backfill should process exactly this many rows
@@ -18,13 +21,12 @@ export default async function RefreshStatsPage() {
     .from("match_player_stats")
     .select("*", { count: "exact", head: true });
 
-  // Sample of top 10 career stats by goals
+  // Sample of top 10 active-season stats by goals
   const { data: topGoals } = await supabaseAdmin
-    .from("player_career_stats")
-    .select(
-      "player_id, total_matches, total_goals, total_assists, total_wins, total_mvp, total_best_gk, primary_team_id"
-    )
-    .order("total_goals", { ascending: false })
+    .from("player_season_stats")
+    .select("player_id, matches, goals, assists, wins, mvp_count, best_gk_count, primary_team_id")
+    .eq("season_label", seasonLabel)
+    .order("goals", { ascending: false })
     .limit(10);
 
   // Get player names for the sample
@@ -48,10 +50,10 @@ export default async function RefreshStatsPage() {
       <h1 className="text-2xl font-bold">Refresh Player Stats Cache</h1>
 
       <p className="text-gray-400">
-        This page lets you run a full backfill of the <code>player_career_stats</code> and{" "}
-        <code>player_tournament_stats</code> tables. These tables are normally updated
-        automatically when matches finish, but you can run this to populate them for the
-        first time or to fix any drift.
+        This page lets you run a full backfill of the <code>player_tournament_stats</code> and
+        (active season) <code>player_season_stats</code> tables. These tables are normally updated automatically when matches finish, but you
+        can run this to populate them for the first time or to fix any drift. Per-season
+        snapshots (standings + recap included) live in <code>/dashboard/seasons</code>.
       </p>
 
       <div className="flex flex-wrap gap-4 text-sm">
@@ -60,12 +62,12 @@ export default async function RefreshStatsPage() {
           <span className="font-mono font-bold">{mpsCount ?? 0}</span>
         </div>
         <div className="p-3 bg-gray-800 rounded-lg">
-          <span className="text-gray-400">Career stats rows:</span>{" "}
-          <span className="font-mono font-bold">{careerCount ?? 0}</span>
-        </div>
-        <div className="p-3 bg-gray-800 rounded-lg">
           <span className="text-gray-400">Tournament stats rows:</span>{" "}
           <span className="font-mono font-bold">{tournamentCount ?? 0}</span>
+        </div>
+        <div className="p-3 bg-gray-800 rounded-lg">
+          <span className="text-gray-400">Season stats rows ({active?.display_label ?? "—"}):</span>{" "}
+          <span className="font-mono font-bold">{seasonCount ?? 0}</span>
         </div>
       </div>
 
@@ -73,7 +75,7 @@ export default async function RefreshStatsPage() {
 
       {(topGoals ?? []).length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold mb-3">Top 10 by Goals (preview)</h2>
+          <h2 className="text-lg font-semibold mb-3">Top 10 by Goals — season {active?.display_label ?? "—"} (preview)</h2>
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-gray-700 text-gray-400 text-left">
@@ -90,12 +92,12 @@ export default async function RefreshStatsPage() {
               {(topGoals ?? []).map((r) => (
                 <tr key={r.player_id} className="border-b border-gray-800">
                   <td className="py-2 pr-3">{nameMap.get(r.player_id) ?? `#${r.player_id}`}</td>
-                  <td className="py-2 px-2 font-mono">{r.total_matches}</td>
-                  <td className="py-2 px-2 font-mono font-bold">{r.total_goals}</td>
-                  <td className="py-2 px-2 font-mono">{r.total_assists}</td>
-                  <td className="py-2 px-2 font-mono">{r.total_wins}</td>
-                  <td className="py-2 px-2 font-mono">{r.total_mvp}</td>
-                  <td className="py-2 px-2 font-mono">{r.total_best_gk}</td>
+                  <td className="py-2 px-2 font-mono">{r.matches}</td>
+                  <td className="py-2 px-2 font-mono font-bold">{r.goals}</td>
+                  <td className="py-2 px-2 font-mono">{r.assists}</td>
+                  <td className="py-2 px-2 font-mono">{r.wins}</td>
+                  <td className="py-2 px-2 font-mono">{r.mvp_count}</td>
+                  <td className="py-2 px-2 font-mono">{r.best_gk_count}</td>
                 </tr>
               ))}
             </tbody>

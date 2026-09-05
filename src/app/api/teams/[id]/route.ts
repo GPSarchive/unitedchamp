@@ -157,7 +157,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const { data, error } = await supa
       .from("teams")
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
       .eq("id", id)
       .maybeSingle();
 
@@ -206,16 +206,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
       typeof (body as any).name === "string" ? (body as any).name.trim() : undefined;
     const logoCandidate = toStoragePathOrUrlSafe((body as any).logo, id);
 
-    // Optional: season_score
-    let seasonScoreVal: number | undefined;
-    if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
-      const n = Number((body as any).season_score);
-      if (!Number.isInteger(n) || n < 0) {
-        return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
-      }
-      seasonScoreVal = n;
-    }
-
     // Optional: AM (text, unique). Empty string -> null. Adjust length/regex as needed.
     let amVal: string | null | undefined;
     if (Object.prototype.hasOwnProperty.call(body, "am")) {
@@ -248,10 +238,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
       update.logo = logoCandidate ?? null;
     }
 
-    if (seasonScoreVal !== undefined) {
-      update.season_score = seasonScoreVal;
-    }
-
     if (amVal !== undefined) {
       update.am = amVal;
     }
@@ -269,7 +255,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .update(update)
       .eq("id", id)
       .is("deleted_at", null) // don't update soft-deleted rows
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
       .maybeSingle();
 
     if (error) {
@@ -321,7 +307,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
       .is("deleted_at", null) // only delete if not already deleted
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
       .maybeSingle();
 
     if (error) {

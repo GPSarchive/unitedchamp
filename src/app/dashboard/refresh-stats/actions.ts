@@ -7,9 +7,10 @@ import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 export async function runFullBackfill(): Promise<{
   success: boolean;
-  careerRows?: number;
   tournamentRows?: number;
   mpsRowsProcessed?: number;
+  seasonLabel?: string | null;
+  seasonRows?: number;
   error?: string;
 }> {
   try {

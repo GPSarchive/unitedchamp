@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
+import { assertTeamsInSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
 import { decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
@@ -17,6 +19,7 @@ const INSERTABLE_FIELDS = new Set<keyof any>([
   "team_b_score",
   "field", // ✅ NEW
   "stage_id",
+  "tournament_id",
   "matchday",
   "round",
   "bracket_pos",
@@ -329,18 +332,49 @@ export async function POST(req: Request) {
       payload.winner_team_id = parseNullablePositiveInt(payload.winner_team_id);
     }
 
+    // Tournament: explicit, else derived from the stage below. A stage match
+    // must never be tournament-less — the season scope hangs off tournament_id.
+    if ("tournament_id" in payload) {
+      const n = parsePositiveInt(payload.tournament_id);
+      if (n == null && payload.tournament_id != null && payload.tournament_id !== "") {
+        return jsonError(400, "Invalid tournament_id");
+      }
+      if (n == null) delete payload.tournament_id; else payload.tournament_id = n;
+    }
+
     // Determine stage kind (if stage_id provided)
     let stageKind: "knockout" | "groups" | "league" | null = null;
     if (payload.stage_id) {
       const { data: stg, error: stgErr } = await supa
         .from("tournament_stages")
-        .select("kind")
+        .select("kind, tournament_id")
         .eq("id", payload.stage_id)
         .maybeSingle();
       if (stgErr) {
         return jsonError(400, "Failed to read stage kind", stgErr);
       }
       stageKind = (stg?.kind as any) ?? null;
+      const stageTournamentId = (stg?.tournament_id as number | null | undefined) ?? null;
+      if (stageTournamentId != null) {
+        if (payload.tournament_id == null) payload.tournament_id = stageTournamentId;
+        else if (payload.tournament_id !== stageTournamentId) {
+          return jsonError(400, "stage_id belongs to a different tournament");
+        }
+      }
+    }
+
+    // Teams are per-season rows (contract D1): a tournament match may only
+    // pair teams of the tournament's season. Friendlies without a tournament
+    // are unscoped.
+    if (payload.tournament_id != null) {
+      const seasonLabel = await getTournamentSeasonLabel(payload.tournament_id);
+      if (seasonLabel) {
+        try {
+          await assertTeamsInSeason([payload.team_a_id, payload.team_b_id], seasonLabel);
+        } catch (e: any) {
+          return jsonError(400, e?.message ?? "Team/season mismatch");
+        }
+      }
     }
 
     // Business rules
@@ -422,6 +456,7 @@ export async function POST(req: Request) {
       return jsonError(mapped.status, mapped.msg, error);
     }
 
+    await refreshActiveSeasonStandings("POST /api/matches");
     revalidateMatchSurfaces({
       id: data.id,
       tournament_id: payload.tournament_id ?? null,

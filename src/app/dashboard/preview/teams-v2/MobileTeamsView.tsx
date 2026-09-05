@@ -32,7 +32,6 @@ function toRow(t: TeamRowWithArchived): TeamCardRow {
     am: (t as any).am ?? null,
     logo: t.logo ?? null,
     colour: t.colour ?? null,
-    season_score: t.season_score ?? null,
     created_at: t.created_at ?? null,
     deleted_at: t.deleted_at ?? null,
     raw: t,

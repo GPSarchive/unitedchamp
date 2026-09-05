@@ -1,6 +1,7 @@
 // src/app/dashboard/matches/page.tsx
 import MatchesDashboard from "./MatchesDashboard";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveScope, NO_SEASON } from "@/app/lib/seasonScope";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,15 @@ export default async function MatchesPage({
   const tidParam = sp.tid ?? "";
   const selectedTid = tidParam ? Number(tidParam) : null;
 
+  // Admin is strictly current-season (contract Phase 5): older seasons are
+  // reached through /dashboard/seasons/[label] → by-id editors.
+  const { season, tournamentIds } = await getActiveScope();
+
   // --- Ομάδες (για dropdowns/labels) ---
   const { data: teams, error: teamErr } = await supabaseAdmin
     .from("teams")
     .select("id, name, logo")
+    .eq("season_label", season?.label ?? NO_SEASON)
     .order("name", { ascending: true });
 
   if (teamErr) {
@@ -40,6 +46,7 @@ export default async function MatchesPage({
       grp:group_id (id, name)
     `
     )
+    .in("tournament_id", tournamentIds.length ? tournamentIds : [-1])
     .order("match_date", { ascending: true });
 
   if (matchErr) {
@@ -61,6 +68,9 @@ export default async function MatchesPage({
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">Αγώνες</h2>
+        <span className="rounded-full border border-white/15 bg-zinc-900 px-3 py-1 font-mono text-xs text-white/70">
+          Σεζόν {season?.display_label ?? "—"}
+        </span>
       </header>
 
       <p className="text-white/70">

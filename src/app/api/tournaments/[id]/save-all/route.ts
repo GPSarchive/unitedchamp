@@ -2,7 +2,17 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
-import { revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
+import {
+  revalidateSeasonSurfaces,
+  revalidateStandingsSurfaces,
+  revalidateTournamentSurfaces,
+} from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
+import { refreshStatsForPlayersInTournament } from "@/app/lib/refreshPlayerStats";
+import { assertTeamsInSeason, resolveSeasonLabel } from "@/app/lib/seasons";
+import { seasonMoveLabels } from "@/app/lib/seasonChecks";
+import { snapshotSeason } from "@/app/lib/seasonSnapshot";
+import { fetchInBatches } from "@/app/lib/supabasePaging";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -202,6 +212,56 @@ export async function POST(
   const out: SaveAllResponse = { ok: true };
 
   try {
+    /* 0) Season + membership validation — BEFORE any write ---------------- */
+    // The season is ASSIGNED (never derived, never null) and every team on the
+    // tournament or in its matches must be a row of that season (contract D1).
+    // Validating up front means a rejected save leaves nothing half-applied.
+    const { data: existing, error: exErr } = await supabaseAdmin
+      .from("tournaments")
+      .select("id, season")
+      .eq("id", tournamentId)
+      .maybeSingle();
+    if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 });
+    if (!existing) return NextResponse.json({ error: "Tournament not found" }, { status: 404 });
+    const previousSeason = (existing.season as string | null) ?? null;
+    let season = previousSeason;
+    if (body.tournament?.patch && "season" in body.tournament.patch) {
+      try {
+        season = await resolveSeasonLabel(body.tournament.patch.season, previousSeason);
+      } catch (e: any) {
+        return NextResponse.json({ error: e?.message ?? "Invalid season" }, { status: 400 });
+      }
+      body.tournament.patch.season = season;
+    }
+
+    const teamsTouched =
+      !!body.tournamentTeams?.upsert?.length ||
+      !!body.tournamentTeams?.deleteIds?.length ||
+      !!body.matches?.upsert?.length;
+    if (season && (teamsTouched || season !== previousSeason)) {
+      const { data: currentTT, error: ttErr } = await supabaseAdmin
+        .from("tournament_teams")
+        .select("id, team_id")
+        .eq("tournament_id", tournamentId);
+      if (ttErr) return NextResponse.json({ error: ttErr.message }, { status: 500 });
+      // Rows being deleted or replaced (upsert with an id) drop out of the set.
+      const dropped = new Set<number>([
+        ...(body.tournamentTeams?.deleteIds ?? []),
+        ...(body.tournamentTeams?.upsert ?? [])
+          .map((r) => r.id)
+          .filter((x): x is number => x != null),
+      ]);
+      const prospective: (number | null | undefined)[] = [];
+      for (const r of currentTT ?? []) if (!dropped.has(r.id as number)) prospective.push(r.team_id as number);
+      for (const r of body.tournamentTeams?.upsert ?? []) prospective.push(r.team_id);
+      for (const m of body.matches?.upsert ?? []) prospective.push(m.team_a_id, m.team_b_id);
+      try {
+        await assertTeamsInSeason(prospective, season);
+      } catch (e: any) {
+        return NextResponse.json({ error: e?.message ?? "Team/season mismatch" }, { status: 400 });
+      }
+    }
+
     /* 1) Tournament basics (PATCH) ---------------------------------------- */
     if (body.tournament?.patch) {
       const { patch } = body.tournament;
@@ -238,11 +298,22 @@ export async function POST(
 
    /* Matches deletions (before upserts) */
 let matchDeleteStageIds: number[] = [];
+let affectedPlayerIds: number[] = [];
 if (body.matches?.deleteIds?.length) {
   const deleteIds = body.matches.deleteIds.filter((n) => typeof n === "number" && n > 0);
   if (!deleteIds.length) {
     return NextResponse.json({ error: "No valid match ids to delete" }, { status: 400 });
   }
+
+  // Players whose aggregates counted these matches — refreshed after the save.
+  // Their match_player_stats rows cascade away with the match, so collect first.
+  const mpsBefore = await fetchInBatches<{ player_id: number }>(
+    "match_player_stats",
+    "match_id",
+    deleteIds,
+    "player_id",
+  );
+  affectedPlayerIds = [...new Set(mpsBefore.map((r) => r.player_id))];
 
   // optional: clear KO pointers first — use typed .in() to avoid string-templated filters
   await supabaseAdmin.from("matches").update({ home_source_match_id: null }).in("home_source_match_id", deleteIds);
@@ -824,9 +895,31 @@ if (body.matches?.upsert?.length) {
     }
     // ======================================================================
 
-    // Editor saved matches/stages/teams — regenerate the ISR-cached public
-    // pages that render this tournament.
+    // Editor saved matches/stages/teams — rewrite the stored Γενική Κατάταξη
+    // rows (results/participants/ties may have changed), then regenerate the
+    // ISR-cached public pages that render this tournament.
+    await refreshActiveSeasonStandings("POST /api/tournaments/[id]/save-all");
+    if (affectedPlayerIds.length) {
+      // Deleted matches: their stats rows are gone, so the per-player
+      // tournament/season aggregates must be recomputed for those players.
+      await refreshStatsForPlayersInTournament(affectedPlayerIds, tournamentId).catch((err) =>
+        console.error("[save-all] player stats refresh failed:", err),
+      );
+    }
+    const movedSeasons = seasonMoveLabels(previousSeason, season);
+    if (movedSeasons.length) {
+      // The tournament changed season: both sides' stored stats, standings and
+      // recap are wrong until rebuilt (an archived side would otherwise stay
+      // stale forever — archived seasons are never refreshed automatically).
+      for (const label of movedSeasons) {
+        await snapshotSeason(label).catch((err) =>
+          console.error(`[save-all] snapshot of season ${label} failed:`, err),
+        );
+      }
+      revalidateSeasonSurfaces(...movedSeasons);
+    }
     revalidateTournamentSurfaces(id);
+    revalidateStandingsSurfaces();
     revalidatePath("/");
     revalidatePath("/matches");
 

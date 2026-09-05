@@ -6,9 +6,10 @@ import { runFullBackfill } from "./actions";
 export default function RefreshButton() {
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [result, setResult] = useState<{
-    careerRows?: number;
     tournamentRows?: number;
     mpsRowsProcessed?: number;
+    seasonLabel?: string | null;
+    seasonRows?: number;
     error?: string;
   } | null>(null);
 
@@ -20,9 +21,10 @@ export default function RefreshButton() {
       if (res.success) {
         setStatus("done");
         setResult({
-          careerRows: res.careerRows,
           tournamentRows: res.tournamentRows,
           mpsRowsProcessed: res.mpsRowsProcessed,
+          seasonLabel: res.seasonLabel,
+          seasonRows: res.seasonRows,
         });
       } else {
         setStatus("error");
@@ -52,8 +54,11 @@ export default function RefreshButton() {
         <div className="p-4 bg-green-900/50 border border-green-700 rounded-lg text-green-200">
           <p className="font-semibold">Backfill complete!</p>
           <p>match_player_stats rows processed: {result.mpsRowsProcessed}</p>
-          <p>Career stats rows written: {result.careerRows}</p>
           <p>Tournament stats rows written: {result.tournamentRows}</p>
+          <p>
+            Season stats rows written ({result.seasonLabel ?? "no active season"}):{" "}
+            {result.seasonRows ?? 0}
+          </p>
           <p className="text-xs text-green-400 mt-2">
             Verify: the &quot;rows processed&quot; count should match your total match_player_stats
             row count in Supabase.

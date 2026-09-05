@@ -1,0 +1,17 @@
+{
+  "note": "Output of section A (pre-flight) of migrations/seasonal-phase0-merge.sql, run in the Supabase SQL editor on 2026-09-04 after add-seasons.sql and add-season-aggregates.sql, BEFORE section B (the merge).",
+  "rows": [
+    { "check_name": "adjustments by season", "key": "2025-2026", "value": "51" },
+    { "check_name": "player_season_stats (dead)", "key": "rows", "value": "0" },
+    { "check_name": "season_score", "key": "BOCA SENIORS", "value": "18" },
+    { "check_name": "season_score", "key": "BRODIOS", "value": "20" },
+    { "check_name": "season_score", "key": "FLAMINGOS", "value": "1" },
+    { "check_name": "season_score", "key": "KALIMOXTA", "value": "4" },
+    { "check_name": "season_score", "key": "PINK PANTHERS", "value": "28" },
+    { "check_name": "season_score", "key": "test", "value": "22" },
+    { "check_name": "teams", "key": "already stamped", "value": "0" },
+    { "check_name": "teams", "key": "deleted", "value": "17" },
+    { "check_name": "teams", "key": "live", "value": "45" },
+    { "check_name": "tournaments by season", "key": "2025-2026", "value": "8" }
+  ]
+}

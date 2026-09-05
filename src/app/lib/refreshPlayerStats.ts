@@ -11,92 +11,20 @@ import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import {
-  aggregateCareerBuckets,
   aggregateTournamentBuckets,
   aggregateLegacyTotals,
   chunk,
   type MpsRow,
 } from "@/app/lib/playerStatsAggregation";
+import { BATCH_SIZE, PAGE_SIZE, fetchAllRows, fetchInBatches } from "@/app/lib/supabasePaging";
+import { getActiveSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
+import { refreshAllSeasonStats, refreshSeasonStatsForPlayers } from "@/app/lib/refreshSeasonStats";
 
-const BATCH_SIZE = 300;
-
-// PostgREST caps every response at ~1000 rows (server max-rows setting); a
-// large .limit() does NOT override it. All reads here must paginate.
-const PAGE_SIZE = 500;
+// Kept as a named export: dashboard/fix-stats imports it from here.
+export { fetchAllRows };
 
 const MPS_COLUMNS =
   "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper";
-
-/** Fetch all rows matching `idColumn IN ids`, paginating past the row cap */
-async function fetchInBatches<T>(
-  table: string,
-  idColumn: string,
-  ids: number[],
-  selectColumns: string,
-): Promise<T[]> {
-  if (ids.length === 0) return [];
-  const out: T[] = [];
-  for (const batch of chunk(ids, BATCH_SIZE)) {
-    let offset = 0;
-    for (;;) {
-      const { data, error } = await supabaseAdmin
-        .from(table)
-        .select(selectColumns)
-        .in(idColumn, batch)
-        .order("id", { ascending: true })
-        .range(offset, offset + PAGE_SIZE - 1);
-      if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
-      if (!data || data.length === 0) break;
-      out.push(...(data as T[]));
-      if (data.length < PAGE_SIZE) break;
-      offset += PAGE_SIZE;
-    }
-  }
-  return out;
-}
-
-// ─── Core: refresh career stats for a set of players ────────────────
-
-export async function refreshCareerStatsForPlayers(playerIds: number[]) {
-  if (playerIds.length === 0) return;
-
-  // 1. Fetch all match_player_stats for these players
-  const allMps = await fetchInBatches<MpsRow>(
-    "match_player_stats",
-    "player_id",
-    playerIds,
-    MPS_COLUMNS,
-  );
-
-  // 2. Fetch match winners for those matches
-  const matchIds = [...new Set(allMps.map((r) => r.match_id))];
-  const winnerRows = await fetchInBatches<{ id: number; winner_team_id: number | null }>(
-    "matches",
-    "id",
-    matchIds,
-    "id, winner_team_id",
-  );
-  const winnerByMatch = new Map(winnerRows.map((m) => [m.id, m.winner_team_id]));
-
-  // 3. Aggregate (seeding zero buckets so players whose stats were all deleted
-  //    get their stale cache row overwritten with zeroes)
-  const statsMap = aggregateCareerBuckets(allMps, winnerByMatch, playerIds);
-
-  // 4. Upsert
-  const upserts = Array.from(statsMap.entries()).map(([pid, s]) => ({
-    player_id: pid,
-    ...s,
-    updated_at: new Date().toISOString(),
-  }));
-
-  // Batch upserts to avoid payload size limits
-  for (const batch of chunk(upserts, BATCH_SIZE)) {
-    const { error } = await supabaseAdmin
-      .from("player_career_stats")
-      .upsert(batch, { onConflict: "player_id" });
-    if (error) throw new Error(`Failed upserting player_career_stats: ${error.message}`);
-  }
-}
 
 // ─── Core: refresh tournament stats for a set of players ────────────
 
@@ -203,6 +131,27 @@ export async function syncPlayerStatisticsForPlayers(playerIds: number[]) {
   }
 }
 
+// ─── Public: refresh the per-tournament + per-season rows of some players ──
+// The two stored tables a player's numbers live in (contract D3: the career
+// table is retired). Season rows are refreshed ONLY when the tournament
+// belongs to the active season; archived seasons are frozen and change only
+// via an explicit re-snapshot (plans/seasonal-data-contract.md §4).
+
+export async function refreshStatsForPlayersInTournament(
+  playerIds: number[],
+  tournamentId: number,
+): Promise<void> {
+  if (playerIds.length === 0) return;
+  await refreshTournamentStatsForPlayers(playerIds, tournamentId);
+  const [seasonLabel, active] = await Promise.all([
+    getTournamentSeasonLabel(tournamentId),
+    getActiveSeason(),
+  ]);
+  if (seasonLabel && active && seasonLabel === active.label) {
+    await refreshSeasonStatsForPlayers(playerIds, seasonLabel);
+  }
+}
+
 // ─── Public: refresh stats for all players involved in a single match ──
 
 export async function refreshStatsForMatch(matchId: number) {
@@ -212,7 +161,7 @@ export async function refreshStatsForMatch(matchId: number) {
     .select("id, tournament_id")
     .eq("id", matchId)
     .single();
-  if (!match) return;
+  if (!match?.tournament_id) return;
 
   // 2. Get affected player IDs
   const { data: mpsRows } = await supabaseAdmin
@@ -223,41 +172,8 @@ export async function refreshStatsForMatch(matchId: number) {
   const playerIds = [...new Set((mpsRows ?? []).map((r) => r.player_id))];
   if (playerIds.length === 0) return;
 
-  // 3. Refresh career stats
-  await refreshCareerStatsForPlayers(playerIds);
-
-  // 4. Refresh tournament stats (if match belongs to a tournament)
-  if (match.tournament_id) {
-    await refreshTournamentStatsForPlayers(playerIds, match.tournament_id);
-  }
-}
-
-// ─── Helper: paginate through an entire table ───────────────────────
-// Supabase PostgREST caps responses at ~1000 rows (server max-rows setting).
-// A single .limit(100000) does NOT override this. We must paginate with .range().
-
-export async function fetchAllRows<T>(
-  table: string,
-  selectColumns: string,
-  orderColumn = "id",
-): Promise<T[]> {
-  const all: T[] = [];
-  let offset = 0;
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from(table)
-      .select(selectColumns)
-      .order(orderColumn, { ascending: true })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Failed reading ${table}: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    all.push(...(data as T[]));
-    if (data.length < PAGE_SIZE) break; // last page
-    offset += PAGE_SIZE;
-  }
-  return all;
+  // 3. Tournament + (active) season rows
+  await refreshStatsForPlayersInTournament(playerIds, match.tournament_id);
 }
 
 // ─── Public: full backfill of ALL players ───────────────────────────
@@ -267,11 +183,13 @@ export async function fetchAllRows<T>(
 // and a crash mid-run left the caches gutted until the next manual run).
 
 export async function refreshAllPlayerStats(): Promise<{
-  careerRows: number;
   tournamentRows: number;
   mpsRowsProcessed: number;
-  staleCareerRowsDeleted: number;
   staleTournamentRowsDeleted: number;
+  /** Active season that was rebuilt (null when no season is active). */
+  seasonLabel: string | null;
+  seasonRows: number;
+  staleSeasonRowsDeleted: number;
 }> {
   // 1. Paginate through ALL match_player_stats rows
   const rows = await fetchAllRows<MpsRow>("match_player_stats", MPS_COLUMNS);
@@ -287,10 +205,7 @@ export async function refreshAllPlayerStats(): Promise<{
   const matchInfo = new Map(matchRows.map((m) => [m.id, m]));
   const winnerByMatch = new Map(matchRows.map((m) => [m.id, m.winner_team_id]));
 
-  // 3. Aggregate career stats (same pure function the incremental path uses)
-  const careerMap = aggregateCareerBuckets(rows, winnerByMatch);
-
-  // 4. Aggregate tournament stats: group rows by tournament, then reuse the
+  // 3. Aggregate tournament stats: group rows by tournament, then reuse the
   //    per-tournament aggregator
   const rowsByTournament = new Map<number, MpsRow[]>();
   for (const r of rows) {
@@ -316,38 +231,7 @@ export async function refreshAllPlayerStats(): Promise<{
     }
   }
 
-  // 5. Upsert career stats, then delete rows for players with no stats left
-  const careerUpserts = Array.from(careerMap.entries()).map(([pid, s]) => ({
-    player_id: pid,
-    ...s,
-    updated_at: new Date().toISOString(),
-  }));
-
-  for (const batch of chunk(careerUpserts, BATCH_SIZE)) {
-    const { error } = await supabaseAdmin
-      .from("player_career_stats")
-      .upsert(batch, { onConflict: "player_id" });
-    if (error) throw new Error(`Failed upserting player_career_stats: ${error.message}`);
-  }
-
-  const existingCareerIds = await fetchAllRows<{ player_id: number }>(
-    "player_career_stats",
-    "player_id",
-    "player_id",
-  );
-  const staleCareerIds = existingCareerIds
-    .map((r) => r.player_id)
-    .filter((pid) => !careerMap.has(pid));
-
-  for (const batch of chunk(staleCareerIds, BATCH_SIZE)) {
-    const { error } = await supabaseAdmin
-      .from("player_career_stats")
-      .delete()
-      .in("player_id", batch);
-    if (error) throw new Error(`Failed deleting stale player_career_stats: ${error.message}`);
-  }
-
-  // 6. Upsert tournament stats, then delete stale (player, tournament) rows
+  // 4. Upsert tournament stats, then delete stale (player, tournament) rows
   for (const batch of chunk(tourneyUpserts, BATCH_SIZE)) {
     const { error } = await supabaseAdmin
       .from("player_tournament_stats")
@@ -396,11 +280,23 @@ export async function refreshAllPlayerStats(): Promise<{
     }
   }
 
+  // 5. Season stats for the ACTIVE season only (the manual safety net covers
+  //    the live season; archived seasons are re-snapshotted deliberately).
+  const active = await getActiveSeason();
+  let seasonRows = 0;
+  let staleSeasonRowsDeleted = 0;
+  if (active) {
+    const r = await refreshAllSeasonStats(active.label);
+    seasonRows = r.seasonRows;
+    staleSeasonRowsDeleted = r.staleSeasonRowsDeleted;
+  }
+
   return {
-    careerRows: careerUpserts.length,
     tournamentRows: tourneyUpserts.length,
     mpsRowsProcessed: rows.length,
-    staleCareerRowsDeleted: staleCareerIds.length,
     staleTournamentRowsDeleted,
+    seasonLabel: active?.label ?? null,
+    seasonRows,
+    staleSeasonRowsDeleted,
   };
 }

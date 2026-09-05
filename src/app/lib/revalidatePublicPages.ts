@@ -31,11 +31,7 @@ export function revalidateMatchSurfaces(match: {
   revalidatePath("/");
   revalidatePath("/matches");
   revalidatePath(`/matches/${match.id}`);
-  // /geniki-katataxi is dynamically rendered (season tabs) — the path call is
-  // a no-op there; the tag is what actually drops the cached points compute.
-  revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG, "max");
-  revalidateTag(SEASON_RECAP_TAG, "max");
+  revalidateStandingsSurfaces();
   revalidatePath("/paiktes");
   if (match.tournament_id != null) revalidateTournamentSurfaces(match.tournament_id);
   const teamIds = new Set(
@@ -44,6 +40,49 @@ export function revalidateMatchSurfaces(match: {
     )
   );
   for (const teamId of teamIds) revalidatePath(`/OMADA/${teamId}`);
+}
+
+/**
+ * Γενική Κατάταξη surfaces. /geniki-katataxi is a static ISR page reading the
+ * stored season_team_standings rows, so the path call regenerates it; the tags
+ * drop the cached unscoped points compute (recap) and anything else keyed on it.
+ * Call AFTER refreshActiveSeasonStandings() so the regenerated page sees the
+ * fresh rows.
+ */
+export function revalidateStandingsSurfaces() {
+  revalidatePath("/geniki-katataxi");
+  revalidateTag(GENIKI_KATATAXI_TAG, "max");
+  revalidateTag(SEASON_RECAP_TAG, "max");
+}
+
+/**
+ * Everything that depends on WHICH season is active or on a season's stored
+ * snapshot: called after closing / re-snapshotting / re-activating a season,
+ * and after a tournament moves between seasons. The active pointer itself is
+ * not cached (lib/seasons.ts reads it per request; the pages are ISR), so
+ * this is purely path revalidation.
+ */
+export function revalidateSeasonSurfaces(...labels: string[]) {
+  revalidateStandingsSurfaces();
+  for (const p of ["/", "/paiktes", "/OMADES", "/matches", "/tournaments", "/seasons", "/sitemap.xml"]) {
+    revalidatePath(p);
+  }
+  // Per-entity live routes: after a close every cached team/tournament page
+  // must re-render — archived rows start redirecting, the new season's rows
+  // render live. The "page" form drops every cached instance of the route.
+  for (const p of ["/OMADA/[id]", "/tournaments/[id]", "/tournaments/[id]/v2", "/tournaments/[id]/v2-dark"]) {
+    revalidatePath(p, "page");
+  }
+  // Archive routes: the touched hubs, plus every nested archive page (they
+  // read the stored snapshot that a re-snapshot just rewrote).
+  for (const label of labels) revalidatePath(`/seasons/${encodeURIComponent(label)}`);
+  for (const p of [
+    "/seasons/[season]/katataxi",
+    "/seasons/[season]/teams/[id]",
+    "/seasons/[season]/tournaments/[id]",
+  ]) {
+    revalidatePath(p, "page");
+  }
 }
 
 /** The tournament detail routes (all three variants render the same loader). */
@@ -66,7 +105,5 @@ export function revalidateTeamSurfaces(teamId: number | string) {
   revalidatePath(`/OMADA/${teamId}`);
   revalidatePath("/OMADES");
   revalidatePath("/");
-  revalidatePath("/geniki-katataxi");
-  revalidateTag(GENIKI_KATATAXI_TAG, "max");
-  revalidateTag(SEASON_RECAP_TAG, "max");
+  revalidateStandingsSurfaces();
 }

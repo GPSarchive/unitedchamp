@@ -4,19 +4,20 @@
 // totals, the Γενική Κατάταξη podium, tournament honours in chronological
 // order, individual award leaders, and the season record book.
 //
-// Season boundaries follow the site-wide Sept-30 cutoff (geniki-katataxi/rules).
-// Everything is served through unstable_cache — the raw compute scans the
-// season's matches and per-tournament player stats, which is too much work
-// to repeat per request.
+// The season is the ASSIGNED one (plans/seasonal-data-contract.md): the home
+// modal shows the ACTIVE season's recap, falling back to the newest archived
+// season's stored recap while the new season has no tournaments yet. Dates
+// never pick the season. Everything is served through unstable_cache — the
+// raw compute scans the season's matches and per-tournament player stats,
+// which is too much work to repeat per request.
 
 import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
-import {
-  seasonLabelFromDate,
-  formatSeason,
-} from "@/app/geniki-katataxi/rules";
+import { formatSeason } from "@/app/geniki-katataxi/rules";
 import { computeGeneralStandingsCached } from "@/app/geniki-katataxi/points";
+import { getSeasonStandings } from "@/app/lib/refreshStandings";
+import { getActiveSeason, listSeasons } from "@/app/lib/seasons";
 
 export interface RecapPodiumTeam {
   teamId: number;
@@ -100,6 +101,8 @@ export interface SeasonRecapData {
     mostTeamWins: { teamName: string; teamLogo: string | null; wins: number } | null;
     mostAppearances: { playerName: string; matches: number } | null;
   };
+  /** Finished matches per calendar month ("YYYY-MM"), chronological — archive sparkline. */
+  months: { month: string; matches: number }[];
 }
 
 /**
@@ -151,26 +154,20 @@ function startYearOfLabel(label: string): number | null {
   return m ? +m[1] : null;
 }
 
-async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
-  // ── Which season? Current by the Sept-30 cutoff; if the DB has no
-  // tournaments for it yet (e.g. right after the cutoff), fall back to the
-  // newest season present in the data.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const currentLabel = seasonLabelFromDate(todayIso);
-
+/**
+ * The recap of exactly one ASSIGNED season label; null when the label has no
+ * tournaments yet. Used to snapshot a season into season_recaps (close /
+ * re-snapshot) and, for the active season, by the home-page modal.
+ */
+async function computeSeasonRecap(forLabel: string): Promise<SeasonRecapData | null> {
   const { data: allTours, error: tErr } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, slug, season, logo, status, winner_team_id")
+    .eq("season", forLabel)
     .order("id");
   if (tErr || !allTours?.length) return null;
 
-  const seasonsPresent = [...new Set(allTours.map((t) => t.season).filter(Boolean))] as string[];
-  let seasonLabel = currentLabel && seasonsPresent.includes(currentLabel) ? currentLabel : null;
-  if (!seasonLabel) {
-    seasonLabel =
-      seasonsPresent.sort((a, b) => (startYearOfLabel(b) ?? 0) - (startYearOfLabel(a) ?? 0))[0] ?? null;
-  }
-  if (!seasonLabel) return null;
+  const seasonLabel = forLabel;
 
   const startYear = startYearOfLabel(seasonLabel);
   const seasonDisplay = startYear != null ? formatSeason(startYear) : seasonLabel;
@@ -240,18 +237,25 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
   const totalAssists = players.reduce((s, p) => s + p.assists, 0);
   const totalMvps = players.reduce((s, p) => s + p.mvp, 0);
 
-  // ── Γενική Κατάταξη podium (top 3 of this season).
+  // ── Γενική Κατάταξη podium (top 3 of this season): the STORED rows
+  // (season_team_standings, written before the recap in every snapshot), with
+  // the cached engine as fallback for a season that has no rows yet.
   let podiumLines: { teamId: number; points: number; titles: number; wins: number }[] = [];
   try {
-    const standings = await computeGeneralStandingsCached();
-    const lines =
-      standings.bySeason.get(seasonDisplay) ??
-      (standings.seasons.length ? standings.bySeason.get(standings.seasons[0]) : undefined) ??
-      [];
-    podiumLines = lines
-      .slice(0, 3)
-      .map((l) => ({ teamId: l.teamId, points: l.points, titles: l.titles, wins: l.wins }));
-  } catch {
+    const stored = await getSeasonStandings(seasonLabel);
+    if (stored.length > 0) {
+      podiumLines = stored
+        .slice(0, 3)
+        .map((r) => ({ teamId: r.team_id, points: r.points, titles: r.titles, wins: r.wins }));
+    } else {
+      const standings = await computeGeneralStandingsCached();
+      const lines = standings.bySeason.get(seasonLabel) ?? [];
+      podiumLines = lines
+        .slice(0, 3)
+        .map((l) => ({ teamId: l.teamId, points: l.points, titles: l.titles, wins: l.wins }));
+    }
+  } catch (e) {
+    console.error("[seasonRecap] podium lookup failed:", e);
     podiumLines = [];
   }
 
@@ -505,23 +509,58 @@ async function computeSeasonRecap(): Promise<SeasonRecapData | null> {
         ? { playerName: mostAppsPlayer.name, matches: mostAppsPlayer.matches }
         : null,
     },
+    months: (() => {
+      const byMonth = new Map<string, number>();
+      for (const m of finished) {
+        if (!m.match_date) continue;
+        const key = m.match_date.slice(0, 7);
+        byMonth.set(key, (byMonth.get(key) ?? 0) + 1);
+      }
+      return [...byMonth.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([month, matches]) => ({ month, matches }));
+    })(),
   };
+}
+
+/** Recap of exactly one season label (no cache) — for season_recaps snapshots. */
+export async function computeSeasonRecapFor(seasonLabel: string): Promise<SeasonRecapData | null> {
+  return computeSeasonRecap(seasonLabel);
 }
 
 export const SEASON_RECAP_CACHE_TAG = "season-recap";
 
 const loadSeasonRecapCached = unstable_cache(
-  async () => {
+  async (): Promise<SeasonRecapData | null> => {
     try {
-      return await computeSeasonRecap();
+      // The ACTIVE season, while it has tournaments…
+      const active = await getActiveSeason();
+      if (active) {
+        const live = await computeSeasonRecap(active.label);
+        if (live) return live;
+      }
+      // …else the newest archived season's STORED recap (written at close /
+      // re-snapshot) — right after a close the modal keeps telling last
+      // season's story until the new one has something to show.
+      const archived = (await listSeasons()).filter((s) => s.status === "archived");
+      for (const s of archived) {
+        const { data, error } = await supabaseAdmin
+          .from("season_recaps")
+          .select("payload")
+          .eq("season_label", s.label)
+          .maybeSingle();
+        if (error) throw new Error(`season_recaps: ${error.message}`);
+        if (data?.payload) return data.payload as SeasonRecapData;
+      }
+      return null;
     } catch (e) {
       console.error("[seasonRecap] compute failed:", e);
       return null;
     }
   },
-  // Version the key when the payload shape changes so a deploy never serves
-  // a stale-shaped entry from the incremental cache.
-  ["season-recap-v3"],
+  // Version the key when the payload shape or the season choice changes so a
+  // deploy never serves a stale entry from the incremental cache.
+  ["season-recap-v5"],
   { revalidate: 3600, tags: [SEASON_RECAP_CACHE_TAG] }
 );
 

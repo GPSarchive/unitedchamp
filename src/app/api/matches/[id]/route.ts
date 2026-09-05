@@ -6,6 +6,10 @@ import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { progressAfterMatch } from "@/app/dashboard/tournaments/TournamentCURD/progression";
 import { decideTwoLeggedTie, decideSingleLegKO } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
+import { refreshStatsForPlayersInTournament } from "@/app/lib/refreshPlayerStats";
+import { assertTeamsInSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -221,6 +225,22 @@ export async function PATCH(
     // Normalize numbers/scores
     if ("team_a_id" in update) update.team_a_id = parsePositiveInt(update.team_a_id);
     if ("team_b_id" in update) update.team_b_id = parsePositiveInt(update.team_b_id);
+
+    // Teams are per-season rows (contract D1): a tournament match may only
+    // pair teams of its tournament's season.
+    if (current.tournament_id != null && ("team_a_id" in update || "team_b_id" in update)) {
+      const seasonLabel = await getTournamentSeasonLabel(current.tournament_id);
+      if (seasonLabel) {
+        try {
+          await assertTeamsInSeason(
+            [update.team_a_id ?? current.team_a_id, update.team_b_id ?? current.team_b_id],
+            seasonLabel,
+          );
+        } catch (e: any) {
+          return jsonError(400, e?.message ?? "Team/season mismatch");
+        }
+      }
+    }
 
     if ("team_a_score" in update) {
       const s = parseNonNegativeInt(update.team_a_score);
@@ -536,7 +556,9 @@ export async function PATCH(
       }
     }
 
-    // Public pages are ISR-cached; regenerate the ones showing this match.
+    // Result/teams may have changed → rewrite the stored Γενική Κατάταξη rows
+    // of the active season, then regenerate the ISR-cached public pages.
+    await refreshActiveSeasonStandings("PATCH /api/matches/[id]");
     revalidateMatchSurfaces({
       id,
       tournament_id: current.tournament_id,
@@ -666,6 +688,14 @@ export async function PATCH(
         return jsonError(409, "This match feeds other matches and cannot be deleted.");
       }
   
+      // Players whose aggregates counted this match — refreshed after the
+      // delete. Its match_player_stats rows cascade away, so collect first.
+      const { data: mpsBefore } = await supabaseAdmin
+        .from("match_player_stats")
+        .select("player_id")
+        .eq("match_id", id);
+      const affectedPlayerIds = [...new Set((mpsBefore ?? []).map((r) => r.player_id as number))];
+
       const { data, error } = await supa
         .from("matches")
         .delete()
@@ -680,6 +710,12 @@ export async function PATCH(
       }
       if (!data) return jsonError(404, "Not found");
 
+      await refreshActiveSeasonStandings("DELETE /api/matches/[id]");
+      if (current.tournament_id != null && affectedPlayerIds.length) {
+        await refreshStatsForPlayersInTournament(affectedPlayerIds, current.tournament_id).catch(
+          (err) => console.error("[DELETE /api/matches/[id]] player stats refresh failed:", err),
+        );
+      }
       revalidateMatchSurfaces({
         id,
         tournament_id: current.tournament_id,

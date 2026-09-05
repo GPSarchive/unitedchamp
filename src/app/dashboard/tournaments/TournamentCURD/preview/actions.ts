@@ -3,8 +3,7 @@
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { progressAfterMatch, recomputeStandingsNow } from '../progression';
 import {
-  refreshCareerStatsForPlayers,
-  refreshTournamentStatsForPlayers,
+  refreshStatsForPlayersInTournament,
   syncPlayerStatisticsForPlayers,
 } from '@/app/lib/refreshPlayerStats';
 import {
@@ -12,6 +11,7 @@ import {
   decideSingleLegKO,
 } from '../util/functions/twoLeggedTie';
 import { revalidateMatchSurfaces } from '@/app/lib/revalidatePublicPages';
+import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
 
 type PlayerStatInput = {
   player_id: number;
@@ -140,9 +140,8 @@ export async function revertMatchToScheduledAction(matchId: number) {
     // 6. Refresh pre-computed player stats cache + legacy totals for affected players
     if (affectedPlayerIds.length > 0) {
       try {
-        await refreshCareerStatsForPlayers(affectedPlayerIds);
         if (match.tournament_id) {
-          await refreshTournamentStatsForPlayers(affectedPlayerIds, match.tournament_id);
+          await refreshStatsForPlayersInTournament(affectedPlayerIds, match.tournament_id);
         }
         await syncPlayerStatisticsForPlayers(affectedPlayerIds);
       } catch (err) {
@@ -151,6 +150,7 @@ export async function revertMatchToScheduledAction(matchId: number) {
     }
 
     // 7. Public pages must stop showing the reverted result immediately.
+    await refreshActiveSeasonStandings('revertMatchToScheduledAction');
     revalidateMatchSurfaces({
       id: matchId,
       tournament_id: match.tournament_id ?? null,
@@ -224,6 +224,7 @@ export async function awardForfeitWinAction(matchId: number, winningTeam: 'A' | 
     }
 
     // 5. Public pages must show the forfeit result immediately.
+    await refreshActiveSeasonStandings('forfeitMatchAction');
     revalidateMatchSurfaces({
       id: matchId,
       tournament_id: match.tournament_id ?? null,
@@ -501,9 +502,8 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
         const removedPlayerIds = prevPlayerIds.filter(id => !participatedIds.includes(id));
         const needCacheRefresh = status === 'finished' ? removedPlayerIds : affectedPlayerIds;
         if (needCacheRefresh.length > 0) {
-          await refreshCareerStatsForPlayers(needCacheRefresh);
           if (match.tournament_id) {
-            await refreshTournamentStatsForPlayers(needCacheRefresh, Number(match.tournament_id));
+            await refreshStatsForPlayersInTournament(needCacheRefresh, Number(match.tournament_id));
           }
         }
       } catch (err) {
@@ -512,6 +512,7 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
     }
 
     // 8. Public pages must show the new result/stats immediately.
+    await refreshActiveSeasonStandings('saveMatchStatsAction');
     revalidateMatchSurfaces({
       id: matchId,
       tournament_id: match.tournament_id != null ? Number(match.tournament_id) : null,

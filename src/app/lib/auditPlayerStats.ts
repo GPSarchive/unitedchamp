@@ -4,7 +4,7 @@
 //
 // Recomputes every player-stats aggregate from the source of truth
 // (match_player_stats) and diffs the result against what is stored in
-// player_statistics, player_career_stats and player_tournament_stats.
+// player_statistics, player_season_stats and player_tournament_stats.
 //
 // For every drifted row it then tries to attribute the drift to a concrete
 // cause:
@@ -78,6 +78,8 @@ export type Diagnosis = {
 };
 
 export type DriftRow = {
+  /** set for player_season_stats rows */
+  seasonLabel?: string;
   playerName: string;
   playerId: number;
   tournamentId?: number;
@@ -280,6 +282,8 @@ export async function auditPlayerStats(): Promise<AuditResult> {
     "id, first_name, last_name",
   );
   const teams = await fetchAll<{ id: number; name: string | null }>("teams", "id, name");
+  const tournaments = await fetchAll<{ id: number; season: string | null }>("tournaments", "id, season");
+  const seasonOf = new Map(tournaments.map((t) => [t.id, t.season]));
 
   const matchInfo = new Map(matches.map((m) => [m.id, m]));
   const teamName = new Map(teams.map((t) => [t.id, t.name ?? `team ${t.id}`]));
@@ -299,9 +303,9 @@ export async function auditPlayerStats(): Promise<AuditResult> {
 
   // 2. Recompute aggregates + collect per-player match contributions
   const legacy = new Map<string, Bucket>();
-  const career = new Map<string, Bucket>();
+  const season = new Map<string, Bucket>();
   const tourney = new Map<string, Bucket>();
-  const careerMatches = new Map<string, Set<number>>();
+  const seasonMatches = new Map<string, Set<number>>();
   const tourneyMatches = new Map<string, Set<number>>();
   const contribsByPlayer = new Map<number, Contribution[]>();
 
@@ -340,23 +344,27 @@ export async function auditPlayerStats(): Promise<AuditResult> {
     L.red_cards += n(r.red_cards);
     L.blue_cards += n(r.blue_cards);
 
-    // career
-    if (!career.has(pid))
-      career.set(pid, {
-        total_matches: 0, total_goals: 0, total_assists: 0, total_yellow_cards: 0,
-        total_red_cards: 0, total_blue_cards: 0, total_mvp: 0, total_best_gk: 0, total_wins: 0,
-      });
-    const C = career.get(pid)!;
-    C.total_goals += n(r.goals);
-    C.total_assists += n(r.assists);
-    C.total_yellow_cards += n(r.yellow_cards);
-    C.total_red_cards += n(r.red_cards);
-    C.total_blue_cards += n(r.blue_cards);
-    C.total_mvp += r.mvp ? 1 : 0;
-    C.total_best_gk += r.best_goalkeeper ? 1 : 0;
-    C.total_wins += win;
-    if (!careerMatches.has(pid)) careerMatches.set(pid, new Set());
-    careerMatches.get(pid)!.add(r.match_id);
+    // per-season (via tournaments.season)
+    const label = mi?.tournament_id ? seasonOf.get(mi.tournament_id) : null;
+    if (label) {
+      const skey = `${pid}:${label}`;
+      if (!season.has(skey))
+        season.set(skey, {
+          matches: 0, goals: 0, assists: 0, yellow_cards: 0, red_cards: 0,
+          blue_cards: 0, mvp_count: 0, best_gk_count: 0, wins: 0,
+        });
+      const S = season.get(skey)!;
+      S.goals += n(r.goals);
+      S.assists += n(r.assists);
+      S.yellow_cards += n(r.yellow_cards);
+      S.red_cards += n(r.red_cards);
+      S.blue_cards += n(r.blue_cards);
+      S.mvp_count += r.mvp ? 1 : 0;
+      S.best_gk_count += r.best_goalkeeper ? 1 : 0;
+      S.wins += win;
+      if (!seasonMatches.has(skey)) seasonMatches.set(skey, new Set());
+      seasonMatches.get(skey)!.add(r.match_id);
+    }
 
     // per-tournament
     if (mi?.tournament_id) {
@@ -379,7 +387,7 @@ export async function auditPlayerStats(): Promise<AuditResult> {
       tourneyMatches.get(key)!.add(r.match_id);
     }
   }
-  for (const [pid, s] of career) s.total_matches = careerMatches.get(pid)?.size ?? 0;
+  for (const [key, s] of season) s.matches = seasonMatches.get(key)?.size ?? 0;
   for (const [key, s] of tourney) s.matches = tourneyMatches.get(key)?.size ?? 0;
 
   // newest first, for the "last k saves missing" heuristic
@@ -393,9 +401,9 @@ export async function auditPlayerStats(): Promise<AuditResult> {
     "player_id, total_goals, total_assists, yellow_cards, red_cards, blue_cards",
     "player_id",
   );
-  const careerRows = await fetchAll<Record<string, unknown>>(
-    "player_career_stats",
-    "player_id, total_matches, total_goals, total_assists, total_yellow_cards, total_red_cards, total_blue_cards, total_mvp, total_best_gk, total_wins, updated_at",
+  const seasonRows = await fetchAll<Record<string, unknown>>(
+    "player_season_stats",
+    "player_id, season_label, matches, goals, assists, yellow_cards, red_cards, blue_cards, mvp_count, best_gk_count, wins, updated_at",
     "player_id",
   );
   const tourneyRows = await fetchAll<Record<string, unknown>>(
@@ -413,10 +421,12 @@ export async function auditPlayerStats(): Promise<AuditResult> {
     expected: Map<string, Bucket>;
     fields: string[];
     /** player's contributions relevant to this aggregate row */
-    contribsFor: (playerId: number, tournamentId: number | null) => Contribution[];
+    contribsFor: (playerId: number, tournamentId: number | null, seasonLabel?: string | null) => Contribution[];
     /** updated_at is only trustworthy where the writer maintains it */
     useUpdatedAt: boolean;
     withTournament?: boolean;
+    /** key is `${player_id}:${season_label}` */
+    withSeason?: boolean;
   }): TableAudit {
     const stored = new Map(opts.storedRows.map((r) => [opts.keyOf(r), r]));
     const allKeys = new Set([...stored.keys(), ...opts.expected.keys()]);
@@ -438,7 +448,8 @@ export async function auditPlayerStats(): Promise<AuditResult> {
       const [pidStr, tidStr] = key.split(":");
       const playerId = Number(pidStr);
       const tournamentId = opts.withTournament ? Number(tidStr) : null;
-      const contribs = opts.contribsFor(playerId, tournamentId);
+      const seasonLabel = opts.withSeason ? tidStr : null;
+      const contribs = opts.contribsFor(playerId, tournamentId, seasonLabel);
 
       let kind: DriftRow["kind"];
       let diagnosis: Diagnosis;
@@ -463,6 +474,7 @@ export async function auditPlayerStats(): Promise<AuditResult> {
         playerName: nameOf.get(playerId) ?? `#${playerId}`,
         playerId,
         ...(opts.withTournament ? { tournamentId: tournamentId! } : {}),
+        ...(opts.withSeason ? { seasonLabel: seasonLabel! } : {}),
         kind,
         diffs,
         diagnosis,
@@ -485,17 +497,21 @@ export async function auditPlayerStats(): Promise<AuditResult> {
       useUpdatedAt: false, // upserts don't maintain updated_at here
     }),
     auditTable({
-      table: "player_career_stats",
-      description: "All-time cache — feeds /paiktes and the home top players",
-      storedRows: careerRows,
-      keyOf: (r) => String(r.player_id),
-      expected: career,
+      table: "player_season_stats",
+      description: "Per-season cache — feeds /paiktes, the home top players and the season archive",
+      storedRows: seasonRows,
+      keyOf: (r) => `${r.player_id}:${r.season_label}`,
+      expected: season,
       fields: [
-        "total_matches", "total_goals", "total_assists", "total_yellow_cards",
-        "total_red_cards", "total_blue_cards", "total_mvp", "total_best_gk", "total_wins",
+        "matches", "goals", "assists", "yellow_cards", "red_cards",
+        "blue_cards", "mvp_count", "best_gk_count", "wins",
       ],
-      contribsFor: (pid) => contribsByPlayer.get(pid) ?? [],
+      contribsFor: (pid, _tid, label) =>
+        (contribsByPlayer.get(pid) ?? []).filter(
+          (c) => c.tournamentId != null && seasonOf.get(c.tournamentId) === label,
+        ),
       useUpdatedAt: true,
+      withSeason: true,
     }),
     auditTable({
       table: "player_tournament_stats",

@@ -4,6 +4,7 @@ import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { formatMatchDateTime } from "@/app/lib/datetime";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
+import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
 /* =======================
    Same-origin guard
@@ -292,7 +293,10 @@ export async function POST(
       ? `Match postponed successfully from ${oldDateFormatted} to ${newDateFormatted}`
       : `Match postponed successfully (new date TBD)`;
 
-    // Date/status changed → refresh the ISR-cached public pages showing it.
+    // Date/status changed → rewrite the stored Γενική Κατάταξη rows (same
+    // contract as every other match mutation, even though a postponed match
+    // carries no points yet), then refresh the ISR-cached public pages.
+    await refreshActiveSeasonStandings("POST /api/matches/[id]/postpone");
     revalidateMatchSurfaces({
       id,
       tournament_id: current.tournament_id,

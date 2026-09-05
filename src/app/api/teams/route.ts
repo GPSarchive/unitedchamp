@@ -1,6 +1,7 @@
 // app/api/teams/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { getActiveSeason, getSeasonByLabel } from "@/app/lib/seasons";
 
 // If possible, rename your bucket to an id without spaces/apostrophes (e.g. "gpsarchives-project").
 const BUCKET = "GPSarchive's Project";
@@ -132,7 +133,10 @@ export async function HEAD() {
 }
 
 /* ======================================
-   GET /api/teams?sign=1&include=active|archived|all
+   GET /api/teams?sign=1&include=active|archived|all&season=active|all|<label>
+   season=active (default) → the ACTIVE season's team rows only (teams are
+   per-season rows — plans/seasonal-data-contract.md D1); season=all → every
+   season; season=<label> → that season.
    ====================================== */
 // Uses user/anon client so table RLS applies.
 // Default: only non-deleted teams (active) and non-dummy teams.
@@ -144,6 +148,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const shouldSign = url.searchParams.get("sign") === "1";
     const include = (url.searchParams.get("include") || "active").toLowerCase();
+    const seasonParam = (url.searchParams.get("season") || "active").trim();
 
     // NEW: parse ids filter (comma-separated list)
     const idsParam = url.searchParams.get("ids");
@@ -158,7 +163,7 @@ export async function GET(req: Request) {
 
     let q = supa
       .from("teams")
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score");
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id");
 
     // Apply ids filter if provided (everything else stays the same)
     if (ids.length > 0) {
@@ -172,6 +177,13 @@ export async function GET(req: Request) {
     } else {
       // default: active only
       q = q.is("deleted_at", null);
+    }
+
+    if (seasonParam.toLowerCase() === "active") {
+      const active = await getActiveSeason();
+      q = q.eq("season_label", active?.label ?? "__no-active-season__");
+    } else if (seasonParam.toLowerCase() !== "all") {
+      q = q.eq("season_label", seasonParam);
     }
 
     const { data, error } = await q.order("name", { ascending: true });
@@ -193,7 +205,8 @@ export async function GET(req: Request) {
         colour: t.colour,
         created_at: t.created_at,
         deleted_at: t.deleted_at,
-        season_score: t.season_score,
+        season_label: t.season_label,
+        copied_from_team_id: t.copied_from_team_id,
         logo: await signLogoIfNeededSafe(supa, t.id, t.logo),
       }))
     );
@@ -207,7 +220,10 @@ export async function GET(req: Request) {
 
 /* ======================================
    POST /api/teams  (admin only)
-   Body: { name, am?, logo?, season_score? }
+   Body: { name, am?, logo?, colour?, season_label?, copied_from_team_id? }
+   - season_label defaults to the ACTIVE season (must exist in public.seasons)
+   - copied_from_team_id = "create from old team": the new row records its
+     lineage and inherits the source's logo/colour when none are supplied
    - logo may be an external URL or a signed URL
    - If a storage path is provided, it will be validated *after* creation against teams/<newId>/...
    ====================================== */
@@ -242,23 +258,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AM too long (max 64 characters)" }, { status: 400 });
     }
 
-    // season_score (optional, non-negative integer)
-    let seasonScoreRaw: number | null = null;
-    if (Object.prototype.hasOwnProperty.call(body, "season_score")) {
-      const n = Number(body.season_score);
-      if (!Number.isInteger(n) || n < 0) {
-        return NextResponse.json({ error: "Invalid season_score" }, { status: 400 });
-      }
-      seasonScoreRaw = n;
-    }
-
     const logoCandidate = toStoragePathOrUrlSafe(body.logo);
 
     // colour (optional, hex color string)
-    const colourRaw = typeof body.colour === "string" ? body.colour.trim() : null;
+    let colourRaw = typeof body.colour === "string" ? body.colour.trim() : null;
+
+    // Season: assigned, never derived, and ALWAYS the active season — new team
+    // rows are created for the season being played (contract Phase 5); an
+    // archived season's team list is frozen history.
+    const active = await getActiveSeason();
+    if (!active) return NextResponse.json({ error: "No active season" }, { status: 409 });
+    const seasonLabelRaw = typeof body.season_label === "string" ? body.season_label.trim() : "";
+    if (seasonLabelRaw && seasonLabelRaw !== active.label) {
+      const row = await getSeasonByLabel(seasonLabelRaw);
+      return NextResponse.json(
+        {
+          error: row
+            ? `Teams can only be created in the active season (${active.label}); ${seasonLabelRaw} is archived.`
+            : `Unknown season ${seasonLabelRaw}`,
+        },
+        { status: 400 },
+      );
+    }
+    const seasonLabel = active.label;
+
+    // Lineage ("create from old team"): copy logo/colour from the source row
+    // when the caller did not supply them. The source's logo path stays valid —
+    // it is just referenced by a second row. The source must be a row of a
+    // PREVIOUS season: copying within the active season would only duplicate.
+    let copiedFrom: number | null = null;
+    let inheritedLogo: string | null = null;
+    if (body.copied_from_team_id != null) {
+      const srcId = Number(body.copied_from_team_id);
+      if (!Number.isInteger(srcId) || srcId <= 0) {
+        return NextResponse.json({ error: "Invalid copied_from_team_id" }, { status: 400 });
+      }
+      const { data: src, error: srcErr } = await supa
+        .from("teams")
+        .select("id, logo, colour, season_label")
+        .eq("id", srcId)
+        .maybeSingle();
+      if (srcErr || !src) return NextResponse.json({ error: "Source team not found" }, { status: 400 });
+      if (src.season_label === seasonLabel) {
+        return NextResponse.json(
+          { error: "copied_from_team_id must be a team of a previous season" },
+          { status: 400 },
+        );
+      }
+      copiedFrom = src.id;
+      if (!logoCandidate) inheritedLogo = src.logo ?? null;
+      if (!colourRaw) colourRaw = src.colour ?? null;
+    }
 
     // Insert first; if logoCandidate is an external URL, we can include it now.
-    const initialLogo = logoCandidate && /^https?:\/\//i.test(logoCandidate) ? logoCandidate : null;
+    const initialLogo =
+      logoCandidate && /^https?:\/\//i.test(logoCandidate) ? logoCandidate : inheritedLogo;
 
     const { data: created, error: insErr } = await supa
       .from("teams")
@@ -267,9 +321,10 @@ export async function POST(req: Request) {
         am: amRaw || null, // NEW
         logo: initialLogo,
         colour: colourRaw,
-        season_score: seasonScoreRaw ?? 0,
+        season_label: seasonLabel,
+        copied_from_team_id: copiedFrom,
       })
-      .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
+      .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
       .single();
 
     if (insErr || !created) {
@@ -290,7 +345,7 @@ export async function POST(req: Request) {
           .from("teams")
           .update({ logo: logoCandidate })
           .eq("id", team.id)
-          .select("id, name, am, logo, colour, created_at, deleted_at, season_score")
+          .select("id, name, am, logo, colour, created_at, deleted_at, season_label, copied_from_team_id")
           .single();
 
         if (upErr) {

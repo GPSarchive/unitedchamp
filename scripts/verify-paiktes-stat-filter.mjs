@@ -33,26 +33,26 @@ async function count(table, mods = (q) => q) {
 }
 
 const players = await count("player", (q) => q.is("deleted_at", null));
-const careerRows = await count("player_career_stats");
+const seasonRows = await count("player_season_stats");
 const tourneyRows = await count("player_tournament_stats");
 console.log(
-  `\nrow counts → player(live)=${players}  player_career_stats=${careerRows}  player_tournament_stats=${tourneyRows}`,
+  `\nrow counts → player(live)=${players}  player_season_stats=${seasonRows}  player_tournament_stats=${tourneyRows}`,
 );
 check("player count well under 10k ceiling", players < 9000, `(${players})`);
-check("career stats under 10k ceiling", careerRows < 9000, `(${careerRows})`);
+check("season stats under 10k ceiling", seasonRows < 9000, `(${seasonRows})`);
 
 // ── SQL .gte filter == JS filter over full career table ─────────────
 // Pull the whole career table once (small), filter in JS, compare to the
 // SQL .gte path used by page.tsx for the non-scoped case.
 const { data: allCareer, error: cErr } = await db
-  .from("player_career_stats")
-  .select("player_id, total_goals, total_matches, total_assists")
+  .from("player_season_stats")
+  .select("player_id, goals, matches, assists")
   .limit(10000);
 if (cErr) throw new Error(cErr.message);
 
 async function sqlIds(column, n) {
   const { data, error } = await db
-    .from("player_career_stats")
+    .from("player_season_stats")
     .select("player_id")
     .gte(column, n)
     .limit(10000);
@@ -70,9 +70,9 @@ const eqSet = (a, b) =>
   a.size === b.size && [...a].every((x) => b.has(x));
 
 for (const [column, thresholds] of [
-  ["total_goals", [0, 1, 5, 10, 20]],
-  ["total_matches", [0, 1, 5, 10]],
-  ["total_assists", [0, 1, 3, 5]],
+  ["goals", [0, 1, 5, 10, 20]],
+  ["matches", [0, 1, 5, 10]],
+  ["assists", [0, 1, 3, 5]],
 ]) {
   for (const n of thresholds) {
     const s = await sqlIds(column, n);

@@ -192,11 +192,13 @@ const PageHeader: React.FC<{ total: number; tab: TabKey }> = ({
 // ───────────────────────────────────────────────────────────────────────
 type Props = {
   tournaments: TournamentOption[];
+  /** Tournament ids of the ACTIVE season — the explorer never leaves them. */
+  tournamentIds: number[];
 };
 
 const PAGE_SIZE = 12;
 
-export default function MatchesExplorer({ tournaments }: Props) {
+export default function MatchesExplorer({ tournaments, tournamentIds }: Props) {
   const [tab, setTab] = useState<TabKey>("upcoming");
   const [tournamentId, setTournamentId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -231,6 +233,10 @@ export default function MatchesExplorer({ tournaments }: Props) {
 
         if (tournamentId != null) {
           q = q.eq("tournament_id", tournamentId);
+        } else {
+          // No tournament picked → every tournament of the active season
+          // (an empty season yields no rows rather than all seasons' matches).
+          q = q.in("tournament_id", tournamentIds.length ? tournamentIds : [-1]);
         }
 
         const isUpcoming = tab === "upcoming";

@@ -44,13 +44,19 @@ const PROBES = {
   player: { payload: { first_name: "__RLS_PROBE__", last_name: "__DELETE_ME__" }, cleanup: true },
   player_teams: { payload: { player_id: -1, team_id: -1 }, cleanup: false },
   player_statistics: { payload: { player_id: -1 }, cleanup: false },
-  player_career_stats: { payload: { player_id: -1 }, cleanup: false },
   player_tournament_stats: { payload: { player_id: -1, tournament_id: -1 }, cleanup: false },
   articles: { payload: { title: "__RLS_PROBE_DELETE_ME__", status: "draft" }, cleanup: true },
   announcements: { payload: { title: "__RLS_PROBE_DELETE_ME__", body: "x", status: "draft" }, cleanup: true },
   disciplinary_actions: { payload: { team_id: -1 }, cleanup: false },
   season_team_adjustments: { payload: { team_id: -1, season: "x", kind: "probe", points: 0 }, cleanup: false },
   tournament_awards: { payload: { tournament_id: -1 }, cleanup: false },
+  // Seasonal system (migrations/add-seasons.sql + add-season-aggregates.sql):
+  // seasons is public-read; the four result tables are staff_read.
+  seasons: { payload: { label: "__RLS_PROBE__", display_label: "x", status: "archived" }, cleanup: true, key: "label" },
+  player_season_stats: { payload: { player_id: -1, season_label: "x" }, cleanup: false },
+  season_team_standings: { payload: { season_label: "x", team_id: -1, rank: 1 }, cleanup: false },
+  season_recaps: { payload: { season_label: "x", payload: {} }, cleanup: false },
+  team_season_score_archive: { payload: { team_id: -1, score: 0 }, cleanup: false },
 };
 
 const pad = (s, n) => String(s).padEnd(n);
@@ -76,11 +82,35 @@ async function main() {
     } else {
       ins = "*** ROW CREATED (VERY BAD) ***";
       if (probe.cleanup && w.data?.length) {
-        for (const row of w.data) await svc.from(table).delete().eq("id", row.id);
+        for (const row of w.data) {
+          const key = probe.key ?? "id";
+          await svc.from(table).delete().eq(key, row[key]);
+        }
         ins += " [cleaned up]";
       }
     }
     console.log(pad(table, 26) + pad(sel, 22) + ins);
+  }
+
+  // Service-role-only SQL functions (migrations/add-progression-integrity.sql,
+  // migrations/add-season-flip-fn.sql): the anon key must not be able to
+  // EXECUTE them. 42501 = permission denied (good); PGRST202 = the function is
+  // not deployed yet (run its migration); anything else means it ran.
+  const RPCS = {
+    replace_stage_standings: { p_stage_id: -1, p_group_id: -1, p_rows: [] },
+    flip_active_season: { p_current: "__probe__", p_next: "__probe2__", p_next_display: "x", p_next_started_on: null, p_actor: null },
+    set_active_season: { p_label: "__probe__", p_actor: null },
+  };
+  console.log("\n" + pad("function", 26) + "anon EXECUTE");
+  console.log("-".repeat(78));
+  for (const [fn, args] of Object.entries(RPCS)) {
+    const r = await anon.rpc(fn, args);
+    let out;
+    if (!r.error) out = "*** EXECUTED (VERY BAD) ***";
+    else if (r.error.code === "42501" || /permission denied/i.test(r.error.message)) out = "blocked (good)";
+    else if (r.error.code === "PGRST202" || /could not find the function/i.test(r.error.message)) out = "missing — run its migration";
+    else out = `*** EXECUTABLE (BAD): ${r.error.message.slice(0, 50)} ***`;
+    console.log(pad(fn, 26) + out);
   }
 }
 main().catch((e) => { console.error(e); process.exit(1); });

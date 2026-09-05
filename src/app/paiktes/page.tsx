@@ -1,5 +1,7 @@
-// src/app/paiktes/page.tsx — reads from pre-computed player_career_stats / player_tournament_stats
+// src/app/paiktes/page.tsx — the ACTIVE season's players, read from the
+// pre-computed player_season_stats / player_tournament_stats tables.
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import PlayersClient from "./PlayersClient";
 import type { PlayerLite, ScopableStatKey } from "./types";
 import { resolveStat } from "./types";
@@ -20,6 +22,7 @@ async function fetchInBatches<T>(
   ids: number[],
   selectColumns: string,
   batchSize = SUPABASE_BATCH_SIZE,
+  extraEq?: { column: string; value: string | number },
 ): Promise<T[]> {
   if (ids.length === 0) return [];
   const chunks: number[][] = [];
@@ -27,13 +30,10 @@ async function fetchInBatches<T>(
     chunks.push(ids.slice(i, i + batchSize));
   }
   const results = await Promise.all(
-    chunks.map((chunk) =>
-      supabaseAdmin
-        .from(table)
-        .select(selectColumns)
-        .in(idColumn, chunk)
-        .limit(10000)
-        .then(({ data }) => {
+    chunks.map((chunk) => {
+      let q = supabaseAdmin.from(table).select(selectColumns).in(idColumn, chunk);
+      if (extraEq) q = q.eq(extraEq.column, extraEq.value);
+      return q.limit(10000).then(({ data }) => {
           const rows = (data ?? []) as T[];
           if (rows.length >= 10000) {
             console.error(
@@ -42,8 +42,8 @@ async function fetchInBatches<T>(
             );
           }
           return rows;
-        }),
-    ),
+        });
+    }),
   );
   return results.flat();
 }
@@ -67,17 +67,17 @@ type PlayerTeamRow = {
 
 type TeamRow = { id: number; name: string | null; logo: string | null };
 
-type CareerStatsRow = {
+type SeasonStatsRow = {
   player_id: number;
-  total_matches: number;
-  total_goals: number;
-  total_assists: number;
-  total_yellow_cards: number;
-  total_red_cards: number;
-  total_blue_cards: number;
-  total_mvp: number;
-  total_best_gk: number;
-  total_wins: number;
+  matches: number;
+  goals: number;
+  assists: number;
+  yellow_cards: number;
+  red_cards: number;
+  blue_cards: number;
+  mvp_count: number;
+  best_gk_count: number;
+  wins: number;
   primary_team_id: number | null;
 };
 
@@ -115,7 +115,7 @@ export default async function PaiktesPage({
   // `?tournament_id=abc` (NaN), `?tournament_id=` (absent) and `?tournament_id=0`
   // all cleanly mean "no tournament".
   const rawTournamentId = sp?.tournament_id ? Number(sp.tournament_id) : NaN;
-  const activeTournamentId: number | null =
+  const requestedTournamentId: number | null =
     Number.isFinite(rawTournamentId) && rawTournamentId > 0
       ? rawTournamentId
       : null;
@@ -128,13 +128,28 @@ export default async function PaiktesPage({
   const parsedSearch = parseSearchQuery(rawSearchTerm);
   const pageSize = DEFAULT_PAGE_SIZE;
 
-  // Fetch tournaments (for the filter dropdown)
+  // Season scope: the directory lists the ACTIVE season's rostered players and
+  // their season numbers; older seasons live under /seasons.
+  const activeSeason = await getActiveSeasonCached();
+  const seasonLabel = activeSeason?.label ?? NO_SEASON;
+
+  // Fetch tournaments (for the filter dropdown) — active season only
   const { data: tournamentRows, error: tErr } = await supabaseAdmin
     .from("tournaments")
     .select("id, name, season")
+    .eq("season", seasonLabel)
     .order("created_at", { ascending: false });
 
   if (tErr) console.error("[paiktes] tournaments query error:", tErr.message);
+
+  // Only an ACTIVE-season tournament may overlay the directory; an archived id
+  // (hand-typed or a stale link) means "no tournament" rather than last
+  // season's numbers next to this season's roster.
+  const activeTournamentId: number | null =
+    requestedTournamentId != null &&
+    (tournamentRows ?? []).some((t) => t.id === requestedTournamentId)
+      ? requestedTournamentId
+      : null;
   const tournaments = (tournamentRows ?? []) as {
     id: number;
     name: string;
@@ -142,6 +157,25 @@ export default async function PaiktesPage({
   }[];
 
   const offset = (page - 1) * pageSize;
+
+  // ── SEASON SCOPE → player ids rostered on an active-season team ───
+  // Teams are per-season rows (contract D1), so "this season's players" =
+  // everyone on a team stamped with the active label. Always applied.
+  const { data: seasonTeamRows } = await supabaseAdmin
+    .from("teams")
+    .select("id")
+    .eq("season_label", seasonLabel)
+    .is("deleted_at", null)
+    .limit(10000);
+  const activeTeamIds = (seasonTeamRows ?? []).map((t) => t.id as number);
+  const activeTeamIdSet = new Set(activeTeamIds);
+  const seasonRosterRows = await fetchInBatches<{ player_id: number }>(
+    "player_teams",
+    "team_id",
+    activeTeamIds,
+    "player_id",
+  );
+  const seasonPlayerIds = [...new Set(seasonRosterRows.map((r) => r.player_id))];
 
   // ── TEAM FILTER → player ids ──────────────────────────────────────
   let teamFilteredPlayerIds: number[] | null = null;
@@ -157,6 +191,7 @@ export default async function PaiktesPage({
     const { data: matchingTeams } = await supabaseAdmin
       .from("teams")
       .select("id")
+      .eq("season_label", seasonLabel)
       .or(teamConditions);
 
     if (matchingTeams && matchingTeams.length > 0) {
@@ -191,7 +226,7 @@ export default async function PaiktesPage({
   // the list/card (PlayersClient sets isTournamentScoped = !!tournament_id, so
   // the UI shows tournament stats). The filter and the visible stat agree.
   //
-  // - No tournament  → push the filter into SQL against player_career_stats
+  // - No tournament  → push the filter into SQL against player_season_stats
   //   (a real WHERE), so the DB returns only matching players AND an accurate
   //   count. No 10k-bounded JS recompute for this case.
   // - Tournament set → values live in player_tournament_stats and the tournament
@@ -204,31 +239,33 @@ export default async function PaiktesPage({
 
   let statFilteredPlayerIds: number[] | null = null;
   if (hasStatFilter && activeTournamentId === null) {
-    let careerStatQuery = supabaseAdmin
-      .from("player_career_stats")
+    let seasonStatQuery = supabaseAdmin
+      .from("player_season_stats")
       .select("player_id")
+      .eq("season_label", seasonLabel)
       .limit(10000);
     if (parsedSearch.minGoals !== undefined) {
-      careerStatQuery = careerStatQuery.gte("total_goals", parsedSearch.minGoals);
+      seasonStatQuery = seasonStatQuery.gte("goals", parsedSearch.minGoals);
     }
     if (parsedSearch.minMatches !== undefined) {
-      careerStatQuery = careerStatQuery.gte("total_matches", parsedSearch.minMatches);
+      seasonStatQuery = seasonStatQuery.gte("matches", parsedSearch.minMatches);
     }
     if (parsedSearch.minAssists !== undefined) {
-      careerStatQuery = careerStatQuery.gte("total_assists", parsedSearch.minAssists);
+      seasonStatQuery = seasonStatQuery.gte("assists", parsedSearch.minAssists);
     }
-    const { data: statRows } = await careerStatQuery;
+    const { data: statRows } = await seasonStatQuery;
     if (statRows && statRows.length >= 10000) {
       console.error(
-        "[paiktes] career stat-filter result truncated at 10000 — counts may be wrong",
+        "[paiktes] season stat-filter result truncated at 10000 — counts may be wrong",
       );
     }
     statFilteredPlayerIds = (statRows ?? []).map((r) => r.player_id);
   }
 
   // ── Combine filters ───────────────────────────────────────────────
-  // Intersection of every active id-set (team / tournament / career stats).
+  // Intersection of every active id-set (season roster / team / tournament / season stats).
   const idSets = [
+    seasonPlayerIds,
     teamFilteredPlayerIds,
     tournamentPlayerIds,
     statFilteredPlayerIds,
@@ -380,14 +417,16 @@ export default async function PaiktesPage({
 
   const playerIds = p.map((x) => x.id);
 
-  // ── Fetch pre-computed career stats (1 row per player) ────────────
-  const careerRows = await fetchInBatches<CareerStatsRow>(
-    "player_career_stats",
+  // ── Fetch pre-computed season stats (1 row per player per season) ─
+  const seasonRows = await fetchInBatches<SeasonStatsRow>(
+    "player_season_stats",
     "player_id",
     playerIds,
-    "player_id, total_matches, total_goals, total_assists, total_yellow_cards, total_red_cards, total_blue_cards, total_mvp, total_best_gk, total_wins, primary_team_id",
+    "player_id, matches, goals, assists, yellow_cards, red_cards, blue_cards, mvp_count, best_gk_count, wins, primary_team_id",
+    SUPABASE_BATCH_SIZE,
+    { column: "season_label", value: seasonLabel },
   );
-  const careerByPlayer = new Map(careerRows.map((r) => [r.player_id, r]));
+  const seasonByPlayer = new Map(seasonRows.map((r) => [r.player_id, r]));
 
   // ── Fetch pre-computed tournament stats (if tournament filter active) ──
   const tourneyByPlayer = new Map<number, TournamentStatsRow>();
@@ -406,13 +445,10 @@ export default async function PaiktesPage({
     }
   }
 
-  // ── Fetch player_teams for team display ───────────────────────────
-  const ptRows = await fetchInBatches<PlayerTeamRow>(
-    "player_teams",
-    "player_id",
-    playerIds,
-    "player_id, team_id",
-  );
+  // ── Fetch player_teams for team display (active-season teams only) ─
+  const ptRows = (
+    await fetchInBatches<PlayerTeamRow>("player_teams", "player_id", playerIds, "player_id, team_id")
+  ).filter((r) => r.team_id != null && activeTeamIdSet.has(r.team_id));
 
   const allTeamIdsSet = new Set(ptRows.map((r) => r.team_id).filter(Boolean));
   const allTeamIds = Array.from(allTeamIdsSet) as number[];
@@ -450,11 +486,11 @@ export default async function PaiktesPage({
         )
       : null;
 
-    const career = careerByPlayer.get(pl.id);
+    const season = seasonByPlayer.get(pl.id);
 
     // Sort membership teams: primary_team_id first, then by name
     const membershipTeams = teamsByPlayer.get(pl.id) ?? [];
-    const primaryId = career?.primary_team_id ?? null;
+    const primaryId = season?.primary_team_id ?? null;
     const sortedTeams = [...membershipTeams].sort((a, b) => {
       if (a.id === primaryId && b.id !== primaryId) return -1;
       if (b.id === primaryId && a.id !== primaryId) return 1;
@@ -473,15 +509,15 @@ export default async function PaiktesPage({
       age,
       teams: topTeams,
       team: topTeams[0] ?? null,
-      matches: career?.total_matches ?? 0,
-      goals: career?.total_goals ?? 0,
-      assists: career?.total_assists ?? 0,
-      yellow_cards: career?.total_yellow_cards ?? 0,
-      red_cards: career?.total_red_cards ?? 0,
-      blue_cards: career?.total_blue_cards ?? 0,
-      mvp: career?.total_mvp ?? 0,
-      best_gk: career?.total_best_gk ?? 0,
-      wins: career?.total_wins ?? 0,
+      matches: season?.matches ?? 0,
+      goals: season?.goals ?? 0,
+      assists: season?.assists ?? 0,
+      yellow_cards: season?.yellow_cards ?? 0,
+      red_cards: season?.red_cards ?? 0,
+      blue_cards: season?.blue_cards ?? 0,
+      mvp: season?.mvp_count ?? 0,
+      best_gk: season?.best_gk_count ?? 0,
+      wins: season?.wins ?? 0,
     };
 
     // Overlay tournament-scoped stats when tournament filter is active
