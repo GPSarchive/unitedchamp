@@ -176,6 +176,8 @@ Live pages read the ACTIVE season only via `lib/seasonScope.ts`: `/OMADES` (`tea
 
 `tournaments.status` is **not** auto-flipped to archived (preflight warns about still-`running` tournaments instead).
 
+**Preflight lists + fixes (2026-09-05).** The close sheet lists every unfinished match (blockers first) and every open tournament, with inline controls that reuse the existing writers: finish with a score (`PATCH /api/matches/[id]`), award a 3–0 forfeit (`awardForfeitWinAction`), postpone without a date (`POST /api/matches/[id]/postpone`), and `completeTournament` (status only). The preflight re-runs after each fix. "Today" for the past/future split is the Athens calendar date (`calendarDateIn` in `lib/seasonChecks.ts`, with `unfinishedMatchBuckets` / `isOpenTournamentStatus` unit-tested). Rationale for the rule set lives above `buildPreflight` in `dashboard/seasons/actions.ts`.
+
 ---
 
 ## 5. Rollback / safety
