@@ -19,9 +19,17 @@ import {
   listTournamentIdsForSeason,
 } from "@/app/lib/seasons";
 import { snapshotSeason, type SeasonSnapshotResult } from "@/app/lib/seasonSnapshot";
-import { revalidateSeasonSurfaces } from "@/app/lib/revalidatePublicPages";
+import {
+  revalidateSeasonSurfaces,
+  revalidateTournamentSurfaces,
+} from "@/app/lib/revalidatePublicPages";
 import { chunk } from "@/app/lib/playerStatsAggregation";
 import { BATCH_SIZE, PAGE_SIZE } from "@/app/lib/supabasePaging";
+import {
+  calendarDateIn,
+  isOpenTournamentStatus,
+  unfinishedMatchBuckets,
+} from "@/app/lib/seasonChecks";
 import {
   displayLabelForSeason,
   nextSeasonLabel,
@@ -40,7 +48,14 @@ async function requireAdminUser() {
   return user;
 }
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+/**
+ * "Today" for the preflight and the default start date: the league's own
+ * calendar date. Match dates are literal wall-clock strings (lib/datetime.ts),
+ * so comparing them against the UTC date would mis-bucket evening matches
+ * between midnight and 03:00 Athens time.
+ */
+const LEAGUE_TZ = "Europe/Athens";
+const todayIso = () => calendarDateIn(LEAGUE_TZ);
 
 function revalidateAdmin(...labels: string[]) {
   revalidatePath("/dashboard/seasons");
@@ -72,12 +87,44 @@ function describeRpcError(err: { code?: string; message: string }, fn: string): 
 
 // ─── Preflight ─────────────────────────────────────────────────────────────
 
+/** One unfinished match of the closing season, as the close sheet lists it. */
+export interface PreflightMatch {
+  id: number;
+  tournament_id: number | null;
+  tournament_name: string;
+  stage_kind: "knockout" | "groups" | "league" | null;
+  leg: number | null;
+  team_a_id: number | null;
+  team_b_id: number | null;
+  team_a_name: string;
+  team_b_name: string;
+  match_date: string | null;
+  status: "scheduled" | "postponed";
+  /** true → in the blocker bucket (dated before today, not finished). */
+  past: boolean;
+}
+
+/** One tournament of the closing season whose status is not completed/archived. */
+export interface PreflightTournament {
+  id: number;
+  name: string;
+  status: string;
+  matches: number;
+  finished: number;
+  winner_team_id: number | null;
+  winner_name: string | null;
+}
+
 export interface ClosePreflight {
   label: string;
   /** Conditions that stop the close unless `force` is passed. */
   blockers: string[];
   /** Things the admin should know; the close proceeds. */
   warnings: string[];
+  /** Every unfinished match, blockers first, then by date. */
+  unfinishedMatches: PreflightMatch[];
+  /** Tournaments the status warning refers to. */
+  openTournaments: PreflightTournament[];
   info: {
     tournaments: number;
     tournamentsOpen: number;
@@ -93,34 +140,94 @@ export interface ClosePreflight {
   suggestedNext: { label: string; display_label: string; started_on: string };
 }
 
+type PreflightMatchRow = {
+  id: number;
+  tournament_id: number | null;
+  stage_id: number | null;
+  leg: number | null;
+  team_a_id: number | null;
+  team_b_id: number | null;
+  match_date: string | null;
+  status: string | null;
+};
+
+const positiveIds = (xs: Iterable<number | null | undefined>) =>
+  [...new Set([...xs].filter((x): x is number => typeof x === "number" && x > 0))];
+
+/** id → name for the given teams (any season; the closing season's rows and past winners). */
+async function teamNamesById(ids: number[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  for (const batch of chunk(ids, 300)) {
+    const { data, error } = await supabaseAdmin.from("teams").select("id, name").in("id", batch);
+    if (error) throw new Error(error.message);
+    for (const t of data ?? []) out.set(t.id as number, ((t.name as string | null) ?? "").trim() || `Ομάδα #${t.id}`);
+  }
+  return out;
+}
+
+async function stageKindsById(ids: number[]): Promise<Map<number, PreflightMatch["stage_kind"]>> {
+  const out = new Map<number, PreflightMatch["stage_kind"]>();
+  for (const batch of chunk(ids, 300)) {
+    const { data, error } = await supabaseAdmin.from("tournament_stages").select("id, kind").in("id", batch);
+    if (error) throw new Error(error.message);
+    for (const s of data ?? []) out.set(s.id as number, (s.kind as PreflightMatch["stage_kind"]) ?? null);
+  }
+  return out;
+}
+
+/**
+ * Why these rules (and only these): after the flip, refreshes serve the
+ * ACTIVE season only, an archived season's stored tables change only through
+ * an explicit re-snapshot, and the recap payload is computed once. So a
+ * result that is missing at close is missing from the archive.
+ *   BLOCKER  unfinished match dated before today — with near certainty a
+ *            result nobody entered (or a match nobody postponed/forfeited).
+ *   WARNING  unfinished match dated today/later/undated — legitimately
+ *            unplayed; the admin decides whether to wait or abandon it.
+ *   WARNING  tournament status not completed/archived — cosmetic: the points
+ *            engine and the stats pipeline never read tournaments.status.
+ */
 async function buildPreflight(label: string): Promise<ClosePreflight> {
   const tournamentIds = await listTournamentIdsForSeason(label);
 
-  const { data: tours, error: tErr } = await supabaseAdmin
+  const { data: toursData, error: tErr } = await supabaseAdmin
     .from("tournaments")
-    .select("id, status")
-    .eq("season", label);
+    .select("id, name, status, winner_team_id")
+    .eq("season", label)
+    .order("id", { ascending: true });
   if (tErr) throw new Error(tErr.message);
+  const tours = (toursData ?? []) as {
+    id: number;
+    name: string | null;
+    status: string;
+    winner_team_id: number | null;
+  }[];
 
-  const matches: { status: string | null; match_date: string | null }[] = [];
+  const matches: PreflightMatchRow[] = [];
   for (const batch of chunk(tournamentIds, BATCH_SIZE)) {
     let offset = 0;
     for (;;) {
       const { data, error } = await supabaseAdmin
         .from("matches")
-        .select("status, match_date")
+        .select("id, tournament_id, stage_id, leg, team_a_id, team_b_id, match_date, status")
         .in("tournament_id", batch)
         .order("id", { ascending: true })
         .range(offset, offset + PAGE_SIZE - 1);
       if (error) throw new Error(error.message);
       if (!data || data.length === 0) break;
-      matches.push(...(data as typeof matches));
+      matches.push(...(data as PreflightMatchRow[]));
       if (data.length < PAGE_SIZE) break;
       offset += PAGE_SIZE;
     }
   }
 
-  const [{ count: teams }, { count: statsRows }, { count: standingsRows }, recapRes] =
+  const today = todayIso();
+  const { past, future } = unfinishedMatchBuckets(matches, today);
+  const unfinished = [...past, ...future];
+  const finishedMatches = matches.length - unfinished.length;
+  const openTours = tours.filter((t) => isOpenTournamentStatus(t.status));
+
+  const [{ count: teams }, { count: statsRows }, { count: standingsRows }, recapRes, names, kinds] =
     await Promise.all([
       supabaseAdmin.from("teams").select("*", { count: "exact", head: true }).eq("season_label", label),
       supabaseAdmin
@@ -132,29 +239,75 @@ async function buildPreflight(label: string): Promise<ClosePreflight> {
         .select("*", { count: "exact", head: true })
         .eq("season_label", label),
       supabaseAdmin.from("season_recaps").select("generated_at").eq("season_label", label).maybeSingle(),
+      teamNamesById(
+        positiveIds([
+          ...unfinished.flatMap((m) => [m.team_a_id, m.team_b_id]),
+          ...openTours.map((t) => t.winner_team_id),
+        ]),
+      ),
+      stageKindsById(positiveIds(unfinished.map((m) => m.stage_id))),
     ]);
 
-  const today = todayIso();
-  const finishedMatches = matches.filter((m) => m.status === "finished").length;
-  const unfinished = matches.filter((m) => m.status !== "finished");
-  const unfinishedPast = unfinished.filter(
-    (m) => m.match_date && m.match_date.slice(0, 10) < today,
-  ).length;
-  const unfinishedFuture = unfinished.length - unfinishedPast;
-  const tournamentsOpen = (tours ?? []).filter(
-    (t) => t.status !== "completed" && t.status !== "archived",
-  ).length;
+  const teamName = (id: number | null) => (id == null ? "TBD" : names.get(id) ?? `Ομάδα #${id}`);
+  const tourName = new Map(tours.map((t) => [t.id, (t.name ?? "").trim() || `Τουρνουά #${t.id}`]));
+  const pastIds = new Set(past.map((m) => m.id));
+  // Dated matches chronologically, undated ones last, ids as the tie-break.
+  const byDate = (a: PreflightMatchRow, b: PreflightMatchRow) => {
+    if (a.match_date == null || b.match_date == null) {
+      return (a.match_date == null ? 1 : 0) - (b.match_date == null ? 1 : 0) || a.id - b.id;
+    }
+    return a.match_date.localeCompare(b.match_date) || a.id - b.id;
+  };
+  const unfinishedMatches: PreflightMatch[] = [...[...past].sort(byDate), ...[...future].sort(byDate)].map(
+    (m) => ({
+      id: m.id,
+      tournament_id: m.tournament_id,
+      tournament_name:
+        m.tournament_id == null ? "—" : tourName.get(m.tournament_id) ?? `Τουρνουά #${m.tournament_id}`,
+      stage_kind: (m.stage_id == null ? null : kinds.get(m.stage_id)) ?? null,
+      leg: m.leg,
+      team_a_id: m.team_a_id,
+      team_b_id: m.team_b_id,
+      team_a_name: teamName(m.team_a_id),
+      team_b_name: teamName(m.team_b_id),
+      match_date: m.match_date,
+      status: m.status === "postponed" ? "postponed" : "scheduled",
+      past: pastIds.has(m.id),
+    }),
+  );
+
+  const perTour = new Map<number, { total: number; finished: number }>();
+  for (const m of matches) {
+    if (m.tournament_id == null) continue;
+    const e = perTour.get(m.tournament_id) ?? { total: 0, finished: 0 };
+    e.total += 1;
+    if (m.status === "finished") e.finished += 1;
+    perTour.set(m.tournament_id, e);
+  }
+  const openTournaments: PreflightTournament[] = openTours.map((t) => ({
+    id: t.id,
+    name: tourName.get(t.id) ?? `Τουρνουά #${t.id}`,
+    status: t.status,
+    matches: perTour.get(t.id)?.total ?? 0,
+    finished: perTour.get(t.id)?.finished ?? 0,
+    winner_team_id: t.winner_team_id,
+    winner_name: t.winner_team_id == null ? null : teamName(t.winner_team_id),
+  }));
+
+  const unfinishedPast = past.length;
+  const unfinishedFuture = future.length;
+  const tournamentsOpen = openTournaments.length;
 
   const blockers: string[] = [];
   const warnings: string[] = [];
   if (unfinishedPast > 0) {
     blockers.push(
-      `${unfinishedPast} αγώνες με παρελθούσα ημερομηνία δεν έχουν ολοκληρωθεί — ολοκλήρωσε, ανέβαλε ή κατακύρωσέ τους (ή κλείσε με «παράβλεψη»).`,
+      `${unfinishedPast} αγώνες με παρελθούσα ημερομηνία δεν έχουν ολοκληρωθεί — ολοκλήρωσε, ανέβαλε ή κατακύρωσέ τους παρακάτω (ή κλείσε με «παράβλεψη»).`,
     );
   }
   if (tournamentsOpen > 0) {
     warnings.push(
-      `${tournamentsOpen} τουρνουά της σεζόν δεν είναι σε κατάσταση completed/archived· η κατάσταση ΔΕΝ αλλάζει αυτόματα.`,
+      `${tournamentsOpen} τουρνουά της σεζόν δεν είναι σε κατάσταση completed/archived· η κατάσταση ΔΕΝ αλλάζει αυτόματα και δεν επηρεάζει πόντους ή στατιστικά.`,
     );
   }
   if (unfinishedFuture > 0) {
@@ -168,8 +321,10 @@ async function buildPreflight(label: string): Promise<ClosePreflight> {
     label,
     blockers,
     warnings,
+    unfinishedMatches,
+    openTournaments,
     info: {
-      tournaments: tours?.length ?? 0,
+      tournaments: tours.length,
       tournamentsOpen,
       teams: teams ?? 0,
       matches: matches.length,
@@ -334,6 +489,56 @@ export async function setActiveSeason(label: string): Promise<Result<{ previous:
     return { success: true, previous };
   } catch (err) {
     console.error("[setActiveSeason] error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
+
+// ─── Preflight fixes ───────────────────────────────────────────────────────
+// Match fixes from the close sheet reuse the existing writers (PATCH
+// /api/matches/[id], POST /api/matches/[id]/postpone, awardForfeitWinAction)
+// so every rule — KO winners, two-legged ties, progression, standings
+// refresh — stays in one place. Only the tournament status has no
+// lightweight writer, hence this action.
+
+/**
+ * Mark one of `seasonLabel`'s tournaments completed. Status is informational
+ * (never read by the points engine or the stats pipeline), so no snapshot
+ * runs; public tournament pages are revalidated because they print it.
+ */
+export async function completeTournament(input: {
+  tournamentId: number;
+  seasonLabel: string;
+}): Promise<Result<{ status: "completed" }>> {
+  try {
+    if (!(await requireAdminUser())) return { success: false, error: "Unauthorized" };
+    const id = Number(input.tournamentId);
+    if (!Number.isInteger(id) || id <= 0) return { success: false, error: "Άκυρο τουρνουά." };
+
+    const { data: t, error } = await supabaseAdmin
+      .from("tournaments")
+      .select("id, season, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) return { success: false, error: error.message };
+    if (!t) return { success: false, error: "Άγνωστο τουρνουά." };
+    if (t.season !== input.seasonLabel) {
+      return { success: false, error: `Το τουρνουά #${t.id} δεν ανήκει στη σεζόν ${input.seasonLabel}.` };
+    }
+
+    if (isOpenTournamentStatus(t.status as string)) {
+      const { error: upErr } = await supabaseAdmin
+        .from("tournaments")
+        .update({ status: "completed" })
+        .eq("id", t.id);
+      if (upErr) return { success: false, error: upErr.message };
+    }
+
+    revalidateTournamentSurfaces(t.id);
+    revalidatePath("/");
+    revalidateAdmin(input.seasonLabel);
+    return { success: true, status: "completed" };
+  } catch (err) {
+    console.error("[completeTournament] error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
 }

@@ -41,3 +41,59 @@ export function seasonMoveLabels(
   if (!b || a === b) return [];
   return a ? [a, b] : [b];
 }
+
+// ─── Close-season preflight ─────────────────────────────────────────────────
+
+export type UnfinishedMatchRow = {
+  status: string | null;
+  match_date: string | null;
+};
+
+/**
+ * Splits a season's matches into the two preflight buckets of the close
+ * (dashboard/seasons/actions.ts). `todayIso` is a calendar date "YYYY-MM-DD"
+ * in the league's own time zone; match dates are literal wall-clock strings,
+ * so only the date part is compared and no zone conversion happens.
+ *
+ * - `past`   → status is not 'finished' AND the match has a date before today.
+ *              Almost always a result nobody entered: the close BLOCKS on it,
+ *              because after the flip the archive's numbers change only by a
+ *              manual re-snapshot and the recap is computed once.
+ * - `future` → status is not 'finished' AND the date is today, later, or
+ *              missing. Legitimately unplayed: the close only WARNS.
+ * Finished matches appear in neither bucket.
+ */
+export function unfinishedMatchBuckets<T extends UnfinishedMatchRow>(
+  matches: T[],
+  todayIso: string,
+): { past: T[]; future: T[] } {
+  const past: T[] = [];
+  const future: T[] = [];
+  for (const m of matches) {
+    if (m.status === "finished") continue;
+    const day = m.match_date ? m.match_date.slice(0, 10) : null;
+    if (day && day < todayIso) past.push(m);
+    else future.push(m);
+  }
+  return { past, future };
+}
+
+/**
+ * A tournament counts as "open" for the close warning unless its status is
+ * completed or archived. Status is informational only: the points engine and
+ * the stats pipeline never read it, so an open tournament changes no number.
+ */
+export function isOpenTournamentStatus(status: string | null | undefined): boolean {
+  return status !== "completed" && status !== "archived";
+}
+
+/** Calendar date "YYYY-MM-DD" for `now` in the given IANA zone. */
+export function calendarDateIn(timeZone: string, now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
