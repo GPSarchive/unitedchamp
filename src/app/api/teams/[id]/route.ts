@@ -112,6 +112,19 @@ function toStoragePathOrUrlSafe(input: string | null | undefined, teamId?: numbe
   return v;
 }
 
+// Name the field a unique violation (23505) is actually about. Uniqueness is
+// per season on name and on am (migrations/scope-teams-unique-per-season.sql);
+// the violated constraint is only identifiable from the error text. "name" is
+// checked first — "am" is a substring of it.
+function uniqueViolationMessage(err: unknown): string | null {
+  const e = err as { code?: string; message?: string } | null;
+  if (e?.code !== "23505") return null;
+  const msg = e?.message ?? "";
+  if (msg.includes("name")) return "A team with this name already exists in this season";
+  if (msg.includes("am")) return "A team with this AM already exists in this season";
+  return "A team with this name or AM already exists in this season";
+}
+
 /** Create a short-lived signed URL with a *user* client (Storage RLS applies). */
 async function signLogoIfNeededSafe(
   supaUserClient: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
@@ -206,7 +219,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       typeof (body as any).name === "string" ? (body as any).name.trim() : undefined;
     const logoCandidate = toStoragePathOrUrlSafe((body as any).logo, id);
 
-    // Optional: AM (text, unique). Empty string -> null. Adjust length/regex as needed.
+    // Optional: AM (text, unique per season). Empty string -> null. Adjust length/regex as needed.
     let amVal: string | null | undefined;
     if (Object.prototype.hasOwnProperty.call(body, "am")) {
       const vRaw = typeof (body as any).am === "string" ? (body as any).am.trim() : null;
@@ -259,10 +272,8 @@ export async function PATCH(req: Request, ctx: Ctx) {
       .maybeSingle();
 
     if (error) {
-      // Postgres unique violation (e.g., duplicate AM)
-      if ((error as any)?.code === "23505") {
-        return NextResponse.json({ error: "AM must be unique" }, { status: 400 });
-      }
+      const dup = uniqueViolationMessage(error);
+      if (dup) return NextResponse.json({ error: dup }, { status: 400 });
       console.error("PATCH teams error", error);
       return NextResponse.json({ error: "Update failed" }, { status: 400 });
     }

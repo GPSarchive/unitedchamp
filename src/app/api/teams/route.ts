@@ -102,6 +102,19 @@ function toStoragePathOrUrlSafe(input: unknown) {
   return v;
 }
 
+// Name the field a unique violation (23505) is actually about. Uniqueness is
+// per season on name and on am (migrations/scope-teams-unique-per-season.sql);
+// the violated constraint is only identifiable from the error text. "name" is
+// checked first — "am" is a substring of it.
+function uniqueViolationMessage(err: unknown): string | null {
+  const e = err as { code?: string; message?: string } | null;
+  if (e?.code !== "23505") return null;
+  const msg = e?.message ?? "";
+  if (msg.includes("name")) return "A team with this name already exists in this season";
+  if (msg.includes("am")) return "A team with this AM already exists in this season";
+  return "A team with this name or AM already exists in this season";
+}
+
 // Create a short-lived signed URL with a *user* client (Storage RLS applies).
 async function signLogoIfNeededSafe(
   supaUserClient: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
@@ -328,10 +341,8 @@ export async function POST(req: Request) {
       .single();
 
     if (insErr || !created) {
-      // Postgres unique violation (duplicate AM)
-      if ((insErr as any)?.code === "23505") {
-        return NextResponse.json({ error: "AM must be unique" }, { status: 400 });
-      }
+      const dup = uniqueViolationMessage(insErr);
+      if (dup) return NextResponse.json({ error: dup }, { status: 400 });
       console.error("Create team failed", insErr);
       return NextResponse.json({ error: "Create failed" }, { status: 400 });
     }
