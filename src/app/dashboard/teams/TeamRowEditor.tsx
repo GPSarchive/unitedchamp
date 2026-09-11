@@ -252,8 +252,11 @@ export default function TeamRowEditor({
       if (!res.ok) {
         const msg = body?.error || `HTTP ${res.status}`;
         // provide friendlier messages for common issues
-        if (/duplicate key.*am/i.test(String(msg))) {
-          throw new Error("Το ΑΜ υπάρχει ήδη σε άλλη ομάδα.");
+        if (/with this name/i.test(String(msg))) {
+          throw new Error("Υπάρχει ήδη ομάδα με αυτό το όνομα σε αυτή τη σεζόν.");
+        }
+        if (/with this AM/i.test(String(msg))) {
+          throw new Error("Υπάρχει ήδη ομάδα με αυτό το ΑΜ σε αυτή τη σεζόν.");
         }
         if (/Invalid logo path/i.test(String(msg))) throw new Error("Μη έγκυρη διαδρομή λογότυπου (χρησιμοποίησε https URL ή teams/<id>/...).");
         throw new Error(msg);
@@ -334,27 +337,30 @@ export default function TeamRowEditor({
           />
         </label>
 
-        {/* Colour (text input with color picker) */}
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-white/80">Team Colour</span>
-          <div className="flex gap-2">
-            <input
-              type="color"
-              value={colour || "#0080ff"}
-              onChange={(e) => setColour(e.target.value)}
-              className="w-12 h-10 rounded-lg bg-zinc-900 border border-white/10 cursor-pointer"
-              title="Pick a color"
-            />
-            <input
-              type="text"
-              value={colour}
-              onChange={(e) => setColour(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
-              placeholder="#0080ff"
-              maxLength={7}
-            />
-          </div>
-        </label>
+        {/* Colour: manual override only when editing — on create it is derived
+            from the uploaded logo (extractColorFromLogo in actuallyUpload). */}
+        {isEdit && (
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-white/80">Team Colour</span>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={colour || "#0080ff"}
+                onChange={(e) => setColour(e.target.value)}
+                className="w-12 h-10 rounded-lg bg-zinc-900 border border-white/10 cursor-pointer"
+                title="Pick a color"
+              />
+              <input
+                type="text"
+                value={colour}
+                onChange={(e) => setColour(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10"
+                placeholder="#0080ff"
+                maxLength={7}
+              />
+            </div>
+          </label>
+        )}
       </div>
 
       {/* Color preview display */}
@@ -371,7 +377,9 @@ export default function TeamRowEditor({
             <div className="text-xs text-white/40 mt-1">
               {initial?.colour && initial.colour !== colour
                 ? `Previously: ${initial.colour.toUpperCase()}`
-                : "This color will be saved to the database"}
+                : isEdit
+                ? "This color will be saved to the database"
+                : "Extracted automatically from the logo"}
             </div>
           </div>
         </div>
@@ -407,7 +415,7 @@ export default function TeamRowEditor({
           />
         </label>
 
-        {isEdit && preview && (
+        {preview && (
           <button
             type="button"
             onClick={() => extractColorFromLogo()}
