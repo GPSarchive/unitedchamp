@@ -1,5 +1,7 @@
 # Pipeline 06 — Authentication & authorization
 
+> **2026-09-14:** the verified role matrix and open findings now live in [docs/roles-and-permissions.md](../../roles-and-permissions.md); the admin audit trail is described in [docs/audit-log.md](../../audit-log.md). The `requireAdmin`/`requireEditor` note below still applies.
+
 **One-line summary:** Supabase Auth handles identity (email + password, Google OAuth). The `admin` role lives in `auth.users.app_metadata.roles`. Form posts are protected by CSRF + per-email rate limits. Sessions are cookie-bound and refreshed by middleware.
 
 ---
