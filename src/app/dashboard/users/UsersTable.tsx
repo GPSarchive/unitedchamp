@@ -2,6 +2,7 @@
 import 'server-only';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
+import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 
 function fmt(ts?: string | null) {
   return ts ? new Date(ts).toLocaleString() : '—';
@@ -29,7 +30,12 @@ export default async function UsersTable({
   perPage?: number;
   q?: string;
 }) {
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+  const [{ data, error }, { data: { user: caller } }] = await Promise.all([
+    supabaseAdmin.auth.admin.listUsers({ page, perPage }),
+    // Who is looking: their own row gets no role controls (roles are changed
+    // only by ANOTHER admin — see lib/roleChange.ts).
+    (await createSupabaseRSCClient()).auth.getUser(),
+  ]);
   if (error) {
     return <p style={{ color: 'crimson' }}>Failed to load users: {error.message}</p>;
   }
@@ -42,7 +48,8 @@ export default async function UsersTable({
 
   const prevPage = page > 1 ? page - 1 : null;
   const nextPage = users.length === perPage ? page + 1 : null;
-  const returnTo = `/dashboard?page=${page}${term ? `&q=${encodeURIComponent(term)}` : ''}`;
+  const listUrl = (p: number) => `/dashboard/users?page=${p}${term ? `&q=${encodeURIComponent(term)}` : ''}`;
+  const returnTo = listUrl(page);
 
   return (
     <>
@@ -77,6 +84,9 @@ export default async function UsersTable({
                     {roles.length ? roles.join(', ') : 'none'}
                   </td>
                   <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>
+                    {caller && u.id === caller.id ? (
+                      <span style={{ opacity: 0.6 }}>εσύ — τους ρόλους σου τους αλλάζει μόνο άλλος admin</span>
+                    ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <form action={`/api/admin/users/${u.id}/roles`} method="POST" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         <input type="hidden" name="returnTo" value={returnTo} />
@@ -97,6 +107,7 @@ export default async function UsersTable({
                         <button type="submit">Save</button>
                       </form>
                     </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -106,12 +117,8 @@ export default async function UsersTable({
       </div>
 
       <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
-        {prevPage && (
-          <Link href={`/dashboard?page=${prevPage}${term ? `&q=${encodeURIComponent(term)}` : ''}`}>← Prev</Link>
-        )}
-        {nextPage && (
-          <Link href={`/dashboard?page=${nextPage}${term ? `&q=${encodeURIComponent(term)}` : ''}`}>Next →</Link>
-        )}
+        {prevPage && <Link href={listUrl(prevPage)}>← Prev</Link>}
+        {nextPage && <Link href={listUrl(nextPage)}>Next →</Link>}
       </div>
     </>
   );
