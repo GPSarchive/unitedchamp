@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import type { User } from '@supabase/supabase-js'
 import {
   checkRateLimits,
   checkApiWriteLimit,
@@ -8,6 +9,7 @@ import {
   ipFromRequest,
   type LimitResult,
 } from '@/app/lib/rate-limit'
+import { AUDIT_HEADERS, AUDIT_HEADER_NAMES } from '@/app/lib/audit/headers'
 
 const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 
@@ -416,9 +418,70 @@ export async function proxy(req: NextRequest) {
   // either the enforced or report-only CSP request header).
   if (nonce) reqHeaders.set(cspHeaderName, csp)
 
-  const res = NextResponse.next({
-    request: { headers: reqHeaders },
-  })
+  // ─────────────────────────────────────────────────────────────
+  // AUTH — Dashboard + API mutation protection, and audit attribution.
+  //
+  // The session is resolved BEFORE NextResponse.next() so the forwarded
+  // request headers can say who the caller is: lib/audit/fetch.ts copies the
+  // x-audit-* headers onto the server's Supabase writes and the
+  // audit_row_change() trigger records them (migrations/add-audit-log.sql,
+  // docs/audit-log.md).
+  // ─────────────────────────────────────────────────────────────
+  const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/public/']
+  const isPublicApi = PUBLIC_API_PREFIXES.some((p) => path.startsWith(p))
+  const isApiMutation = isApi && !isPublicApi && isWrite
+
+  const needsDashboardAuth = path.startsWith('/dashboard')
+
+  // A Server Action is a POST to a page URL carrying a Next-Action header
+  // (e.g. /matches/123 → saveAllStatsAction). Actions enforce their own auth;
+  // the session is resolved here only so the audit log can name the caller.
+  const isServerAction = method === 'POST' && req.headers.has('next-action')
+
+  // Never trust attribution sent by a client: strip, then stamp our own.
+  for (const name of AUDIT_HEADER_NAMES) reqHeaders.delete(name)
+  reqHeaders.set(AUDIT_HEADERS.request, crypto.randomUUID())
+  reqHeaders.set(AUDIT_HEADERS.route, `${method} ${path}`)
+
+  // Cookies Supabase rotates during getUser() are buffered and applied to
+  // whichever response is returned below.
+  const pendingCookies: { name: string; value: string; options?: any }[] = []
+  const withCookies = <T extends NextResponse>(r: T): T => {
+    for (const c of pendingCookies) r.cookies.set(c.name, c.value, c.options)
+    return r
+  }
+
+  let user: User | null = null
+  if (needsDashboardAuth || isApiMutation || isServerAction) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => req.cookies.getAll(),
+          setAll: (cookies: any) => {
+            pendingCookies.push(...cookies)
+          },
+        },
+      }
+    )
+
+    user = (await supabase.auth.getUser()).data.user
+
+    if (user) {
+      reqHeaders.set(AUDIT_HEADERS.actor, user.id)
+      // Header values must be ISO-8859-1; an email practically always is.
+      if (user.email && /^[\x20-\x7e]+$/.test(user.email)) {
+        reqHeaders.set(AUDIT_HEADERS.actorEmail, user.email)
+      }
+    }
+  }
+
+  const res = withCookies(
+    NextResponse.next({
+      request: { headers: reqHeaders },
+    })
+  )
 
   // Add rate limit headers to successful responses
   if (writeRateLimitResult) {
@@ -427,82 +490,52 @@ export async function proxy(req: NextRequest) {
     res.headers.set('X-RateLimit-Reset', String(writeRateLimitResult.reset))
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // AUTH — Dashboard + API mutation protection
-  // ─────────────────────────────────────────────────────────────
-  const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/public/']
-  const isPublicApi = PUBLIC_API_PREFIXES.some((p) => path.startsWith(p))
-  const isApiMutation = isApi && !isPublicApi && isWrite
+  if (isApiMutation && !user) {
+    return withCookies(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  }
 
-  const needsDashboardAuth = path.startsWith('/dashboard')
-
-  if (needsDashboardAuth || isApiMutation) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => req.cookies.getAll(),
-          setAll: (cookies: any) => {
-            cookies.forEach(({ name, value, options }: any) =>
-              res.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (isApiMutation && !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (needsDashboardAuth) {
+    if (!user) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('next', req.nextUrl.pathname + req.nextUrl.search)
+      return NextResponse.redirect(url, { headers: res.headers })
     }
 
-    if (needsDashboardAuth) {
-      if (!user) {
-        const url = req.nextUrl.clone()
-        url.pathname = '/login'
-        url.searchParams.set('next', req.nextUrl.pathname + req.nextUrl.search)
-        return NextResponse.redirect(url, { headers: res.headers })
-      }
+    const roles = Array.isArray(user.app_metadata?.roles)
+      ? (user.app_metadata!.roles as string[])
+      : []
+    const isAdmin = roles.includes('admin')
+    const emailIsAdmin =
+      !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
+    const isEditor = roles.includes('editor')
 
-      const roles = Array.isArray(user.app_metadata?.roles)
-        ? (user.app_metadata!.roles as string[])
-        : []
-      const isAdmin = roles.includes('admin')
-      const emailIsAdmin =
-        !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
-      const isEditor = roles.includes('editor')
+    // Editors may reach only the Articles + Announcements sections (and the
+    // bare /dashboard landing, which redirects them onward). Admins (and the
+    // ADMIN_EMAIL fallback) get the whole dashboard.
+    const path = req.nextUrl.pathname
+    const editorAllowed =
+      path === '/dashboard' ||
+      path.startsWith('/dashboard/articles') ||
+      path.startsWith('/dashboard/announcements')
 
-      // Editors may reach only the Articles + Announcements sections (and the
-      // bare /dashboard landing, which redirects them onward). Admins (and the
-      // ADMIN_EMAIL fallback) get the whole dashboard.
-      const path = req.nextUrl.pathname
-      const editorAllowed =
-        path === '/dashboard' ||
-        path.startsWith('/dashboard/articles') ||
-        path.startsWith('/dashboard/announcements')
+    const isAdminLike = isAdmin || emailIsAdmin
+    const allowed = isAdminLike || (isEditor && editorAllowed)
 
-      const isAdminLike = isAdmin || emailIsAdmin
-      const allowed = isAdminLike || (isEditor && editorAllowed)
+    if (!allowed) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/403'
+      url.searchParams.delete('next')
+      return NextResponse.redirect(url, { headers: res.headers })
+    }
 
-      if (!allowed) {
-        const url = req.nextUrl.clone()
-        url.pathname = '/403'
-        url.searchParams.delete('next')
-        return NextResponse.redirect(url, { headers: res.headers })
-      }
-
-      // The dashboard home lists admin-only sections, so send editor-only
-      // users straight to the section they can actually use.
-      if (!isAdminLike && isEditor && path === '/dashboard') {
-        const url = req.nextUrl.clone()
-        url.pathname = '/dashboard/articles'
-        url.searchParams.delete('next')
-        return NextResponse.redirect(url, { headers: res.headers })
-      }
+    // The dashboard home lists admin-only sections, so send editor-only
+    // users straight to the section they can actually use.
+    if (!isAdminLike && isEditor && path === '/dashboard') {
+      const url = req.nextUrl.clone()
+      url.pathname = '/dashboard/articles'
+      url.searchParams.delete('next')
+      return NextResponse.redirect(url, { headers: res.headers })
     }
   }
 

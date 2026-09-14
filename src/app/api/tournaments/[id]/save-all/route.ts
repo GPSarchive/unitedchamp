@@ -13,6 +13,7 @@ import { assertTeamsInSeason, resolveSeasonLabel } from "@/app/lib/seasons";
 import { seasonMoveLabels } from "@/app/lib/seasonChecks";
 import { snapshotSeason } from "@/app/lib/seasonSnapshot";
 import { fetchInBatches } from "@/app/lib/supabasePaging";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -922,6 +923,37 @@ if (body.matches?.upsert?.length) {
     revalidateStandingsSurfaces();
     revalidatePath("/");
     revalidatePath("/matches");
+
+    // One summary line for the bulk save; every row it touched is captured
+    // individually by the audit triggers under the same request id.
+    const counts = {
+      tournament_fields: Object.keys(body.tournament?.patch ?? {}).length,
+      stages_upserted: body.stages?.upsert?.length ?? 0,
+      stages_deleted: body.stages?.deleteIds?.length ?? 0,
+      groups_upserted: body.groups?.upsert?.length ?? 0,
+      groups_deleted: body.groups?.deleteIds?.length ?? 0,
+      tournament_teams_upserted: body.tournamentTeams?.upsert?.length ?? 0,
+      tournament_teams_deleted: body.tournamentTeams?.deleteIds?.length ?? 0,
+      stage_slots_upserted: body.stageSlots?.upsert?.length ?? 0,
+      intake_mappings_replaced: body.intakeMappings?.replace?.length ?? 0,
+      matches_upserted: body.matches?.upsert?.length ?? 0,
+      matches_deleted: body.matches?.deleteIds?.length ?? 0,
+      matches_skipped_duplicates: out.skippedDuplicateMatches?.length ?? 0,
+      force_matches: forceMatches,
+      force_slots: forceSlots,
+      season_moved: movedSeasons.length ? movedSeasons : null,
+    };
+    await logAdminAction({
+      action: "tournament.save_all",
+      table: "tournaments",
+      recordId: tournamentId,
+      summary:
+        `Αποθήκευση διοργάνωσης #${tournamentId}: ` +
+        `${counts.matches_upserted} αγώνες αποθηκεύτηκαν, ${counts.matches_deleted} διαγράφηκαν, ` +
+        `${counts.stages_upserted} φάσεις, ${counts.tournament_teams_upserted} ομάδες`,
+      meta: counts,
+      actor: { id: user.id, email: user.email },
+    });
 
     return NextResponse.json(out, { status: 200 });
   } catch (e: any) {

@@ -26,6 +26,7 @@ import {
 } from "@/app/lib/revalidatePublicPages";
 import { chunk } from "@/app/lib/playerStatsAggregation";
 import { BATCH_SIZE, PAGE_SIZE } from "@/app/lib/supabasePaging";
+import { logAdminAction } from "@/app/lib/audit/log";
 import {
   calendarDateIn,
   isOpenTournamentStatus,
@@ -417,6 +418,22 @@ export async function closeSeason(input: {
       return { success: false, error: `Αλλαγή ενεργής σεζόν: ${describeRpcError(flipErr, "flip_active_season")}` };
     }
 
+    await logAdminAction({
+      action: "season.close",
+      table: "seasons",
+      recordId: currentLabel,
+      summary: `Κλείσιμο σεζόν ${currentLabel} — ενεργή πλέον η ${nextLabel}${input.force ? " (παρά τα μπλοκαρίσματα)" : ""}`,
+      meta: {
+        closed: currentLabel,
+        next: nextLabel,
+        next_started_on: input.nextStartedOn || todayIso(),
+        force: !!input.force,
+        blockers: preflight.blockers,
+        snapshot,
+      },
+      actor: { id: user.id, email: user.email },
+    });
+
     revalidateSeasonSurfaces(currentLabel, nextLabel);
     revalidateAdmin(currentLabel, nextLabel);
     return { success: true, snapshot, next: nextLabel };
@@ -433,10 +450,20 @@ export async function resnapshotSeason(
   label: string,
 ): Promise<Result<{ snapshot: SeasonSnapshotResult }>> {
   try {
-    if (!(await requireAdminUser())) return { success: false, error: "Unauthorized" };
+    const user = await requireAdminUser();
+    if (!user) return { success: false, error: "Unauthorized" };
     const season = await getSeasonByLabel(label);
     if (!season) return { success: false, error: "Άγνωστη σεζόν." };
     const snapshot = await snapshotSeason(label);
+    // Rebuilds derived tables only (not audited row by row): record the action.
+    await logAdminAction({
+      action: "season.resnapshot",
+      table: "seasons",
+      recordId: label,
+      summary: `Επαναϋπολογισμός στατιστικών/κατάταξης σεζόν ${label} (${season.status})`,
+      meta: { season: label, status: season.status, snapshot },
+      actor: { id: user.id, email: user.email },
+    });
     revalidateSeasonSurfaces(label);
     revalidateAdmin(label);
     return { success: true, snapshot };
@@ -449,10 +476,19 @@ export async function resnapshotSeason(
 /** Manual safety net: rebuild the active season's stored tables. */
 export async function refreshActiveSeason(): Promise<Result<{ snapshot: SeasonSnapshotResult }>> {
   try {
-    if (!(await requireAdminUser())) return { success: false, error: "Unauthorized" };
+    const user = await requireAdminUser();
+    if (!user) return { success: false, error: "Unauthorized" };
     const active = await getActiveSeason();
     if (!active) return { success: false, error: "Δεν υπάρχει ενεργή σεζόν." };
     const snapshot = await snapshotSeason(active.label);
+    await logAdminAction({
+      action: "season.refresh_active",
+      table: "seasons",
+      recordId: active.label,
+      summary: `Ανανέωση στατιστικών/κατάταξης ενεργής σεζόν ${active.label}`,
+      meta: { season: active.label, snapshot },
+      actor: { id: user.id, email: user.email },
+    });
     revalidateSeasonSurfaces(active.label);
     revalidateAdmin(active.label);
     return { success: true, snapshot };
@@ -484,6 +520,15 @@ export async function setActiveSeason(label: string): Promise<Result<{ previous:
     });
     if (error) return { success: false, error: describeRpcError(error, "set_active_season") };
     const previous = ((data as { previous?: string | null } | null)?.previous ?? null) as string | null;
+
+    await logAdminAction({
+      action: "season.set_active",
+      table: "seasons",
+      recordId: label,
+      summary: `Ενεργή σεζόν: ${label}${previous ? ` (πριν: ${previous})` : ""}`,
+      meta: { next: label, previous },
+      actor: { id: user.id, email: user.email },
+    });
 
     revalidateSeasonSurfaces(label, ...(previous ? [previous] : []));
     revalidateAdmin(label, ...(previous ? [previous] : []));

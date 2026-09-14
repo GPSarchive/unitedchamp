@@ -8,6 +8,7 @@ const CARDS = [
   { href: "/dashboard/matches", title: "Αγώνες", desc: "Πρόγραμμα, σκορ και κατάσταση." },
   { href: "/dashboard/tournaments", title: "Διοργανώσεις", desc: "Ροές, όμιλοι & νοκ-άουτ." },
   { href: "/dashboard/announcements", title: "Ανακοινώσεις", desc: "Δημοσιεύσεις & προγραμματισμός." },
+  { href: "/dashboard/audit", title: "Ιστορικό ενεργειών", desc: "Ποιος άλλαξε τι, πότε και από πού." },
 ];
 
 export default function DashboardHome() {

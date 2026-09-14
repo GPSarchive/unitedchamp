@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { revalidateStandingsSurfaces, revalidateTournamentSurfaces } from "@/app/lib/revalidatePublicPages";
 import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 export const runtime = "nodejs";
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-/** Service role client (server-only) */
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+/** Service role client (server-only). The shared instance carries the audit
+ *  attribution headers; a locally created client would write anonymously. */
+const supabase = supabaseAdmin;
 
 type Id = number;
 
@@ -254,6 +253,24 @@ export async function POST(
     await refreshActiveSeasonStandings("POST /api/stages/[id]/reseed");
     revalidateTournamentSurfaces(ko.tournament_id);
     revalidateStandingsSurfaces();
+    await logAdminAction({
+      action: "stage.reseed",
+      table: "tournament_stages",
+      recordId: koStageId,
+      summary:
+        `Σπορά KO φάσης #${koStageId} (${ko.name}) από τη φάση #${srcStageId}` +
+        `${wantReseed || force ? " — επανασπορά" : ""}${force ? " (force)" : ""}${recompute ? ", με επαναϋπολογισμό βαθμολογίας" : ""}`,
+      meta: {
+        ko_stage_id: koStageId,
+        source_stage_id: srcStageId,
+        tournament_id: ko.tournament_id,
+        reseed: wantReseed || force,
+        force,
+        recompute,
+        matches_after: matches.length,
+      },
+      actor: { id: user.id, email: user.email },
+    });
     return NextResponse.json({ ok: true, matches });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || "Unexpected error" }, { status: 500 });

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 export const runtime = "nodejs";
 
@@ -84,6 +85,16 @@ export async function POST(req: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  // Storage has no row trigger: record who obtained an upload slot and where.
+  await logAdminAction({
+    action: "storage.upload",
+    table: "storage",
+    recordId: `${bucket}/${path}`,
+    summary: `Ανέβασμα φωτογραφίας παίκτη: ${bucket}/${path}`,
+    meta: { bucket, path, content_type: contentType, dir_name: dirNameRaw || null },
+    actor: { id: adminCheck.user.id, email: adminCheck.user.email },
+  });
 
   // Private bucket flow: return path + signed upload URL
   return NextResponse.json({

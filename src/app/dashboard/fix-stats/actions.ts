@@ -6,6 +6,7 @@ import { aggregateLegacyTotals, chunk, type LegacyTotals } from "@/app/lib/playe
 import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 const BATCH_SIZE = 300;
 
@@ -70,6 +71,15 @@ export async function applySyncFix() {
       .upsert(batch, { onConflict: "player_id" });
     if (upsertErr) throw new Error(`Failed to upsert player_statistics: ${upsertErr.message}`);
   }
+
+  // Rewrites the legacy player_statistics cache (not audited row by row).
+  await logAdminAction({
+    action: "stats.apply_sync_fix",
+    table: "player_statistics",
+    summary: `Συγχρονισμός player_statistics από τα στατιστικά αγώνων (${upserts.length} παίκτες)`,
+    meta: { players_updated: upserts.length, mps_rows: mpsRows.length },
+    actor: { id: user.id, email: user.email },
+  });
 
   revalidatePath("/dashboard/fix-stats");
   revalidatePath("/paiktes");

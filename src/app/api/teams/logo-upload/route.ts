@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { randomUUID } from "crypto";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 const BUCKET = "GPSarchive's Project";
 const MAX_BYTES = 3 * 1024 * 1024; // 3MB
@@ -42,6 +43,17 @@ export async function POST(req: Request) {
     .upload(path, Buffer.from(ab), { contentType: file.type, upsert: false });
 
   if (upErr) return NextResponse.json({ error: upErr.message }, { status: 400 });
+
+  // Storage has no row trigger: record the upload (the teams.logo change that
+  // usually follows is captured by the row trigger on teams).
+  await logAdminAction({
+    action: "storage.upload",
+    table: "storage",
+    recordId: `${BUCKET}/${path}`,
+    summary: `Ανέβασμα λογότυπου ομάδας${team ? ` "${team}"` : ""}: ${BUCKET}/${path}`,
+    meta: { bucket: BUCKET, path, team: team || null, content_type: file.type, bytes: file.size },
+    actor: { id: user.id, email: user.email },
+  });
 
   // Return a stable proxy URL (served via your Next.js route), no signing needed.
   const origin = new URL(req.url).origin;
