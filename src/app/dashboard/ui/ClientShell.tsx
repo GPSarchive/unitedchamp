@@ -18,6 +18,7 @@ const NAV = [
   { href: "/dashboard/seasons", label: "Σεζόν" },
   { href: "/dashboard/announcements", label: "Ανακοινώσεις" },
   { href: "/dashboard/articles", label: "Άρθρα" },
+  { href: "/dashboard/audit", label: "Ιστορικό ενεργειών" },
 ];
 
 // Editor-only users can reach just these two sections.

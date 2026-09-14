@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,9 @@ async function requireAdmin() {
 
   const roles = (data.user.app_metadata as any)?.roles ?? [];
   const isAdmin = Array.isArray(roles) && roles.includes("admin");
-  return isAdmin ? { ok: true as const } : { ok: false as const, reason: "Not admin" };
+  return isAdmin
+    ? { ok: true as const, user: data.user }
+    : { ok: false as const, reason: "Not admin" };
 }
 
 export async function POST(req: Request) {
@@ -53,6 +56,16 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin.storage.from(bucket).remove([normalized]);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Storage objects have no row trigger: record the deletion here.
+  await logAdminAction({
+    action: "storage.delete",
+    table: "storage",
+    recordId: `${bucket}/${normalized}`,
+    summary: `Διαγραφή αρχείου ${bucket}/${normalized}`,
+    meta: { bucket, path: normalized, removed: (data ?? []).map((o) => o.name) },
+    actor: { id: admin.user.id, email: admin.user.email },
+  });
 
   return NextResponse.json({ ok: true, removed: data });
 }

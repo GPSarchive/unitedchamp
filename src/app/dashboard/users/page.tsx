@@ -3,7 +3,7 @@ import UsersTable from "./UsersTable";
 
 export const dynamic = "force-dynamic";
 
-type SP = { page?: string; q?: string };
+type SP = { page?: string; q?: string; error?: string };
 
 export default async function UsersPage({
   searchParams,
@@ -13,12 +13,26 @@ export default async function UsersPage({
   const sp = (await searchParams) ?? {};
   const page = Math.max(1, parseInt(sp.page ?? "1", 10));
   const q = (sp.q ?? "").trim();
+  // A refused role change (own roles, last admin) redirects back here with
+  // the reason; see /api/admin/users/[id]/roles.
+  const error = (sp.error ?? "").trim().slice(0, 300);
 
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">Χρήστες</h2>
       </header>
+
+      {error ? (
+        <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
+          {error}
+        </div>
+      ) : null}
+
+      <p className="text-xs text-white/60">
+        Ρόλους αλλάζουν μόνο διαχειριστές (admin), ποτέ τους δικούς τους, και ο τελευταίος admin
+        δεν αφαιρείται. Κάθε αλλαγή καταγράφεται στο Ιστορικό ενεργειών.
+      </p>
 
       {/* Αναζήτηση */}
       <form method="get" className="flex flex-col sm:flex-row gap-2">

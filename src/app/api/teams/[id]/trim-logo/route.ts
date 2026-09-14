@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import sharp from "sharp";
+import { logAdminAction } from "@/app/lib/audit/log";
 
 const BUCKET = "GPSarchive's Project";
 
@@ -126,10 +127,25 @@ export async function POST(
       });
 
     if (uploadErr) {
-      return NextResponse.json({ 
-        error: `Failed to upload: ${uploadErr.message}` 
+      return NextResponse.json({
+        error: `Failed to upload: ${uploadErr.message}`
       }, { status: 500 });
     }
+
+    // Overwrites the object in place (no teams row changes): record it here.
+    await logAdminAction({
+      action: "storage.replace",
+      table: "teams",
+      recordId: teamId,
+      summary: `Trim λογότυπου ομάδας "${team.name}" (#${teamId}): ${originalMeta.width}×${originalMeta.height} → ${trimmedMeta.width}×${trimmedMeta.height}`,
+      meta: {
+        bucket: BUCKET,
+        path: storagePath,
+        before: { width: originalMeta.width, height: originalMeta.height },
+        after: { width: trimmedMeta.width, height: trimmedMeta.height },
+      },
+      actor: { id: user.id, email: user.email },
+    });
 
     return NextResponse.json({
       message: "Logo trimmed successfully",
