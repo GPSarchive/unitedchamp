@@ -8,6 +8,7 @@ import type {
   PlayerStatisticsRow as PlayerStat,
   PlayerAssociation,
 } from "@/app/lib/types";
+import { useIsAdmin } from "../ui/DashboardRole";
 
 type Props = {
   teamId: number;
@@ -37,6 +38,8 @@ export default function PlayersPanel({
   error,
   onOpenPlayer,
 }: Props) {
+  // "Αφαίρεση & αρχειοθέτηση" ends in DELETE /api/players/[id], admin-only.
+  const isAdmin = useIsAdmin();
   const [list, setList] = useState<PlayerAssociation[]>(associations ?? []);
   useEffect(() => setList(associations ?? []), [associations]);
 
@@ -251,14 +254,16 @@ export default function PlayersPanel({
                     >
                       Αφαίρεση
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => removeAndArchive(p.id)}
-                      className="text-[11px] px-2 py-0.5 rounded border border-amber-400/40 bg-amber-900/30 hover:bg-amber-900/50 transition-opacity"
-                      title="Αφαίρεση από την ομάδα και αρχειοθέτηση παίκτη"
-                    >
-                      Αφαίρεση &amp; αρχειοθέτηση
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => removeAndArchive(p.id)}
+                        className="text-[11px] px-2 py-0.5 rounded border border-amber-400/40 bg-amber-900/30 hover:bg-amber-900/50 transition-opacity"
+                        title="Αφαίρεση από την ομάδα και αρχειοθέτηση παίκτη"
+                      >
+                        Αφαίρεση &amp; αρχειοθέτηση
+                      </button>
+                    )}
                   </div>
 
                   <button

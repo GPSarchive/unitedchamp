@@ -1,6 +1,7 @@
 // src/app/api/teams/[id]/players/[playerId]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 type Ctx = { params: Promise<{ id: string; playerId: string }> };
 
@@ -70,11 +71,10 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
     const supa = await createSupabaseRouteClient();
 
-    // Auth + admin role
+    // Auth + admin-or-editor role
     const { data: { user }, error: userErr } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Validate ids
     const teamId = parsePositiveInt(idParam);

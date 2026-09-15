@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin"; // ← service role (server-only)
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { withActiveSeasonStats } from "@/app/lib/activeSeasonPlayerStats";
 
 /* same-origin guard (like matches) */
@@ -22,7 +23,7 @@ export async function HEAD() {
   return new NextResponse(null, { status: 200, headers: { Allow: "GET,POST,OPTIONS,HEAD" } });
 }
 
-/* ---------- GET (admin; reads via supabaseAdmin) ---------- */
+/* ---------- GET (admin or editor; reads via supabaseAdmin) ---------- */
 export async function GET(req: Request) {
   const routeClient = await createSupabaseRouteClient();
 
@@ -30,8 +31,7 @@ export async function GET(req: Request) {
   const { data: auth } = await routeClient.auth.getUser();
   const user = auth?.user;
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const roles = Array.isArray(user.app_metadata?.roles) ? (user.app_metadata!.roles as string[]) : [];
-  if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim();
@@ -141,11 +141,10 @@ export async function POST(req: Request) {
 
     const supa = await createSupabaseRouteClient();
 
-    // admin auth (same pattern as matches)
+    // admin-or-editor auth (same pattern as matches)
     const { data: { user }, error: userErr } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {

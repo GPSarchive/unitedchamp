@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withActiveSeasonStats } from "@/app/lib/activeSeasonPlayerStats";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -33,7 +34,7 @@ export async function HEAD() {
   return new NextResponse(null, { status: 200, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
 }
 
-/* -------------------------  GET /api/players/:id (admin)  ------------------------- */
+/* -------------------------  GET /api/players/:id (admin or editor)  ------------------------- */
 export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;                 // ← await params
   const pid = Number(id);
@@ -46,8 +47,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   // Admin auth (cookie session)
   const { data: { user } } = await supa.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-  if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   // Read via service role so RLS on child rows can't hide stats
   const { data, error } = await supabaseAdmin
@@ -88,7 +88,7 @@ export async function GET(_req: Request, ctx: Ctx) {
   }
 }
 
-/* --------------------------------  PATCH /api/players/:id (admin)  -------------------------------- */
+/* --------------------------------  PATCH /api/players/:id (admin or editor)  -------------------------------- */
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
     ensureSameOrigin(req);
@@ -103,8 +103,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json().catch(() => ({} as any));
 
