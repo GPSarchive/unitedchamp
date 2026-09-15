@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Search, UserPlus } from "lucide-react";
+import { X, Loader2, Search, UserPlus, Users, History } from "lucide-react";
 import type {
   PlayerRow as Player,
   PlayerStatisticsRow as PlayerStat,
   PlayerAssociation,
 } from "@/app/lib/types";
+import type { PlayerSearchHit } from "@/app/api/players/search/route";
+import type {
+  PreviousRosterPlayer,
+  PreviousRosterSource,
+} from "@/app/api/teams/[id]/previous-roster/route";
 import { useIsAdmin } from "../ui/DashboardRole";
 
 type Props = {
@@ -31,6 +36,16 @@ const num = (v: unknown, d = 0) => {
   return Number.isFinite(n) ? n : d;
 };
 
+/** Initials disc — the roster boxes list many players and signing a photo URL per row is not worth it. */
+function Avatar({ first, last }: { first: string; last: string }) {
+  const initials = `${(first ?? "").trim().charAt(0)}${(last ?? "").trim().charAt(0)}`.toUpperCase() || "?";
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-zinc-800 text-xs font-semibold text-white/80">
+      {initials}
+    </span>
+  );
+}
+
 export default function PlayersPanel({
   teamId,
   associations,
@@ -46,10 +61,151 @@ export default function PlayersPanel({
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"existing" | "create">("existing");
 
+  // ── Live search (GET /api/players/search): fires as the admin types,
+  // accent/case-insensitive, word-prefix ranked; see lib/playerSearch.ts.
   const [q, setQ] = useState("");
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<PlayerAssociation[]>([]);
-  const canSearch = q.trim().length >= 1;
+  const [results, setResults] = useState<PlayerSearchHit[]>([]);
+  const [searchErr, setSearchErr] = useState<string | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
+
+  // ── Last season's roster (GET /api/teams/:id/previous-roster), offered
+  // for re-signing into THIS season's team row.
+  const [prevLoading, setPrevLoading] = useState(false);
+  const [prevSource, setPrevSource] = useState<PreviousRosterSource | null>(null);
+  const [prevPlayers, setPrevPlayers] = useState<PreviousRosterPlayer[]>([]);
+  const [prevErr, setPrevErr] = useState<string | null>(null);
+
+  const [busyIds, setBusyIds] = useState<Set<number>>(() => new Set());
+  const [addingAll, setAddingAll] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const rosterIds = new Set(list.map((a) => a.player.id));
+
+  useEffect(() => {
+    if (!open) return;
+    const term = q.trim();
+    searchAbort.current?.abort();
+    if (!term) {
+      setResults([]);
+      setSearching(false);
+      setSearchErr(null);
+      return;
+    }
+    const ctrl = new AbortController();
+    searchAbort.current = ctrl;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const url = new URL("/api/players/search", window.location.origin);
+        url.searchParams.set("q", term);
+        url.searchParams.set("excludeTeamId", String(teamId));
+        url.searchParams.set("limit", "40");
+        const res = await fetch(url.toString(), { credentials: "include", signal: ctrl.signal });
+        const data = (await safeJson(res)) ?? {};
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+        if (ctrl.signal.aborted) return;
+        setResults((data.players as PlayerSearchHit[]) ?? []);
+        setSearchErr(null);
+      } catch (e: any) {
+        if (ctrl.signal.aborted) return;
+        setResults([]);
+        setSearchErr(e?.message ?? String(e));
+      } finally {
+        if (!ctrl.signal.aborted) setSearching(false);
+      }
+    }, 200);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q, open, teamId]);
+
+  useEffect(() => {
+    if (!open || tab !== "existing") return;
+    let cancelled = false;
+    setPrevLoading(true);
+    setPrevErr(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/teams/${teamId}/previous-roster`, { credentials: "include" });
+        const data = (await safeJson(res)) ?? {};
+        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+        if (cancelled) return;
+        setPrevSource((data.source as PreviousRosterSource | null) ?? null);
+        setPrevPlayers((data.players as PreviousRosterPlayer[]) ?? []);
+      } catch (e: any) {
+        if (cancelled) return;
+        setPrevSource(null);
+        setPrevPlayers([]);
+        setPrevErr(e?.message ?? String(e));
+      } finally {
+        if (!cancelled) setPrevLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tab, teamId]);
+
+  useEffect(() => {
+    if (open) return;
+    setNotice(null);
+    setQ("");
+    setResults([]);
+  }, [open]);
+
+  /** Link one existing player to this team row. Resolves true on success; errors are shown, not thrown. */
+  async function addExisting(playerId: number, opts: { quiet?: boolean } = {}): Promise<boolean> {
+    setBusyIds((s) => new Set(s).add(playerId));
+    try {
+      const res = await fetch(`/api/teams/${teamId}/players`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ player_id: playerId }),
+      });
+      const data = (await safeJson(res)) ?? {};
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      const assoc = data.association as PlayerAssociation;
+      setList((xs) => (xs.some((a) => a.player.id === assoc.player.id) ? xs : [...xs, assoc]));
+      setResults((xs) => xs.filter((p) => p.id !== playerId));
+      setPrevPlayers((xs) => xs.filter((p) => p.id !== playerId));
+      if (!opts.quiet) {
+        setNotice({ ok: true, text: `Προστέθηκε: ${assoc.player.first_name} ${assoc.player.last_name}` });
+      }
+      return true;
+    } catch (e: any) {
+      if (!opts.quiet) setNotice({ ok: false, text: e?.message ?? String(e) });
+      return false;
+    } finally {
+      setBusyIds((s) => {
+        const n = new Set(s);
+        n.delete(playerId);
+        return n;
+      });
+    }
+  }
+
+  /** Re-sign every remaining player of last season's roster, one request each. */
+  async function addAllPrevious() {
+    if (prevPlayers.length === 0) return;
+    if (!confirm(`Να προστεθούν και οι ${prevPlayers.length} παίκτες της «${prevSource?.name ?? ""}» στο ρόστερ;`)) return;
+    setAddingAll(true);
+    let ok = 0;
+    const failed: string[] = [];
+    for (const p of [...prevPlayers]) {
+      const done = await addExisting(p.id, { quiet: true });
+      if (done) ok += 1;
+      else failed.push(`${p.first_name} ${p.last_name}`);
+    }
+    setAddingAll(false);
+    setNotice(
+      failed.length === 0
+        ? { ok: true, text: `Προστέθηκαν ${ok} παίκτες από την περσινή ομάδα.` }
+        : { ok: false, text: `Προστέθηκαν ${ok}. Απέτυχαν: ${failed.join(", ")}` },
+    );
+  }
 
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
@@ -72,44 +228,6 @@ export default function PlayersPanel({
   const [assists, setAssists] = useState<number | "" | null>(0);
 
   const validCreate = !!(first.trim() && last.trim());
-
-  async function search() {
-    if (!canSearch) return;
-    setSearching(true);
-    try {
-      const res = await fetch(`/api/players?q=${encodeURIComponent(q)}&excludeTeamId=${teamId}`, {
-        credentials: "include",
-      });
-      const data = (await safeJson(res)) ?? {};
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-      const players = (data.players as Player[]) ?? [];
-      setResults(players.map(p => ({ player: { ...p, player_statistics: [] } })));
-    } catch (e: any) {
-      alert(e?.message ?? String(e));
-    } finally {
-      setSearching(false);
-    }
-  }
-
-  async function addExisting(playerId: number) {
-    try {
-      const res = await fetch(`/api/teams/${teamId}/players`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ player_id: playerId }),
-      });
-      const data = (await safeJson(res)) ?? {};
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-      setList((xs) => [...xs, data.association as PlayerAssociation]);
-      setOpen(false);
-      setQ("");
-      setResults([]);
-    } catch (e: any) {
-      alert(e?.message ?? String(e));
-    }
-  }
 
   async function createAndAdd() {
     try {
@@ -137,7 +255,10 @@ export default function PlayersPanel({
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
       const player = data.player as Player;
-      await addExisting(player.id);
+      // Created players go straight onto the roster; the drawer closes like before.
+      const linked = await addExisting(player.id, { quiet: true });
+      if (!linked) throw new Error("Ο παίκτης δημιουργήθηκε αλλά δεν προστέθηκε στην ομάδα.");
+      setOpen(false);
 
       // Reset all fields
       setFirst("");
@@ -360,65 +481,193 @@ export default function PlayersPanel({
           {/* Panel content */}
           <div className="flex flex-col flex-1 min-h-0">
             {tab === "existing" ? (
-              <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-                <>
-                <label className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-white/70" />
-                  <input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    onKeyDown={(e) => (e.key === "Enter" ? (e.preventDefault(), search()) : undefined)}
-                    placeholder="Αναζήτηση με όνομα…"
-                    className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    disabled={!canSearch || searching}
-                    onClick={search}
-                    className="px-4 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/30 text-white hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                {notice && (
+                  <p
+                    className={`rounded-lg border px-3 py-2 text-sm ${
+                      notice.ok
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+                        : "border-red-500/40 bg-red-500/10 text-red-100"
+                    }`}
                   >
-                    {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Αναζήτηση"}
-                  </button>
-                </label>
+                    {notice.text}
+                  </p>
+                )}
 
-                <div className="mt-4 space-y-2">
-                  {results.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Search className="h-12 w-12 text-white/20 mx-auto mb-3" />
-                      <p className="text-white/60 text-sm">
-                        {searching ? "Αναζήτηση..." : "Δεν υπάρχουν αποτελέσματα ακόμη."}
+                {/* ── Live search ─────────────────────────────────────── */}
+                <section className="space-y-3">
+                  <label className="relative block">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+                    <input
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Αναζήτηση παίκτη με όνομα, επώνυμο ή αριθμό…"
+                      autoFocus
+                      className="w-full pl-9 pr-9 py-2 rounded-lg bg-zinc-900 text-white border border-white/10 focus:border-emerald-400/40 focus:outline-none transition-colors"
+                    />
+                    {searching ? (
+                      <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-white/50" />
+                    ) : q ? (
+                      <button
+                        type="button"
+                        onClick={() => setQ("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"
+                        aria-label="Καθαρισμός"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </label>
+                  <p className="text-xs text-white/40">
+                    Τα αποτελέσματα εμφανίζονται καθώς πληκτρολογείτε — χωρίς τόνους ή κεφαλαία, με όποια σειρά λέξεων.
+                  </p>
+
+                  {q.trim() ? (
+                    searchErr ? (
+                      <p className="text-sm text-red-300">Σφάλμα αναζήτησης: {searchErr}</p>
+                    ) : results.filter((p) => !rosterIds.has(p.id)).length === 0 ? (
+                      <p className="rounded-lg border border-white/10 bg-zinc-900/60 px-4 py-6 text-center text-sm text-white/50">
+                        {searching ? "Αναζήτηση…" : `Δεν βρέθηκε παίκτης για «${q.trim()}».`}
                       </p>
-                      <p className="text-white/40 text-xs mt-1">
-                        Πληκτρολογήστε ένα όνομα και πατήστε αναζήτηση
-                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {results
+                          .filter((p) => !rosterIds.has(p.id))
+                          .map((p) => (
+                            <li
+                              key={p.id}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+                            >
+                              <Avatar first={p.first_name} last={p.last_name} />
+                              <div className="min-w-0 flex-1 text-white">
+                                <div className="font-medium truncate">
+                                  {p.first_name} {p.last_name}
+                                </div>
+                                <div className="text-xs text-white/50 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                  <span>#{p.id}</span>
+                                  {p.player_number != null && <span>Νο {p.player_number}</span>}
+                                  {p.position && <span>{p.position}</span>}
+                                  {p.age != null && <span>{p.age} ετών</span>}
+                                  {p.teams.map((t) => (
+                                    <span
+                                      key={t.id}
+                                      className="rounded-full bg-orange-500/10 px-2 py-0.5 text-orange-300"
+                                      title="Ήδη σε ομάδα της τρέχουσας σεζόν"
+                                    >
+                                      {t.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={busyIds.has(p.id) || addingAll}
+                                onClick={() => addExisting(p.id)}
+                                className="shrink-0 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                {busyIds.has(p.id) ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <UserPlus className="h-4 w-4" />
+                                )}
+                                Προσθήκη
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
+                    )
+                  ) : null}
+                </section>
+
+                {/* ── Last season's roster ─────────────────────────────── */}
+                <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-4 space-y-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h4 className="flex items-center gap-2 text-sm font-semibold text-white/90">
+                        <History className="h-4 w-4 text-white/60" />
+                        Παίκτες από την προηγούμενη σεζόν
+                      </h4>
+                      {prevSource ? (
+                        <p className="mt-0.5 text-xs text-white/50">
+                          Ρόστερ της «{prevSource.name}» τη σεζόν {prevSource.display_label}
+                          {prevSource.deleted ? " (αποχώρησε)" : ""}
+                          {prevSource.via === "name"
+                            ? " — βρέθηκε με βάση το όνομα, όχι από σύνδεση ομάδας."
+                            : "."}
+                        </p>
+                      ) : null}
                     </div>
+                    {prevSource && prevPlayers.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={addingAll || busyIds.size > 0}
+                        onClick={addAllPrevious}
+                        className="shrink-0 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 text-white hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {addingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />}
+                        Προσθήκη όλων ({prevPlayers.length})
+                      </button>
+                    )}
+                  </div>
+
+                  {prevLoading ? (
+                    <p className="flex items-center gap-2 text-sm text-white/60">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Φόρτωση περσινού ρόστερ…
+                    </p>
+                  ) : prevErr ? (
+                    <p className="text-sm text-red-300">Σφάλμα: {prevErr}</p>
+                  ) : !prevSource ? (
+                    <p className="text-sm text-white/50">
+                      Η ομάδα δεν συνδέεται με ομάδα προηγούμενης σεζόν. Ομάδες που δημιουργούνται με
+                      «Δημιουργία από παλιά ομάδα» φέρνουν εδώ το περσινό τους ρόστερ.
+                    </p>
+                  ) : prevPlayers.length === 0 ? (
+                    <p className="text-sm text-white/50">
+                      Όλοι οι παίκτες της «{prevSource.name}» είναι ήδη στο φετινό ρόστερ.
+                    </p>
                   ) : (
-                    results.map((pa) => {
-                      const p = pa.player;
-                      return (
-                        <div
+                    <ul className="space-y-2">
+                      {prevPlayers.map((p) => (
+                        <li
                           key={p.id}
-                          className="flex items-center justify-between px-4 py-3 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 transition-colors"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 bg-zinc-900 hover:bg-zinc-800 transition-colors"
                         >
-                          <div className="text-white">
-                            <div className="font-medium">
+                          <Avatar first={p.first_name} last={p.last_name} />
+                          <div className="min-w-0 flex-1 text-white">
+                            <div className="font-medium truncate">
                               {p.first_name} {p.last_name}
                             </div>
-                            <div className="text-white/50 text-xs">ID: #{p.id}</div>
+                            <div className="text-xs text-white/50 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              <span>#{p.id}</span>
+                              {p.player_number != null && <span>Νο {p.player_number}</span>}
+                              {p.position && <span>{p.position}</span>}
+                              {p.age != null && <span>{p.age} ετών</span>}
+                              <span className="text-white/40">
+                                {p.season_stats
+                                  ? `${prevSource.display_label}: ${p.season_stats.matches} αγ. · ${p.season_stats.goals} γκολ · ${p.season_stats.assists} ασίστ`
+                                  : `${prevSource.display_label}: χωρίς συμμετοχές`}
+                              </span>
+                            </div>
                           </div>
                           <button
                             type="button"
+                            disabled={busyIds.has(p.id) || addingAll}
                             onClick={() => addExisting(p.id)}
-                            className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 transition-colors"
+                            className="shrink-0 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Συμπερίληψη στο φετινό ρόστερ"
                           >
-                            <UserPlus className="h-4 w-4" /> Προσθήκη
+                            {busyIds.has(p.id) ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserPlus className="h-4 w-4" />
+                            )}
+                            Προσθήκη
                           </button>
-                        </div>
-                      );
-                    })
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                </div>
-                </>
+                </section>
               </div>
             ) : (
               <>
