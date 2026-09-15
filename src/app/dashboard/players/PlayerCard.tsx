@@ -13,7 +13,8 @@ import { ageFromBirthDate } from "@/app/lib/playerAge";
 type Props = {
   player: PlayerWithStats;
   onEdit: () => void;
-  onDelete: () => void;
+  /** Archive; omitted for editors, who may not archive (button hidden). */
+  onDelete?: () => void;
   onRestore?: () => void;
 };
 
@@ -92,7 +93,7 @@ export default function PlayerCard({ player, onEdit, onDelete, onRestore }: Prop
               >
                 Επαναφορα
               </button>
-            ) : !isArchived ? (
+            ) : !isArchived && onDelete ? (
               <button
                 type="button"
                 onClick={onDelete}

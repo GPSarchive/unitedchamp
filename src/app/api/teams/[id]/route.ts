@@ -1,6 +1,7 @@
 // app/api/teams/[id]/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { revalidateTeamSurfaces } from "@/app/lib/revalidatePublicPages";
 
 /* =========================
@@ -190,7 +191,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 }
 
 /* ==========================
-   PATCH /api/teams/[id] (admin)
+   PATCH /api/teams/[id] (admin or editor)
    ========================== */
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
@@ -203,8 +204,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id: idParam } = await ctx.params;
     const id = parsePositiveInt(idParam);

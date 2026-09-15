@@ -1,6 +1,7 @@
 // app/api/teams/route.ts
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { getActiveSeason, getSeasonByLabel } from "@/app/lib/seasons";
 
 // If possible, rename your bucket to an id without spaces/apostrophes (e.g. "gpsarchives-project").
@@ -232,7 +233,7 @@ export async function GET(req: Request) {
 }
 
 /* ======================================
-   POST /api/teams  (admin only)
+   POST /api/teams  (admin or editor)
    Body: { name, am?, logo?, colour?, season_label?, copied_from_team_id? }
    - season_label defaults to the ACTIVE season (must exist in public.seasons)
    - copied_from_team_id = "create from old team": the new row records its
@@ -246,14 +247,13 @@ export async function POST(req: Request) {
 
     const supa = await createSupabaseRouteClient();
 
-    // auth + admin role
+    // auth + admin-or-editor role
     const {
       data: { user },
       error: userErr,
     } = await supa.auth.getUser();
     if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object") {

@@ -6,10 +6,13 @@ import { PlayerWithStats, PlayerFormPayload } from "./types";
 import PlayersToolbar from "./PlayersToolbar";
 import PlayersGrid from "./PlayersGrid";
 import PlayerEditorDrawer from "./PlayerEditorDrawer";
+import { useIsAdmin } from "../ui/DashboardRole";
 
 type TeamLite = { id: number; name: string };
 
 export default function AdminPlayersCRUD() {
+  // Archive/restore are admin-only routes; editors don't get the buttons.
+  const isAdmin = useIsAdmin();
   const [players, setPlayers] = useState<PlayerWithStats[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -417,8 +420,8 @@ export default function AdminPlayersCRUD() {
         <PlayersGrid
           players={visiblePlayers}
           onEdit={openEdit}
-          onDelete={handleDelete}
-          onRestore={showArchived ? handleRestore : undefined}
+          onDelete={isAdmin ? handleDelete : undefined}
+          onRestore={isAdmin && showArchived ? handleRestore : undefined}
         />
       )}
 
