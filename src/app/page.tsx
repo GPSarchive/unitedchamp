@@ -157,6 +157,7 @@ export default async function Home() {
           "/2026_1.jpg",
           "/2026_2.jpg",
           "/2026_3.jpg",
+          "/2026_4.jpg"
         ]}
       />
 
