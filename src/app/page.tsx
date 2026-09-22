@@ -154,12 +154,10 @@ export default async function Home() {
       {/* ═══ Hero — photo carousel ═══ */}
       <HomeHero
         images={[
-          "/carousel5.jpg",
-          "/carousel8.jpg",
-          "/carousel0.jpg",
-          "/carousel1.jpg",
-          "/Carousel6.jpg",
-          "/carousel0.jpg",
+          "/2026_1.jpg",
+          "/2026_2.jpg",
+          "/2026_3.jpg",
+          "/2026_4.jpg",
         ]}
       />
 
