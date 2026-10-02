@@ -155,10 +155,10 @@ export default async function Home() {
       <HomeHero
         images={[
           "/2026_1.jpg",
-          "/2026_2.jpg",
+          "/2026_5.jpg",
           "/2026_3.jpg",
           "/2026_4.jpg",
-          "/2026_5.jpg",
+          "/2026_2.jpg",
           "/2026_6.jpg",
           "/2026_8.jpg",
           "/2026_9.jpg",
