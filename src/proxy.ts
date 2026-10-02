@@ -10,6 +10,7 @@ import {
   type LimitResult,
 } from '@/app/lib/rate-limit'
 import { AUDIT_HEADERS, AUDIT_HEADER_NAMES } from '@/app/lib/audit/headers'
+import { editorMayOpen } from '@/app/lib/dashboardAccess'
 
 const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 
@@ -510,30 +511,15 @@ export async function proxy(req: NextRequest) {
       !!process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL
     const isEditor = roles.includes('editor')
 
-    // Editors may reach only the Articles + Announcements sections (and the
-    // bare /dashboard landing, which redirects them onward). Admins (and the
+    // Editors may reach only their sections (lib/dashboardAccess.ts — the
+    // sidebar and the home cards filter on the same list). Admins (and the
     // ADMIN_EMAIL fallback) get the whole dashboard.
-    const path = req.nextUrl.pathname
-    const editorAllowed =
-      path === '/dashboard' ||
-      path.startsWith('/dashboard/articles') ||
-      path.startsWith('/dashboard/announcements')
-
     const isAdminLike = isAdmin || emailIsAdmin
-    const allowed = isAdminLike || (isEditor && editorAllowed)
+    const allowed = isAdminLike || (isEditor && editorMayOpen(req.nextUrl.pathname))
 
     if (!allowed) {
       const url = req.nextUrl.clone()
       url.pathname = '/403'
-      url.searchParams.delete('next')
-      return NextResponse.redirect(url, { headers: res.headers })
-    }
-
-    // The dashboard home lists admin-only sections, so send editor-only
-    // users straight to the section they can actually use.
-    if (!isAdminLike && isEditor && path === '/dashboard') {
-      const url = req.nextUrl.clone()
-      url.pathname = '/dashboard/articles'
       url.searchParams.delete('next')
       return NextResponse.redirect(url, { headers: res.headers })
     }

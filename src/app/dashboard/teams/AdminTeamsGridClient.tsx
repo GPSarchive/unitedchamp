@@ -20,6 +20,7 @@ import Logo from "./Logo";
 import PlayersPanel from "./PlayersPanel";
 import TeamRowEditor from "./TeamRowEditor";
 import { safeJson, signIfNeeded } from "./teamHelpers";
+import { useIsAdmin } from "../ui/DashboardRole";
 
 import type { TeamRow, PlayerAssociation } from "@/app/lib/types";
 
@@ -69,6 +70,8 @@ export default function AdminTeamsGridClient({
   initialRows?: TeamRowWithArchived[];
 }) {
   const router = useRouter();
+  // Archive/restore are admin-only routes; editors don't get the buttons.
+  const isAdmin = useIsAdmin();
 
   const [showArchived, setShowArchived] = useState(false);
   const { rows, setRows, loading, error, load } = useTeams(initialRows, showArchived);
@@ -298,14 +301,16 @@ export default function AdminTeamsGridClient({
                                 <Edit3 className="h-4 w-4" /> Επεξεργασία
                               </button>
                             )}
-                            <button
-                              onClick={() => remove(r.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
-                            >
-                              <Trash2 className="h-4 w-4" /> Αρχειοθέτηση
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => remove(r.id)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-400/40 bg-red-900/30 hover:bg-red-900/50"
+                              >
+                                <Trash2 className="h-4 w-4" /> Αρχειοθέτηση
+                              </button>
+                            )}
                           </>
-                        ) : (
+                        ) : isAdmin ? (
                           <button
                             onClick={() => restore(r.id)}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50"
@@ -313,7 +318,7 @@ export default function AdminTeamsGridClient({
                           >
                             <RotateCcw className="h-4 w-4" /> Επαναφορά
                           </button>
-                        )}
+                        ) : null}
 
                         <button
                           onClick={load}

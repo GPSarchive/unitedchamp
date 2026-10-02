@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { randomUUID } from "crypto";
 import { logAdminAction } from "@/app/lib/audit/log";
@@ -8,13 +9,12 @@ const BUCKET = "GPSarchive's Project";
 const MAX_BYTES = 3 * 1024 * 1024; // 3MB
 
 export async function POST(req: Request) {
-  // Admin auth check (same pattern as your teams routes)
+  // Admin-or-editor auth check (same pattern as your teams routes)
   const supa = await createSupabaseRouteClient();
   const { data: { user }, error: userErr } = await supa.auth.getUser();
   if (userErr || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-  if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const form = await req.formData();
   const file = form.get("file") as File | null;

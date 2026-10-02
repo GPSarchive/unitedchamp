@@ -23,7 +23,7 @@ reads.
 
 | Request | Rule |
 |---|---|
-| `/dashboard/*` | must be logged in. `editor` may open only `/dashboard`, `/dashboard/articles*`, `/dashboard/announcements*`; anything else → `/403`. `admin` (or `ADMIN_EMAIL`) opens everything. |
+| `/dashboard/*` | must be logged in. `editor` may open only `/dashboard`, `/dashboard/articles*`, `/dashboard/announcements*`, `/dashboard/players*`, `/dashboard/teams*` (the list lives in `lib/dashboardAccess.ts`, shared with the sidebar and the home cards); anything else → `/403`. `admin` (or `ADMIN_EMAIL`) opens everything. |
 | `/api/*` POST/PUT/PATCH/DELETE (except `/api/auth/*`, `/api/public/*`) | must be logged in (**any** account). The role check is the handler's job. |
 | Server Actions (a POST to a page URL) | **not gated here**; each action checks itself. |
 | `/preview/*` | **not gated at all** — see finding 3. |
@@ -39,13 +39,13 @@ check is the only gate).
 | Surface | Client |
 |---|---|
 | `POST /api/matches` (create) | RLS |
-| `/api/players` GET+POST · `/api/players/[id]` GET+PATCH+DELETE · `…/restore` | service reads; RLS on soft-delete/restore; PATCH via service |
-| `/api/teams` POST · `/api/teams/[id]` PATCH+DELETE · `…/restore` · `…/players` GET+POST · `…/players/[playerId]` DELETE · `/api/teams/logo-upload` · `…/trim-logo` | mixed (roster writes via service) |
+| `DELETE /api/players/[id]` (archive) · `POST …/restore` | RLS |
+| `DELETE /api/teams/[id]` (archive) · `POST …/restore` | RLS |
 | `POST /api/tournaments/[id]/save-all` · `GET …/snapshot` · `POST /api/stages/[id]/reseed` | service |
 | `createTournamentAction`, `listTournamentsAction`, `getTournamentForEditAction` (`TournamentCURD/actions.ts`) and the `/api/tournoua` variant | service / RPC |
 | `updateMatchFromPlanner`, `batchUpdateMatches`, `revertMatchToScheduledAction`, `awardForfeitWinAction`, `saveMatchStatsAction` (`TournamentCURD/preview`), `applyPointAdjustmentAction`, `getDisciplinaryHistoryAction` | RLS |
 | all seven `dashboard/seasons/actions.ts` actions · all four `dashboard/geniki-katataxi/actions.ts` actions | service / RPC |
-| storage: `GET /api/storage`, `/api/storage/sign`, `POST …/signed-upload`, `…/tournaments/image-upload`, `…/delete-object`, `GET …/tournament-img-loader` | service |
+| storage: `GET /api/storage`, `/api/storage/sign`, `POST …/tournaments/image-upload`, `GET …/tournament-img-loader`; `POST …/delete-object` for any path outside `players/` | service |
 | `POST /api/admin/users/[id]/roles` · `GET /api/debug/invocations` | GoTrue admin / KV |
 
 ### Admin **or** editor (`canEditContent`)
@@ -54,6 +54,10 @@ check is the only gate).
 |---|---|---|
 | `/api/articles` POST · `/api/articles/[id]` PATCH+DELETE (+ draft visibility) | RLS | the intended editor job |
 | `/api/announcements` POST · `/api/announcements/[id]` PATCH+DELETE | RLS | the intended editor job |
+| `/api/players` GET+POST · `/api/players/[id]` GET+PATCH | service reads; RLS writes to `player` + `player_statistics` | players: create + edit (archive/restore stay admin) |
+| `/api/teams/[id]/players` GET+POST · `…/players/[playerId]` DELETE | roster add via service; remove via RLS | add to / remove from a roster |
+| `/api/teams` POST · `/api/teams/[id]` PATCH · `/api/teams/logo-upload` · `…/trim-logo` | RLS writes to `teams`; logos via service | teams: create + edit (archive/restore stay admin) |
+| `POST /api/storage/signed-upload` (always under `players/`) · `POST …/delete-object` for `players/…` paths only | service | player photos |
 | `PATCH /api/matches/[id]` — scores, status, teams, date, penalties | RLS | changes results and triggers progression |
 | **`DELETE /api/matches/[id]`** | RLS | editors can delete matches; creating one is admin-only |
 | `POST /api/matches/[id]/postpone` | RLS | |
@@ -85,17 +89,23 @@ directly, bypassing every check in §3 — RLS is what holds then.
 | `articles`, `announcements` | published only | read drafts, **write** | |
 | `matches`, `match_player_stats`, `match_participants`, `player_statistics`, `tournament_awards`, `disciplinary_actions`, `tournaments`, `tournament_stages`, `tournament_groups`, `tournament_teams`, `stage_slots`, `intake_mappings`, `stage_standings`, `posts` | | **insert / update / delete** (`can_edit_content()`) | |
 | `player`, `player_teams`, `player_*_stats`, `match_player_stats`, `match_participants`, `disciplinary_actions`, `season_team_adjustments`, `stage_slots`, `intake_mappings` | | read (`staff_read`) | |
-| `teams`, `player`, `player_teams`, `seasons`, `season_team_adjustments`, all stat caches, `audit_log` | | | **all writes** |
+| `player`, `teams` | | **insert / update** (`can_edit_content()`) — archiving is an UPDATE of `deleted_at`, so RLS cannot keep it admin-only; the API does | |
+| `player_teams` | | **insert / delete** (`can_edit_content()`) | |
+| `seasons`, `season_team_adjustments`, all stat caches, `audit_log` | | | **all writes** |
 
 Source: `migrations/add-editor-role-rls.sql` + `migrations/enable-public-read-rls.sql`
-+ `add-seasons.sql`. §3 of the investigation script prints what is *actually*
-deployed; anything named differently was created by hand in the dashboard.
++ `add-seasons.sql` + `migrations/add-editor-players-teams-rls.sql`. §3 of the
+investigation script prints what is *actually* deployed; anything named
+differently was created by hand in the dashboard (the admin-only write
+policies on `player` / `teams` / `player_teams` are such hand-made ones).
 
 ## 5. Findings, most important first
 
 1. **`addStageAction` has no auth** (service-role insert). Dead today; delete it.
-2. **"Editor" means three different things.** UI: articles + announcements. API:
-   also edit *and delete* matches, postpone, rebuild stat caches. Database: also
+2. **"Editor" means three different things.** UI: articles, announcements,
+   players and teams (since 2026-09-15; the players/teams layers were aligned
+   together — proxy, API, RLS). API: also edit *and delete* matches, postpone,
+   rebuild stat caches. Database: also
    write `tournaments`, `tournament_stages`, `tournament_groups`, `tournament_teams`,
    `stage_slots`, `intake_mappings`, `stage_standings` directly. `add-editor-role-rls.sql`
    did this knowingly ("same RLS write access as admin"), but it is far wider than

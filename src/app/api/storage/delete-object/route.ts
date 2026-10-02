@@ -7,6 +7,10 @@ import { logAdminAction } from "@/app/lib/audit/log";
 
 export const runtime = "nodejs";
 
+// Editors may only remove player photos — the prefix signed-upload issues
+// slots under. Admins may remove any object.
+const EDITOR_PREFIX = "players/";
+
 // Minimal read-only cookies adapter (works when cookies() is Readonly)
 async function getServerSupabase() {
   const jar = await cookies();
@@ -25,34 +29,39 @@ async function getServerSupabase() {
   );
 }
 
-async function requireAdmin() {
+async function requireStaff() {
   const supabase = await getServerSupabase();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return { ok: false as const, reason: "Not authenticated" };
 
   const roles = (data.user.app_metadata as any)?.roles ?? [];
   const isAdmin = Array.isArray(roles) && roles.includes("admin");
-  return isAdmin
-    ? { ok: true as const, user: data.user }
-    : { ok: false as const, reason: "Not admin" };
+  const isEditor = Array.isArray(roles) && roles.includes("editor");
+  return isAdmin || isEditor
+    ? { ok: true as const, user: data.user, isAdmin }
+    : { ok: false as const, reason: "Not staff" };
 }
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
-  if (!admin.ok) return NextResponse.json({ error: admin.reason }, { status: 403 });
+  const staff = await requireStaff();
+  if (!staff.ok) return NextResponse.json({ error: staff.reason }, { status: 403 });
 
   const { bucket, path } = await req.json().catch(() => ({}));
   if (!bucket || !path) {
     return NextResponse.json({ error: "bucket and path are required" }, { status: 400 });
   }
 
+  // Supabase expects paths without a leading slash
+  const normalized = String(path).replace(/^\/+/, "");
+
+  if (!staff.isAdmin && !normalized.startsWith(EDITOR_PREFIX)) {
+    return NextResponse.json({ error: "Editors may only delete player photos" }, { status: 403 });
+  }
+
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-
-  // Supabase expects paths without a leading slash
-  const normalized = String(path).replace(/^\/+/, "");
 
   const { data, error } = await supabaseAdmin.storage.from(bucket).remove([normalized]);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -64,7 +73,7 @@ export async function POST(req: Request) {
     recordId: `${bucket}/${normalized}`,
     summary: `Διαγραφή αρχείου ${bucket}/${normalized}`,
     meta: { bucket, path: normalized, removed: (data ?? []).map((o) => o.name) },
-    actor: { id: admin.user.id, email: admin.user.email },
+    actor: { id: staff.user.id, email: staff.user.email },
   });
 
   return NextResponse.json({ ok: true, removed: data });

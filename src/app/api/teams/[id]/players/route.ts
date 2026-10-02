@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { normalizeTeamPlayers, type TeamPlayersRowRaw } from "@/app/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -74,12 +75,11 @@ export async function GET(req: Request, ctx: Ctx) {
   const teamId = parseId(idParam);
   if (!teamId) return NextResponse.json({ error: "Invalid team id" }, { status: 400, headers });
 
-  // cookie-session admin gate
+  // cookie-session staff gate (admin or editor)
   const supa = await createSupabaseRouteClient();
   const { data: { user } } = await supa.auth.getUser();
-  const roles = (user?.app_metadata?.roles ?? []) as string[];
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
-  if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers });
+  if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers });
 
   // ── Probe that the team actually exists (support "team" or "teams" table) ─────────
   async function probeTeamExistence(id: number) {
@@ -264,8 +264,7 @@ export async function POST(req: Request, ctx: Ctx) {
     const supa = await createSupabaseRouteClient();
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
-    const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-    if (!roles.includes("admin")) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403, headers });
 
     const { id: idParam } = await ctx.params; // Next 15: params is a Promise
     const teamId = parseId(idParam);

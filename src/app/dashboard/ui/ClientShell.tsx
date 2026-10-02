@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X, LogOut } from "lucide-react";
+import { editorMayOpen } from "@/app/lib/dashboardAccess";
+import { DashboardRoleProvider } from "./DashboardRole";
 
 const NAV = [
   { href: "/dashboard", label: "Αρχική" },
@@ -21,10 +23,8 @@ const NAV = [
   { href: "/dashboard/audit", label: "Ιστορικό ενεργειών" },
 ];
 
-// Editor-only users can reach just these two sections.
-const EDITOR_NAV = NAV.filter((item) =>
-  item.href === "/dashboard/announcements" || item.href === "/dashboard/articles"
-);
+// Editor-only users see just the sections the proxy lets them open.
+const EDITOR_NAV = NAV.filter((item) => editorMayOpen(item.href));
 
 export default function ClientShell({
   children,
@@ -132,7 +132,9 @@ export default function ClientShell({
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          <DashboardRoleProvider isAdmin={!editorOnly}>{children}</DashboardRoleProvider>
+        </main>
       </div>
     </div>
   );

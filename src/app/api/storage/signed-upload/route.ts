@@ -25,14 +25,16 @@ async function getServerSupabase() {
   );
 }
 
-async function requireAdmin() {
+// Player photos (the only thing this route issues slots for) are editor
+// territory: admins and editors both qualify.
+async function requireStaff() {
   const supabase = await getServerSupabase();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return { ok: false as const, reason: "Not authenticated" };
   const roles = (data.user.app_metadata as any)?.roles ?? [];
-  return Array.isArray(roles) && roles.includes("admin")
+  return Array.isArray(roles) && (roles.includes("admin") || roles.includes("editor"))
     ? { ok: true as const, user: data.user }
-    : { ok: false as const, reason: "Not admin" };
+    : { ok: false as const, reason: "Not staff" };
 }
 
 // tiny helper to make a safe folder slug from a name
@@ -46,7 +48,7 @@ function slugify(input: string) {
 }
 
 export async function POST(req: Request) {
-  const adminCheck = await requireAdmin();
+  const adminCheck = await requireStaff();
   if (!adminCheck.ok) {
     return NextResponse.json({ error: adminCheck.reason }, { status: 403 });
   }

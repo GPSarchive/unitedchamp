@@ -8,7 +8,7 @@ import PlayerCard from "./PlayerCard";
 type Props = {
   players: PlayerWithStats[];
   onEdit: (p: PlayerWithStats) => void;
-  onDelete: (id: number) => void;
+  onDelete?: (id: number) => void;
   onRestore?: (id: number) => void;
 };
 
@@ -20,7 +20,7 @@ export default function PlayersGrid({ players, onEdit, onDelete, onRestore }: Pr
           key={p.id}
           player={p}
           onEdit={() => onEdit(p)}
-          onDelete={() => onDelete(p.id)}
+          onDelete={onDelete ? () => onDelete(p.id) : undefined}
           onRestore={onRestore ? () => onRestore(p.id) : undefined}
         />
       ))}
