@@ -2,6 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import sharp from "sharp";
 import { logAdminAction } from "@/app/lib/audit/log";
@@ -18,8 +19,7 @@ export async function POST(
   if (userErr || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const roles = Array.isArray(user.app_metadata?.roles) ? user.app_metadata.roles : [];
-  if (!roles.includes("admin")) {
+  if (!canEditContent(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

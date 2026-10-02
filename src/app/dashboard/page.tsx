@@ -1,5 +1,7 @@
 // src/app/dashboard/page.tsx
 import Link from "next/link";
+import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
+import { editorMayOpen } from "@/app/lib/dashboardAccess";
 
 const CARDS = [
   { href: "/dashboard/users", title: "Χρήστες", desc: "Διαχείριση λογαριασμών & ρόλων." },
@@ -8,10 +10,21 @@ const CARDS = [
   { href: "/dashboard/matches", title: "Αγώνες", desc: "Πρόγραμμα, σκορ και κατάσταση." },
   { href: "/dashboard/tournaments", title: "Διοργανώσεις", desc: "Ροές, όμιλοι & νοκ-άουτ." },
   { href: "/dashboard/announcements", title: "Ανακοινώσεις", desc: "Δημοσιεύσεις & προγραμματισμός." },
+  { href: "/dashboard/articles", title: "Άρθρα", desc: "Κείμενα, εικόνες & δημοσίευση." },
   { href: "/dashboard/audit", title: "Ιστορικό ενεργειών", desc: "Ποιος άλλαξε τι, πότε και από πού." },
 ];
 
-export default function DashboardHome() {
+export default async function DashboardHome() {
+  // Editor-only accounts see just the cards they can open (the proxy would
+  // send them to /403 otherwise). The layout has already verified the session.
+  const supabase = await createSupabaseRSCClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const roles = Array.isArray(user?.app_metadata?.roles)
+    ? (user!.app_metadata!.roles as string[])
+    : [];
+  const editorOnly = !roles.includes("admin") && roles.includes("editor");
+  const cards = editorOnly ? CARDS.filter((c) => editorMayOpen(c.href)) : CARDS;
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-white/10 bg-gradient-to-br from-zinc-950 to-black p-5 md:p-6">
@@ -25,7 +38,7 @@ export default function DashboardHome() {
         aria-label="Συντομεύσεις"
         className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
       >
-        {CARDS.map((c) => (
+        {cards.map((c) => (
           <Link
             key={c.href}
             href={c.href}

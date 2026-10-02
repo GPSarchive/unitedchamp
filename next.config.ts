@@ -134,6 +134,15 @@ const PERMISSIONS_POLICY = [
 
 const nextConfig: NextConfig = {
   // ──────────────────────────────────────────────────────────────
+  // Pin the workspace root. Stray lockfiles in parent directories
+  // (e.g. a package-lock.json in the user's home dir) otherwise make
+  // Next infer the wrong root and warn on every build.
+  // ──────────────────────────────────────────────────────────────
+  turbopack: {
+    root: __dirname,
+  },
+
+  // ──────────────────────────────────────────────────────────────
   // SECURITY: never ship source maps to the browser in production.
   // Default is already false, but explicit is safer — a future
   // Next.js upgrade can't silently flip the default on you.
