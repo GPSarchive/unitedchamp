@@ -12,7 +12,7 @@ import {
 } from '@/app/lib/revalidatePublicPages';
 import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
-import { canEditContent } from '@/app/lib/supabase/apiAuth';
+import { canEditContent, isAdmin } from '@/app/lib/supabase/apiAuth';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
 import {
   syncPlayerStatisticsForPlayers,
@@ -24,7 +24,7 @@ import { decideTwoLeggedTie, decideSingleLegKO } from '@/app/dashboard/tournamen
  *  Content-editor guard (server-side)
  *  Admins and editors may both edit matches.
  *  ========================= */
-async function assertAdmin() {
+async function requireContentEditor() {
   const supabase = await createSupabaseRouteClient();
   const {
     data: { user },
@@ -37,7 +37,11 @@ async function assertAdmin() {
   if (!canEditContent(user)) {
     throw new Error('Forbidden');
   }
-  return supabase; // cookie-bound client; RLS applies
+  return { supabase, user }; // cookie-bound client; RLS applies
+}
+
+async function assertAdmin() {
+  return (await requireContentEditor()).supabase;
 }
 
 /** -------------------------------
@@ -162,22 +166,65 @@ async function resolveKoFinishPatch(
 }
 
 /** -------------------------------
+ *  Referee note upsert/clear. Skips the write when the text is unchanged so a
+ *  plain stats re-save doesn't bump the note's "last edited" stamp. Blank text
+ *  deletes the note. Authorship is stamped by a DB trigger.
+ *  ------------------------------- */
+const REFEREE_NOTE_MAX = 2000;
+
+async function saveRefereeNote(
+  supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
+  matchId: number,
+  raw: string
+) {
+  const note = raw.trim();
+  if (note.length > REFEREE_NOTE_MAX) {
+    throw new Error(`Η σημείωση διαιτητή ξεπερνά τους ${REFEREE_NOTE_MAX} χαρακτήρες.`);
+  }
+
+  const { data: current, error: readErr } = await supabase
+    .from('match_referee_notes')
+    .select('note')
+    .eq('match_id', matchId)
+    .maybeSingle();
+  if (readErr) throw readErr;
+  if ((current?.note ?? '') === note) return;
+
+  const { error } = note
+    ? await supabase
+        .from('match_referee_notes')
+        .upsert({ match_id: matchId, note }, { onConflict: 'match_id' })
+    : await supabase.from('match_referee_notes').delete().eq('match_id', matchId);
+  if (error) throw error;
+  revalidatePath('/dashboard/match-notes');
+}
+
+/** -------------------------------
  *  Save per-player stats + participation + auto-finalize + progression
  *  ------------------------------- */
 export async function saveAllStatsAction(formData: FormData) {
-  const supabase = await assertAdmin();
+  const { supabase, user } = await requireContentEditor();
 
   const match_id = Number(formData.get('match_id'));
   if (!Number.isFinite(match_id)) throw new Error('Bad match id');
 
-  /** Match-level: Διαιτητής (referee) */
-  const rawRef = (formData.get('referee') as string | null) ?? null;
-  const referee = rawRef ? rawRef.trim() : null;
-  // Update match-level referee (nullable)
-  await supabase
-    .from('matches')
-    .update({ referee: referee && referee.length ? referee : null })
-    .eq('id', match_id);
+  /** Match-level: Διαιτητής (referee) — only when the form carries the field.
+   *  The stats form has no referee input, and treating "absent" as "cleared"
+   *  wiped matches.referee on every Save all. */
+  if (formData.has('referee')) {
+    const referee = String(formData.get('referee') ?? '').trim();
+    await supabase
+      .from('matches')
+      .update({ referee: referee || null })
+      .eq('id', match_id);
+  }
+
+  /** Match-level: private referee note (admins only; see
+   *  migrations/add-match-referee-notes.sql). The field is rendered for admins
+   *  only, so editors' saves never carry it and never touch the note. */
+  if (formData.has('referee_note') && isAdmin(user)) {
+    await saveRefereeNote(supabase, match_id, String(formData.get('referee_note') ?? ''));
+  }
 
   /** Stats row - ✅ UPDATED: now includes own_goals and player_number */
   type Row = {
