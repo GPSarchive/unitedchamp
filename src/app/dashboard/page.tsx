@@ -8,6 +8,7 @@ const CARDS = [
   { href: "/dashboard/teams", title: "Ομάδες", desc: "Λογότυπα, αρχειοθέτηση και παίκτες." },
   { href: "/dashboard/players", title: "Παίκτες", desc: "Βιογραφικά, στατιστικά & φωτογραφίες." },
   { href: "/dashboard/matches", title: "Αγώνες", desc: "Πρόγραμμα, σκορ και κατάσταση." },
+  { href: "/dashboard/match-notes", title: "Σημειώσεις διαιτητή", desc: "Ιδιωτικές σημειώσεις ανά αγώνα." },
   { href: "/dashboard/tournaments", title: "Διοργανώσεις", desc: "Ροές, όμιλοι & νοκ-άουτ." },
   { href: "/dashboard/announcements", title: "Ανακοινώσεις", desc: "Δημοσιεύσεις & προγραμματισμός." },
   { href: "/dashboard/articles", title: "Άρθρα", desc: "Κείμενα, εικόνες & δημοσίευση." },

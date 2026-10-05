@@ -25,6 +25,7 @@ export const TABLE_LABELS: Record<string, string> = {
   matches: "Αγώνες",
   match_player_stats: "Στατιστικά αγώνα",
   match_participants: "Συμμετοχές αγώνα",
+  match_referee_notes: "Σημειώσεις διαιτητή",
   tournament_awards: "Βραβεία",
   disciplinary_actions: "Πειθαρχικά",
   tournaments: "Διοργανώσεις",

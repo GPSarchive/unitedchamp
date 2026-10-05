@@ -22,9 +22,10 @@ import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
-import { canEditContent } from "@/app/lib/supabase/apiAuth";
+import { canEditContent, isAdmin as hasAdminRole } from "@/app/lib/supabase/apiAuth";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
+import RefereeNoteField from "./RefereeNoteField";
 
 export const metadata = {
   title: "Αγώνας",
@@ -51,6 +52,8 @@ export default async function Page({
   } = await supabase.auth.getUser();
   // Editors and admins both get the full match-editing surface.
   const isAdmin = canEditContent(user);
+  // Referee notes are admin-only (RLS too) — editors never see the field.
+  const canSeeRefereeNote = hasAdminRole(user);
 
   const { id: idStr } = await params;
   const { video } = await searchParams;
@@ -60,11 +63,22 @@ export default async function Page({
   const match = await fetchMatch(id);
   if (!match) return notFound();
 
-  const [aRes, bRes, statsRes, partsRes] = await Promise.allSettled([
+  const [aRes, bRes, statsRes, partsRes, noteRes] = await Promise.allSettled([
     fetchPlayersForTeam(match.team_a.id),
     fetchPlayersForTeam(match.team_b.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
+    canSeeRefereeNote
+      ? supabase
+          .from("match_referee_notes")
+          .select("note")
+          .eq("match_id", match.id)
+          .maybeSingle()
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return (data?.note as string | undefined) ?? "";
+          })
+      : Promise.resolve(""),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -95,6 +109,11 @@ export default async function Page({
     dataLoadErrors.push(`Match stats: ${errMsg(statsRes.reason)}`);
   if (partsRes.status === "rejected")
     dataLoadErrors.push(`Participants: ${errMsg(partsRes.reason)}`);
+  if (noteRes.status === "rejected")
+    dataLoadErrors.push(`Referee note: ${errMsg(noteRes.reason)}`);
+  // When the note failed to load, leave the field out entirely: rendering it
+  // empty would let the next Save all delete the stored note.
+  const refereeNote = noteRes.status === "fulfilled" ? noteRes.value : null;
 
   const dbVideoRaw = match.video_url ?? null;
   const effectiveVideoInput = video ?? dbVideoRaw;
@@ -325,6 +344,10 @@ export default async function Page({
                     savedPenaltyA={match.penalty_a ?? null}
                     savedPenaltyB={match.penalty_b ?? null}
                   />
+                )}
+
+                {canSeeRefereeNote && refereeNote !== null && (
+                  <RefereeNoteField initialNote={refereeNote} />
                 )}
 
                 <div className="mt-4 flex justify-end gap-2">

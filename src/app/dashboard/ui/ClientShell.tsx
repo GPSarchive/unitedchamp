@@ -14,6 +14,7 @@ const NAV = [
   { href: "/dashboard/teams", label: "Ομάδες" },
   { href: "/dashboard/players", label: "Παίκτες" },
   { href: "/dashboard/matches", label: "Αγώνες" },
+  { href: "/dashboard/match-notes", label: "Σημειώσεις διαιτητή" },
   { href: "/dashboard/tournaments", label: "Διοργανώσεις" },
   { href: "/preview/tournament-builder", label: "Tournament Builder 2.0" },
   { href: "/dashboard/geniki-katataxi", label: "Γενική Κατάταξη" },

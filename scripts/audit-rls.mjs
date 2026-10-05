@@ -50,6 +50,8 @@ const PROBES = {
   disciplinary_actions: { payload: { team_id: -1 }, cleanup: false },
   season_team_adjustments: { payload: { team_id: -1, season: "x", kind: "probe", points: 0 }, cleanup: false },
   tournament_awards: { payload: { tournament_id: -1 }, cleanup: false },
+  // Admin-only (migrations/add-match-referee-notes.sql): anon SELECT must be "blocked" or 0 rows.
+  match_referee_notes: { payload: { match_id: -1, note: "x" }, cleanup: false },
   // Seasonal system (migrations/add-seasons.sql + add-season-aggregates.sql):
   // seasons is public-read; the four result tables are staff_read.
   seasons: { payload: { label: "__RLS_PROBE__", display_label: "x", status: "archived" }, cleanup: true, key: "label" },
