@@ -22,6 +22,7 @@ type NoteRow = {
   id: number;
   match_id: number;
   note: string;
+  referee_name: string | null;
   created_at: string;
   updated_at: string;
   updated_by_email: string | null;
@@ -62,7 +63,7 @@ export default async function MatchNotesPage({ searchParams }: { searchParams?: 
     .from("match_referee_notes")
     .select(
       `
-      id, match_id, note, created_at, updated_at, updated_by_email,
+      id, match_id, note, referee_name, created_at, updated_at, updated_by_email,
       match:match_id!inner (
         id, match_date, status, team_a_score, team_b_score, penalty_a, penalty_b,
         referee, round, matchday, tournament_id,
@@ -187,7 +188,12 @@ export default async function MatchNotesPage({ searchParams }: { searchParams?: 
                   </Link>
                 </div>
 
-                <p className="mt-3 whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/40 p-3 text-sm text-white/90">
+                {r.referee_name && (
+                  <div className="mt-3 text-xs text-white/70">
+                    Από διαιτητή · <span className="text-white">{r.referee_name}</span>
+                  </div>
+                )}
+                <p className="mt-2 whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-black/40 p-3 text-sm text-white/90">
                   {r.note}
                 </p>
 

@@ -166,34 +166,43 @@ async function resolveKoFinishPatch(
 }
 
 /** -------------------------------
- *  Referee note upsert/clear. Skips the write when the text is unchanged so a
- *  plain stats re-save doesn't bump the note's "last edited" stamp. Blank text
- *  deletes the note. Authorship is stamped by a DB trigger.
+ *  Referee note upsert/clear. Skips the write when the text and referee name
+ *  are unchanged so a plain stats re-save doesn't bump the note's "last
+ *  edited" stamp. Blank text deletes the note. Authorship is stamped by a DB
+ *  trigger; referee_name is the private "from" name the admin can edit.
  *  ------------------------------- */
 const REFEREE_NOTE_MAX = 2000;
+const REFEREE_NAME_MAX = 120;
 
 async function saveRefereeNote(
   supabase: Awaited<ReturnType<typeof createSupabaseRouteClient>>,
   matchId: number,
-  raw: string
+  raw: string,
+  rawRefereeName: string
 ) {
   const note = raw.trim();
   if (note.length > REFEREE_NOTE_MAX) {
     throw new Error(`Η σημείωση διαιτητή ξεπερνά τους ${REFEREE_NOTE_MAX} χαρακτήρες.`);
   }
+  const refereeName = rawRefereeName.trim() || null;
+  if (refereeName && refereeName.length > REFEREE_NAME_MAX) {
+    throw new Error(`Το όνομα διαιτητή ξεπερνά τους ${REFEREE_NAME_MAX} χαρακτήρες.`);
+  }
 
   const { data: current, error: readErr } = await supabase
     .from('match_referee_notes')
-    .select('note')
+    .select('note, referee_name')
     .eq('match_id', matchId)
     .maybeSingle();
   if (readErr) throw readErr;
-  if ((current?.note ?? '') === note) return;
+  // No note → nothing to store, whatever the (pre-filled) name says.
+  if (!note && !current) return;
+  if (current && current.note === note && (current.referee_name ?? null) === refereeName) return;
 
   const { error } = note
     ? await supabase
         .from('match_referee_notes')
-        .upsert({ match_id: matchId, note }, { onConflict: 'match_id' })
+        .upsert({ match_id: matchId, note, referee_name: refereeName }, { onConflict: 'match_id' })
     : await supabase.from('match_referee_notes').delete().eq('match_id', matchId);
   if (error) throw error;
   revalidatePath('/dashboard/match-notes');
@@ -223,7 +232,12 @@ export async function saveAllStatsAction(formData: FormData) {
    *  migrations/add-match-referee-notes.sql). The field is rendered for admins
    *  only, so editors' saves never carry it and never touch the note. */
   if (formData.has('referee_note') && isAdmin(user)) {
-    await saveRefereeNote(supabase, match_id, String(formData.get('referee_note') ?? ''));
+    await saveRefereeNote(
+      supabase,
+      match_id,
+      String(formData.get('referee_note') ?? ''),
+      String(formData.get('referee_note_name') ?? '')
+    );
   }
 
   /** Stats row - ✅ UPDATED: now includes own_goals and player_number */

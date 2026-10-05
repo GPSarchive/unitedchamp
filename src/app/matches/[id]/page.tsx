@@ -71,14 +71,19 @@ export default async function Page({
     canSeeRefereeNote
       ? supabase
           .from("match_referee_notes")
-          .select("note")
+          .select("note, referee_name")
           .eq("match_id", match.id)
           .maybeSingle()
           .then(({ data, error }) => {
             if (error) throw error;
-            return (data?.note as string | undefined) ?? "";
+            return {
+              note: (data?.note as string | undefined) ?? "",
+              // Pre-fill with the admin's email when no name is stored yet.
+              refereeName:
+                (data?.referee_name as string | null | undefined) ?? user?.email ?? "",
+            };
           })
-      : Promise.resolve(""),
+      : Promise.resolve(null),
   ]);
 
   const teamAPlayers: PlayerAssociation[] =
@@ -347,7 +352,10 @@ export default async function Page({
                 )}
 
                 {canSeeRefereeNote && refereeNote !== null && (
-                  <RefereeNoteField initialNote={refereeNote} />
+                  <RefereeNoteField
+                    initialNote={refereeNote.note}
+                    initialRefereeName={refereeNote.refereeName}
+                  />
                 )}
 
                 <div className="mt-4 flex justify-end gap-2">
