@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useStatsDraft } from "./StatsDraftAutosave";
 
 /**
  * Two-legged KO decider panel — the penalty input for leg 2.
@@ -92,6 +93,8 @@ export default function TwoLeggedPenaltyPanel({
   mode = "decider",
 }: Props) {
   const isSingle = mode === "single";
+  // A restored local draft (see StatsDraftAutosave) pre-fills the shootout.
+  const draft = useStatsDraft();
   const [live, setLive] = React.useState<{ a: number; b: number }>({ a: 0, b: 0 });
   const rootRef = React.useRef<HTMLDivElement>(null);
 
@@ -208,7 +211,7 @@ export default function TwoLeggedPenaltyPanel({
             min={0}
             name="penalty_a"
             required
-            defaultValue={savedPenaltyA ?? ""}
+            defaultValue={draft?.penalty_a ?? savedPenaltyA ?? ""}
             aria-required
             className="w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border border-amber-400/60"
           />
@@ -218,7 +221,7 @@ export default function TwoLeggedPenaltyPanel({
             min={0}
             name="penalty_b"
             required
-            defaultValue={savedPenaltyB ?? ""}
+            defaultValue={draft?.penalty_b ?? savedPenaltyB ?? ""}
             aria-required
             className="w-16 rounded bg-zinc-900 px-2 py-1.5 text-center text-white border border-amber-400/60"
           />
