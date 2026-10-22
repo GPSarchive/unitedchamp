@@ -3,9 +3,10 @@
 // context (date, tournament, phase, teams, score, referee) to tell which match
 // it is about.
 //
-// Auth: proxy.ts + dashboard/layout.tsx admit only admins to this path (it is
-// not in the editor allow-list). The read uses the cookie-bound client, so the
-// table's admin-only RLS (migrations/add-match-referee-notes.sql) applies too.
+// Auth: proxy.ts + dashboard/layout.tsx admit admins and editors to this path
+// (it is in the editor allow-list, lib/dashboardAccess.ts). The read uses the
+// cookie-bound client, so the table's admin+editor RLS
+// (migrations/editor-referee-notes-rls.sql) applies too.
 import Link from "next/link";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
 import { formatInstant, formatMatchDateTime } from "@/app/lib/datetime";
@@ -103,7 +104,7 @@ export default async function MatchNotesPage({ searchParams }: { searchParams?: 
       <header className="flex flex-col gap-1">
         <h2 className="text-xl font-semibold text-white">Σημειώσεις διαιτητή</h2>
         <p className="text-sm text-white/60">
-          Ιδιωτικές σημειώσεις ανά αγώνα, ορατές μόνο στους διαχειριστές. Γράφονται και
+          Εσωτερικές σημειώσεις ανά αγώνα, ορατές μόνο σε διαχειριστές και editors. Γράφονται και
           διορθώνονται από τον επεξεργαστή στατιστικών στη σελίδα κάθε αγώνα.
         </p>
       </header>

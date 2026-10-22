@@ -24,7 +24,7 @@ import { JerseyTagsProvider } from "./JerseyTags";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
-import { canEditContent, isAdmin as hasAdminRole } from "@/app/lib/supabase/apiAuth";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import MatchV2Client from "./MatchV2Client";
 import RefereeNoteField from "./RefereeNoteField";
@@ -54,8 +54,9 @@ export default async function Page({
   } = await supabase.auth.getUser();
   // Editors and admins both get the full match-editing surface.
   const isAdmin = canEditContent(user);
-  // Referee notes are admin-only (RLS too) — editors never see the field.
-  const canSeeRefereeNote = hasAdminRole(user);
+  // Referee notes: admins and editors (RLS too — see
+  // migrations/editor-referee-notes-rls.sql).
+  const canSeeRefereeNote = isAdmin;
 
   const { id: idStr } = await params;
   const { video, saved } = await searchParams;

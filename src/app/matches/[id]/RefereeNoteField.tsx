@@ -1,8 +1,8 @@
 "use client";
 
-// Private referee note for this match, saved with "Save all" by
-// saveAllStatsAction. Rendered for admins only (the table's RLS is admin-only
-// too); all notes are listed on /dashboard/match-notes.
+// Internal referee note for this match, saved with "Save all" by
+// saveAllStatsAction. Rendered for admins and editors (the table's RLS agrees);
+// all notes are listed on /dashboard/match-notes.
 import * as React from "react";
 import Link from "next/link";
 
@@ -25,7 +25,7 @@ export default function RefereeNoteField({ initialNote }: { initialNote: string 
         </Link>
       </div>
       <p className="mt-1 text-xs text-white/60">
-        Ιδιωτικό — το βλέπουν μόνο οι διαχειριστές. Άδειο πεδίο διαγράφει τη σημείωση.
+        Εσωτερικό — το βλέπουν μόνο διαχειριστές και editors. Άδειο πεδίο διαγράφει τη σημείωση.
       </p>
       <textarea
         id="referee_note"

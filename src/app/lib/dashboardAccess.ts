@@ -9,6 +9,7 @@ export const EDITOR_DASHBOARD_SECTIONS = [
   "/dashboard/announcements",
   "/dashboard/players",
   "/dashboard/teams",
+  "/dashboard/match-notes",
 ] as const;
 
 /** True when an editor-only account may load this dashboard path. */
