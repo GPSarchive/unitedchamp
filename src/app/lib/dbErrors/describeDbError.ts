@@ -173,16 +173,19 @@ const archivedTeamsText: RuleText = (_p, ctx) => {
   const archived = [ctx.teams?.a, ctx.teams?.b].filter(
     (t): t is TeamRef => !!t && !!t.deleted_at,
   );
+  // Since fix-archived-team-trigger-unchanged.sql the trigger fires only when a
+  // team is ASSIGNED (insert, or a changed team column) — never for a past
+  // match an archived team already played.
   const since = (t: TeamRef) => (t.deleted_at ? ` από ${formatInstant(t.deleted_at, DATE)}` : "");
   const fix =
-    "Επαναφέρετε την ομάδα (Ομάδες → Αρχειοθετημένες) ή αλλάξτε την σε όλους τους αγώνες της.";
+    "Επιλέξτε άλλη ομάδα, ή επαναφέρετέ την πρώτα από Ομάδες → Αρχειοθετημένες.";
   if (archived.length === 1) {
-    return `Η ομάδα ${archived[0].name ?? `#${archived[0].id}`} είναι αρχειοθετημένη${since(archived[0])} αλλά έχει ακόμη αγώνες σε αυτή τη διοργάνωση. ${fix}`;
+    return `Η ομάδα ${archived[0].name ?? `#${archived[0].id}`} είναι αρχειοθετημένη${since(archived[0])} και δεν μπορεί να μπει σε αγώνα. ${fix}`;
   }
   if (archived.length === 2) {
-    return `Οι ομάδες ${archived.map((t) => t.name ?? `#${t.id}`).join(" και ")} είναι αρχειοθετημένες αλλά έχουν ακόμη αγώνες σε αυτή τη διοργάνωση. ${fix}`;
+    return `Οι ομάδες ${archived.map((t) => t.name ?? `#${t.id}`).join(" και ")} είναι αρχειοθετημένες και δεν μπορούν να μπουν σε αγώνα. ${fix}`;
   }
-  return `Μία από τις ομάδες του αγώνα είναι αρχειοθετημένη αλλά έχει ακόμη αγώνες σε αυτή τη διοργάνωση. ${fix}`;
+  return `Μία από τις ομάδες που επιλέξατε είναι αρχειοθετημένη και δεν μπορεί να μπει σε αγώνα. ${fix}`;
 };
 
 const leagueDuplicateText: RuleText = (p, ctx) => {

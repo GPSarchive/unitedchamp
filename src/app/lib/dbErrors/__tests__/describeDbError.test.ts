@@ -49,22 +49,35 @@ describe("parsePgError", () => {
 });
 
 describe("describeDbError — known rules", () => {
-  it("names the archived team, since when, and how to fix it (T61 incident)", () => {
+  it("names the archived team being assigned, since when, and how to fix it", () => {
     const d = describeDbError(
       { code: "P0001", message: "Cannot use archived (soft-deleted) team in matches" },
-      { ...match2591, unchanged: true, progress: { done: 7, remaining: 124 } },
+      {
+        entity: "matches",
+        id: 2603,
+        label: "4η αγωνιστική, RED PULSE – PINK PANTHERS",
+        teams: { a: redPulse, b: { id: 164, name: "PINK PANTHERS", deleted_at: null } },
+        progress: { done: 7, remaining: 124 },
+      },
     );
     expect(d.known).toBe(true);
     expect(d.rule).toBe("ensure_match_teams_active");
     expect(d.status).toBe(400);
     expect(d.message).toBe(
-      "Αγώνας #2591 (2η αγωνιστική, WALKERS – RED PULSE): " +
-        "Η ομάδα RED PULSE είναι αρχειοθετημένη από 21/10/2026 αλλά έχει ακόμη αγώνες σε αυτή τη διοργάνωση. " +
-        "Επαναφέρετε την ομάδα (Ομάδες → Αρχειοθετημένες) ή αλλάξτε την σε όλους τους αγώνες της. " +
-        "Δεν αλλάξατε κάτι σε αυτόν τον αγώνα — απορρίφθηκε όπως είναι ήδη αποθηκευμένος. " +
+      "Αγώνας #2603 (4η αγωνιστική, RED PULSE – PINK PANTHERS): " +
+        "Η ομάδα RED PULSE είναι αρχειοθετημένη από 21/10/2026 και δεν μπορεί να μπει σε αγώνα. " +
+        "Επιλέξτε άλλη ομάδα, ή επαναφέρετέ την πρώτα από Ομάδες → Αρχειοθετημένες. " +
         "Αποθηκεύτηκαν 7 από 132 αγώνες πριν σταματήσει η αποθήκευση — διορθώστε το και πατήστε ξανά Save.",
     );
     expect(d.raw).toBe("Cannot use archived (soft-deleted) team in matches");
+  });
+
+  it("says when the rejected row was not changed by the admin", () => {
+    const d = describeDbError(
+      { code: "23505", message: 'duplicate key value violates unique constraint "unique_ko_match"' },
+      { ...match2591, unchanged: true },
+    );
+    expect(d.message).toMatch(/Δεν αλλάξατε κάτι σε αυτόν τον αγώνα — απορρίφθηκε όπως είναι ήδη αποθηκευμένος\.$/);
   });
 
   it("falls back to a generic archived message when team info is missing", () => {
@@ -72,7 +85,7 @@ describe("describeDbError — known rules", () => {
       { code: "P0001", message: "Cannot use archived (soft-deleted) team in matches" },
       { entity: "matches", id: 2591 },
     );
-    expect(d.message).toMatch(/^Αγώνας #2591: Μία από τις ομάδες του αγώνα είναι αρχειοθετημένη/);
+    expect(d.message).toMatch(/^Αγώνας #2591: Μία από τις ομάδες που επιλέξατε είναι αρχειοθετημένη/);
   });
 
   it("names the duplicate league pairing and matchday", () => {
