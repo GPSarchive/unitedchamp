@@ -14,6 +14,14 @@ import { seasonMoveLabels } from "@/app/lib/seasonChecks";
 import { snapshotSeason } from "@/app/lib/seasonSnapshot";
 import { fetchInBatches } from "@/app/lib/supabasePaging";
 import { logAdminAction } from "@/app/lib/audit/log";
+import { describeDbError, type WriteContext } from "@/app/lib/dbErrors/describeDbError";
+import {
+  loadMatchWriteContext,
+  loadNewMatchesContext,
+  loadTournamentTeamsContext,
+  rowUnchanged,
+  staleRowMessage,
+} from "@/app/lib/dbErrors/matchContext";
 
 /** This route must be dynamic; the editor needs fresh writes/reads */
 export const dynamic = "force-dynamic";
@@ -171,6 +179,21 @@ function matchNaturalKey(r: {
   const b = r.team_b_id ?? 0;
   const [lo, hi] = a <= b ? [a, b] : [b, a];
   return `LG|${r.stage_id}|${r.group_id ?? -1}|${r.matchday ?? -1}|${r.bracket_pos ?? -1}|${lo}-${hi}`;
+}
+
+/**
+ * A database rejection, worded for the admin (Greek, names the row and the
+ * rule — see lib/dbErrors). `rule`/`raw` ride along for the audit log.
+ */
+function dbFail(
+  error: { code?: string | null; message?: string | null; details?: string | null; hint?: string | null },
+  ctx: WriteContext = {}
+) {
+  const d = describeDbError(error, ctx);
+  return NextResponse.json(
+    { error: d.message, rule: d.rule, raw: d.raw, entity: ctx.entity ?? null, id: ctx.id ?? null },
+    { status: d.status }
+  );
 }
 
 export async function POST(
@@ -393,7 +416,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_stages")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         upserted = upserted.concat(data ?? []);
       }
 
@@ -402,7 +425,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_stages")
           .upsert(updateRows.map(r => ({ ...r, tournament_id: tournamentId })), )
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         upserted = upserted.concat(data ?? []);
       }
 
@@ -423,7 +446,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_groups")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         upserted = upserted.concat(data ?? []);
       }
 
@@ -432,7 +455,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_groups")
           .upsert(updateRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         upserted = upserted.concat(data ?? []);
       }
 
@@ -459,7 +482,7 @@ if (body.matches?.deleteIds?.length) {
         .delete()
         .eq("tournament_id", tournamentId)
         .in("id", body.tournamentTeams.deleteIds);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbFail(error);
     }
 
     if (
@@ -477,7 +500,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_teams")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error, await loadTournamentTeamsContext(supabaseAdmin, createRows));
       }
 
       if (updateRows.length) {
@@ -485,7 +508,7 @@ if (body.matches?.deleteIds?.length) {
           .from("tournament_teams")
           .upsert(updateRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error, await loadTournamentTeamsContext(supabaseAdmin, updateRows));
       }
 
       // Return the authoritative current set so the client can reconcile
@@ -515,7 +538,7 @@ if (body.matches?.deleteIds?.length) {
           .eq("updated_at", r.updated_at)
           .select("*");
 
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         if (!data || data.length === 0) {
           const { data: cur } = await supabaseAdmin
             .from("stage_slots")
@@ -542,7 +565,7 @@ if (body.matches?.deleteIds?.length) {
         const { error } = await supabaseAdmin
           .from("stage_slots")
           .upsert(rest, { onConflict: "stage_id,group_id,slot_id" });
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
       }
 
       const affectedStageIds = Array.from(new Set(rows.map((r) => r.stage_id)));
@@ -550,7 +573,7 @@ if (body.matches?.deleteIds?.length) {
         .from("stage_slots")
         .select("*")
         .in("stage_id", affectedStageIds);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbFail(error);
 
       out.stageSlots = data ?? [];
     }
@@ -566,7 +589,7 @@ if (body.matches?.deleteIds?.length) {
           .from("intake_mappings")
           .delete()
           .in("target_stage_id", targetStageIds);
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
       }
 
       const createRows = (body.intakeMappings.replace ?? []).map(({ id: _drop, ...r }) => r);
@@ -576,7 +599,7 @@ if (body.matches?.deleteIds?.length) {
           .from("intake_mappings")
           .insert(createRows)
           .select();
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
         out.intakeMappings = data ?? [];
       } else {
         out.intakeMappings = [];
@@ -612,9 +635,9 @@ if (body.matches?.upsert?.length) {
         return NextResponse.json(
           {
             error:
-              "A match in a groups stage is missing its group. Assign every group " +
-              "match to a group before saving (select a specific όμιλος rather than " +
-              "the “All groups” view when adding matches).",
+              `${orphaned.length} ${orphaned.length === 1 ? "αγώνας ομίλων δεν έχει" : "αγώνες ομίλων δεν έχουν"} όμιλο. ` +
+              "Κάθε αγώνας σε φάση ομίλων πρέπει να ανήκει σε έναν όμιλο — επιλέξτε συγκεκριμένο όμιλο " +
+              "(όχι την προβολή «Όλοι οι όμιλοι») όταν προσθέτετε αγώνες, και αποθηκεύστε ξανά.",
             entity: "matches",
             stage_ids: Array.from(new Set(orphaned.map(r => r.stage_id))),
             count: orphaned.length,
@@ -665,12 +688,12 @@ if (body.matches?.upsert?.length) {
       .from("matches")
       .upsert(upsertRows, { onConflict: "id" })
       .select("*");
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return dbFail(error);
     updated.push(...(data ?? []));
   } else {
     // Per-row updates with optimistic locking
     for (const r of toUpdate) {
-      let q = supabaseAdmin.from("matches").update({
+      const patch = {
         stage_id: r.stage_id,
         tournament_id: tournamentId,
         group_id: r.group_id ?? null,
@@ -692,7 +715,8 @@ if (body.matches?.upsert?.length) {
         leg: r.leg ?? null,
         penalty_a: r.penalty_a ?? null,
         penalty_b: r.penalty_b ?? null,
-      }).eq("id", r.id as number);
+      };
+      let q = supabaseAdmin.from("matches").update(patch).eq("id", r.id as number);
 
       if (r.updated_at) q = q.eq("updated_at", r.updated_at);
 
@@ -700,11 +724,13 @@ if (body.matches?.upsert?.length) {
       // Name the row: this loop is not transactional, so every row before it
       // is already written and the admin needs to know which match to fix.
       if (error) {
-        return NextResponse.json(
-          { error: `Αγώνας #${r.id}: ${error.message}`, entity: "matches", id: r.id,
-            code: error.code, details: error.details, hint: error.hint },
-          { status: 500 }
-        );
+        const ctx = await loadMatchWriteContext(supabaseAdmin, r, {
+          // Worded only: the editor re-sends every row of the stage, so the
+          // failing row is often one the admin never touched.
+          unchanged: await rowUnchanged(supabaseAdmin, "matches", r.id as number, patch),
+          progress: { done: updated.length, remaining: toUpdate.length - updated.length - 1 },
+        });
+        return dbFail(error, ctx);
       }
 
       if (!data || data.length === 0) {
@@ -712,7 +738,8 @@ if (body.matches?.upsert?.length) {
           const { data: cur } = await supabaseAdmin
             .from("matches").select("id,updated_at").eq("id", r.id as number).maybeSingle();
           return NextResponse.json(
-            { error: "Match is stale. Please reload.", entity: "matches", id: r.id,
+            { error: await staleRowMessage(supabaseAdmin, { ...r, id: r.id as number }, cur ? "UPDATE" : "DELETE"),
+              entity: "matches", id: r.id,
               sent_updated_at: r.updated_at, db_updated_at: cur?.updated_at ?? null },
             { status: 409 }
           );
@@ -721,7 +748,8 @@ if (body.matches?.upsert?.length) {
         // (deleted in another session). Surfacing it beats silently dropping
         // the admin's edit and letting the client keep a phantom db_id.
         return NextResponse.json(
-          { error: "Match no longer exists. Please reload.", entity: "matches", id: r.id },
+          { error: await staleRowMessage(supabaseAdmin, { ...r, id: r.id as number }, "DELETE"),
+            entity: "matches", id: r.id },
           { status: 409 }
         );
       }
@@ -787,7 +815,7 @@ if (body.matches?.upsert?.length) {
         .from("matches")
         .insert(dedupedKO)
         .select();
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbFail(error, await loadNewMatchesContext(supabaseAdmin, dedupedKO));
       created.push(...(data ?? []));
     }
   }
@@ -830,7 +858,7 @@ if (body.matches?.upsert?.length) {
         .from("matches")
         .insert(deduped)
         .select();
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return dbFail(error, await loadNewMatchesContext(supabaseAdmin, deduped));
       created.push(...(data ?? []));
     }
   }
@@ -927,7 +955,7 @@ if (body.matches?.upsert?.length) {
         const { error } = await supabaseAdmin
           .from("matches")
           .upsert(pointerPatches, { onConflict: "id" });
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return dbFail(error);
       }
 
       const { data: resolvedMatches, error: resolvedFetchErr } = await supabaseAdmin
