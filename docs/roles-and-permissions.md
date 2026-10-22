@@ -23,7 +23,7 @@ reads.
 
 | Request | Rule |
 |---|---|
-| `/dashboard/*` | must be logged in. `editor` may open only `/dashboard`, `/dashboard/articles*`, `/dashboard/announcements*`, `/dashboard/players*`, `/dashboard/teams*` (the list lives in `lib/dashboardAccess.ts`, shared with the sidebar and the home cards); anything else → `/403`. `admin` (or `ADMIN_EMAIL`) opens everything. |
+| `/dashboard/*` | must be logged in. `editor` may open only `/dashboard`, `/dashboard/articles*`, `/dashboard/announcements*`, `/dashboard/players*`, `/dashboard/teams*`, `/dashboard/match-notes*` (the list lives in `lib/dashboardAccess.ts`, shared with the sidebar and the home cards); anything else → `/403`. `admin` (or `ADMIN_EMAIL`) opens everything. |
 | `/api/*` POST/PUT/PATCH/DELETE (except `/api/auth/*`, `/api/public/*`) | must be logged in (**any** account). The role check is the handler's job. |
 | Server Actions (a POST to a page URL) | **not gated here**; each action checks itself. |
 | `/preview/*` | **not gated at all** — see finding 3. |

@@ -12,7 +12,7 @@ import {
 } from '@/app/lib/revalidatePublicPages';
 import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
-import { canEditContent, isAdmin } from '@/app/lib/supabase/apiAuth';
+import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import { progressAfterMatch } from '@/app/dashboard/tournaments/TournamentCURD/progression';
 import {
   syncPlayerStatisticsForPlayers,
@@ -219,10 +219,10 @@ export async function saveAllStatsAction(formData: FormData) {
       .eq('id', match_id);
   }
 
-  /** Match-level: private referee note (admins only; see
-   *  migrations/add-match-referee-notes.sql). The field is rendered for admins
-   *  only, so editors' saves never carry it and never touch the note. */
-  if (formData.has('referee_note') && isAdmin(user)) {
+  /** Match-level: internal referee note (admins + editors — every caller that
+   *  passed requireContentEditor; RLS agrees, see
+   *  migrations/editor-referee-notes-rls.sql). */
+  if (formData.has('referee_note')) {
     await saveRefereeNote(supabase, match_id, String(formData.get('referee_note') ?? ''));
   }
 
