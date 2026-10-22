@@ -175,6 +175,43 @@ function matchNaturalKey(r: {
 
 export async function POST(
   req: Request,
+  ctx: { params: Promise<Params> }
+) {
+  const sent = req.clone();
+  const res = await handleSaveAll(req, ctx);
+  // 401/403 never reached the data; everything else is a save that was
+  // refused or died part-way (earlier rows/phases may already be written).
+  if (res.status >= 400 && res.status !== 401 && res.status !== 403) {
+    await logSaveAllFailure(res, sent, (await ctx.params).id);
+  }
+  return res;
+}
+
+async function logSaveAllFailure(res: Response, sent: Request, id: string) {
+  const err = await res.clone().json().catch(() => ({}));
+  const body = (await sent.json().catch(() => null)) as SaveAllRequest | null;
+  const message = typeof err?.error === "string" ? err.error : `HTTP ${res.status}`;
+  await logAdminAction({
+    action: "tournament.save_all_failed",
+    table: "tournaments",
+    recordId: Number(id) || id,
+    summary: `Αποτυχία αποθήκευσης διοργάνωσης #${id}: ${message}`.slice(0, 500),
+    meta: {
+      status: res.status,
+      error: err,
+      phases: body
+        ? Object.keys(body).filter((k) => (body as any)[k] != null)
+        : null,
+      matches_upserted: body?.matches?.upsert?.length ?? 0,
+      matches_deleted: body?.matches?.deleteIds?.length ?? 0,
+      tournament_teams_upserted: body?.tournamentTeams?.upsert?.length ?? 0,
+      tournament_teams_deleted: body?.tournamentTeams?.deleteIds?.length ?? 0,
+    },
+  });
+}
+
+async function handleSaveAll(
+  req: Request,
   { params }: { params: Promise<Params> }
 ) {
   const { id } = await params;
@@ -660,7 +697,15 @@ if (body.matches?.upsert?.length) {
       if (r.updated_at) q = q.eq("updated_at", r.updated_at);
 
       const { data, error } = await q.select("*");
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      // Name the row: this loop is not transactional, so every row before it
+      // is already written and the admin needs to know which match to fix.
+      if (error) {
+        return NextResponse.json(
+          { error: `Αγώνας #${r.id}: ${error.message}`, entity: "matches", id: r.id,
+            code: error.code, details: error.details, hint: error.hint },
+          { status: 500 }
+        );
+      }
 
       if (!data || data.length === 0) {
         if (r.updated_at) {
