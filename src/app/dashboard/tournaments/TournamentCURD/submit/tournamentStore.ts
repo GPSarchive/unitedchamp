@@ -1456,7 +1456,9 @@ export const useTournamentStore = create<TournamentState>((set, get) => ({
   
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Save failed (${res.status})`);
+        let msg = txt;
+        try { msg = JSON.parse(txt)?.error || txt; } catch { /* not JSON */ }
+        throw new Error(msg || `Save failed (${res.status})`);
       }
   
       return (await res.json()) as {
