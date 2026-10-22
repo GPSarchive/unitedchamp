@@ -179,6 +179,45 @@ describe("describeDbError — unmapped rules still name the row and quote the ra
   });
 });
 
+describe("describeDbError — rules the live catalog flagged on 2026-10-22", () => {
+  it("names the missing season", () => {
+    const d = describeDbError({
+      code: "23503",
+      message: 'insert or update on table "tournaments" violates foreign key constraint "tournaments_season_fkey"',
+      details: 'Key (season)=(2027-2028) is not present in table "seasons".',
+    });
+    expect(d.status).toBe(400);
+    expect(d.message).toBe(
+      "Διοργάνωση: Η σεζόν «2027-2028» δεν υπάρχει. Δημιουργήστε πρώτα τη σεζόν ή επιλέξτε υπάρχουσα.",
+    );
+  });
+
+  it("names the taken group slot, 1-based", () => {
+    const d = describeDbError(
+      {
+        code: "23505",
+        message:
+          'duplicate key value violates unique constraint "intake_mappings_target_stage_id_group_idx_slot_idx_key"',
+        details: "Key (target_stage_id, group_idx, slot_idx)=(92, 0, 2) already exists.",
+      },
+      { entity: "intake_mappings" },
+    );
+    expect(d.message).toBe(
+      "Αντιστοιχίσεις πρόκρισης: Η θέση ομίλου (όμιλος 1, θέση 3) έχει ήδη πηγή πρόκρισης. Κάθε θέση δέχεται μία πηγή.",
+    );
+  });
+
+  it("explains an invalid stage kind", () => {
+    const d = describeDbError({
+      code: "23514",
+      message: 'new row for relation "tournament_stages" violates check constraint "tournament_stages_kind_check"',
+    });
+    expect(d.message).toBe(
+      "Φάσεις: Μη έγκυρος τύπος φάσης — επιτρέπονται μόνο: πρωτάθλημα (league), όμιλοι (groups), νοκ-άουτ (knockout).",
+    );
+  });
+});
+
 describe("catalog contract", () => {
   it("rule names are unique and exported for the catalog check", () => {
     expect(new Set(KNOWN_RULE_NAMES).size).toBe(RULES.length);
@@ -188,6 +227,7 @@ describe("catalog contract", () => {
   it("ignored patterns cover primary keys and bookkeeping triggers only", () => {
     const ignored = (n: string) => IGNORED_RULE_PATTERNS.some((re) => re.test(n));
     expect(ignored("matches_pkey")).toBe(true);
+    expect(ignored("matches_id_key")).toBe(true);
     expect(ignored("audit_row_change")).toBe(true);
     expect(ignored("trigger_articles_updated_at")).toBe(true);
     expect(ignored("unique_league_match_idx")).toBe(false);

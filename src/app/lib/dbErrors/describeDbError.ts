@@ -231,7 +231,6 @@ export const RULES: Rule[] = [
   },
   // ---- matches: uniqueness ----------------------------------------------
   { name: "unique_league_match_idx", status: 409, text: leagueDuplicateText },
-  { name: "unique_league_match", status: 409, text: leagueDuplicateText },
   { name: "unique_ko_match", status: 409, text: koDuplicateText },
   // ---- matches: checks --------------------------------------------------
   {
@@ -243,7 +242,6 @@ export const RULES: Rule[] = [
   // ---- matches: foreign keys -------------------------------------------
   { name: "matches_team_a_id_fkey", text: teamGoneText },
   { name: "matches_team_b_id_fkey", text: teamGoneText },
-  { name: "matches_winner_team_id_fkey", text: teamGoneText },
   { name: "matches_tie_leg1_match_id_fkey", text: reloadText("Ο αγώνας του 1ου σκέλους") },
   { name: "matches_stage_id_fkey", text: reloadText("Η φάση του αγώνα") },
   { name: "matches_group_id_fkey", text: reloadText("Ο όμιλος του αγώνα") },
@@ -251,8 +249,6 @@ export const RULES: Rule[] = [
   { name: "matches_postponed_by_fkey", text: reloadText("Ο χρήστης που καταχώρησε την αναβολή") },
   // ---- tournament_teams -------------------------------------------------
   { name: "tournament_teams_tournament_id_team_id_stage_id_key", status: 409, text: teamAlreadyInTournamentText },
-  { name: "tournament_teams_tournament_id_team_id_key", status: 409, text: teamAlreadyInTournamentText },
-  { name: "tournament_teams_tournament_id_team_id_unique", status: 409, text: teamAlreadyInTournamentText },
   { name: "tournament_teams_team_id_fkey", text: teamGoneText },
   { name: "tournament_teams_tournament_id_fkey", text: reloadText("Η διοργάνωση") },
   { name: "tournament_teams_stage_id_fkey", text: reloadText("Η φάση") },
@@ -263,6 +259,60 @@ export const RULES: Rule[] = [
     status: 409,
     text: () =>
       "Η ίδια πηγή (γύρος/θέση/έκβαση) έχει ήδη αντιστοιχιστεί σε θέση ομίλου. Κάθε πηγή οδηγεί σε μία θέση.",
+  },
+  {
+    name: "intake_mappings_target_stage_id_group_idx_slot_idx_key",
+    status: 409,
+    text: (p) => {
+      const g = Number(p.key?.group_idx);
+      const s = Number(p.key?.slot_idx);
+      const where = Number.isFinite(g) && Number.isFinite(s) ? `(όμιλος ${g + 1}, θέση ${s + 1})` : "αυτή";
+      return `Η θέση ομίλου ${where} έχει ήδη πηγή πρόκρισης. Κάθε θέση δέχεται μία πηγή.`;
+    },
+  },
+  {
+    name: "intake_mappings_outcome_check",
+    text: () => "Μη έγκυρη έκβαση πρόκρισης — επιτρέπονται μόνο Νικητής (W) ή Ηττημένος (L).",
+  },
+  // ---- stage_slots --------------------------------------------------------
+  {
+    name: "stage_slots_source_check",
+    text: () => "Μη έγκυρη πηγή θέσης — επιτρέπονται μόνο «manual» (χειροκίνητη) ή «intake» (από πρόκριση).",
+  },
+  // ---- tournament_stages / tournament_groups -----------------------------
+  {
+    name: "tournament_stages_kind_check",
+    text: () =>
+      "Μη έγκυρος τύπος φάσης — επιτρέπονται μόνο: πρωτάθλημα (league), όμιλοι (groups), νοκ-άουτ (knockout).",
+  },
+  { name: "tournament_stages_tournament_id_fkey", text: reloadText("Η διοργάνωση της φάσης") },
+  { name: "tournament_groups_stage_id_fkey", text: reloadText("Η φάση του ομίλου") },
+  // ---- tournaments --------------------------------------------------------
+  {
+    name: "tournaments_season_fkey",
+    status: 400,
+    text: (p) =>
+      `Η σεζόν «${p.key?.season ?? "—"}» δεν υπάρχει. Δημιουργήστε πρώτα τη σεζόν ή επιλέξτε υπάρχουσα.`,
+  },
+  {
+    name: "tournaments_slug_key",
+    status: 409,
+    text: (p) =>
+      `Υπάρχει ήδη διοργάνωση με το ίδιο slug «${p.key?.slug ?? "—"}» — αλλάξτε τον τίτλο ή το slug.`,
+  },
+  {
+    name: "tournaments_format_check",
+    text: () => "Μη έγκυρη μορφή διοργάνωσης — επιτρέπονται μόνο: league, groups, knockout, mixed.",
+  },
+  {
+    name: "tournaments_status_check",
+    text: () =>
+      "Μη έγκυρη κατάσταση διοργάνωσης — επιτρέπονται μόνο: scheduled, running, completed, archived.",
+  },
+  {
+    name: "tournaments_winner_team_id_fkey",
+    text: (p, ctx) =>
+      `Η ομάδα-νικήτρια ${teamName(ctx, p.key?.winner_team_id)} δεν υπάρχει πια στη βάση. Επιλέξτε άλλη ή αφήστε το κενό.`,
   },
 ];
 
@@ -275,6 +325,7 @@ export const KNOWN_RULE_NAMES: readonly string[] = RULES.map((r) => r.name);
  */
 export const IGNORED_RULE_PATTERNS: readonly RegExp[] = [
   /_pkey$/,
+  /^matches_id_key$/, // UNIQUE(id) beside the pkey — ids come from the identity column
   /^audit_row_change$/,
   /updated_at/i,
   /_stamp$/,
