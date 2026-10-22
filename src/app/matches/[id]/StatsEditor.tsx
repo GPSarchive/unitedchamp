@@ -264,33 +264,39 @@ export default function StatsEditor({
                     const tag = jersey.tags[`${teamId}:${p.id}`] ?? "";
                     const clash = !!tag && (jerseyCounts.get(tag) ?? 0) > 1;
                     return (
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={3}
-                        value={tag}
-                        autoFocus={focusJerseyFor === p.id}
-                        onChange={(e) =>
-                          jersey.setTag(Number(teamId), p.id, e.target.value.replace(/\D/g, ""))
-                        }
+                      <label
+                        className="flex items-center gap-1.5 text-xs font-medium text-amber-800"
                         onClick={(e) => e.stopPropagation()}
-                        // Enter would submit the form, i.e. "Save all" (finishes the match).
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") e.preventDefault();
-                        }}
-                        placeholder="#"
-                        aria-label={`Νούμερο φανέλας ${p.first_name} ${p.last_name} (προσωρινό)`}
-                        title={
-                          clash
-                            ? "Το ίδιο νούμερο φανέλας σε δύο παίκτες αυτής της ομάδας"
-                            : "Νούμερο φανέλας — προσωρινό βοήθημα, μόνο σε αυτή τη συσκευή (δεν αποθηκεύεται)"
-                        }
-                        className={`w-12 rounded border border-dashed px-1.5 py-0.5 text-center text-sm font-bold focus:outline-none focus:ring-1 ${
-                          clash
-                            ? "border-red-500 bg-red-50 text-red-700 focus:ring-red-500"
-                            : "border-amber-400 bg-amber-50 text-amber-900 placeholder:text-amber-400 focus:ring-amber-500"
-                        }`}
-                      />
+                      >
+                        Νούμερο φανέλας:
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={tag}
+                          autoFocus={focusJerseyFor === p.id}
+                          onChange={(e) =>
+                            jersey.setTag(Number(teamId), p.id, e.target.value.replace(/\D/g, ""))
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          // Enter would submit the form, i.e. "Save all" (finishes the match).
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.preventDefault();
+                          }}
+                          placeholder="#"
+                          aria-label={`Νούμερο φανέλας ${p.first_name} ${p.last_name} (προσωρινό)`}
+                          title={
+                            clash
+                              ? "Το ίδιο νούμερο φανέλας σε δύο παίκτες αυτής της ομάδας"
+                              : "Νούμερο φανέλας — προσωρινό βοήθημα, μόνο σε αυτή τη συσκευή (δεν αποθηκεύεται)"
+                          }
+                          className={`w-12 rounded border border-dashed px-1.5 py-0.5 text-center text-sm font-bold focus:outline-none focus:ring-1 ${
+                            clash
+                              ? "border-red-500 bg-red-50 text-red-700 focus:ring-red-500"
+                              : "border-amber-400 bg-amber-50 text-amber-900 placeholder:text-amber-400 focus:ring-amber-500"
+                          }`}
+                        />
+                      </label>
                     );
                   })()}
 

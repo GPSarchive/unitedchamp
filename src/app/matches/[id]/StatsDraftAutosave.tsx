@@ -5,7 +5,9 @@
 //
 // "Save all" is not a temporary save: it finishes the match and runs
 // progression. So the in-progress inputs are kept in localStorage instead
-// (this browser/device only) and offered back on the next visit.
+// (this browser/device only) and applied automatically on the next visit.
+// Επαναφορά shows the DB values (draft kept until the next edit); Απόρριψη
+// deletes the draft.
 //
 // Capture reads the form's own FormData — the field names are the submit
 // contract, so this works across StatsEditor ×2, the awards provider and the
@@ -133,7 +135,7 @@ function countChanges(a: StatsDraft, b: StatsDraft): number {
 
 const DraftContext = React.createContext<StatsDraft | null>(null);
 
-/** The restored draft, or null when editing from the saved data. Read it only
+/** The applied draft, or null when editing from the saved data. Read it only
  *  in useState initialisers — applying a draft remounts the subtree. */
 export function useStatsDraft(): StatsDraft | null {
   return React.useContext(DraftContext);
@@ -152,17 +154,23 @@ export default function StatsDraftAutosave({
   const key = storageKey(matchId);
   const anchorRef = React.useRef<HTMLDivElement>(null);
   const baselineRef = React.useRef<StatsDraft | null>(null);
+  const saveNowRef = React.useRef<() => void>(() => {});
 
   const [applied, setApplied] = React.useState<StatsDraft | null>(null);
   const [generation, setGeneration] = React.useState(0);
-  // A stored draft waiting for Επαναφορά / Απόρριψη. Autosave is paused while
-  // set, so stray edits can't overwrite it before the admin decides.
-  const [pending, setPending] = React.useState<{ stored: StoredDraft; changes: number } | null>(null);
-  const pendingRef = React.useRef(pending);
-  pendingRef.current = pending;
+  // The editors show the DB values while a stored draft is kept aside (after
+  // Επαναφορά). The draft is only overwritten by a real edit.
+  const [viewingSaved, setViewingSaved] = React.useState(false);
+  const viewingSavedRef = React.useRef(viewingSaved);
+  viewingSavedRef.current = viewingSaved;
   const [lastSavedAt, setLastSavedAt] = React.useState<number | null>(null);
 
-  // On mount: record the server state, then decide what to do with any draft.
+  const showDraft = (draft: StatsDraft | null) => {
+    setApplied(draft);
+    setGeneration((g) => g + 1);
+  };
+
+  // On mount: record the server state, then apply any stored draft.
   React.useEffect(() => {
     const form = anchorRef.current?.closest("form");
     if (!form) return;
@@ -172,12 +180,11 @@ export default function StatsDraftAutosave({
     const stored = readStored(key);
     if (!stored) return;
     const submitted = stored.submittedAt != null && stored.savedAt <= stored.submittedAt;
-    const changes = countChanges(stored.draft, baseline);
-    if ((justSaved && submitted) || changes === 0) {
+    if ((justSaved && submitted) || countChanges(stored.draft, baseline) === 0) {
       writeStored(key, null);
       return;
     }
-    setPending({ stored, changes });
+    showDraft(stored.draft);
     setLastSavedAt(stored.savedAt);
     // Mount-only by design (justSaved deliberately omitted): the redirect after
     // "Save all" keeps this client tree mounted, which the effect below handles.
@@ -190,6 +197,7 @@ export default function StatsDraftAutosave({
     if (stored?.submittedAt != null && stored.savedAt <= stored.submittedAt) {
       writeStored(key, null);
       setLastSavedAt(null);
+      setViewingSaved(false);
     }
     const form = anchorRef.current?.closest("form");
     if (form) baselineRef.current = snapshotForm(form);
@@ -204,9 +212,11 @@ export default function StatsDraftAutosave({
     const save = (submittedAt?: number) => {
       if (timer) clearTimeout(timer);
       timer = undefined;
-      if (pendingRef.current || !baselineRef.current) return;
+      if (!baselineRef.current) return;
       const draft = snapshotForm(form);
       if (countChanges(draft, baselineRef.current) === 0) {
+        // Showing the DB values with a draft kept aside: no edit yet, keep it.
+        if (viewingSavedRef.current) return;
         writeStored(key, null);
         setLastSavedAt(null);
         return;
@@ -214,11 +224,17 @@ export default function StatsDraftAutosave({
       const savedAt = submittedAt ?? Date.now();
       writeStored(key, { v: 1, savedAt, submittedAt, draft });
       setLastSavedAt(savedAt);
+      setViewingSaved(false);
+    };
+    saveNowRef.current = () => {
+      if (timer) save();
     };
 
     // "click" covers the MVP/Best GK toggles, whose hidden inputs only update
-    // after React re-renders — the debounce lets that land first.
-    const onActivity = () => {
+    // after React re-renders — the debounce lets that land first. The draft
+    // bar's own buttons are not edits.
+    const onActivity = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.("[data-draft-bar]")) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(save, SAVE_DEBOUNCE_MS);
     };
@@ -245,68 +261,84 @@ export default function StatsDraftAutosave({
     };
   }, [key]);
 
-  const restore = () => {
-    if (!pending) return;
-    setApplied(pending.stored.draft);
-    setGeneration((g) => g + 1);
-    setPending(null);
+  /** Επαναφορά — show the DB values; the draft stays stored for later. */
+  const showSaved = () => {
+    saveNowRef.current(); // don't lose keystrokes still in the debounce
+    if (!readStored(key)) return;
+    setViewingSaved(true);
+    showDraft(null);
   };
 
-  const discardPending = () => {
-    writeStored(key, null);
-    setPending(null);
-    setLastSavedAt(null);
+  /** Εφαρμογή πρόχειρου — back from the DB view to the kept draft. */
+  const reapplyDraft = () => {
+    const stored = readStored(key);
+    setViewingSaved(false);
+    if (stored) showDraft(stored.draft);
   };
 
-  const discardChanges = () => {
-    if (!window.confirm("Απόρριψη όλων των μη αποθηκευμένων αλλαγών και επιστροφή στα αποθηκευμένα στοιχεία;")) return;
+  /** Απόρριψη — delete the draft for good and show the DB values. */
+  const wipeDraft = () => {
+    if (!window.confirm("Διαγραφή του πρόχειρου; Οι μη αποθηκευμένες αλλαγές χάνονται οριστικά.")) return;
     writeStored(key, null);
-    setApplied(null);
-    setGeneration((g) => g + 1);
     setLastSavedAt(null);
+    setViewingSaved(false);
+    showDraft(null);
   };
+
+  const savedAtLabel = lastSavedAt
+    ? formatInstant(new Date(lastSavedAt).toISOString(), { timeStyle: "medium" })
+    : "";
+  const barButton = "rounded border px-2.5 py-1 text-xs font-medium transition-colors";
 
   return (
     <div ref={anchorRef}>
-      {pending ? (
-        <div className="mb-4 rounded-lg border border-cyan-400/40 bg-cyan-500/10 p-4">
-          <p className="text-sm font-semibold text-cyan-100">
-            Βρέθηκε μη αποθηκευμένο πρόχειρο ({formatInstant(new Date(pending.stored.savedAt).toISOString())})
-          </p>
-          <p className="mt-1 text-xs text-cyan-100/80">
-            {pending.changes === 1 ? "1 αλλαγή" : `${pending.changes} αλλαγές`} σε σχέση με τα
-            αποθηκευμένα στοιχεία. Η αυτόματη αποθήκευση είναι σε παύση μέχρι να επιλέξεις.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+      {lastSavedAt ? (
+        <div
+          data-draft-bar
+          className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
+            viewingSaved ? "border-white/20 bg-white/5" : "border-cyan-400/40 bg-cyan-500/10"
+          }`}
+        >
+          <span className={`text-xs ${viewingSaved ? "text-white/70" : "text-cyan-100"}`}>
+            {viewingSaved ? (
+              <>
+                Εμφανίζονται τα <strong>αποθηκευμένα</strong> στοιχεία. Το πρόχειρο ({savedAtLabel})
+                κρατιέται μέχρι την επόμενη αλλαγή σου.
+              </>
+            ) : (
+              <>
+                <strong>Πρόχειρο</strong> σε αυτή τη συσκευή · {savedAtLabel}
+              </>
+            )}
+          </span>
+          <div className="flex gap-2">
+            {viewingSaved ? (
+              <button
+                type="button"
+                onClick={reapplyDraft}
+                className={`${barButton} border-cyan-500 bg-cyan-600 text-white hover:bg-cyan-500`}
+              >
+                Εφαρμογή πρόχειρου
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={showSaved}
+                title="Εμφάνιση των στοιχείων της βάσης — το πρόχειρο δεν διαγράφεται"
+                className={`${barButton} border-white/25 text-white/85 hover:bg-white/10`}
+              >
+                Επαναφορά
+              </button>
+            )}
             <button
               type="button"
-              onClick={restore}
-              className="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500"
-            >
-              Επαναφορά
-            </button>
-            <button
-              type="button"
-              onClick={discardPending}
-              className="rounded border border-white/25 px-3 py-1.5 text-sm text-white/80 hover:bg-white/10"
+              onClick={wipeDraft}
+              title="Οριστική διαγραφή του πρόχειρου"
+              className={`${barButton} border-red-400/40 text-red-200 hover:bg-red-500/15`}
             >
               Απόρριψη
             </button>
           </div>
-        </div>
-      ) : lastSavedAt ? (
-        <div className="mb-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-white/60">
-          <span>
-            Πρόχειρο σε αυτή τη συσκευή ·{" "}
-            {formatInstant(new Date(lastSavedAt).toISOString(), { timeStyle: "medium" })}
-          </span>
-          <button
-            type="button"
-            onClick={discardChanges}
-            className="text-white/70 underline-offset-2 hover:text-white hover:underline"
-          >
-            Απόρριψη αλλαγών
-          </button>
         </div>
       ) : null}
 
