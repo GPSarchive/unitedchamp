@@ -19,6 +19,8 @@ import { parseId, extractYouTubeId } from "./utils";
 import { saveAllStatsAction } from "./actions";
 import StatsEditor, { MatchAwardsProvider } from "./StatsEditor";
 import TwoLeggedPenaltyPanel from "./TwoLeggedPenaltyPanel";
+import StatsDraftAutosave from "./StatsDraftAutosave";
+import { JerseyTagsProvider } from "./JerseyTags";
 import MatchVideoAdminForm from "./MatchVideoAdminForm";
 import MatchAdminActions from "./MatchAdminActions";
 import { createSupabaseRSCClient } from "@/app/lib/supabase/supabaseServer";
@@ -43,7 +45,7 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ video?: string }>;
+  searchParams: Promise<{ video?: string; saved?: string }>;
 }) {
   const supabase = await createSupabaseRSCClient();
 
@@ -56,7 +58,7 @@ export default async function Page({
   const canSeeRefereeNote = hasAdminRole(user);
 
   const { id: idStr } = await params;
-  const { video } = await searchParams;
+  const { video, saved } = await searchParams;
   const id = parseId(idStr) as Id | null;
   if (!id) return notFound();
 
@@ -285,6 +287,12 @@ export default async function Page({
                 συμπλήρωσε στατιστικά. Πάτησε <strong>Save all</strong> για
                 αποθήκευση.
               </p>
+              <p className="-mt-3 mb-4 text-xs text-white/50">
+                Το <strong>Νούμερο φανέλας</strong> είναι προσωρινό βοήθημα για να
+                ξεχωρίζεις τους παίκτες — μένει μόνο σε αυτή τη συσκευή και δεν
+                αποθηκεύεται. Οι αλλαγές κρατιούνται αυτόματα ως πρόχειρο μέχρι το{" "}
+                <strong>Save all</strong>.
+              </p>
 
               <form id="stats-form" action={saveAllStatsAction}>
                 <input type="hidden" name="match_id" value={String(match.id)} />
@@ -303,48 +311,54 @@ export default async function Page({
                   </div>
                 )}
 
-                <MatchAwardsProvider
-                  initialMvpPlayerId={
-                    [...existingStats.values()].find((s) => s.mvp)?.player_id ?? null
-                  }
-                  initialBestGkPlayerId={
-                    [...existingStats.values()].find((s) => s.best_goalkeeper)?.player_id ?? null
-                  }
-                >
-                  <div className="grid grid-cols-1 gap-6">
-                    <StatsEditor
-                      teamId={match.team_a.id}
-                      teamName={match.team_a.name}
-                      associations={teamAPlayers}
-                      existing={existingStats}
-                      participants={participants}
-                      duplicatePlayerIds={duplicatePlayerIds}
-                    />
-                    <StatsEditor
-                      teamId={match.team_b.id}
-                      teamName={match.team_b.name}
-                      associations={teamBPlayers}
-                      existing={existingStats}
-                      participants={participants}
-                      duplicatePlayerIds={duplicatePlayerIds}
-                    />
-                  </div>
-                </MatchAwardsProvider>
+                {/* Inputs autosave to localStorage until "Save all" (which
+                    finishes the match, so it can't double as a draft save). */}
+                <JerseyTagsProvider matchId={match.id}>
+                  <StatsDraftAutosave matchId={match.id} justSaved={saved === "1"}>
+                    <MatchAwardsProvider
+                      initialMvpPlayerId={
+                        [...existingStats.values()].find((s) => s.mvp)?.player_id ?? null
+                      }
+                      initialBestGkPlayerId={
+                        [...existingStats.values()].find((s) => s.best_goalkeeper)?.player_id ?? null
+                      }
+                    >
+                      <div className="grid grid-cols-1 gap-6">
+                        <StatsEditor
+                          teamId={match.team_a.id}
+                          teamName={match.team_a.name}
+                          associations={teamAPlayers}
+                          existing={existingStats}
+                          participants={participants}
+                          duplicatePlayerIds={duplicatePlayerIds}
+                        />
+                        <StatsEditor
+                          teamId={match.team_b.id}
+                          teamName={match.team_b.name}
+                          associations={teamBPlayers}
+                          existing={existingStats}
+                          participants={participants}
+                          duplicatePlayerIds={duplicatePlayerIds}
+                        />
+                      </div>
+                    </MatchAwardsProvider>
 
-                {(isLeg2Decider || isSingleLegKo) && (
-                  <TwoLeggedPenaltyPanel
-                    mode={isLeg2Decider ? "decider" : "single"}
-                    teamAId={match.team_a.id}
-                    teamBId={match.team_b.id}
-                    teamAName={match.team_a.name}
-                    teamBName={match.team_b.name}
-                    leg1AScore={leg1AScore}
-                    leg1BScore={leg1BScore}
-                    leg1Ready={leg1Ready}
-                    savedPenaltyA={match.penalty_a ?? null}
-                    savedPenaltyB={match.penalty_b ?? null}
-                  />
-                )}
+                    {(isLeg2Decider || isSingleLegKo) && (
+                      <TwoLeggedPenaltyPanel
+                        mode={isLeg2Decider ? "decider" : "single"}
+                        teamAId={match.team_a.id}
+                        teamBId={match.team_b.id}
+                        teamAName={match.team_a.name}
+                        teamBName={match.team_b.name}
+                        leg1AScore={leg1AScore}
+                        leg1BScore={leg1BScore}
+                        leg1Ready={leg1Ready}
+                        savedPenaltyA={match.penalty_a ?? null}
+                        savedPenaltyB={match.penalty_b ?? null}
+                      />
+                    )}
+                  </StatsDraftAutosave>
+                </JerseyTagsProvider>
 
                 {canSeeRefereeNote && refereeNote !== null && (
                   <RefereeNoteField initialNote={refereeNote} />

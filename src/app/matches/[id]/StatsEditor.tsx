@@ -5,6 +5,8 @@ import AddPlayerToTeamLauncher from "./AddPlayerToTeamLauncher";
 import type { Id, PlayerAssociation } from "@/app/lib/types";
 import type { MatchPlayerStatRow, ParticipantRow } from "./queries";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useStatsDraft } from "./StatsDraftAutosave";
+import { useJerseyTags } from "./JerseyTags";
 
 // Define the type for the stats state
 interface PlayerStatsMap {
@@ -38,10 +40,13 @@ export function MatchAwardsProvider({
   initialBestGkPlayerId?: number | null;
   children: React.ReactNode;
 }) {
-  const [selected, setSelected] = React.useState<Record<AwardKey, number | null>>({
-    mvp: initialMvpPlayerId,
-    best_gk: initialBestGkPlayerId,
-  });
+  // A restored local draft (see StatsDraftAutosave) overrides the saved picks.
+  const draft = useStatsDraft();
+  const [selected, setSelected] = React.useState<Record<AwardKey, number | null>>(() =>
+    draft
+      ? { mvp: draft.mvp ? Number(draft.mvp) : null, best_gk: draft.best_gk ? Number(draft.best_gk) : null }
+      : { mvp: initialMvpPlayerId, best_gk: initialBestGkPlayerId }
+  );
 
   const toggle = React.useCallback((award: AwardKey, playerId: number) => {
     setSelected((prev) => ({
@@ -85,12 +90,32 @@ export default function StatsEditor({
   duplicatePlayerIds?: Set<number>;
   readOnly?: boolean;
 }) {
+  // A restored local draft (see StatsDraftAutosave) seeds the initial state in
+  // place of the saved rows; applying one remounts this editor.
+  const draft = useStatsDraft();
+  const draftFor = (playerId: number) => draft?.players[`${teamId}:${playerId}`];
+
   // Local "played" state per player
   const [playedMap, setPlayedMap] = React.useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {};
-    for (const a of associations) init[a.player.id] = participants.has(a.player.id);
+    for (const a of associations) {
+      init[a.player.id] = draftFor(a.player.id)?.played ?? participants.has(a.player.id);
+    }
     return init;
   });
+
+  // Temporary shirt numbers (device-only, never submitted — see JerseyTags).
+  // The input mounts when Συμμετοχή is ticked; focus it right then so the admin
+  // can type the number straight away.
+  const jersey = useJerseyTags();
+  const [focusJerseyFor, setFocusJerseyFor] = React.useState<number | null>(null);
+  const jerseyCounts = new Map<string, number>();
+  if (jersey) {
+    for (const a of associations) {
+      const n = jersey.tags[`${teamId}:${a.player.id}`];
+      if (n && playedMap[a.player.id]) jerseyCounts.set(n, (jerseyCounts.get(n) ?? 0) + 1);
+    }
+  }
 
   // Track which players are expanded
   const [expandedPlayers, setExpandedPlayers] = React.useState<Record<number, boolean>>({});
@@ -104,12 +129,16 @@ export default function StatsEditor({
   // non-empty string is truthy), which made the boxes untoggleable on iOS Safari.
   const [captainMap, setCaptainMap] = React.useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {};
-    for (const a of associations) init[a.player.id] = !!existing.get(a.player.id)?.is_captain;
+    for (const a of associations) {
+      init[a.player.id] = draftFor(a.player.id)?.captain ?? !!existing.get(a.player.id)?.is_captain;
+    }
     return init;
   });
   const [gkMap, setGkMap] = React.useState<Record<number, boolean>>(() => {
     const init: Record<number, boolean> = {};
-    for (const a of associations) init[a.player.id] = !!existing.get(a.player.id)?.gk;
+    for (const a of associations) {
+      init[a.player.id] = draftFor(a.player.id)?.gk ?? !!existing.get(a.player.id)?.gk;
+    }
     return init;
   });
 
@@ -118,7 +147,11 @@ export default function StatsEditor({
     const initStats: PlayerStatsMap = {};
     associations.forEach(assoc => {
       const stats = existing.get(assoc.player.id);
-      if (stats) {
+      const drafted = draftFor(assoc.player.id)?.stats;
+      if (drafted) {
+        // Same string-valued shape handleStatChange produces.
+        initStats[assoc.player.id] = { ...stats, ...drafted } as unknown as MatchPlayerStatRow;
+      } else if (stats) {
         initStats[assoc.player.id] = stats;
       }
     });
@@ -219,11 +252,53 @@ export default function StatsEditor({
                     onChange={(e) => {
                       e.stopPropagation();
                       setPlayed(p.id, e.currentTarget.checked);
+                      setFocusJerseyFor(e.currentTarget.checked ? p.id : null);
                     }}
                     className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                     disabled={readOnly}
                     onClick={(e) => e.stopPropagation()}
                   />
+
+                  {/* Temporary shirt number — no `name`, so never submitted */}
+                  {jersey && playedOn && !readOnly && (() => {
+                    const tag = jersey.tags[`${teamId}:${p.id}`] ?? "";
+                    const clash = !!tag && (jerseyCounts.get(tag) ?? 0) > 1;
+                    return (
+                      <label
+                        className="flex items-center gap-1.5 text-xs font-medium text-amber-800"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Νούμερο φανέλας:
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={tag}
+                          autoFocus={focusJerseyFor === p.id}
+                          onChange={(e) =>
+                            jersey.setTag(Number(teamId), p.id, e.target.value.replace(/\D/g, ""))
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          // Enter would submit the form, i.e. "Save all" (finishes the match).
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.preventDefault();
+                          }}
+                          placeholder="#"
+                          aria-label={`Νούμερο φανέλας ${p.first_name} ${p.last_name} (προσωρινό)`}
+                          title={
+                            clash
+                              ? "Το ίδιο νούμερο φανέλας σε δύο παίκτες αυτής της ομάδας"
+                              : "Νούμερο φανέλας — προσωρινό βοήθημα, μόνο σε αυτή τη συσκευή (δεν αποθηκεύεται)"
+                          }
+                          className={`w-12 rounded border border-dashed px-1.5 py-0.5 text-center text-sm font-bold focus:outline-none focus:ring-1 ${
+                            clash
+                              ? "border-red-500 bg-red-50 text-red-700 focus:ring-red-500"
+                              : "border-amber-400 bg-amber-50 text-amber-900 placeholder:text-amber-400 focus:ring-amber-500"
+                          }`}
+                        />
+                      </label>
+                    );
+                  })()}
 
                   {/* Player name */}
                   <div className="font-medium text-gray-900">
