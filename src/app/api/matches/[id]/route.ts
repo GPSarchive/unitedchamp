@@ -10,6 +10,8 @@ import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 import { refreshStatsForPlayersInTournament } from "@/app/lib/refreshPlayerStats";
 import { assertTeamsInSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { describeDbError } from "@/app/lib/dbErrors/describeDbError";
+import { loadMatchWriteContext } from "@/app/lib/dbErrors/matchContext";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -119,28 +121,8 @@ function detailedMsg(base: string, err?: any) {
   return parts.filter(Boolean).join(" — ");
 }
 
-function mapDbError(err: any): { status: number; msg: string } {
-  const code = String(err?.code ?? "");
-  switch (code) {
-    case "42501": // RLS / insufficient_privilege
-      return { status: 403, msg: detailedMsg("Operation not allowed by row-level security.", err) };
-    case "23503": // foreign key
-      return { status: 409, msg: detailedMsg("Related record does not exist (foreign key violation).", err) };
-    case "23505": // unique
-      return { status: 409, msg: detailedMsg("Duplicate violates a unique constraint.", err) };
-    case "23502": // not null
-      return { status: 400, msg: detailedMsg("Missing required field (NOT NULL constraint).", err) };
-    case "23514": // check constraint
-      return { status: 400, msg: detailedMsg("A database check constraint was violated.", err) };
-    case "22P02": // invalid text representation (bad UUID/int, etc.)
-      return { status: 400, msg: detailedMsg("Invalid input format for one of the fields.", err) };
-    default:
-      if (code.startsWith("PGRST")) {
-        return { status: 400, msg: detailedMsg("Request rejected by API constraints.", err) };
-      }
-      return { status: 400, msg: detailedMsg("Operation failed.", err) };
-  }
-}
+// Database rejections are worded by lib/dbErrors/describeDbError (Greek, names
+// the match and the rule) — see the update handler below.
 
 function jsonError(status: number, msg: string, err?: any) {
   const full = detailedMsg(msg, err);
@@ -541,8 +523,18 @@ export async function PATCH(
 
     if (error) {
       console.error("PATCH /matches update failed", error);
-      const mapped = mapDbError(error);
-      return jsonError(mapped.status, mapped.msg, error);
+      // Greek, names the match and the rule (lib/dbErrors). supabaseAdmin so an
+      // archived team is still found and named.
+      const ctx = await loadMatchWriteContext(supabaseAdmin, {
+        id,
+        team_a_id: (update as any).team_a_id ?? current.team_a_id,
+        team_b_id: (update as any).team_b_id ?? current.team_b_id,
+      });
+      const d = describeDbError(error, ctx);
+      return NextResponse.json(
+        { error: d.message, rule: d.rule, raw: d.raw, ...devDiag(error) },
+        { status: d.status }
+      );
     }
     if (!data) return jsonError(404, "Not found");
 
@@ -705,8 +697,11 @@ export async function PATCH(
   
       if (error) {
         console.error("DELETE /matches delete failed", error);
-        const mapped = mapDbError(error);
-        return jsonError(mapped.status, mapped.msg, error);
+        const d = describeDbError(error, await loadMatchWriteContext(supabaseAdmin, { id }));
+        return NextResponse.json(
+          { error: d.message, rule: d.rule, raw: d.raw, ...devDiag(error) },
+          { status: d.status }
+        );
       }
       if (!data) return jsonError(404, "Not found");
 
