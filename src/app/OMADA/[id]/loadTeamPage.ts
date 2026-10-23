@@ -1,13 +1,17 @@
 // Data loader shared by the live team page (/OMADA/[id]) and the archived
 // one (/seasons/[season]/teams/[id]). Teams are per-season rows (contract D1),
 // so every query keyed by team id is already season-scoped: the roster, the
-// matches and the per-player stats below belong to that one season.
+// matches and the per-player stats below belong to that one season AND to
+// this team only (a player who moved teams mid-season shows on each team
+// page just what they did for that team). Nothing here reads the legacy
+// player_statistics table; age comes from player.birth_date.
 import "server-only";
 
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { getSeasonStandings } from "@/app/lib/refreshStandings";
 import { getSeasonByLabel } from "@/app/lib/seasons";
 import { rankVisible } from "@/app/geniki-katataxi/standingsShape";
+import { ageFromBirthDate } from "@/app/lib/playerAge";
 import {
   type Team,
   type PlayerAssociation,
@@ -41,6 +45,8 @@ export type TeamPageData = {
   wins: { id: number; name: string | null; season: string | null }[];
   playerAssociations: PlayerAssociation[];
   seasonStatsByPlayer: Record<number, SeasonStats>;
+  /** Whole years from player.birth_date, computed here so SSR and hydration agree. */
+  agesByPlayer: Record<number, number>;
   matches: Match[] | null;
   /**
    * The team's Γενική Κατάταξη position for its season, ranked with the same
@@ -78,8 +84,8 @@ export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> 
       .order("tournament_id", { ascending: false }),
     // Championships
     supabaseAdmin.from("tournaments").select("id, name, season").eq("winner_team_id", teamId),
-    // Players + latest stats snapshot (only `age` is rendered from it;
-    // season aggregates come from match_player_stats below)
+    // Players (identity only; season aggregates come from match_player_stats
+    // below, age from birth_date)
     supabaseAdmin
       .from("player_teams")
       .select(
@@ -93,18 +99,12 @@ export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> 
           height_cm,
           position,
           birth_date,
-          deleted_at,
-          player_statistics (
-            id,
-            age
-          )
+          deleted_at
         )
       `,
       )
       .eq("team_id", teamId)
-      .order("player_id", { ascending: true })
-      .order("id", { foreignTable: "player.player_statistics", ascending: false })
-      .limit(1, { foreignTable: "player.player_statistics" }),
+      .order("player_id", { ascending: true }),
     // Finished-match ids feeding the stats aggregation
     supabaseAdmin
       .from("matches")
@@ -148,7 +148,14 @@ export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> 
         (a) => !(a.player as any).deleted_at,
       );
 
-  // Aggregate player stats from match_player_stats for this team's finished matches
+  const agesByPlayer: Record<number, number> = {};
+  for (const a of playerAssociations) {
+    const age = ageFromBirthDate(a.player.birth_date);
+    if (age != null) agesByPlayer[a.player.id] = age;
+  }
+
+  // Aggregate player stats from match_player_stats for this team's finished
+  // matches, filtered to this team row: one season, one team.
   const matchIds = (teamMatches ?? []).map((m) => m.id);
   const seasonLabel = (team.season_label as string | null) ?? null;
   const [{ data: matchPlayerStats }, standingRows, seasonRow] = await Promise.all([
@@ -218,6 +225,7 @@ export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> 
       wins: winsList ?? [],
       playerAssociations,
       seasonStatsByPlayer,
+      agesByPlayer,
       matches: (matchesData as unknown as Match[] | null) ?? null,
       standing,
     },

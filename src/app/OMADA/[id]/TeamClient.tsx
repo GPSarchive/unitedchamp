@@ -96,6 +96,8 @@ type Props = {
   wins: TournamentWin[];
   playerAssociations: PlayerAssociation[];
   seasonStatsByPlayer: Record<number, SeasonStats>;
+  /** Age per player id, computed by the loader from birth_date. */
+  agesByPlayer?: Record<number, number>;
   matches: Match[] | null;
   /** The team's Γενική Κατάταξη line for its season (stored), if any. */
   standing?: { rank: number; points: number } | null;
@@ -1295,6 +1297,7 @@ const TeamClient: React.FC<Props> = ({
   wins,
   playerAssociations,
   seasonStatsByPlayer,
+  agesByPlayer = {},
   matches,
   standing = null,
   archiveSeason = null,
@@ -1310,7 +1313,6 @@ const TeamClient: React.FC<Props> = ({
   const rosterPlayers = useMemo<RosterPlayer[]>(() => {
     return playerAssociations.map((assoc) => {
       const p = assoc.player;
-      const stats = p.player_statistics?.[0] ?? null;
       const agg = seasonStatsByPlayer[p.id] ?? {
         matches: 0,
         goals: 0,
@@ -1330,13 +1332,13 @@ const TeamClient: React.FC<Props> = ({
         lastName,
         fullName,
         position: p.position,
-        age: (stats?.age as number | null) ?? null,
+        age: agesByPlayer[p.id] ?? null,
         heightCm: p.height_cm,
         photoUrl: resolvePlayerPhotoUrl(p.photo),
         stats: agg,
       };
     });
-  }, [playerAssociations, seasonStatsByPlayer]);
+  }, [playerAssociations, seasonStatsByPlayer, agesByPlayer]);
 
   const totals = {
     players: rosterPlayers.length,
