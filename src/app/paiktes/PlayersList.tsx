@@ -11,6 +11,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
+import { usePaiktesLayout } from "./paiktesLayout";
 import type { PlayerLite } from "./types";
 import { resolveStat } from "./types";
 
@@ -122,6 +123,7 @@ const PlayerRowItem = memo(function PlayerRowItem({
   onPlayerHover?: (id: number) => void;
 }) {
   const displayPhoto = useMemo(() => getDisplayPhoto(player), [player]);
+  const { compact } = usePaiktesLayout();
 
   const handleClick = useCallback(() => {
     onPlayerSelect(player.id);
@@ -142,7 +144,13 @@ const PlayerRowItem = memo(function PlayerRowItem({
     <div>
       {/* Alphabetical Divider */}
       {showLetter && (
-        <div className="border-y-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 md:px-6 py-2">
+        <div
+          className={
+            compact
+              ? "border-b border-[#F3EFE6]/15 bg-[#13131d] px-4 py-0.5 md:border-y-2 md:px-6 md:py-2"
+              : "border-y-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 md:px-6 py-2"
+          }
+        >
           <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
             <span className="h-[2px] w-6 bg-[#fb923c]" />
             {letter}
@@ -250,8 +258,15 @@ function StatCell({
 
 // Column header row — shared by both the plain and virtualized layouts.
 function ListHeader() {
+  // Below xl the document scrolls, so in the preview layout the header sticks
+  // under the fixed navbar (56px / 112px once scrolled) instead of behind it.
+  const { compact } = usePaiktesLayout();
   return (
-    <div className="sticky top-0 z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15">
+    <div
+      className={`sticky ${
+        compact ? "top-14 md:top-28 xl:top-0" : "top-0"
+      } z-20 bg-[#0a0a14]/95 backdrop-blur-sm border-b-2 border-[#F3EFE6]/15`}
+    >
       <div
         className={`${GRID_TEMPLATE_MOBILE} ${GRID_TEMPLATE_DESKTOP} ${GRID_GAPS} px-3 sm:px-4 md:px-6 py-2.5 font-mono text-[9px] md:text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/55`}
       >

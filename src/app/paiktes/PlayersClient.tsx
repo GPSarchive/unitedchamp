@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Fraunces,
   Archivo_Black,
@@ -245,6 +245,8 @@ export default function PlayersClient({
   const [detailOpen, setDetailOpen] = useState(false);
 
   const router = useRouter();
+  // "/paiktes", or the preview route that renders this page.
+  const pathname = usePathname() ?? "/paiktes";
   const sp = useSearchParams();
   const selectedSort = (sp?.get("sort") ?? "alpha").toLowerCase();
   const selectedTournamentId = sp?.get("tournament_id")
@@ -270,9 +272,9 @@ export default function PlayersClient({
         if (v === undefined || v === null || v === "") next.delete(k);
         else next.set(k, String(v));
       });
-      router.replace(`/paiktes?${next.toString()}`, { scroll: false });
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     },
-    [router, sp]
+    [router, sp, pathname]
   );
 
   const onSortChange = useCallback(
@@ -401,8 +403,8 @@ export default function PlayersClient({
     setQ("");
     setClientTopInput("");
     setIsLoading(true);
-    router.replace("/paiktes");
-  }, [router]);
+    router.replace(pathname);
+  }, [router, pathname]);
 
   const handlePlayerHover = useCallback(
     (id: number) => {
