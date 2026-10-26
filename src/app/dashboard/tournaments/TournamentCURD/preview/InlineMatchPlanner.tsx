@@ -891,7 +891,7 @@ export default function InlineMatchPlanner({
             </>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <span className="text-white/70 text-xs">Search match:</span>
           <input
             type="text"

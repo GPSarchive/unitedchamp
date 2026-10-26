@@ -262,7 +262,7 @@ function LoginContent() {
         .foot a { color: #93c5fd; }
 
         @media (max-width: 480px) {
-          .card { margin: 10vh 16px 2rem; padding: 18px; }
+          .card { width: calc(100% - 32px); margin: 10vh 16px 2rem; padding: 18px; }
         }
       `}</style>
     </div>
