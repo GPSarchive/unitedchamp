@@ -8,6 +8,7 @@ import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD
 import { generateDraftMatches } from "../util/Generators";
 import { inferRepeats, planLateTeamFixtures } from "../util/functions/lateTeamFixtures";
 import MatchControlPanel from "./MatchControlPanel";
+import { useEditorLayout, useIsPhone } from "../editorLayout";
 
 /* ---------------- helpers ---------------- */
 function rrPairKey(a?: number | null, b?: number | null) {
@@ -390,6 +391,10 @@ export default function InlineMatchPlanner({
   const [teamQuery1, setTeamQuery1] = useState("");
   const [teamQuery2, setTeamQuery2] = useState("");
   const [editingMatch, setEditingMatch] = useState<DraftMatch | null>(null);
+  // Preview-only phone layout: flat section and match cards instead of the table.
+  const { compact } = useEditorLayout();
+  const isPhone = useIsPhone();
+  const phoneCards = compact && isPhone;
   // When adding a match from the "All groups" view of a groups stage, we prompt
   // the admin to pick which group the new match belongs to (avoids orphaning).
   const [pendingAddGroup, setPendingAddGroup] = useState(false);
@@ -844,6 +849,137 @@ export default function InlineMatchPlanner({
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
+  /* ---- phone cards (preview layout) ---- */
+  const statusLabel = (st: string) =>
+    st === "finished" ? "ολοκληρώθηκε" : st === "scheduled" ? "προγραμματισμένος" : st;
+
+  const cardTeamSelect = (m: DraftMatch, side: "a" | "b") => {
+    const id = side === "a" ? m.team_a_id : m.team_b_id;
+    const { logo } = nameOf(id ?? null);
+    return (
+      <div className="flex min-w-0 items-center gap-2">
+        {logo ? (
+          <img src={logo} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+        ) : (
+          <div className="h-7 w-7 shrink-0 rounded-full bg-zinc-700" />
+        )}
+        <select
+          aria-label={side === "a" ? "Ομάδα Α" : "Ομάδα Β"}
+          className="min-w-0 flex-1 rounded border border-white/15 bg-slate-950 px-2 py-1.5 text-sm text-white"
+          value={id ?? ""}
+          onChange={(e) => {
+            const v = e.target.value ? Number(e.target.value) : null;
+            applyPatch(m, side === "a" ? { team_a_id: v } : { team_b_id: v });
+          }}
+        >
+          <option value="">{side === "a" ? "— Ομάδα Α —" : "— Ομάδα Β —"}</option>
+          {teamOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
+  const matchCard = (m: DraftMatch, i: number) => {
+    const isEditing = editingMatch && editingMatch.uid != null && editingMatch.uid === m.uid;
+    const a = ((m as any).team_a_score ?? null) as number | null;
+    const b = ((m as any).team_b_score ?? null) as number | null;
+    const st = ((m as any).status ?? "scheduled") as string;
+    return (
+      <li key={reactKey(m, i)} className="rounded-lg border border-white/10 bg-zinc-950/60">
+        <div className="space-y-2 p-3">
+          {isKO && (
+            <div className="flex items-center gap-3 text-xs text-white/70">
+              <label className="flex items-center gap-1.5">
+                Γύρος
+                <input
+                  type="number"
+                  min={1}
+                  className="w-14 rounded border border-white/15 bg-slate-950 px-2 py-1 text-sm text-white"
+                  value={m.round ?? 1}
+                  onChange={(e) => {
+                    if (e.target.value === "") return;
+                    applyPatch(m, { round: Math.max(1, Number(e.target.value) || 1), matchday: null });
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-1.5">
+                Θέση
+                <input
+                  type="number"
+                  min={1}
+                  className="w-14 rounded border border-white/15 bg-slate-950 px-2 py-1 text-sm text-white"
+                  value={m.bracket_pos ?? 1}
+                  onChange={(e) => {
+                    if (e.target.value === "") return;
+                    applyPatch(m, { bracket_pos: Math.max(1, Number(e.target.value) || 1) });
+                  }}
+                />
+              </label>
+            </div>
+          )}
+          {cardTeamSelect(m, "a")}
+          {cardTeamSelect(m, "b")}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-white">
+              {a != null || b != null ? `${a ?? 0} – ${b ?? 0}` : <span className="text-white/50">—</span>}
+            </span>
+            <span
+              className={[
+                "inline-flex items-center rounded px-2 py-0.5 text-xs",
+                st === "finished"
+                  ? "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-500/30"
+                  : "bg-zinc-500/10 text-zinc-300 ring-1 ring-white/10",
+              ].join(" ")}
+            >
+              {statusLabel(st)}
+            </span>
+            <input
+              type="datetime-local"
+              aria-label="Ημερομηνία (UTC)"
+              className="min-w-0 flex-1 basis-40 rounded border border-white/15 bg-slate-950 px-2 py-1.5 text-sm text-white"
+              value={isoToLocalInput(m.match_date as string | null)}
+              onChange={(e) => applyPatch(m, { match_date: localInputToISO(e.target.value) })}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              className={`min-h-[40px] flex-1 rounded border text-xs ${
+                isEditing
+                  ? "border-blue-400/50 bg-blue-500/20 text-blue-200"
+                  : "border-blue-400/30 text-blue-200 hover:bg-blue-500/10"
+              }`}
+              onClick={() => setEditingMatch(isEditing ? null : m)}
+            >
+              {isEditing ? "Κλείσιμο" : "Επεξεργασία"}
+            </button>
+            <button
+              className="min-h-[40px] flex-1 rounded border border-white/15 text-xs hover:bg-white/10"
+              onClick={() => applyPatch(m, { team_a_id: m.team_b_id ?? null, team_b_id: m.team_a_id ?? null })}
+              title="Αντιστροφή ομάδων"
+            >
+              Αντιστροφή
+            </button>
+            <button
+              className="min-h-[40px] flex-1 rounded border border-rose-400/30 text-xs text-rose-200 hover:bg-rose-500/10"
+              onClick={() => removeRow(m)}
+            >
+              Διαγραφή
+            </button>
+          </div>
+        </div>
+        {isEditing && (
+          <div className="border-t-2 border-blue-400/30">
+            <MatchControlPanel match={m} teams={teams} onClose={() => setEditingMatch(null)} />
+          </div>
+        )}
+      </li>
+    );
+  };
+
   const debugLine = `stageIdx=${effectiveStageIdx} | kind=${kindFromStore} | rows=${allRowsForStage.length} | visible=${visible.length} | filtered=${filteredVisible.length}`;
 
   const sortedFilteredVisible = useMemo(() => {
@@ -861,8 +997,14 @@ export default function InlineMatchPlanner({
   }, [isKO, sortedFilteredVisible]);
 
   return (
-    <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
-      <div className="text-[11px] text-white/40">{debugLine}</div>
+    <section
+      className={
+        compact
+          ? "space-y-3 sm:rounded-lg sm:border sm:border-white/10 sm:bg-slate-950/50 sm:p-3"
+          : "rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3"
+      }
+    >
+      <div className={`text-[11px] text-white/40 ${compact ? "hidden sm:block" : ""}`}>{debugLine}</div>
 
       <header className="flex flex-wrap items-center gap-2">
         <div className="text-white/80 text-sm">
@@ -891,11 +1033,13 @@ export default function InlineMatchPlanner({
             </>
           )}
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="text-white/70 text-xs">Search match:</span>
+        <div className={`ml-auto flex flex-wrap items-center gap-2 ${compact ? "w-full sm:w-auto" : ""}`}>
+          <span className={`text-white/70 text-xs ${compact ? "hidden sm:inline" : ""}`}>Search match:</span>
           <input
             type="text"
-            className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
+            className={`px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs ${
+              compact ? "min-w-0 grow basis-[40%] sm:grow-0 sm:basis-auto sm:w-32" : "w-32"
+            }`}
             placeholder="Team A"
             value={teamQuery1}
             onChange={(e) => setTeamQuery1(e.target.value)}
@@ -903,7 +1047,9 @@ export default function InlineMatchPlanner({
           <span className="text-white/50 text-xs font-medium">vs</span>
           <input
             type="text"
-            className="px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs w-32"
+            className={`px-2 py-1.5 rounded border border-white/15 bg-slate-950 text-white text-xs ${
+              compact ? "min-w-0 grow basis-[40%] sm:grow-0 sm:basis-auto sm:w-32" : "w-32"
+            }`}
             placeholder="Team B"
             value={teamQuery2}
             onChange={(e) => setTeamQuery2(e.target.value)}
@@ -1289,6 +1435,36 @@ export default function InlineMatchPlanner({
             </span>
           )}
         </p>
+      ) : phoneCards ? (
+        isKO ? (
+          <ul className="space-y-2">{filteredVisible.map(matchCard)}</ul>
+        ) : (
+          <div className="space-y-4">
+            {Object.entries(matchdayGroups).map(([mdStr, ms]) => {
+              const md = Number(mdStr);
+              return (
+                <div key={`md-${md}`} className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    Αγωνιστική
+                    <input
+                      type="number"
+                      min={1}
+                      aria-label="Αγωνιστική"
+                      className="w-16 border-b border-white/50 bg-transparent text-center font-bold text-white focus:border-white focus:outline-none"
+                      value={md}
+                      onChange={(e) => {
+                        const newMd = Number(e.target.value) || md;
+                        ms.forEach((m) => applyPatch(m, { matchday: newMd }));
+                      }}
+                    />
+                    <span className="text-xs font-normal text-white/50">{ms.length} αγώνες</span>
+                  </div>
+                  <ul className="space-y-2">{ms.map(matchCard)}</ul>
+                </div>
+              );
+            })}
+          </div>
+        )
       ) : (
         <div className="overflow-auto rounded border border-white/10">
           <table className="min-w-full text-sm">

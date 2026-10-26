@@ -13,6 +13,7 @@ import StageStandingsMini from "./StageStandingsMini";
 import type { StageConfig } from "@/app/lib/types";
 import { computeGroupsSignature } from "@/app/dashboard/tournaments/TournamentCURD/util/groupsSignature";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { useEditorLayout } from "../editorLayout";
 
 // ----------------- Helpers -----------------
 const asCfg = (x: unknown): StageConfig => (x ?? {}) as StageConfig;
@@ -258,6 +259,7 @@ export default function StageCard({
   // ---- Per-stage team selection ----
   const stageTeamIds: number[] | undefined = (cfg as any).stage_team_ids;
   const hasStageFilter = Array.isArray(stageTeamIds) && stageTeamIds.length > 0;
+  const { compact } = useEditorLayout();
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [teamSearch, setTeamSearch] = useState("");
 
@@ -319,7 +321,11 @@ export default function StageCard({
   const srcStage = srcIdx != null ? (allStages[srcIdx] as any) : null;
 
   return (
-    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 sm:p-6 shadow-xl space-y-5">
+    <div
+      className={`rounded-2xl border border-white/8 bg-[#0d0f14] ${
+        compact ? "p-3" : "p-5"
+      } sm:p-6 shadow-xl space-y-5`}
+    >
       {/* Actions */}
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-md">
@@ -441,7 +447,13 @@ export default function StageCard({
 
       {(isLeague || isGroups) && (
         
-        <div className="rounded-lg border border-white/8 bg-zinc-900/40 p-4 space-y-4 mt-2">
+        <div
+          className={
+            compact
+              ? "space-y-4 mt-2 sm:rounded-lg sm:border sm:border-white/8 sm:bg-zinc-900/40 sm:p-4"
+              : "rounded-lg border border-white/8 bg-zinc-900/40 p-4 space-y-4 mt-2"
+          }
+        >
 
 
 
@@ -556,7 +568,13 @@ export default function StageCard({
       </div>
 
       {/* Inline match planner */}
-      <div className="rounded-xl border border-white/8 bg-zinc-950/80 p-4">
+      <div
+        className={
+          compact
+            ? "sm:rounded-xl sm:border sm:border-white/8 sm:bg-zinc-950/80 sm:p-4"
+            : "rounded-xl border border-white/8 bg-zinc-950/80 p-4"
+        }
+      >
         <InlineMatchPlanner
           miniPayload={miniPayload}
           teams={stageFilteredTeams}

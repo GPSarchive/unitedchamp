@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Save, X, AlertCircle, RotateCcw, Award } from "
 import { useTournamentStore } from "../submit/tournamentStore";
 import type { DraftMatch } from "../TournamentWizard";
 import type { TeamDraft } from "../TournamentWizard";
+import { useEditorLayout } from "../editorLayout";
 import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinAction } from "./actions";
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -84,6 +85,10 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
     const mergedMatch = useMemo(() => ({ ...match, ...overlay }), [match, overlay]);
   
     // Local form state - initialize from mergedMatch to include DB overlay data
+    // Preview-only phone layout: stack the two-column rows below sm.
+    const { compact } = useEditorLayout();
+    const twoCols = compact ? "grid grid-cols-1 sm:grid-cols-2" : "grid grid-cols-2";
+
     const [formData, setFormData] = useState({
       team_a_id: mergedMatch.team_a_id ?? null,
       team_b_id: mergedMatch.team_b_id ?? null,
@@ -741,7 +746,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                       onChange={(e) => {
                         setManualStatus(e.target.value as "scheduled" | "finished");
                       }}
-                      className="flex-1 rounded border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white"
+                      className={`flex-1 rounded border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white ${compact ? "min-w-0" : ""}`}
                       title="Επιλέξτε την κατάσταση του αγώνα"
                     >
                       <option value="scheduled" disabled>Προγραμματισμένο (μην επιλέξετε)</option>
@@ -760,7 +765,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`${twoCols} gap-4`}>
                 <div>
                   <label className="block text-sm text-white/70">Ημερομηνία Αγώνα (UTC)</label>
                   <input
@@ -788,7 +793,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
               {dbStatus !== 'finished' && (
                 <div className="border-t border-white/10 pt-3">
                   <label className="block text-sm text-white/70 mb-2">Γρήγορες Ενέργειες (Ήττα/Bye)</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={`${twoCols} gap-3`}>
                     <button
                       onClick={() => handleAwardForfeit('A')}
                       disabled={awarding || saving || reverting || !dbId}
