@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TeamDraft } from "../TournamentWizard";
+import { useEditorLayout } from "../editorLayout";
 
 // --- tiny helpers (local so we don't couple to Dashboard helpers) ---
 async function safeJson(res: Response) {
@@ -31,6 +32,7 @@ export default function TeamPicker({
   onChange: (next: TeamDraft[]) => void;
 }) {
   // ---- catalog state (auto-loaded) ----
+  const { compact } = useEditorLayout();
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,8 +187,8 @@ export default function TeamPicker({
 
   // ---- UI (aurora theme, consistent with your palette) ----
   return (
-    <div className="rounded-2xl border border-white/8 bg-[#0d0f14] p-5 space-y-5 shadow-xl">
-      <div className="flex items-center justify-between">
+    <div className={`rounded-2xl border border-white/8 bg-[#0d0f14] ${compact ? "p-3 sm:p-5" : "p-5"} space-y-5 shadow-xl`}>
+      <div className={`flex items-center justify-between ${compact ? "flex-wrap gap-2" : ""}`}>
         <h3 className="text-lg font-bold text-white tracking-tight">Teams</h3>
         <div className="flex items-center gap-2">
           <label className="inline-flex items-center gap-2 px-2 py-1 rounded-lg border border-zinc-700 bg-zinc-800/60 text-zinc-300 text-sm">

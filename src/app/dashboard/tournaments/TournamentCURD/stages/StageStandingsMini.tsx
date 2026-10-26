@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
+import { useEditorLayout } from "../editorLayout";
 import { applyPointAdjustmentAction } from "./actions";
 
 type Kind = "league" | "groups";
@@ -228,6 +229,10 @@ export default function StageStandingsMini({
     useTournamentStore((s: any) => (s.getTeamLogo as ((id: number) => string | null) | undefined)) ??
     (() => null);
 
+  // Preview-only phone layout: fewer columns below sm.
+  const { compact } = useEditorLayout();
+  const phoneHide = compact ? "hidden sm:table-cell" : "";
+
   // Modal state for point adjustments
   const [editingTeam, setEditingTeam] = React.useState<{
     teamId: number;
@@ -316,7 +321,7 @@ export default function StageStandingsMini({
     const logo = showLogos ? getTeamLogo?.(teamId) : null;
 
     return (
-      <div className="flex items-center gap-2">
+      <div className={`flex items-center gap-2 ${compact ? "max-w-[7.5rem] sm:max-w-none" : ""}`}>
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -325,7 +330,7 @@ export default function StageStandingsMini({
             className="h-5 w-5 rounded-sm object-cover border border-white/10"
           />
         ) : null}
-        <span className="truncate">{name}</span>
+        <span className="min-w-0 truncate" title={name}>{name}</span>
       </div>
     );
   };
@@ -347,17 +352,37 @@ export default function StageStandingsMini({
         <table className="min-w-full text-sm text-white/90">
           <thead className="text-white/70">
             <tr className="[&>th]:px-2 [&>th]:py-1 border-b border-white/10">
-              <th className="w-10 text-right">#</th>
+              <th className={`${compact ? "w-6" : "w-10"} sm:w-10 text-right`}>#</th>
               <th className="text-left">Ομάδα</th>
-              <th className="w-10 text-right" title="Αγώνες">Αγώνες</th>
-              <th className="w-10 text-right" title="Νίκες">Νίκες</th>
-              <th className="w-10 text-right" title="Ισοπαλίες">Ισοπαλίες</th>
-              <th className="w-10 text-right" title="Ήττες">Ήττες</th>
-              <th className="w-12 text-right" title="Γκολ Υπέρ">Γκολ Υπέρ</th>
-              <th className="w-12 text-right" title="Γκολ Κατά">Γκολ Κατά</th>
+              <th className="w-10 text-right" title="Αγώνες">
+                {compact ? (
+                  <>
+                    <span className="sm:hidden">Αγ</span>
+                    <span className="hidden sm:inline">Αγώνες</span>
+                  </>
+                ) : (
+                  "Αγώνες"
+                )}
+              </th>
+              <th className={`w-10 text-right ${phoneHide}`} title="Νίκες">Νίκες</th>
+              <th className={`w-10 text-right ${phoneHide}`} title="Ισοπαλίες">Ισοπαλίες</th>
+              <th className={`w-10 text-right ${phoneHide}`} title="Ήττες">Ήττες</th>
+              <th className={`w-12 text-right ${phoneHide}`} title="Γκολ Υπέρ">Γκολ Υπέρ</th>
+              <th className={`w-12 text-right ${phoneHide}`} title="Γκολ Κατά">Γκολ Κατά</th>
               <th className="w-12 text-right" title="Διαφορά τερμάτων">GD</th>
-              <th className="w-12 text-right" title="Βαθμοί">Βαθμοί</th>
-              <th className="w-20 text-center">Ενέργειες</th>
+              <th className="w-12 text-right" title="Βαθμοί">
+                {compact ? (
+                  <>
+                    <span className="sm:hidden">Β</span>
+                    <span className="hidden sm:inline">Βαθμοί</span>
+                  </>
+                ) : (
+                  "Βαθμοί"
+                )}
+              </th>
+              <th className={`${compact ? "w-8" : "w-20"} sm:w-20 text-center`}>
+                {compact ? <span className="hidden sm:inline">Ενέργειες</span> : "Ενέργειες"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -374,11 +399,11 @@ export default function StageStandingsMini({
                     <TeamCell teamId={r.team_id} />
                   </td>
                   <td className="text-right">{r.played}</td>
-                  <td className="text-right">{r.won}</td>
-                  <td className="text-right">{r.drawn}</td>
-                  <td className="text-right">{r.lost}</td>
-                  <td className="text-right">{r.gf}</td>
-                  <td className="text-right">{r.ga}</td>
+                  <td className={`text-right ${phoneHide}`}>{r.won}</td>
+                  <td className={`text-right ${phoneHide}`}>{r.drawn}</td>
+                  <td className={`text-right ${phoneHide}`}>{r.lost}</td>
+                  <td className={`text-right ${phoneHide}`}>{r.gf}</td>
+                  <td className={`text-right ${phoneHide}`}>{r.ga}</td>
                   <td className="text-right">{gd}</td>
                   <td className="text-right font-semibold">{r.points}</td>
                   <td className="text-center">
@@ -386,8 +411,16 @@ export default function StageStandingsMini({
                       onClick={() => handleEditClick(r)}
                       className="px-2 py-1 text-xs bg-blue-600/80 hover:bg-blue-600 text-white rounded transition-colors"
                       title="Επεξεργασία Βαθμών"
+                      aria-label="Επεξεργασία Βαθμών"
                     >
-                      Επεξ.
+                      {compact ? (
+                        <>
+                          <span className="sm:hidden">✎</span>
+                          <span className="hidden sm:inline">Επεξ.</span>
+                        </>
+                      ) : (
+                        "Επεξ."
+                      )}
                     </button>
                   </td>
                 </tr>
@@ -403,7 +436,7 @@ export default function StageStandingsMini({
     const rows = byGroup.get(0) ?? [];
     return (
       <>
-        <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-2">
+        <section className={`rounded-lg border border-white/10 bg-slate-950/50 ${compact ? "p-2" : "p-3"} sm:p-3 space-y-2`}>
           <header className="text-sm text-white/80 font-medium">Βαθμολογία (League)</header>
           <Table rows={rows} />
         </section>
@@ -453,7 +486,7 @@ export default function StageStandingsMini({
 
   return (
     <>
-      <section className="rounded-lg border border-white/10 bg-slate-950/50 p-3 space-y-3">
+      <section className={`rounded-lg border border-white/10 bg-slate-950/50 ${compact ? "p-2" : "p-3"} sm:p-3 space-y-3`}>
         <header className="text-sm text-white/80 font-medium">Βαθμολογίες Ομίλων</header>
         <div className="grid gap-3 md:grid-cols-2">
           {groupsForRender.map((g) => (
