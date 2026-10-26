@@ -15,6 +15,8 @@ import {
   matchSig,
   type FullTournamentSnapshot,
 } from "../tournamentStore";
+import { genRoundRobin } from "../../util/functions/roundRobin";
+import { planLateTeamFixtures } from "../../util/functions/lateTeamFixtures";
 
 const TOURNAMENT_ID = 1;
 const GROUPS_STAGE = 10;
@@ -258,6 +260,82 @@ describe("saveAll reconcile — sig-colliding creates get distinct db_ids", () =
 
     const overlay = state().dbOverlayByUid;
     expect(overlay[rows[0].uid!]?.db_id).not.toBe(overlay[rows[1].uid!]?.db_id);
+    expect(state().dirty.matches.size).toBe(0);
+  });
+});
+
+describe("late team fixtures — only the new team's matches reach the server", () => {
+  it("assigns the team to the group and sends its fixtures with the real group id", async () => {
+    // Group A: teams 1–5, a played single round-robin (5 matchdays, one team rests each).
+    const schedule = genRoundRobin({ stageIdx: 0, groupIdx: 0, teamIds: [1, 2, 3, 4, 5], repeats: 1 });
+    state().hydrateFromSnapshot(
+      makeSnapshot({
+        stages: [{ id: GROUPS_STAGE, tournament_id: TOURNAMENT_ID, name: "Groups", kind: "groups", ordering: 0 }],
+        teams: [1, 2, 3, 4, 5, 9].map((id) => ({ id, name: `T${id}` })),
+        tournamentTeams: [1, 2, 3, 4, 5].map((team_id, i) => ({
+          id: 500 + i, tournament_id: TOURNAMENT_ID, team_id, stage_id: GROUPS_STAGE, group_id: GROUP_A,
+        })),
+        matches: schedule.map((m, i) => ({
+          id: 3000 + i, stage_id: GROUPS_STAGE, group_id: GROUP_A, matchday: m.matchday,
+          team_a_id: m.team_a_id, team_b_id: m.team_b_id, status: "finished", updated_at: `u${i}`,
+        })),
+      })
+    );
+
+    // Late team 9 joins group A (picker, then the group board).
+    state().setTournamentTeamIdsFromPicker([1, 2, 3, 4, 5, 9]);
+    state().assignTeamToGroup(9, GROUPS_STAGE, GROUP_A);
+    expect(state().listGroupTeamIds(0, 0).sort()).toEqual([1, 2, 3, 4, 5, 9]);
+
+    const plan = planLateTeamFixtures({
+      rows: state().draftMatches.filter((m) => m.stageIdx === 0 && m.groupIdx === 0),
+      newTeamIds: [9],
+      teamIds: state().listGroupTeamIds(0, 0),
+      repeats: 1,
+    });
+    state().updateMatches(0, (rows) => [
+      ...rows,
+      ...plan.map((f) => ({
+        stageIdx: 0, groupIdx: 0, matchday: f.matchday, round: null, bracket_pos: null,
+        team_a_id: f.team_a_id, team_b_id: f.team_b_id, match_date: null, is_ko: false,
+      })),
+    ]);
+
+    let nextId = 4000;
+    const fetchMock = vi.fn(async (_url: string, init: any) => {
+      const body = JSON.parse(init.body);
+      const json = body.tournamentTeams
+        ? { tournamentTeams: body.tournamentTeams.upsert.map((r: any) => ({ id: r.id ?? nextId++, ...r })) }
+        : { matches: body.matches.upsert.map((r: any) => ({ ...r, id: r.id ?? nextId++, updated_at: "s" })) };
+      return { ok: true, status: 200, json: async () => json, text: async () => "" };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await state().saveAll();
+
+    const bodies = fetchMock.mock.calls.map((c: any) => JSON.parse(c[1].body));
+    const matchBody = bodies.find((b) => b.matches)!;
+    const created = matchBody.matches.upsert.filter((r: any) => r.id == null);
+    expect(created).toHaveLength(5);
+    for (const r of created) {
+      expect(r.stage_id).toBe(GROUPS_STAGE);
+      expect(r.group_id).toBe(GROUP_A); // never the null group that orphaned T35's teams
+      expect([r.team_a_id, r.team_b_id]).toContain(9);
+    }
+    // Existing fixtures are re-sent unchanged and nothing is deleted.
+    const existing = matchBody.matches.upsert.filter((r: any) => r.id != null);
+    expect(existing).toHaveLength(schedule.length);
+    for (const r of existing) {
+      const m = schedule[r.id - 3000];
+      expect([r.matchday, r.team_a_id, r.team_b_id]).toEqual([m.matchday, m.team_a_id, m.team_b_id]);
+    }
+    expect(matchBody.matches.deleteIds ?? []).toEqual([]);
+
+    // The group assignment travelled too.
+    const ttBody = bodies.find((b) => b.tournamentTeams)!;
+    expect(ttBody.tournamentTeams.upsert).toContainEqual(
+      expect.objectContaining({ team_id: 9, stage_id: GROUPS_STAGE, group_id: GROUP_A })
+    );
     expect(state().dirty.matches.size).toBe(0);
   });
 });

@@ -6,6 +6,7 @@ import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
+import { inferRepeats, planLateTeamFixtures } from "../util/functions/lateTeamFixtures";
 import MatchControlPanel from "./MatchControlPanel";
 
 /* ---------------- helpers ---------------- */
@@ -63,6 +64,7 @@ const selStageIdByIndex = (s: TournamentState) => s.ids?.stageIdByIndex ?? {};
 const selStageIndexById = (s: TournamentState) => s.ids?.stageIndexById ?? {};
 const selGroupIdByStage = (s: TournamentState) => s.ids?.groupIdByStage ?? {};
 const selGroupsById = (s: TournamentState) => s.entities?.groupsById ?? {};
+const selTeamsById = (s: TournamentState) => s.entities?.teamsById ?? {};
 const selUpdateMatches = (s: TournamentState) =>
   s.updateMatches as (
     stageIdx: number,
@@ -262,6 +264,7 @@ export default function InlineMatchPlanner({
   const stageIndexById = useTournamentStore(selStageIndexById);
   const groupIdByStage = useTournamentStore(selGroupIdByStage);
   const groupsById = useTournamentStore(selGroupsById);
+  const teamsById = useTournamentStore(selTeamsById);
   const updateMatches = useTournamentStore(selUpdateMatches);
   const listGroupTeamIds = useTournamentStore(selListGroupTeamIds);
   const getTeamName = useTournamentStore(selGetTeamName);
@@ -399,16 +402,28 @@ export default function InlineMatchPlanner({
     pos: 1,
     legs: 1,
   });
+  // "+ Team fixtures": a team that joined after the schedule was made gets
+  // only its own matches; regenerating the stage would reshuffle everyone.
+  const [lateAdd, setLateAdd] = useState<{
+    groupIdx: number | null;
+    teamIds: number[];
+    /** Opponents left out (archived teams by default). */
+    skipped: number[];
+    repeats: number;
+  } | null>(null);
 
-  // Dismiss the group picker on Escape (proper dialog behaviour).
+  // Dismiss the group picker / late-team dialog on Escape (proper dialog behaviour).
   useEffect(() => {
-    if (!pendingAddGroup) return;
+    if (!pendingAddGroup && !lateAdd) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPendingAddGroup(false);
+      if (e.key === "Escape") {
+        setPendingAddGroup(false);
+        setLateAdd(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pendingAddGroup]);
+  }, [pendingAddGroup, lateAdd]);
 
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
@@ -682,7 +697,92 @@ export default function InlineMatchPlanner({
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
+  /* ---- late team fixtures (league / groups) ---- */
+  const lateRowsFor = (g: number | null) =>
+    allRowsForStage.filter((r) => (g == null ? r.groupIdx == null : r.groupIdx === g));
+  const lateTeamPool = (g: number | null) =>
+    g == null ? miniPayload.tournament_team_ids ?? [] : listGroupTeamIds(effectiveStageIdx, g);
+  const isArchived = (id: number) => !!(teamsById as any)[id]?.deleted_at;
+
+  const openLateAdd = (g: number | null) => {
+    const rows = lateRowsFor(g);
+    const playing = new Set(rows.flatMap((r) => [r.team_a_id, r.team_b_id]));
+    const pool = lateTeamPool(g);
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    const cfg = (sid ? (stagesById as any)[sid]?.config : null) ?? {};
+    const cfgRepeats = Number(cfg.rounds_per_opponent) || (cfg.double_round ? 2 : 1);
+    setLateAdd({
+      groupIdx: g,
+      // Teams without a single fixture here are the likely late joiners.
+      teamIds: pool.filter((id) => !playing.has(id) && !isArchived(id)),
+      skipped: pool.filter(isArchived),
+      repeats: inferRepeats(rows) || cfgRepeats,
+    });
+  };
+
+  const startLateAdd = () => {
+    if (isGroups) openLateAdd(useAllGroups ? storeGroups[0]?.idx ?? 0 : groupIdx);
+    else openLateAdd(null);
+  };
+
+  const lateOpponents = lateAdd
+    ? lateTeamPool(lateAdd.groupIdx).filter((id) => !lateAdd.teamIds.includes(id))
+    : [];
+  const latePlan = lateAdd
+    ? planLateTeamFixtures({
+        rows: lateRowsFor(lateAdd.groupIdx),
+        newTeamIds: lateAdd.teamIds,
+        teamIds: [
+          ...lateAdd.teamIds,
+          ...lateOpponents.filter((id) => !lateAdd.skipped.includes(id)),
+        ],
+        repeats: lateAdd.repeats,
+      }).sort((a, b) => a.matchday - b.matchday)
+    : [];
+
+  const commitLateAdd = () => {
+    if (!lateAdd || latePlan.length === 0) return;
+    const g = lateAdd.groupIdx;
+    updateMatches(effectiveStageIdx, (rows) => [
+      ...rows,
+      ...latePlan.map((f) => ({
+        stageIdx: effectiveStageIdx,
+        groupIdx: g,
+        matchday: f.matchday,
+        round: null,
+        bracket_pos: null,
+        team_a_id: f.team_a_id,
+        team_b_id: f.team_b_id,
+        match_date: null,
+        is_ko: false,
+      })),
+    ]);
+    if (g != null) setGroupIdx(g);
+    setLateAdd(null);
+  };
+
+  const toggleIn = (list: number[], id: number) =>
+    list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+
   const regenerateStage = () => {
+    // A fresh schedule can't coexist with played matches: it either duplicates
+    // them or drops their results. Late teams go through "+ Team fixtures".
+    if (allRowsForStage.some((m) => (m as any).status === "finished")) {
+      alert(
+        "This stage already has finished matches, so it can't be regenerated. " +
+          "To add a team that joined late, use “+ Team fixtures”."
+      );
+      return;
+    }
+    if (
+      allRowsForStage.some((m) => (m as any).db_id != null) &&
+      !confirm(
+        `Replace this stage's ${allRowsForStage.length} fixtures with a fresh schedule? ` +
+          "Saved fixtures that don't fit the new schedule are deleted when you save."
+      )
+    )
+      return;
+
     const fresh = generateDraftMatches({
       payload: miniPayload,
       teams,
@@ -719,6 +819,11 @@ export default function InlineMatchPlanner({
         return mergedRow;
       })
       .sort((a, b) => (a.matchday ?? 0) - (b.matchday ?? 0));
+    // Rows the fresh schedule didn't carry over must be deleted, not just
+    // dropped from the editor — otherwise their DB copies survive the save
+    // next to the new schedule as duplicate fixtures.
+    const carried = new Set(merged.map((m) => m.uid).filter(Boolean));
+    allRowsForStage.filter((m) => !carried.has(m.uid)).forEach((m) => removeMatch(m));
     updateMatches(effectiveStageIdx, () => merged);
     // Re-wire KO source pointers so the bracket canvas (which draws edges/layout
     // from home/away_source_round+bracket_pos) reflects the regenerated tree.
@@ -796,6 +901,15 @@ export default function InlineMatchPlanner({
           >
             Regenerate stage
           </button>
+          {!isKO && (!isGroups || storeGroups.length > 0) && (
+            <button
+              className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs"
+              onClick={startLateAdd}
+              title="Create only a late-joining team's matches; existing matches stay as they are"
+            >
+              + Team fixtures
+            </button>
+          )}
           <button
             className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
             onClick={() => addRow()}
@@ -932,6 +1046,176 @@ export default function InlineMatchPlanner({
                 onClick={() => addKORow(koAdd)}
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Late team fixtures — same bottom-sheet/modal pattern. Only the chosen
+          team's matches are created, on existing matchdays; nothing else in
+          the stage changes. */}
+      {lateAdd && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Fixtures for a late team"
+        >
+          <button
+            type="button"
+            aria-label="Cancel"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setLateAdd(null)}
+          />
+          <div className="relative w-full max-h-[90vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-[30rem] sm:rounded-2xl sm:p-5 space-y-4">
+            <div>
+              <div className="text-sm font-medium text-white/90">Fixtures for a late team</div>
+              <p className="mt-1 text-xs text-white/50">
+                Creates only the selected team&apos;s matches against the rest of the{" "}
+                {isGroups ? "group" : "league"}, on existing matchdays. Existing matches are not
+                changed.
+              </p>
+            </div>
+
+            {isGroups && (
+              <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+                Group
+                <select
+                  className="w-40 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                  value={lateAdd.groupIdx ?? 0}
+                  onChange={(e) => openLateAdd(Number(e.target.value))}
+                >
+                  {storeGroups.map((g) => (
+                    <option key={g.idx} value={g.idx}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <fieldset className="space-y-1">
+              <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
+                Team(s) that joined
+              </legend>
+              <div className="max-h-40 overflow-y-auto rounded border border-white/10">
+                {lateTeamPool(lateAdd.groupIdx).map((id) => (
+                  <label
+                    key={id}
+                    className="flex min-h-[40px] items-center gap-2 px-3 text-sm text-white/85 hover:bg-white/5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={lateAdd.teamIds.includes(id)}
+                      onChange={() =>
+                        setLateAdd((s) => s && { ...s, teamIds: toggleIn(s.teamIds, id) })
+                      }
+                    />
+                    {nameOf(id).name}
+                    {isArchived(id) && <span className="text-xs text-amber-300/80">(archived)</span>}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-white/40">
+                Not listed? Add the team to the tournament
+                {isGroups ? " and assign it to this group" : " (and to this stage's teams)"} first.
+              </p>
+            </fieldset>
+
+            {lateAdd.teamIds.length > 0 && (
+              <fieldset className="space-y-1">
+                <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
+                  Opponents
+                </legend>
+                <div className="max-h-40 overflow-y-auto rounded border border-white/10">
+                  {lateOpponents.map((id) => (
+                    <label
+                      key={id}
+                      className="flex min-h-[40px] items-center gap-2 px-3 text-sm text-white/85 hover:bg-white/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!lateAdd.skipped.includes(id)}
+                        onChange={() =>
+                          setLateAdd((s) => s && { ...s, skipped: toggleIn(s.skipped, id) })
+                        }
+                      />
+                      {nameOf(id).name}
+                      {isArchived(id) && (
+                        <span className="text-xs text-amber-300/80">(archived)</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Matches against each opponent
+              <input
+                type="number"
+                min={1}
+                max={4}
+                className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={lateAdd.repeats}
+                onChange={(e) => {
+                  if (e.target.value === "") return;
+                  const repeats = Math.min(4, Math.max(1, Number(e.target.value) || 1));
+                  setLateAdd((s) => s && { ...s, repeats });
+                }}
+              />
+            </label>
+
+            {lateAdd.teamIds.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium uppercase tracking-wide text-white/50">
+                  {latePlan.length === 0
+                    ? "Nothing to add — these pairs already exist"
+                    : `${latePlan.length} new ${latePlan.length === 1 ? "match" : "matches"}`}
+                </div>
+                {latePlan.length > 0 && (
+                  <ul className="max-h-48 overflow-y-auto rounded border border-white/10 text-sm">
+                    {latePlan.map((f, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
+                      >
+                        <span className="w-14 shrink-0 text-xs text-white/50">MD {f.matchday}</span>
+                        <span className="text-white/85">
+                          {nameOf(f.team_a_id).name} – {nameOf(f.team_b_id).name}
+                        </span>
+                        {f.shared && (
+                          <span className="ml-auto shrink-0 text-xs text-amber-300/80">
+                            extra game
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {latePlan.some((f) => f.shared) && (
+                  <p className="text-xs text-amber-300/70">
+                    &ldquo;Extra game&rdquo;: one of the two teams already plays on that matchday —
+                    give the match its own date.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                className="min-h-[44px] rounded px-3 text-sm text-white/60 hover:bg-white/5"
+                onClick={() => setLateAdd(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="min-h-[44px] rounded border border-emerald-400/40 px-3 text-sm text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={latePlan.length === 0}
+                onClick={commitLateAdd}
+              >
+                Add {latePlan.length || ""} {latePlan.length === 1 ? "match" : "matches"}
               </button>
             </div>
           </div>

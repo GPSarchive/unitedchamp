@@ -139,11 +139,17 @@ export async function GET(
     if (r.team_id != null) teamIds.add(Number(r.team_id));
   });
 
-  let teams: Array<{ id: number; name: string; logo?: string | null; am?: string | null }> = [];
+  let teams: Array<{
+    id: number;
+    name: string;
+    logo?: string | null;
+    am?: string | null;
+    deleted_at?: string | null;
+  }> = [];
   if (teamIds.size > 0) {
     const { data: teamRows, error: tErr2 } = await supabaseAdmin
       .from("teams")
-      .select("id,name,logo,am")
+      .select("id,name,logo,am,deleted_at")
       .in("id", Array.from(teamIds));
 
     if (tErr2) {
@@ -154,6 +160,7 @@ export async function GET(
       name: String(r.name ?? `Team #${r.id}`),
       logo: r.logo ?? null,
       am: r.am ?? null,
+      deleted_at: r.deleted_at ?? null,
     }));
   }
 
