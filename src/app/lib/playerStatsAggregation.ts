@@ -1,8 +1,8 @@
 // Pure aggregation math for the player-stats pipeline.
 //
 // Shared by the incremental refreshers AND the full rebuild in
-// refreshPlayerStats.ts, so the two code paths cannot drift apart, and by the
-// fix-stats tool for the legacy player_statistics totals. No I/O here — this
+// refreshPlayerStats.ts (legacy player_statistics totals included), so the code
+// paths cannot drift apart. No I/O here — this
 // module is unit-tested in isolation (see __tests__/playerStatsAggregation.test.ts).
 //
 // Semantics encoded here (deliberate, see docs/reviews/06-stats-pipeline-findings.md):

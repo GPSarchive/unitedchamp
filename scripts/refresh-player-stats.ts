@@ -3,8 +3,8 @@
  *
  * Runs the REAL refreshAllPlayerStats() from src/app/lib/refreshPlayerStats.ts
  * (per-tournament + active-season rows; the career table is retired)
- * against the database in .env.local — the same code the
- * /dashboard/refresh-stats button executes. Non-destructive: upserts
+ * against the database in .env.local (the dashboard button that ran it is
+ * gone; this script is the rebuild path). Non-destructive: upserts
  * recomputed rows, then deletes only rows with no remaining source stats.
  *
  * Usage:  npx tsx scripts/refresh-player-stats.ts
