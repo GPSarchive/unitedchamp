@@ -3,21 +3,22 @@
  *
  * Only the late team's matches are created — every existing row stays as it
  * is. Each late team meets each opponent `repeats` times (pairs that already
- * exist count toward that), and every fixture lands on an EXISTING matchday:
- *  - Odd-sized group before the join: one team rests on each matchday, so the
- *    late team plays the resting team — the schedule fills with no clashes.
- *  - Even-sized group (or irregular schedules): no free slot exists, so the
- *    fixture goes where the fewest of the two teams' games already are; those
- *    come back flagged `shared` (a team plays twice that matchday) and the
- *    admin sets the real dates.
- * With repeats > 1 the n-th meeting prefers the n-th block of matchdays, so
- * return fixtures stay in the second half like the circle-method schedule.
+ * exist count toward that). Placement:
+ *  - A fixture may use an EXISTING matchday only if neither team plays on it
+ *    and the matchday hasn't been played yet (no finished match). In an
+ *    odd-sized group that is the resting team's slot.
+ *  - Everything else goes on NEW matchdays appended after the last one, never
+ *    with a team playing twice on the same matchday (owner's rule, 2026-10-26:
+ *    no extra games squeezed into existing matchdays).
+ * With repeats > 1 the n-th meeting prefers the n-th block of existing
+ * matchdays, and later meetings are appended after earlier ones.
  */
 
 type RowLike = {
   matchday?: number | null;
   team_a_id?: number | null;
   team_b_id?: number | null;
+  status?: string | null;
 };
 
 export type LateFixture = {
@@ -27,8 +28,8 @@ export type LateFixture = {
   /** The late team this fixture was created for. */
   newTeamId: number;
   opponentId: number;
-  /** One of the two teams already plays on this matchday. */
-  shared: boolean;
+  /** Placed on a new matchday after the existing schedule. */
+  appended: boolean;
 };
 
 const pairKey = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
@@ -64,23 +65,24 @@ export function planLateTeamFixtures(opts: {
     work.push({ matchday: r.matchday ?? null, a: r.team_a_id, b: r.team_b_id });
   }
 
-  let matchdays = Array.from(
+  const existing = Array.from(
     new Set(
       opts.rows
         .map((r) => r.matchday)
         .filter((md): md is number => typeof md === "number" && md > 0)
     )
   ).sort((a, b) => a - b);
-  if (matchdays.length === 0) {
-    // No schedule yet: one matchday per meeting of a full cycle.
-    const n = Math.max(1, (teamIds.length - 1) * repeats);
-    matchdays = Array.from({ length: n }, (_, i) => i + 1);
-  }
-  const blockSize = Math.ceil(matchdays.length / repeats);
-  const blockOf = (mdIndex: number) => Math.floor(mdIndex / blockSize) + 1;
+  const played = new Set(
+    opts.rows.filter((r) => r.status === "finished").map((r) => r.matchday)
+  );
+  const open = existing.filter((md) => !played.has(md));
+  const lastExisting = existing.length ? existing[existing.length - 1] : 0;
+  const appended: number[] = [];
 
-  const gamesOn = (team: number, md: number) =>
-    work.reduce((n, w) => n + (w.matchday === md && (w.a === team || w.b === team) ? 1 : 0), 0);
+  const blockSize = Math.max(1, Math.ceil(existing.length / repeats));
+  const blockOf = (md: number) => Math.floor(existing.indexOf(md) / blockSize) + 1;
+  const busy = (team: number, md: number) =>
+    work.some((w) => w.matchday === md && (w.a === team || w.b === team));
 
   const out: LateFixture[] = [];
 
@@ -95,16 +97,22 @@ export function planLateTeamFixtures(opts: {
         );
         if (meetings.length >= rep) return;
 
-        let best = matchdays[0];
-        let bestCost = Infinity;
-        matchdays.forEach((md, i) => {
-          const clash = gamesOn(t, md) + gamesOn(opp, md);
-          const cost = clash + (blockOf(i) === rep ? 0 : 100);
-          if (cost < bestCost) {
-            bestCost = cost;
-            best = md;
+        const free = (md: number) => !busy(t, md) && !busy(opp, md);
+        const slot =
+          open.find((md) => free(md) && blockOf(md) === rep) ?? open.find(free);
+        let md = slot;
+        if (md == null) {
+          // Later meetings go after the earlier ones on appended matchdays.
+          const after = Math.max(
+            0,
+            ...meetings.map((w) => w.matchday ?? 0).filter((x) => x > lastExisting)
+          );
+          md = appended.find((x) => x > after && free(x));
+          if (md == null) {
+            md = lastExisting + appended.length + 1;
+            appended.push(md);
           }
-        });
+        }
 
         // Balance home/away per pair; the first meeting alternates by opponent.
         const tHome = meetings.filter((w) => w.a === t).length;
@@ -112,15 +120,15 @@ export function planLateTeamFixtures(opts: {
         const home = tHome === tAway ? oppIdx % 2 === 0 : tHome < tAway;
 
         const fixture: LateFixture = {
-          matchday: best,
+          matchday: md,
           team_a_id: home ? t : opp,
           team_b_id: home ? opp : t,
           newTeamId: t,
           opponentId: opp,
-          shared: gamesOn(t, best) + gamesOn(opp, best) > 0,
+          appended: md > lastExisting,
         };
         out.push(fixture);
-        work.push({ matchday: best, a: fixture.team_a_id, b: fixture.team_b_id });
+        work.push({ matchday: md, a: fixture.team_a_id, b: fixture.team_b_id });
       });
     }
   }

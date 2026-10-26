@@ -739,6 +739,9 @@ export default function InlineMatchPlanner({
         repeats: lateAdd.repeats,
       }).sort((a, b) => a.matchday - b.matchday)
     : [];
+  const lateNewMatchdays = Array.from(
+    new Set(latePlan.filter((f) => f.appended).map((f) => f.matchday))
+  );
 
   const commitLateAdd = () => {
     if (!lateAdd || latePlan.length === 0) return;
@@ -1075,8 +1078,10 @@ export default function InlineMatchPlanner({
               </div>
               <p className="mt-1 text-xs text-white/50">
                 Δημιουργεί μόνο τους αγώνες της επιλεγμένης ομάδας με τις υπόλοιπες{" "}
-                {isGroups ? "του ομίλου" : "της λίγκας"}, σε υπάρχουσες αγωνιστικές. Οι
-                υπάρχοντες αγώνες δεν αλλάζουν.
+                {isGroups ? "του ομίλου" : "της λίγκας"}. Οι υπάρχοντες αγώνες δεν αλλάζουν.
+                Ένας αγώνας μπαίνει σε υπάρχουσα αγωνιστική μόνο αν δεν έχει παιχτεί και καμία
+                από τις δύο ομάδες δεν παίζει ήδη σε αυτήν· οι υπόλοιποι μπαίνουν σε νέες
+                αγωνιστικές στο τέλος.
               </p>
             </div>
 
@@ -1191,19 +1196,22 @@ export default function InlineMatchPlanner({
                         <span className="text-white/85">
                           {nameOf(f.team_a_id).name} – {nameOf(f.team_b_id).name}
                         </span>
-                        {f.shared && (
-                          <span className="ml-auto shrink-0 text-xs text-amber-300/80">
-                            επιπλέον αγώνας
+                        {f.appended && (
+                          <span className="ml-auto shrink-0 text-xs text-sky-300/80">
+                            νέα αγωνιστική
                           </span>
                         )}
                       </li>
                     ))}
                   </ul>
                 )}
-                {latePlan.some((f) => f.shared) && (
-                  <p className="text-xs text-amber-300/70">
-                    «Επιπλέον αγώνας»: μία από τις δύο ομάδες παίζει ήδη σε αυτή την αγωνιστική —
-                    ορίστε ξεχωριστή ημερομηνία για τον αγώνα.
+                {lateNewMatchdays.length > 0 && (
+                  <p className="text-xs text-sky-300/70">
+                    {lateNewMatchdays.length === 1
+                      ? `Προστίθεται 1 νέα αγωνιστική στο τέλος (Αγ. ${lateNewMatchdays[0]}).`
+                      : `Προστίθενται ${lateNewMatchdays.length} νέες αγωνιστικές στο τέλος (Αγ. ${
+                          lateNewMatchdays[0]
+                        }–${lateNewMatchdays[lateNewMatchdays.length - 1]}).`}
                   </p>
                 )}
               </div>
