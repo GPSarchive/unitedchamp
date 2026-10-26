@@ -6,6 +6,7 @@ import type { TeamDraft, DraftMatch } from "../TournamentWizard";
 import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
+import { inferRepeats, planLateTeamFixtures } from "../util/functions/lateTeamFixtures";
 import MatchControlPanel from "./MatchControlPanel";
 
 /* ---------------- helpers ---------------- */
@@ -63,6 +64,7 @@ const selStageIdByIndex = (s: TournamentState) => s.ids?.stageIdByIndex ?? {};
 const selStageIndexById = (s: TournamentState) => s.ids?.stageIndexById ?? {};
 const selGroupIdByStage = (s: TournamentState) => s.ids?.groupIdByStage ?? {};
 const selGroupsById = (s: TournamentState) => s.entities?.groupsById ?? {};
+const selTeamsById = (s: TournamentState) => s.entities?.teamsById ?? {};
 const selUpdateMatches = (s: TournamentState) =>
   s.updateMatches as (
     stageIdx: number,
@@ -262,6 +264,7 @@ export default function InlineMatchPlanner({
   const stageIndexById = useTournamentStore(selStageIndexById);
   const groupIdByStage = useTournamentStore(selGroupIdByStage);
   const groupsById = useTournamentStore(selGroupsById);
+  const teamsById = useTournamentStore(selTeamsById);
   const updateMatches = useTournamentStore(selUpdateMatches);
   const listGroupTeamIds = useTournamentStore(selListGroupTeamIds);
   const getTeamName = useTournamentStore(selGetTeamName);
@@ -399,16 +402,28 @@ export default function InlineMatchPlanner({
     pos: 1,
     legs: 1,
   });
+  // «+ Αγώνες ομάδας»: a team that joined after the schedule was made gets
+  // only its own matches; regenerating the stage would reshuffle everyone.
+  const [lateAdd, setLateAdd] = useState<{
+    groupIdx: number | null;
+    teamIds: number[];
+    /** Opponents left out (archived teams by default). */
+    skipped: number[];
+    repeats: number;
+  } | null>(null);
 
-  // Dismiss the group picker on Escape (proper dialog behaviour).
+  // Dismiss the group picker / late-team dialog on Escape (proper dialog behaviour).
   useEffect(() => {
-    if (!pendingAddGroup) return;
+    if (!pendingAddGroup && !lateAdd) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPendingAddGroup(false);
+      if (e.key === "Escape") {
+        setPendingAddGroup(false);
+        setLateAdd(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pendingAddGroup]);
+  }, [pendingAddGroup, lateAdd]);
 
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
@@ -682,7 +697,106 @@ export default function InlineMatchPlanner({
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
+  /* ---- late team fixtures (league / groups) ---- */
+  const lateRowsFor = (g: number | null) =>
+    allRowsForStage.filter((r) => (g == null ? r.groupIdx == null : r.groupIdx === g));
+  const lateTeamPool = (g: number | null) =>
+    g == null ? miniPayload.tournament_team_ids ?? [] : listGroupTeamIds(effectiveStageIdx, g);
+  const isArchived = (id: number) => !!(teamsById as any)[id]?.deleted_at;
+
+  const openLateAdd = (g: number | null) => {
+    const rows = lateRowsFor(g);
+    const playing = new Set(rows.flatMap((r) => [r.team_a_id, r.team_b_id]));
+    const pool = lateTeamPool(g);
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    const cfg = (sid ? (stagesById as any)[sid]?.config : null) ?? {};
+    const cfgRepeats = Number(cfg.rounds_per_opponent) || (cfg.double_round ? 2 : 1);
+    setLateAdd({
+      groupIdx: g,
+      // Teams without a single fixture here are the likely late joiners.
+      teamIds: pool.filter((id) => !playing.has(id) && !isArchived(id)),
+      skipped: pool.filter(isArchived),
+      repeats: inferRepeats(rows) || cfgRepeats,
+    });
+  };
+
+  const startLateAdd = () => {
+    if (isGroups) openLateAdd(useAllGroups ? storeGroups[0]?.idx ?? 0 : groupIdx);
+    else openLateAdd(null);
+  };
+
+  const lateOpponents = lateAdd
+    ? lateTeamPool(lateAdd.groupIdx).filter((id) => !lateAdd.teamIds.includes(id))
+    : [];
+  // The plan searches several schedules, so compute it once per change.
+  const late = useMemo(() => {
+    if (!lateAdd) return null;
+    const g = lateAdd.groupIdx;
+    const rows = allRowsForStage.filter((r) => (g == null ? r.groupIdx == null : r.groupIdx === g));
+    const pool =
+      g == null ? miniPayload.tournament_team_ids ?? [] : listGroupTeamIds(effectiveStageIdx, g);
+    const plan = planLateTeamFixtures({
+      rows,
+      newTeamIds: lateAdd.teamIds,
+      teamIds: [
+        ...lateAdd.teamIds,
+        ...pool.filter((id) => !lateAdd.teamIds.includes(id) && !lateAdd.skipped.includes(id)),
+      ],
+      repeats: lateAdd.repeats,
+    });
+    return { rows, plan };
+  }, [lateAdd, allRowsForStage, miniPayload.tournament_team_ids, listGroupTeamIds, effectiveStageIdx]);
+  const latePlan = late ? late.plan.fixtures.slice().sort((a, b) => a.matchday - b.matchday) : [];
+  const lateMoves = late
+    ? late.plan.moves.map((m) => ({ ...m, row: late.rows[m.rowIndex] })).sort((a, b) => a.to - b.to || a.from - b.from)
+    : [];
+  const lateNewMatchdays = late?.plan.newMatchdays ?? [];
+
+  const commitLateAdd = () => {
+    if (!lateAdd || !late || latePlan.length === 0) return;
+    const g = lateAdd.groupIdx;
+    // Moved matches keep everything but their matchday; identity is the uid.
+    const moveTo = new Map(lateMoves.map((m) => [m.row.uid, m.to]));
+    updateMatches(effectiveStageIdx, (rows) => [
+      ...rows.map((r) => (r.uid && moveTo.has(r.uid) ? { ...r, matchday: moveTo.get(r.uid)! } : r)),
+      ...latePlan.map((f) => ({
+        stageIdx: effectiveStageIdx,
+        groupIdx: g,
+        matchday: f.matchday,
+        round: null,
+        bracket_pos: null,
+        team_a_id: f.team_a_id,
+        team_b_id: f.team_b_id,
+        match_date: null,
+        is_ko: false,
+      })),
+    ]);
+    if (g != null) setGroupIdx(g);
+    setLateAdd(null);
+  };
+
+  const toggleIn = (list: number[], id: number) =>
+    list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+
   const regenerateStage = () => {
+    // A fresh schedule can't coexist with played matches: it either duplicates
+    // them or drops their results. Late teams go through «+ Αγώνες ομάδας».
+    if (allRowsForStage.some((m) => (m as any).status === "finished")) {
+      alert(
+        "Αυτό το στάδιο έχει ήδη ολοκληρωμένους αγώνες, οπότε το πρόγραμμά του δεν μπορεί να ξαναδημιουργηθεί. " +
+          "Για ομάδα που μπήκε αργότερα, χρησιμοποιήστε το «+ Αγώνες ομάδας»."
+      );
+      return;
+    }
+    if (
+      allRowsForStage.some((m) => (m as any).db_id != null) &&
+      !confirm(
+        `Να αντικατασταθούν οι ${allRowsForStage.length} αγώνες αυτού του σταδίου με νέο πρόγραμμα; ` +
+          "Οι αποθηκευμένοι αγώνες που δεν ταιριάζουν στο νέο πρόγραμμα θα διαγραφούν κατά την αποθήκευση."
+      )
+    )
+      return;
+
     const fresh = generateDraftMatches({
       payload: miniPayload,
       teams,
@@ -719,6 +833,11 @@ export default function InlineMatchPlanner({
         return mergedRow;
       })
       .sort((a, b) => (a.matchday ?? 0) - (b.matchday ?? 0));
+    // Rows the fresh schedule didn't carry over must be deleted, not just
+    // dropped from the editor — otherwise their DB copies survive the save
+    // next to the new schedule as duplicate fixtures.
+    const carried = new Set(merged.map((m) => m.uid).filter(Boolean));
+    allRowsForStage.filter((m) => !carried.has(m.uid)).forEach((m) => removeMatch(m));
     updateMatches(effectiveStageIdx, () => merged);
     // Re-wire KO source pointers so the bracket canvas (which draws edges/layout
     // from home/away_source_round+bracket_pos) reflects the regenerated tree.
@@ -796,6 +915,15 @@ export default function InlineMatchPlanner({
           >
             Regenerate stage
           </button>
+          {!isKO && (!isGroups || storeGroups.length > 0) && (
+            <button
+              className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs"
+              onClick={startLateAdd}
+              title="Δημιουργεί μόνο τους αγώνες μιας ομάδας που μπήκε αργότερα· οι υπάρχοντες αγώνες δεν αλλάζουν"
+            >
+              + Αγώνες ομάδας
+            </button>
+          )}
           <button
             className="px-2 py-1.5 rounded border border-white/15 text-white hover:bg-white/10 text-xs"
             onClick={() => addRow()}
@@ -932,6 +1060,217 @@ export default function InlineMatchPlanner({
                 onClick={() => addKORow(koAdd)}
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Late team fixtures — same bottom-sheet/modal pattern. Only the chosen
+          team's matches are created, on existing matchdays; nothing else in
+          the stage changes. */}
+      {lateAdd && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Αγώνες για ομάδα που μπήκε αργότερα"
+        >
+          <button
+            type="button"
+            aria-label="Ακύρωση"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setLateAdd(null)}
+          />
+          <div className="relative w-full max-h-[90vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-[30rem] sm:rounded-2xl sm:p-5 space-y-4">
+            <div>
+              <div className="text-sm font-medium text-white/90">
+                Αγώνες για ομάδα που μπήκε αργότερα
+              </div>
+              <p className="mt-1 text-xs text-white/50">
+                Δημιουργεί μόνο τους αγώνες της επιλεγμένης ομάδας με τις υπόλοιπες{" "}
+                {isGroups ? "του ομίλου" : "της λίγκας"}. Δεν διαγράφεται κανένας αγώνας και
+                καμία ομάδα δεν παίζει δύο φορές στην ίδια αγωνιστική. Σε αγωνιστικές που δεν
+                έχουν παιχτεί και δεν έχουν ημερομηνίες, ένας υπάρχων αγώνας μπορεί να μεταφερθεί
+                στο τέλος ώστε οι ομάδες του να παίξουν με τη νέα ομάδα· ό,τι περισσεύει μπαίνει
+                σε νέες αγωνιστικές στο τέλος.
+              </p>
+            </div>
+
+            {isGroups && (
+              <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+                Όμιλος
+                <select
+                  className="w-40 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                  value={lateAdd.groupIdx ?? 0}
+                  onChange={(e) => openLateAdd(Number(e.target.value))}
+                >
+                  {storeGroups.map((g) => (
+                    <option key={g.idx} value={g.idx}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <fieldset className="space-y-1">
+              <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
+                Ομάδες που μπήκαν
+              </legend>
+              <div className="max-h-40 overflow-y-auto rounded border border-white/10">
+                {lateTeamPool(lateAdd.groupIdx).map((id) => (
+                  <label
+                    key={id}
+                    className="flex min-h-[40px] items-center gap-2 px-3 text-sm text-white/85 hover:bg-white/5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={lateAdd.teamIds.includes(id)}
+                      onChange={() =>
+                        setLateAdd((s) => s && { ...s, teamIds: toggleIn(s.teamIds, id) })
+                      }
+                    />
+                    {nameOf(id).name}
+                    {isArchived(id) && (
+                      <span className="text-xs text-amber-300/80">(αρχειοθετημένη)</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-white/40">
+                Δεν εμφανίζεται; Προσθέστε πρώτα την ομάδα στη διοργάνωση
+                {isGroups ? " και ορίστε την σε αυτόν τον όμιλο." : " (και στις ομάδες αυτού του σταδίου)."}
+              </p>
+            </fieldset>
+
+            {lateAdd.teamIds.length > 0 && (
+              <fieldset className="space-y-1">
+                <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
+                  Αντίπαλοι
+                </legend>
+                <div className="max-h-40 overflow-y-auto rounded border border-white/10">
+                  {lateOpponents.map((id) => (
+                    <label
+                      key={id}
+                      className="flex min-h-[40px] items-center gap-2 px-3 text-sm text-white/85 hover:bg-white/5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!lateAdd.skipped.includes(id)}
+                        onChange={() =>
+                          setLateAdd((s) => s && { ...s, skipped: toggleIn(s.skipped, id) })
+                        }
+                      />
+                      {nameOf(id).name}
+                      {isArchived(id) && (
+                        <span className="text-xs text-amber-300/80">(αρχειοθετημένη)</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Αγώνες με κάθε αντίπαλο
+              <input
+                type="number"
+                min={1}
+                max={4}
+                className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={lateAdd.repeats}
+                onChange={(e) => {
+                  if (e.target.value === "") return;
+                  const repeats = Math.min(4, Math.max(1, Number(e.target.value) || 1));
+                  setLateAdd((s) => s && { ...s, repeats });
+                }}
+              />
+            </label>
+
+            {lateAdd.teamIds.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium uppercase tracking-wide text-white/50">
+                  {latePlan.length === 0
+                    ? "Τίποτα για προσθήκη — αυτά τα ζευγάρια υπάρχουν ήδη"
+                    : latePlan.length === 1
+                    ? "1 νέος αγώνας"
+                    : `${latePlan.length} νέοι αγώνες`}
+                </div>
+                {latePlan.length > 0 && (
+                  <ul className="max-h-48 overflow-y-auto rounded border border-white/10 text-sm">
+                    {latePlan.map((f, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
+                      >
+                        <span className="w-14 shrink-0 text-xs text-white/50">Αγ. {f.matchday}</span>
+                        <span className="text-white/85">
+                          {nameOf(f.team_a_id).name} – {nameOf(f.team_b_id).name}
+                        </span>
+                        {f.appended && (
+                          <span className="ml-auto shrink-0 text-xs text-sky-300/80">
+                            νέα αγωνιστική
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {lateMoves.length > 0 && (
+                  <>
+                    <div className="pt-2 text-xs font-medium uppercase tracking-wide text-amber-300/80">
+                      {lateMoves.length === 1
+                        ? "1 υπάρχων αγώνας μεταφέρεται στο τέλος"
+                        : `${lateMoves.length} υπάρχοντες αγώνες μεταφέρονται στο τέλος`}
+                    </div>
+                    <ul className="max-h-40 overflow-y-auto rounded border border-amber-400/20 text-sm">
+                      {lateMoves.map((m) => (
+                        <li
+                          key={m.row.uid ?? m.rowIndex}
+                          className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
+                        >
+                          <span className="w-20 shrink-0 text-xs text-white/50">
+                            Αγ. {m.from} → {m.to}
+                          </span>
+                          <span className="text-white/85">
+                            {nameOf(m.row.team_a_id ?? null).name} –{" "}
+                            {nameOf(m.row.team_b_id ?? null).name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {lateNewMatchdays.length > 0 && (
+                  <p className="text-xs text-sky-300/70">
+                    {lateNewMatchdays.length === 1
+                      ? `Προστίθεται 1 νέα αγωνιστική στο τέλος (Αγ. ${lateNewMatchdays[0]}).`
+                      : `Προστίθενται ${lateNewMatchdays.length} νέες αγωνιστικές στο τέλος (Αγ. ${
+                          lateNewMatchdays[0]
+                        }–${lateNewMatchdays[lateNewMatchdays.length - 1]}).`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                className="min-h-[44px] rounded px-3 text-sm text-white/60 hover:bg-white/5"
+                onClick={() => setLateAdd(null)}
+              >
+                Ακύρωση
+              </button>
+              <button
+                className="min-h-[44px] rounded border border-emerald-400/40 px-3 text-sm text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={latePlan.length === 0}
+                onClick={commitLateAdd}
+              >
+                {latePlan.length === 0
+                  ? "Προσθήκη"
+                  : latePlan.length === 1
+                  ? "Προσθήκη 1 αγώνα"
+                  : `Προσθήκη ${latePlan.length} αγώνων`}
               </button>
             </div>
           </div>

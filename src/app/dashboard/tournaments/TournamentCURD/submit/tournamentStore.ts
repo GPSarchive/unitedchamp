@@ -33,7 +33,14 @@ type DbStage = {
   config?: any;
 };
 type DbGroup = { id: number; stage_id: number; name: string; ordering?: number | null };
-type DbTeam = { id: number; name: string; logo?: string | null; am?: string | null };
+type DbTeam = {
+  id: number;
+  name: string;
+  logo?: string | null;
+  am?: string | null;
+  /** Set when the team is archived; the DB refuses to put it in new matches. */
+  deleted_at?: string | null;
+};
 type DbTournamentTeam = {
   id: number;
   tournament_id: number;
