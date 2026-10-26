@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
+import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import type { PlayerLite } from "./types";
 import { resolveStat } from "./types";
 
@@ -95,7 +96,7 @@ const COLUMN_HEADERS = [
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
 function getDisplayPhoto(player: PlayerRow): string {
-  if (player.photo && player.photo !== "/player-placeholder.svg") {
+  if (!isPlaceholderPhoto(player.photo)) {
     return player.photo;
   }
   return player.team?.logo || player.teams?.[0]?.logo || player.photo;

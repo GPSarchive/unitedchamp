@@ -14,6 +14,7 @@ import GlossOverlay from "./GlossOverlay";
 import styles from "./ProfileCard.module.css";
 import SportyBackground from "./Sportybackground";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
+import { isPlaceholderPhoto } from "@/app/lib/image-config";
 
 /** ====== Visual defaults ====== */
 const DEFAULT_BEHIND_GRADIENT =
@@ -157,7 +158,7 @@ function ProfileCardComponent({
 
   // âœ… Use team logo as fallback if no player image
   const displayImage = useMemo(() => {
-    if (avatarUrl && avatarUrl !== "/player-placeholder.svg") {
+    if (!isPlaceholderPhoto(avatarUrl)) {
       return avatarUrl;
     }
     // Fallback to first team logo if available
