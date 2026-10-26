@@ -167,12 +167,12 @@ export default function AdminTeamsGridClient({
       {/* Εργαλειοθήκη */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-bold text-white">Ομάδες</h2>
-        <div className="flex flex-1 gap-2 sm:flex-none">
+        <div className="flex flex-1 flex-wrap gap-2 sm:flex-none">
           <input
             placeholder="Αναζήτηση με όνομα ή ΑΜ…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="flex-1 sm:flex-none sm:w-64 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/15"
+            className="basis-full sm:basis-auto min-w-0 sm:w-64 px-3 py-2 rounded-lg bg-zinc-900 text-white border border-white/15"
           />
           <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-zinc-900 text-white">
             <input

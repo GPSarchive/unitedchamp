@@ -115,8 +115,9 @@ export default function ClientShell({
         </aside>
       </div>
 
-      {/* Main column */}
-      <div className="flex-1 flex flex-col">
+      {/* Main column — min-w-0 lets it shrink to the screen; without it one
+          wide child (a table, a toolbar) stretches every dashboard page. */}
+      <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b border-white/10 bg-black/60 backdrop-blur px-3 md:px-6 py-3 flex items-center gap-3">
           <button
