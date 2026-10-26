@@ -96,8 +96,6 @@ Layout: [app/dashboard/layout.tsx](../../src/app/dashboard/layout.tsx) — `dyna
 | `/dashboard/tournaments/TournamentCURD/edit/[id]` | [app/dashboard/tournaments/TournamentCURD/edit/[id]/page.tsx](../../src/app/dashboard/tournaments/TournamentCURD/edit/[id]/page.tsx) | Standalone edit page for a tournament. Same wizard. Note: folder spelled `TournamentCURD` (sic — likely meant `CRUD`). |
 | `/dashboard/announcements` | [app/dashboard/announcements/page.tsx](../../src/app/dashboard/announcements/page.tsx) | `AnnouncementsAdmin`. |
 | `/dashboard/articles` | [app/dashboard/articles/page.tsx](../../src/app/dashboard/articles/page.tsx) | `ArticlesAdmin`. |
-| `/dashboard/fix-stats` | [app/dashboard/fix-stats/page.tsx](../../src/app/dashboard/fix-stats/page.tsx) | Diff tool: compares `player_statistics` vs recomputed totals from `match_player_stats`. One-shot drift detector. |
-| `/dashboard/refresh-stats` | [app/dashboard/refresh-stats/page.tsx](../../src/app/dashboard/refresh-stats/page.tsx) | Backfill button for `player_career_stats` + `player_tournament_stats`. Shows source row count + top-10 preview. |
 
 ---
 

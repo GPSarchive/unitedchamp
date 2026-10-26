@@ -23,7 +23,7 @@ describe("editorMayOpen", () => {
       "/dashboard/seasons",
       "/dashboard/audit",
       "/dashboard/geniki-katataxi",
-      "/dashboard/fix-stats",
+      "/dashboard/audit-stats",
       "/preview/tournament-builder",
     ]) {
       expect(editorMayOpen(p), p).toBe(false);

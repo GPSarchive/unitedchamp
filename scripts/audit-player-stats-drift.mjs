@@ -63,7 +63,7 @@ console.log(`Loaded ${mps.length} match_player_stats rows across ${new Set(mps.m
 if (mps.length >= 1000) {
   console.log('⚠ NOTE: dataset exceeds 1000 rows — any UNPAGINATED read of match_player_stats');
   console.log('  is silently truncated by PostgREST. All app aggregate writers paginate today');
-  console.log('  (refreshPlayerStats.ts, fix-stats, the inline sync); keep it that way.\n');
+  console.log('  (refreshPlayerStats.ts, the inline sync); keep it that way.\n');
 }
 
 // ── 2. Recompute all three aggregates ───────────────────────────────────────
@@ -179,7 +179,6 @@ if (d1 + d3 + d4 === 0) {
 } else {
   console.log(`✗ Drift confirmed in ${[d1 && 'player_statistics', d3 && 'player_tournament_stats', d4 && 'player_season_stats'].filter(Boolean).join(', ')}.`);
   console.log('  This proves saves wrote match stats without the aggregates following.');
-  console.log('  Recovery: /dashboard/refresh-stats (or scripts/refresh-player-stats.ts)');
-  console.log('  rebuilds the cache tables (add --season=<label> for one season only);');
-  console.log('  /dashboard/fix-stats re-syncs the legacy player_statistics totals. All paginate.');
+  console.log('  Recovery: npx tsx scripts/refresh-player-stats.ts rebuilds the cache tables');
+  console.log('  (add --season=<label> for one season only). It paginates.');
 }

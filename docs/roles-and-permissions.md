@@ -63,7 +63,6 @@ check is the only gate).
 | `POST /api/matches/[id]/postpone` | RLS | |
 | `saveAllStatsAction`, `updateMatchVideoAction` (`src/app/matches/[id]/actions.ts`) — the stats editor on the **public** match page, shown to anyone with `canEditContent` | RLS | |
 | `POST /api/storage/article-img` | service | |
-| `applySyncFix` (fix-stats), `runFullBackfill` (refresh-stats) | service | the pages are admin-only in the UI, the actions are editor-callable |
 
 ### Any logged-in account
 
@@ -132,8 +131,8 @@ policies on `player` / `teams` / `player_teams` are such hand-made ones).
    set, or keep it as a documented break-glass.
 7. `DELETE /api/matches/[id]` is editor-allowed while `POST /api/matches` is
    admin-only — inconsistent; pick one.
-8. `applySyncFix` / `runFullBackfill` are editor-callable although their pages are
-   admin-only.
+8. ~~`applySyncFix` / `runFullBackfill` are editor-callable although their pages are
+   admin-only.~~ Resolved 2026-10-26: both pages and actions were deleted.
 9. ~30 inline `roles.includes('admin')` checks instead of `requireAdmin()` /
    `requireEditor()` from `apiAuth.ts`. Not a bug, but every rule change must be
    copied 30 times. Consolidate when touching those files.

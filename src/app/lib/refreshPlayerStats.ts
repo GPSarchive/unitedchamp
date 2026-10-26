@@ -20,9 +20,6 @@ import { BATCH_SIZE, PAGE_SIZE, fetchAllRows, fetchInBatches } from "@/app/lib/s
 import { getActiveSeason, getTournamentSeasonLabel } from "@/app/lib/seasons";
 import { refreshAllSeasonStats, refreshSeasonStatsForPlayers } from "@/app/lib/refreshSeasonStats";
 
-// Kept as a named export: dashboard/fix-stats imports it from here.
-export { fetchAllRows };
-
 const MPS_COLUMNS =
   "player_id, match_id, team_id, goals, assists, yellow_cards, red_cards, blue_cards, mvp, best_goalkeeper";
 

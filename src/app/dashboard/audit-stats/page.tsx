@@ -173,7 +173,7 @@ export default async function AuditStatsPage() {
           <h2 className="text-lg font-semibold">Matches whose save never propagated</h2>
           <p className="text-xs text-gray-500 mt-0.5 mb-2">
             These matches are absent from players&apos; totals — the refresh after saving them
-            never completed. Re-saving the match (or running /dashboard/refresh-stats) heals them.
+            never completed. Re-saving the match (or running scripts/refresh-player-stats.ts) heals them.
           </p>
           <ul className="space-y-1 text-sm">
             {result.hotMatches.map((m) => (
@@ -216,9 +216,8 @@ export default async function AuditStatsPage() {
 
       {!clean && (
         <p className="text-sm text-gray-400">
-          Recovery: <code>/dashboard/refresh-stats</code> rebuilds the two cache tables correctly.
-          Avoid <code>/dashboard/fix-stats</code> while there are more than 1000 stat rows — its
-          unpaginated read writes truncated totals.
+          Recovery: <code>npx tsx scripts/refresh-player-stats.ts</code> rebuilds the two cache
+          tables correctly.
         </p>
       )}
     </div>
