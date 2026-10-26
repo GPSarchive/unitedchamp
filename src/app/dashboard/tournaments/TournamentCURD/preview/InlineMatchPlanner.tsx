@@ -402,7 +402,7 @@ export default function InlineMatchPlanner({
     pos: 1,
     legs: 1,
   });
-  // "+ Team fixtures": a team that joined after the schedule was made gets
+  // «+ Αγώνες ομάδας»: a team that joined after the schedule was made gets
   // only its own matches; regenerating the stage would reshuffle everyone.
   const [lateAdd, setLateAdd] = useState<{
     groupIdx: number | null;
@@ -766,19 +766,19 @@ export default function InlineMatchPlanner({
 
   const regenerateStage = () => {
     // A fresh schedule can't coexist with played matches: it either duplicates
-    // them or drops their results. Late teams go through "+ Team fixtures".
+    // them or drops their results. Late teams go through «+ Αγώνες ομάδας».
     if (allRowsForStage.some((m) => (m as any).status === "finished")) {
       alert(
-        "This stage already has finished matches, so it can't be regenerated. " +
-          "To add a team that joined late, use “+ Team fixtures”."
+        "Αυτό το στάδιο έχει ήδη ολοκληρωμένους αγώνες, οπότε το πρόγραμμά του δεν μπορεί να ξαναδημιουργηθεί. " +
+          "Για ομάδα που μπήκε αργότερα, χρησιμοποιήστε το «+ Αγώνες ομάδας»."
       );
       return;
     }
     if (
       allRowsForStage.some((m) => (m as any).db_id != null) &&
       !confirm(
-        `Replace this stage's ${allRowsForStage.length} fixtures with a fresh schedule? ` +
-          "Saved fixtures that don't fit the new schedule are deleted when you save."
+        `Να αντικατασταθούν οι ${allRowsForStage.length} αγώνες αυτού του σταδίου με νέο πρόγραμμα; ` +
+          "Οι αποθηκευμένοι αγώνες που δεν ταιριάζουν στο νέο πρόγραμμα θα διαγραφούν κατά την αποθήκευση."
       )
     )
       return;
@@ -905,9 +905,9 @@ export default function InlineMatchPlanner({
             <button
               className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs"
               onClick={startLateAdd}
-              title="Create only a late-joining team's matches; existing matches stay as they are"
+              title="Δημιουργεί μόνο τους αγώνες μιας ομάδας που μπήκε αργότερα· οι υπάρχοντες αγώνες δεν αλλάζουν"
             >
-              + Team fixtures
+              + Αγώνες ομάδας
             </button>
           )}
           <button
@@ -1060,27 +1060,29 @@ export default function InlineMatchPlanner({
           className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
           role="dialog"
           aria-modal="true"
-          aria-label="Fixtures for a late team"
+          aria-label="Αγώνες για ομάδα που μπήκε αργότερα"
         >
           <button
             type="button"
-            aria-label="Cancel"
+            aria-label="Ακύρωση"
             className="absolute inset-0 bg-black/60"
             onClick={() => setLateAdd(null)}
           />
           <div className="relative w-full max-h-[90vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-[30rem] sm:rounded-2xl sm:p-5 space-y-4">
             <div>
-              <div className="text-sm font-medium text-white/90">Fixtures for a late team</div>
+              <div className="text-sm font-medium text-white/90">
+                Αγώνες για ομάδα που μπήκε αργότερα
+              </div>
               <p className="mt-1 text-xs text-white/50">
-                Creates only the selected team&apos;s matches against the rest of the{" "}
-                {isGroups ? "group" : "league"}, on existing matchdays. Existing matches are not
-                changed.
+                Δημιουργεί μόνο τους αγώνες της επιλεγμένης ομάδας με τις υπόλοιπες{" "}
+                {isGroups ? "του ομίλου" : "της λίγκας"}, σε υπάρχουσες αγωνιστικές. Οι
+                υπάρχοντες αγώνες δεν αλλάζουν.
               </p>
             </div>
 
             {isGroups && (
               <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
-                Group
+                Όμιλος
                 <select
                   className="w-40 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
                   value={lateAdd.groupIdx ?? 0}
@@ -1097,7 +1099,7 @@ export default function InlineMatchPlanner({
 
             <fieldset className="space-y-1">
               <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
-                Team(s) that joined
+                Ομάδες που μπήκαν
               </legend>
               <div className="max-h-40 overflow-y-auto rounded border border-white/10">
                 {lateTeamPool(lateAdd.groupIdx).map((id) => (
@@ -1113,20 +1115,22 @@ export default function InlineMatchPlanner({
                       }
                     />
                     {nameOf(id).name}
-                    {isArchived(id) && <span className="text-xs text-amber-300/80">(archived)</span>}
+                    {isArchived(id) && (
+                      <span className="text-xs text-amber-300/80">(αρχειοθετημένη)</span>
+                    )}
                   </label>
                 ))}
               </div>
               <p className="text-xs text-white/40">
-                Not listed? Add the team to the tournament
-                {isGroups ? " and assign it to this group" : " (and to this stage's teams)"} first.
+                Δεν εμφανίζεται; Προσθέστε πρώτα την ομάδα στη διοργάνωση
+                {isGroups ? " και ορίστε την σε αυτόν τον όμιλο." : " (και στις ομάδες αυτού του σταδίου)."}
               </p>
             </fieldset>
 
             {lateAdd.teamIds.length > 0 && (
               <fieldset className="space-y-1">
                 <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
-                  Opponents
+                  Αντίπαλοι
                 </legend>
                 <div className="max-h-40 overflow-y-auto rounded border border-white/10">
                   {lateOpponents.map((id) => (
@@ -1143,7 +1147,7 @@ export default function InlineMatchPlanner({
                       />
                       {nameOf(id).name}
                       {isArchived(id) && (
-                        <span className="text-xs text-amber-300/80">(archived)</span>
+                        <span className="text-xs text-amber-300/80">(αρχειοθετημένη)</span>
                       )}
                     </label>
                   ))}
@@ -1152,7 +1156,7 @@ export default function InlineMatchPlanner({
             )}
 
             <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
-              Matches against each opponent
+              Αγώνες με κάθε αντίπαλο
               <input
                 type="number"
                 min={1}
@@ -1171,8 +1175,10 @@ export default function InlineMatchPlanner({
               <div className="space-y-1">
                 <div className="text-xs font-medium uppercase tracking-wide text-white/50">
                   {latePlan.length === 0
-                    ? "Nothing to add — these pairs already exist"
-                    : `${latePlan.length} new ${latePlan.length === 1 ? "match" : "matches"}`}
+                    ? "Τίποτα για προσθήκη — αυτά τα ζευγάρια υπάρχουν ήδη"
+                    : latePlan.length === 1
+                    ? "1 νέος αγώνας"
+                    : `${latePlan.length} νέοι αγώνες`}
                 </div>
                 {latePlan.length > 0 && (
                   <ul className="max-h-48 overflow-y-auto rounded border border-white/10 text-sm">
@@ -1181,13 +1187,13 @@ export default function InlineMatchPlanner({
                         key={i}
                         className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
                       >
-                        <span className="w-14 shrink-0 text-xs text-white/50">MD {f.matchday}</span>
+                        <span className="w-14 shrink-0 text-xs text-white/50">Αγ. {f.matchday}</span>
                         <span className="text-white/85">
                           {nameOf(f.team_a_id).name} – {nameOf(f.team_b_id).name}
                         </span>
                         {f.shared && (
                           <span className="ml-auto shrink-0 text-xs text-amber-300/80">
-                            extra game
+                            επιπλέον αγώνας
                           </span>
                         )}
                       </li>
@@ -1196,8 +1202,8 @@ export default function InlineMatchPlanner({
                 )}
                 {latePlan.some((f) => f.shared) && (
                   <p className="text-xs text-amber-300/70">
-                    &ldquo;Extra game&rdquo;: one of the two teams already plays on that matchday —
-                    give the match its own date.
+                    «Επιπλέον αγώνας»: μία από τις δύο ομάδες παίζει ήδη σε αυτή την αγωνιστική —
+                    ορίστε ξεχωριστή ημερομηνία για τον αγώνα.
                   </p>
                 )}
               </div>
@@ -1208,14 +1214,18 @@ export default function InlineMatchPlanner({
                 className="min-h-[44px] rounded px-3 text-sm text-white/60 hover:bg-white/5"
                 onClick={() => setLateAdd(null)}
               >
-                Cancel
+                Ακύρωση
               </button>
               <button
                 className="min-h-[44px] rounded border border-emerald-400/40 px-3 text-sm text-emerald-200 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={latePlan.length === 0}
                 onClick={commitLateAdd}
               >
-                Add {latePlan.length || ""} {latePlan.length === 1 ? "match" : "matches"}
+                {latePlan.length === 0
+                  ? "Προσθήκη"
+                  : latePlan.length === 1
+                  ? "Προσθήκη 1 αγώνα"
+                  : `Προσθήκη ${latePlan.length} αγώνων`}
               </button>
             </div>
           </div>
