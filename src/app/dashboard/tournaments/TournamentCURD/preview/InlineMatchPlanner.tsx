@@ -728,26 +728,37 @@ export default function InlineMatchPlanner({
   const lateOpponents = lateAdd
     ? lateTeamPool(lateAdd.groupIdx).filter((id) => !lateAdd.teamIds.includes(id))
     : [];
-  const latePlan = lateAdd
-    ? planLateTeamFixtures({
-        rows: lateRowsFor(lateAdd.groupIdx),
-        newTeamIds: lateAdd.teamIds,
-        teamIds: [
-          ...lateAdd.teamIds,
-          ...lateOpponents.filter((id) => !lateAdd.skipped.includes(id)),
-        ],
-        repeats: lateAdd.repeats,
-      }).sort((a, b) => a.matchday - b.matchday)
+  // The plan searches several schedules, so compute it once per change.
+  const late = useMemo(() => {
+    if (!lateAdd) return null;
+    const g = lateAdd.groupIdx;
+    const rows = allRowsForStage.filter((r) => (g == null ? r.groupIdx == null : r.groupIdx === g));
+    const pool =
+      g == null ? miniPayload.tournament_team_ids ?? [] : listGroupTeamIds(effectiveStageIdx, g);
+    const plan = planLateTeamFixtures({
+      rows,
+      newTeamIds: lateAdd.teamIds,
+      teamIds: [
+        ...lateAdd.teamIds,
+        ...pool.filter((id) => !lateAdd.teamIds.includes(id) && !lateAdd.skipped.includes(id)),
+      ],
+      repeats: lateAdd.repeats,
+    });
+    return { rows, plan };
+  }, [lateAdd, allRowsForStage, miniPayload.tournament_team_ids, listGroupTeamIds, effectiveStageIdx]);
+  const latePlan = late ? late.plan.fixtures.slice().sort((a, b) => a.matchday - b.matchday) : [];
+  const lateMoves = late
+    ? late.plan.moves.map((m) => ({ ...m, row: late.rows[m.rowIndex] })).sort((a, b) => a.to - b.to || a.from - b.from)
     : [];
-  const lateNewMatchdays = Array.from(
-    new Set(latePlan.filter((f) => f.appended).map((f) => f.matchday))
-  );
+  const lateNewMatchdays = late?.plan.newMatchdays ?? [];
 
   const commitLateAdd = () => {
-    if (!lateAdd || latePlan.length === 0) return;
+    if (!lateAdd || !late || latePlan.length === 0) return;
     const g = lateAdd.groupIdx;
+    // Moved matches keep everything but their matchday; identity is the uid.
+    const moveTo = new Map(lateMoves.map((m) => [m.row.uid, m.to]));
     updateMatches(effectiveStageIdx, (rows) => [
-      ...rows,
+      ...rows.map((r) => (r.uid && moveTo.has(r.uid) ? { ...r, matchday: moveTo.get(r.uid)! } : r)),
       ...latePlan.map((f) => ({
         stageIdx: effectiveStageIdx,
         groupIdx: g,
@@ -1078,10 +1089,11 @@ export default function InlineMatchPlanner({
               </div>
               <p className="mt-1 text-xs text-white/50">
                 Δημιουργεί μόνο τους αγώνες της επιλεγμένης ομάδας με τις υπόλοιπες{" "}
-                {isGroups ? "του ομίλου" : "της λίγκας"}. Οι υπάρχοντες αγώνες δεν αλλάζουν.
-                Ένας αγώνας μπαίνει σε υπάρχουσα αγωνιστική μόνο αν δεν έχει παιχτεί και καμία
-                από τις δύο ομάδες δεν παίζει ήδη σε αυτήν· οι υπόλοιποι μπαίνουν σε νέες
-                αγωνιστικές στο τέλος.
+                {isGroups ? "του ομίλου" : "της λίγκας"}. Δεν διαγράφεται κανένας αγώνας και
+                καμία ομάδα δεν παίζει δύο φορές στην ίδια αγωνιστική. Σε αγωνιστικές που δεν
+                έχουν παιχτεί και δεν έχουν ημερομηνίες, ένας υπάρχων αγώνας μπορεί να μεταφερθεί
+                στο τέλος ώστε οι ομάδες του να παίξουν με τη νέα ομάδα· ό,τι περισσεύει μπαίνει
+                σε νέες αγωνιστικές στο τέλος.
               </p>
             </div>
 
@@ -1204,6 +1216,31 @@ export default function InlineMatchPlanner({
                       </li>
                     ))}
                   </ul>
+                )}
+                {lateMoves.length > 0 && (
+                  <>
+                    <div className="pt-2 text-xs font-medium uppercase tracking-wide text-amber-300/80">
+                      {lateMoves.length === 1
+                        ? "1 υπάρχων αγώνας μεταφέρεται στο τέλος"
+                        : `${lateMoves.length} υπάρχοντες αγώνες μεταφέρονται στο τέλος`}
+                    </div>
+                    <ul className="max-h-40 overflow-y-auto rounded border border-amber-400/20 text-sm">
+                      {lateMoves.map((m) => (
+                        <li
+                          key={m.row.uid ?? m.rowIndex}
+                          className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
+                        >
+                          <span className="w-20 shrink-0 text-xs text-white/50">
+                            Αγ. {m.from} → {m.to}
+                          </span>
+                          <span className="text-white/85">
+                            {nameOf(m.row.team_a_id ?? null).name} –{" "}
+                            {nameOf(m.row.team_b_id ?? null).name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
                 {lateNewMatchdays.length > 0 && (
                   <p className="text-xs text-sky-300/70">

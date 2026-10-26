@@ -295,7 +295,7 @@ describe("late team fixtures — only the new team's matches reach the server", 
     });
     state().updateMatches(0, (rows) => [
       ...rows,
-      ...plan.map((f) => ({
+      ...plan.fixtures.map((f) => ({
         stageIdx: 0, groupIdx: 0, matchday: f.matchday, round: null, bracket_pos: null,
         team_a_id: f.team_a_id, team_b_id: f.team_b_id, match_date: null, is_ko: false,
       })),
