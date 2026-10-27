@@ -229,7 +229,7 @@ export default function StageStandingsMini({
     useTournamentStore((s: any) => (s.getTeamLogo as ((id: number) => string | null) | undefined)) ??
     (() => null);
 
-  // Preview-only phone layout: fewer columns below sm.
+  // Phone layout (compact): fewer columns below sm.
   const { compact } = useEditorLayout();
   const phoneHide = compact ? "hidden sm:table-cell" : "";
 

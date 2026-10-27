@@ -3,9 +3,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 /**
- * Phone layout for the tournament editor, switched on only by the preview
- * route /dashboard/preview/tournaments-mobile. The live editor renders with
- * compact=false and is unchanged until the preview is promoted.
+ * Phone layout for the tournament editor, switched on by /dashboard/tournaments
+ * (promoted from the preview on 2026-10-27). Without a provider, components
+ * fall back to compact=false — the original layout.
  *
  * compact: flatter nesting on phones (wrappers lose side padding/borders
  * below the sm breakpoint) and match cards instead of the wide table.

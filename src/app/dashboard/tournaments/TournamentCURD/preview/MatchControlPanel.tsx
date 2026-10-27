@@ -85,7 +85,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
     const mergedMatch = useMemo(() => ({ ...match, ...overlay }), [match, overlay]);
   
     // Local form state - initialize from mergedMatch to include DB overlay data
-    // Preview-only phone layout: stack the two-column rows below sm.
+    // Phone layout (compact): stack the two-column rows below sm.
     const { compact } = useEditorLayout();
     const twoCols = compact ? "grid grid-cols-1 sm:grid-cols-2" : "grid grid-cols-2";
 
