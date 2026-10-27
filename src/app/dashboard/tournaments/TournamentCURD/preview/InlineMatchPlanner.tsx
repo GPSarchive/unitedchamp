@@ -391,7 +391,7 @@ export default function InlineMatchPlanner({
   const [teamQuery1, setTeamQuery1] = useState("");
   const [teamQuery2, setTeamQuery2] = useState("");
   const [editingMatch, setEditingMatch] = useState<DraftMatch | null>(null);
-  // Preview-only phone layout: flat section and match cards instead of the table.
+  // Phone layout (compact): flat section and match cards instead of the table.
   const { compact } = useEditorLayout();
   const isPhone = useIsPhone();
   const phoneCards = compact && isPhone;
@@ -849,7 +849,7 @@ export default function InlineMatchPlanner({
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
-  /* ---- phone cards (preview layout) ---- */
+  /* ---- phone cards (compact layout) ---- */
   const statusLabel = (st: string) =>
     st === "finished" ? "ολοκληρώθηκε" : st === "scheduled" ? "προγραμματισμένος" : st;
 

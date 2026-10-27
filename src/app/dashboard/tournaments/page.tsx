@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import TournamentWizard from "./TournamentCURD/TournamentWizard";
 import { getTournamentForEditAction } from "./TournamentCURD/actions";
+import { EditorLayoutProvider } from "./TournamentCURD/editorLayout";
 
 export const dynamic = "force-dynamic";
 
@@ -116,18 +117,22 @@ export default async function TournamentsPage({
       </form>
 
       {/* Wizard */}
-      <div className="mt-2 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-sm p-4 sm:p-6 shadow-xl shadow-black/40">
-        {editorData ? (
-          <TournamentWizard
-            mode="edit"
-            meta={editorData.meta}
-            initialPayload={editorData.payload}
-            initialTeams={wizardInitialTeams}
-            initialDraftMatches={editorData.draftMatches}
-          />
-        ) : (
-          <TournamentWizard mode="create" />
-        )}
+      {/* Phone layout (compact): on phones the editor sits flat in the page
+          padding and matches render as cards; from sm up it is unchanged. */}
+      <div className="mt-2 sm:rounded-2xl sm:border sm:border-white/10 sm:bg-black/70 sm:backdrop-blur-sm sm:p-6 sm:shadow-xl sm:shadow-black/40">
+        <EditorLayoutProvider compact>
+          {editorData ? (
+            <TournamentWizard
+              mode="edit"
+              meta={editorData.meta}
+              initialPayload={editorData.payload}
+              initialTeams={wizardInitialTeams}
+              initialDraftMatches={editorData.draftMatches}
+            />
+          ) : (
+            <TournamentWizard mode="create" />
+          )}
+        </EditorLayoutProvider>
       </div>
 
       <p className="text-xs text-white/50">
