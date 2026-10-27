@@ -37,6 +37,18 @@ export function isStoragePath(value: unknown): value is string {
 }
 
 /**
+ * Placeholder values stored in the DB instead of a real photo/logo. Most
+ * players carry the legacy "/player-placeholder.jpg"; the files live in
+ * /public (as .svg), never in storage.
+ */
+const LOCAL_PLACEHOLDER = /^\/?(player|team)-placeholder\.[a-z]+$/i;
+
+/** True when a stored photo value means "no photo". */
+export function isPlaceholderPhoto(value: string | null | undefined): boolean {
+  return !value || LOCAL_PLACEHOLDER.test(value.trim());
+}
+
+/**
  * Resolve image URL based on mode
  * 
  * PUBLIC MODE: Returns direct Supabase/CDN URL (cached by browser & Cloudflare)
@@ -47,7 +59,11 @@ export function resolveImageUrl(
   type: ImageType = ImageType.PLAYER
 ): string | null {
   if (!path) return null;
-  
+
+  // Stored placeholders are local files, not storage objects.
+  const placeholder = path.trim().match(LOCAL_PLACEHOLDER);
+  if (placeholder) return `/${placeholder[1].toLowerCase()}-placeholder.svg`;
+
   // Already a full URL - return as-is
   if (!isStoragePath(path)) return path;
   
@@ -96,5 +112,6 @@ export const imageConfig = {
   supabaseUrl: SUPABASE_URL,
   resolve: resolveImageUrl,
   isStoragePath,
+  isPlaceholderPhoto,
   getPlaceholder,
 } as const;

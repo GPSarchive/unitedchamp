@@ -3,6 +3,7 @@
 
 import { memo, useCallback } from "react";
 import { PlayerImage } from "@/app/lib/OptimizedImage";
+import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import type { PlayerWithStats } from "../../players/types";
 
 type TeamLite = { id: number; name: string; logo?: string | null };
@@ -57,7 +58,7 @@ const COLS = [
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
 function getDisplayPhoto(row: PlayerListRow): string {
-  if (row.photo && row.photo !== "/player-placeholder.svg") return row.photo;
+  if (row.photo && !isPlaceholderPhoto(row.photo)) return row.photo;
   const t = row.teams[0];
   return t?.logo || row.photo || "/player-placeholder.svg";
 }
