@@ -834,11 +834,16 @@ if (body.matches?.upsert?.length) {
 
     const existingKeys = new Set((existingMatches ?? []).map(matchNaturalKey));
     const deduped = toCreateLG.filter(m => {
+      // An empty fixture (no team yet) has no identity beyond its matchday,
+      // and several of them per matchday are legitimate — the admin adds the
+      // slots first and names the teams later. The DB agrees (NULL teams
+      // never collide on unique_league_match_idx), so only rows naming at
+      // least one team are checked against the existing fixtures.
+      if (m.team_a_id == null && m.team_b_id == null) return true;
       const k = matchNaturalKey(m);
       if (existingKeys.has(k)) {
-        // NEVER drop silently — identical TBD skeletons on one matchday
-        // collide on this key by design; the client must learn the row
-        // was not created so it stays dirty instead of vanishing on reload.
+        // NEVER drop silently — the client must learn the row was not
+        // created so it stays dirty instead of vanishing on reload.
         skippedDuplicates.push({
           kind: "lg",
           key: k,
