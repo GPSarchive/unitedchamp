@@ -7,6 +7,11 @@ import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/s
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
 import { inferRepeats, planLateTeamFixtures } from "../util/functions/lateTeamFixtures";
+import {
+  describeMatchdayIssue,
+  findMatchdayIssues,
+  type MatchdayIssue,
+} from "../util/functions/matchdayIntegrity";
 import MatchControlPanel from "./MatchControlPanel";
 import { useEditorLayout, useIsPhone } from "../editorLayout";
 
@@ -149,103 +154,54 @@ function ensureOverlayForRow(row: DraftMatch) {
   });
 }
 
-/* ---------------- Round-Robin Integrity Fix ---------------- */
+/* ---------------- matchday field ---------------- */
 /**
- * Determines which "repeat cycle" a match belongs to based on matchday.
- * For multi-round RR (double, triple, etc.), we need to group matches by their repeat.
- *
- * @param matchday - The matchday number (1-based)
- * @param teamsCount - Number of teams in the group/league
- * @returns The repeat number (1 for first cycle, 2 for second, etc.)
+ * A matchday number that commits on blur / Enter. Patching per keystroke
+ * merged «Αγ. 12» into «Αγ. 1» halfway through typing. `onCommit` may return
+ * false to refuse the change (the field snaps back).
  */
-function getRepeatFromMatchday(matchday: number, teamsCount: number): number {
-  if (!matchday || !teamsCount || teamsCount < 2) return 1;
-
-  // In round-robin, each cycle has (teamsCount - 1) matchdays for even counts
-  // or teamsCount matchdays for odd counts (due to BYE rotation)
-  const matchdaysPerCycle = teamsCount % 2 === 0 ? teamsCount - 1 : teamsCount;
-
-  // Calculate which repeat this matchday belongs to (1-based)
-  return Math.ceil(matchday / matchdaysPerCycle);
-}
-
-function fixRoundRobinIntegrity(
-  target: DraftMatch,
-  patch: Partial<Pick<DraftMatch, "team_a_id" | "team_b_id">>,
-  allStageMatches: DraftMatch[],
-  teamsInGroup: number
-): DraftMatch[] {
-  // Only apply to non-KO matches
-  if (target.round != null || target.bracket_pos != null) return allStageMatches;
-
-  const hasTeamChange = patch.team_a_id !== undefined || patch.team_b_id !== undefined;
-  if (!hasTeamChange) return allStageMatches;
-
-  const originalTeamA = target.team_a_id || null;
-  const originalTeamB = target.team_b_id || null;
-  const newTeamA = patch.team_a_id !== undefined ? patch.team_a_id : originalTeamA;
-  const newTeamB = patch.team_b_id !== undefined ? patch.team_b_id : originalTeamB;
-
-  // Determine which team was replaced
-  let teamThatStayed: number | null = null;
-  let teamReplaced: number | null = null;
-
-  if (patch.team_a_id !== undefined && patch.team_a_id !== originalTeamA) {
-    teamThatStayed = originalTeamB;
-    teamReplaced = originalTeamA;
-  } else if (patch.team_b_id !== undefined && patch.team_b_id !== originalTeamB) {
-    teamThatStayed = originalTeamA;
-    teamReplaced = originalTeamB;
-  }
-
-  if (teamThatStayed == null || teamReplaced == null) return allStageMatches;
-
-  // Calculate which repeat cycle this match belongs to
-  const targetRepeat = getRepeatFromMatchday(target.matchday ?? 1, teamsInGroup);
-  const newPairKey = rrPairKey(newTeamA, newTeamB);
-
-  // Find duplicate match in THE SAME REPEAT CYCLE and same group
-  const duplicateMatch = allStageMatches.find((m) => {
-    if (m === target) return false;
-    if (m.stageIdx !== target.stageIdx) return false;
-    if (m.groupIdx !== target.groupIdx) return false;
-    if (m.round != null || m.bracket_pos != null) return false;
-
-    // ✅ KEY FIX: Only consider duplicates in the same repeat cycle
-    const mRepeat = getRepeatFromMatchday(m.matchday ?? 1, teamsInGroup);
-    if (mRepeat !== targetRepeat) return false;
-
-    return rrPairKey(m.team_a_id, m.team_b_id) === newPairKey;
-  });
-
-  if (duplicateMatch) {
-    console.log("[RR Integrity Fix]", {
-      duplicate: duplicateMatch,
-      teamThatStayed,
-      teamReplaced,
-      targetRepeat,
-      targetMatchday: target.matchday,
-      duplicateMatchday: duplicateMatch.matchday
-    });
-
-    return allStageMatches.map((m) => {
-      if (m !== duplicateMatch) return m;
-
-      // Swap the replaced team into the duplicate match
-      if (m.team_a_id === teamThatStayed) {
-        const fixed = { ...m, team_b_id: teamReplaced };
-        ensureOverlayForRow(fixed);
-        return fixed;
-      } else if (m.team_b_id === teamThatStayed) {
-        const fixed = { ...m, team_a_id: teamReplaced };
-        ensureOverlayForRow(fixed);
-        return fixed;
-      }
-      return m;
-    });
-  }
-
-  return allStageMatches;
+function MatchdayInput({
+  value,
+  label,
+  className,
+  onCommit,
+}: {
+  value: number;
+  label: string;
+  className?: string;
+  onCommit: (next: number) => boolean | void;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+  const commit = () => {
+    const n = Math.floor(Number(text));
+    if (!Number.isFinite(n) || n < 1 || n === value || onCommit(n) === false) {
+      setText(String(value));
+    }
+  };
+  return (
+    <input
+      type="number"
+      min={1}
+      inputMode="numeric"
+      aria-label={label}
+      className={className}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          setText(String(value));
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
 }
 
 /* ---------------- component ---------------- */
@@ -398,6 +354,9 @@ export default function InlineMatchPlanner({
   // When adding a match from the "All groups" view of a groups stage, we prompt
   // the admin to pick which group the new match belongs to (avoids orphaning).
   const [pendingAddGroup, setPendingAddGroup] = useState(false);
+  // Matchday the group picker should add to («+ Αγώνας» on a matchday header
+  // in the "All groups" view); null = let addRowForGroup pick one.
+  const [pendingAddMatchday, setPendingAddMatchday] = useState<number | null>(null);
   // KO stages: adding a match always goes through a prompt (round / bracket
   // position / legs). Blindly appending to round 1 is how brackets end up with
   // duplicate "later round" matches that no progression can ever reach.
@@ -554,15 +513,10 @@ export default function InlineMatchPlanner({
     }
 
     updateMatches(effectiveStageIdx, (stageRows) => {
-      // Get team count for integrity check
-      const effectiveGroup = isGroups && groupIdx != null && groupIdx >= 0 ? groupIdx : 0;
-      const teamsInGroup =
-        isGroups && !useAllGroups
-          ? listGroupTeamIds(effectiveStageIdx, effectiveGroup).length
-          : miniPayload.tournament_team_ids?.length ?? 0;
-
-      const fixedRows = fixRoundRobinIntegrity(target, patch, stageRows, teamsInGroup);
-      const next = fixedRows.slice();
+      // No silent "round-robin integrity fix" here any more: it rewrote ANOTHER
+      // match's teams on a team change (the likeliest "the schedule changed by
+      // itself" report). Problems are shown as warnings instead (see `issues`).
+      const next = stageRows.slice();
 
       // Locate the edited row: uid is authoritative; db_id and the structural
       // signature remain as safety nets for rows passed in from stale closures.
@@ -572,10 +526,13 @@ export default function InlineMatchPlanner({
       if (idx < 0) idx = next.findIndex((r) => rowSignature(r) === rowSignature(target));
 
       const base = idx >= 0 ? next[idx] : target;
+      // The matchday is a free label: a patch may move the row to another
+      // matchday. (It used to be pinned to the base row, which made every
+      // matchday field in this planner a no-op.)
       const merged: DraftMatch = {
         ...base,
         ...patch,
-        matchday: base.matchday ?? null,
+        matchday: patch.matchday !== undefined ? patch.matchday : base.matchday ?? null,
       };
 
       ensureOverlayForRow(merged);
@@ -591,7 +548,7 @@ export default function InlineMatchPlanner({
   // (never counts toward any group's standings). If the planner is on the
   // "All groups" view, prompt the admin to pick a group first instead of
   // creating an ambiguous, un-assignable match.
-  const addRow = (forcedGroupIdx?: number) => {
+  const addRow = (forcedGroupIdx?: number, matchday?: number) => {
     if (isKO) {
       // Ask what to create (round / bracket position / legs) before adding.
       const rounds = allRowsForStage.map((r) => r.round).filter((r): r is number => r != null);
@@ -610,13 +567,14 @@ export default function InlineMatchPlanner({
           : groupIdx;
       if (chosen == null || chosen < 0) {
         // Ask which group this match belongs to before creating it.
+        setPendingAddMatchday(matchday ?? null);
         setPendingAddGroup(true);
         return;
       }
-      addRowForGroup(chosen);
+      addRowForGroup(chosen, matchday);
       return;
     }
-    addRowForGroup(null);
+    addRowForGroup(null, matchday);
   };
 
   /** Next unused bracket position in the given KO round of this stage. */
@@ -639,7 +597,8 @@ export default function InlineMatchPlanner({
     setPendingAddKO(false);
   };
 
-  const addRowForGroup = (forcedGroupIdx: number | null) => {
+  /** New empty fixture — on `matchday` when given, else after the last full matchday. */
+  const addRowForGroup = (forcedGroupIdx: number | null, matchday?: number) => {
     if (isKO) {
       // KO creation goes through the add-match prompt (addKORow); nothing to do here.
       return;
@@ -671,7 +630,9 @@ export default function InlineMatchPlanner({
         .sort((a, b) => a - b);
       const lastMd = sortedMds[sortedMds.length - 1] ?? 0;
       const targetMd =
-        sortedMds.length === 0
+        matchday != null
+          ? matchday
+          : sortedMds.length === 0
           ? 1
           : matchdayCounts[lastMd] < matchesPerDay
           ? lastMd
@@ -695,11 +656,54 @@ export default function InlineMatchPlanner({
   };
 
   const removeRow = (m: DraftMatch) => {
+    // A played match takes its result and the players' stats with it (the
+    // save path refreshes their aggregates), so the admin has to say so.
+    if ((m as any).status === "finished") {
+      const a = nameOf(m.team_a_id ?? null).name;
+      const b = nameOf(m.team_b_id ?? null).name;
+      const score = `${(m as any).team_a_score ?? 0}–${(m as any).team_b_score ?? 0}`;
+      if (
+        !confirm(
+          `Ο αγώνας ${a} – ${b} (${score}) έχει ολοκληρωθεί. ` +
+            "Να διαγραφεί μαζί με το αποτέλεσμα και τα στατιστικά των παικτών του;"
+        )
+      )
+        return;
+    }
     // removeMatch removes by uid and reads db_id from the overlay or the row
     // itself — no overlay pre-stuffing needed. m is a merged row, so it
     // carries both uid and db_id.
     removeMatch(m);
     if (isKO) reindexKOPointers(effectiveStageIdx);
+  };
+
+  /** Move rows to another matchday in one store update (identity = uid). */
+  const moveRowsToMatchday = (rows: DraftMatch[], matchday: number) => {
+    const uids = new Set(rows.map((r) => r.uid).filter(Boolean));
+    if (uids.size === 0) return;
+    updateMatches(effectiveStageIdx, (stageRows) =>
+      stageRows.map((r) => (r.uid && uids.has(r.uid) ? { ...r, matchday } : r))
+    );
+  };
+
+  /**
+   * Renumber a matchday (the header field). Landing on a matchday that already
+   * has fixtures merges the two, so that needs a nod from the admin.
+   */
+  const renameMatchday = (rows: DraftMatch[], from: number, to: number): boolean => {
+    const there = visible.filter((r) => (r.matchday ?? 0) === to).length;
+    if (
+      there > 0 &&
+      !confirm(
+        `Η Αγωνιστική ${to} έχει ήδη ${there === 1 ? "1 αγώνα" : `${there} αγώνες`}. ` +
+          `Να μεταφερθούν εκεί και ${
+            rows.length === 1 ? "ο αγώνας" : `οι ${rows.length} αγώνες`
+          } της Αγωνιστικής ${from};`
+      )
+    )
+      return false;
+    moveRowsToMatchday(rows, to);
+    return true;
   };
 
   /* ---- late team fixtures (league / groups) ---- */
@@ -888,8 +892,18 @@ export default function InlineMatchPlanner({
     const a = ((m as any).team_a_score ?? null) as number | null;
     const b = ((m as any).team_b_score ?? null) as number | null;
     const st = ((m as any).status ?? "scheduled") as string;
+    const severity = issueSeverityOf(m);
     return (
-      <li key={reactKey(m, i)} className="rounded-lg border border-white/10 bg-zinc-950/60">
+      <li
+        key={reactKey(m, i)}
+        className={`rounded-lg border bg-zinc-950/60 ${
+          severity === "error"
+            ? "border-rose-400/60"
+            : severity === "warning"
+            ? "border-amber-400/60"
+            : "border-white/10"
+        }`}
+      >
         <div className="space-y-2 p-3">
           {isKO && (
             <div className="flex items-center gap-3 text-xs text-white/70">
@@ -937,6 +951,17 @@ export default function InlineMatchPlanner({
             >
               {statusLabel(st)}
             </span>
+            {!isKO && (
+              <label className="flex items-center gap-1.5 text-xs text-white/70">
+                Αγ.
+                <MatchdayInput
+                  label="Αγωνιστική αγώνα"
+                  value={m.matchday ?? 0}
+                  className="w-14 rounded border border-white/15 bg-slate-950 px-2 py-1 text-center text-sm text-white"
+                  onCommit={(next) => applyPatch(m, { matchday: next })}
+                />
+              </label>
+            )}
             <input
               type="datetime-local"
               aria-label="Ημερομηνία (UTC)"
@@ -995,6 +1020,35 @@ export default function InlineMatchPlanner({
       return acc;
     }, {} as Record<number, DraftMatch[]>);
   }, [isKO, sortedFilteredVisible]);
+
+  // Meetings per pair this stage is configured for — read the same way the
+  // generator does (Generators.ts), Greek config keys included.
+  const stageRepeats = useMemo(() => {
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    const cfg = (sid ? (stagesById as any)[sid]?.config : null) ?? {};
+    const raw = cfg.rounds_per_opponent ?? cfg["αγώνες_ανά_αντίπαλο"];
+    if (Number.isFinite(raw)) return Math.max(1, Number(raw));
+    return (cfg.double_round ?? cfg["διπλός_γύρος"]) ? 2 : 1;
+  }, [stageIdByIndex, stagesById, effectiveStageIdx]);
+
+  // Schedule checks for the matches in view. Nothing here blocks an edit:
+  // uneven matchdays are allowed on purpose (see matchdayIntegrity.ts).
+  const issues = useMemo<MatchdayIssue[]>(
+    () => (isKO ? [] : findMatchdayIssues(visible, { repeats: stageRepeats })),
+    [isKO, visible, stageRepeats]
+  );
+  const issueByUid = useMemo(() => {
+    const map = new Map<string, MatchdayIssue["severity"]>();
+    for (const issue of issues) {
+      for (const uid of issue.uids) {
+        if (issue.severity === "error" || !map.has(uid)) map.set(uid, issue.severity);
+      }
+    }
+    return map;
+  }, [issues]);
+  const issueSeverityOf = (m: DraftMatch) => (m.uid ? issueByUid.get(m.uid) : undefined);
+  const groupNameOf = (g: number | null) =>
+    g == null ? null : storeGroups.find((x) => x.idx === g)?.name ?? `Group ${g + 1}`;
 
   return (
     <section
@@ -1110,7 +1164,8 @@ export default function InlineMatchPlanner({
                   onClick={() => {
                     setPendingAddGroup(false);
                     setGroupIdx(g.idx);
-                    addRow(g.idx);
+                    addRow(g.idx, pendingAddMatchday ?? undefined);
+                    setPendingAddMatchday(null);
                   }}
                 >
                   {g.name}
@@ -1423,6 +1478,33 @@ export default function InlineMatchPlanner({
         </div>
       )}
 
+      {issues.length > 0 && (
+        <div
+          role="status"
+          className={`rounded-lg border px-3 py-2 text-xs ${
+            issues.some((i) => i.severity === "error")
+              ? "border-rose-400/40 bg-rose-500/10 text-rose-100"
+              : "border-amber-400/40 bg-amber-500/10 text-amber-100"
+          }`}
+        >
+          <div className="mb-1 font-medium">
+            {issues.length === 1
+              ? "1 παρατήρηση στο πρόγραμμα"
+              : `${issues.length} παρατηρήσεις στο πρόγραμμα`}
+          </div>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {issues.map((issue, i) => (
+              <li key={i}>
+                {describeMatchdayIssue(issue, {
+                  teamName: (id) => nameOf(id).name,
+                  groupName: groupNameOf,
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {filteredVisible.length === 0 ? (
         <p className="text-white/70 text-sm">
           No matches for this selection.
@@ -1446,18 +1528,23 @@ export default function InlineMatchPlanner({
                 <div key={`md-${md}`} className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
                     Αγωνιστική
-                    <input
-                      type="number"
-                      min={1}
-                      aria-label="Αγωνιστική"
-                      className="w-16 border-b border-white/50 bg-transparent text-center font-bold text-white focus:border-white focus:outline-none"
+                    <MatchdayInput
+                      label="Αριθμός αγωνιστικής"
                       value={md}
-                      onChange={(e) => {
-                        const newMd = Number(e.target.value) || md;
-                        ms.forEach((m) => applyPatch(m, { matchday: newMd }));
-                      }}
+                      className="w-16 border-b border-white/50 bg-transparent text-center font-bold text-white focus:border-white focus:outline-none"
+                      onCommit={(next) => renameMatchday(ms, md, next)}
                     />
-                    <span className="text-xs font-normal text-white/50">{ms.length} αγώνες</span>
+                    <span className="text-xs font-normal text-white/50">
+                      {ms.length === 1 ? "1 αγώνας" : `${ms.length} αγώνες`}
+                    </span>
+                    <button
+                      type="button"
+                      className="ml-auto min-h-[36px] rounded border border-white/15 px-2 text-xs font-normal text-white hover:bg-white/10"
+                      onClick={() => addRow(undefined, md || undefined)}
+                      title="Νέος αγώνας σε αυτή την αγωνιστική"
+                    >
+                      + Αγώνας
+                    </button>
                   </div>
                   <ul className="space-y-2">{ms.map(matchCard)}</ul>
                 </div>
@@ -1470,11 +1557,15 @@ export default function InlineMatchPlanner({
           <table className="min-w-full text-sm">
             <thead className="bg-zinc-900/70 text-white">
               <tr>
-                {isKO && (
+                {isKO ? (
                   <>
                     <th className="px-2 py-1 text-left">Round</th>
                     <th className="px-2 py-1 text-left">Bracket pos</th>
                   </>
+                ) : (
+                  <th className="px-2 py-1 text-left" title="Αγωνιστική">
+                    Αγ.
+                  </th>
                 )}
                 <th className="px-2 py-1 text-left">Team A</th>
                 <th className="px-2 py-1 text-left">Team B</th>
@@ -1678,18 +1769,29 @@ export default function InlineMatchPlanner({
                   return (
                     <>
                       <tr className="bg-zinc-800/50" key={`md-${md}`}>
-                        <td colSpan={6} className="px-4 py-2 font-bold underline text-white text-center">
-                          Matchday&nbsp;
-                          <input
-                            type="number"
-                            className="w-16 bg-transparent border-b border-white/50 text-white text-center font-bold focus:outline-none focus:border-white"
-                            value={md}
-                            min={1}
-                            onChange={(e) => {
-                              const newMd = Number(e.target.value) || md;
-                              ms.forEach((m) => applyPatch(m, { matchday: newMd }));
-                            }}
-                          />
+                        <td colSpan={7} className="px-4 py-2 text-white">
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="font-bold underline">
+                              Matchday&nbsp;
+                              <MatchdayInput
+                                label="Αριθμός αγωνιστικής"
+                                value={md}
+                                className="w-16 bg-transparent border-b border-white/50 text-white text-center font-bold focus:outline-none focus:border-white"
+                                onCommit={(next) => renameMatchday(ms, md, next)}
+                              />
+                            </span>
+                            <span className="text-xs text-white/50">
+                              {ms.length === 1 ? "1 αγώνας" : `${ms.length} αγώνες`}
+                            </span>
+                            <button
+                              type="button"
+                              className="rounded border border-white/15 px-2 py-1 text-xs text-white hover:bg-white/10"
+                              onClick={() => addRow(undefined, md || undefined)}
+                              title="Νέος αγώνας σε αυτή την αγωνιστική"
+                            >
+                              + Αγώνας
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {ms.map((m, i) => {
@@ -1699,6 +1801,22 @@ export default function InlineMatchPlanner({
                         return (
                           <>
                             <tr key={key} className="odd:bg-zinc-950/60 even:bg-zinc-900/40 h-24">
+                              <td
+                                className={`px-2 py-4 ${
+                                  issueSeverityOf(m) === "error"
+                                    ? "border-l-2 border-rose-400/70"
+                                    : issueSeverityOf(m) === "warning"
+                                    ? "border-l-2 border-amber-400/70"
+                                    : ""
+                                }`}
+                              >
+                                <MatchdayInput
+                                  label="Αγωνιστική αγώνα"
+                                  value={m.matchday ?? 0}
+                                  className="w-16 bg-slate-950 border border-white/15 rounded px-2 py-1 text-white text-center"
+                                  onCommit={(next) => applyPatch(m, { matchday: next })}
+                                />
+                              </td>
                               <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
                                   {nameOf(m.team_a_id ?? null).logo ? (
@@ -1832,7 +1950,7 @@ export default function InlineMatchPlanner({
                             </tr>
                             {isEditing && (
                               <tr key={`${key}-expanded`}>
-                                <td colSpan={6} className="p-0">
+                                <td colSpan={7} className="p-0">
                                   <div className="border-t-2 border-blue-400/30">
                                     <MatchControlPanel
                                       match={m}
