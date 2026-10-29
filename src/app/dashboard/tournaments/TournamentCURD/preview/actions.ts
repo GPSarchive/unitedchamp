@@ -459,16 +459,21 @@ export async function saveMatchStatsAction(input: SaveMatchStatsInput) {
     }
 
     // 5. Update match (scores, status, winner, metadata)
+    // A scheduled match has no score. Writing the computed 0-0 here made every
+    // planner save of an unplayed match look like a finished 0-0 draw (the
+    // planner renders any non-null score), while the panel still treated it as
+    // unfinished and hid the revert button.
+    const isFinished = status === 'finished';
     const { error: matchError } = await supabase
       .from('matches')
       .update({
-        team_a_score: aGoals,
-        team_b_score: bGoals,
-        winner_team_id,
+        team_a_score: isFinished ? aGoals : null,
+        team_b_score: isFinished ? bGoals : null,
+        winner_team_id: isFinished ? winner_team_id : null,
         status: status as 'scheduled' | 'finished',
         match_date: matchData.match_date,
         field: matchData.field,
-        ...penaltyPatch,
+        ...(isFinished ? penaltyPatch : { penalty_a: null, penalty_b: null }),
         // Note: 'venue' is not in the matches table based on the schema you showed
       })
       .eq('id', matchId);

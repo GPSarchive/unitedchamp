@@ -80,6 +80,11 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
   
     // Track actual DB status (not just dropdown selection)
     const dbStatus = overlay.status as "scheduled" | "finished" | undefined;
+    // Rows saved before the 0-0 fix can be "scheduled" yet carry a score; the
+    // planner renders that as "0 – 0". Offer the revert button for them too so
+    // the stray score (and any stats) can be cleared from the UI.
+    const hasStoredScore = overlay.team_a_score != null || overlay.team_b_score != null;
+    const canRevert = dbStatus === 'finished' || hasStoredScore;
   
     // Merged match data (draft + DB overlay)
     const mergedMatch = useMemo(() => ({ ...match, ...overlay }), [match, overlay]);
@@ -340,11 +345,14 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
         // Update overlay to reflect new scores/status (progression already ran)
         if (uid) {
           const nextOverlay = { ...dbOverlayByUid };
+          // Mirror the server: a scheduled match has no score (otherwise the
+          // planner shows a phantom "0 – 0" and Save all persists it).
+          const finished = effectiveStatus === 'finished';
           nextOverlay[uid] = {
             ...nextOverlay[uid],
-            team_a_score: calculatedScores.team_a_score,
-            team_b_score: calculatedScores.team_b_score,
-            winner_team_id: autoWinner,
+            team_a_score: finished ? calculatedScores.team_a_score : null,
+            team_b_score: finished ? calculatedScores.team_b_score : null,
+            winner_team_id: finished ? autoWinner : null,
             status: effectiveStatus,
           };
           useTournamentStore.setState({ dbOverlayByUid: nextOverlay });
@@ -752,7 +760,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                       <option value="scheduled" disabled>Προγραμματισμένο (μην επιλέξετε)</option>
                       <option value="finished">Ολοκληρωμένο</option>
                     </select>
-                    {dbStatus === 'finished' && (
+                    {canRevert && (
                       <button
                         onClick={handleRevert}
                         disabled={reverting || saving || awarding || !dbId}
