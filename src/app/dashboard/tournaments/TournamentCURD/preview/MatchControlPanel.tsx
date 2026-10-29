@@ -731,7 +731,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                   <div className="text-white">{teamBName}</div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className={`${twoCols} gap-4`}>
                 <div>
                   <label className="block text-sm text-white/70">Σκορ</label>
                   <div className="text-xl font-bold text-white">
@@ -746,7 +746,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                       onChange={(e) => {
                         setManualStatus(e.target.value as "scheduled" | "finished");
                       }}
-                      className={`flex-1 rounded border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white ${compact ? "min-w-0" : ""}`}
+                      className="min-w-0 flex-1 rounded border border-white/10 bg-zinc-900 px-2 py-1 text-sm text-white"
                       title="Επιλέξτε την κατάσταση του αγώνα"
                     >
                       <option value="scheduled" disabled>Προγραμματισμένο (μην επιλέξετε)</option>
@@ -756,7 +756,7 @@ import { saveMatchStatsAction, revertMatchToScheduledAction, awardForfeitWinActi
                       <button
                         onClick={handleRevert}
                         disabled={reverting || saving || awarding || !dbId}
-                        className="flex items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs text-orange-300 hover:bg-orange-500/20 disabled:opacity-50"
+                        className="flex shrink-0 items-center gap-1 rounded border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs text-orange-300 hover:bg-orange-500/20 disabled:opacity-50"
                         title="Επαναφορά στο προγραμματισμένο - διαγράφει όλα τα στατιστικά"
                       >
                         <RotateCcw className="h-3 w-3" />
