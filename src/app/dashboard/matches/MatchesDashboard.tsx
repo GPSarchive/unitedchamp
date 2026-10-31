@@ -458,27 +458,27 @@ export default function MatchesDashboard({
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-4">
                     {/* Match Info */}
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         {a?.logo && (
                           <img
                             src={a.logo}
                             alt={a.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
+                            className="h-8 w-8 shrink-0 rounded-full object-contain ring-1 ring-white/10"
                           />
                         )}
-                        <span className="font-semibold text-white text-lg">
+                        <span className="min-w-0 font-semibold text-white text-lg [overflow-wrap:anywhere]">
                           {a?.name ?? r.team_a_id}
                         </span>
                         <span className="text-white/60">vs</span>
-                        <span className="font-semibold text-white text-lg">
+                        <span className="min-w-0 font-semibold text-white text-lg [overflow-wrap:anywhere]">
                           {b?.name ?? r.team_b_id}
                         </span>
                         {b?.logo && (
                           <img
                             src={b.logo}
                             alt={b.name}
-                            className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10"
+                            className="h-8 w-8 shrink-0 rounded-full object-contain ring-1 ring-white/10"
                           />
                         )}
                       </div>
@@ -608,16 +608,17 @@ export default function MatchesDashboard({
                   </div>
 
                   <div className="mt-2 flex items-center gap-2">
-                    {a?.logo && <img src={a.logo} alt={a.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10" />}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{a?.name ?? r.team_a_id}</span>
+                    {a?.logo && <img src={a.logo} alt={a.name} className="h-8 w-8 shrink-0 rounded-full object-contain ring-1 ring-white/10" />}
+                    {/* min-w-0 + wrapping: long team names must not push the card past the screen */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2">
+                        <span className="min-w-0 font-semibold text-white [overflow-wrap:anywhere]">{a?.name ?? r.team_a_id}</span>
                         <span className="text-white/50">vs</span>
-                        <span className="font-semibold text-white">{b?.name ?? r.team_b_id}</span>
+                        <span className="min-w-0 font-semibold text-white [overflow-wrap:anywhere]">{b?.name ?? r.team_b_id}</span>
                       </div>
                       <div className="text-xs text-white/70 mt-1 line-clamp-1">{tourName} • {stageTxt ?? "—"}</div>
                     </div>
-                    {b?.logo && <img src={b.logo} alt={b.name} className="h-8 w-8 rounded-full object-contain ring-1 ring-white/10" />}
+                    {b?.logo && <img src={b.logo} alt={b.name} className="h-8 w-8 shrink-0 rounded-full object-contain ring-1 ring-white/10" />}
                   </div>
 
                   <div className="mt-2 flex items-center justify-between">
