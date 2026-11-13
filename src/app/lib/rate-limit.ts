@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv'
+import { isCloudflareIp } from './cloudflareIp'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -303,25 +304,24 @@ export async function checkAuthLimit(ip: string): Promise<LimitResult> {
 // Helper Functions
 // ─────────────────────────────────────────────────────────────
 
-/** Extract best-effort client IP */
+/**
+ * The visitor's address. The domain sits behind Cloudflare, so the address
+ * Vercel reports is usually a Cloudflare edge server shared by many people;
+ * when it is, the real visitor is in cf-connecting-ip (lib/cloudflareIp.ts).
+ */
 export function ipFromRequest(req: Request): string {
-  // Vercel/Next.js specific
-  const direct = (req as any).ip as string | undefined
-  if (direct) return direct
-
-  // X-Forwarded-For (most proxies)
   const xff = req.headers.get('x-forwarded-for')
-  if (xff) return xff.split(',')[0].trim()
+  const connecting =
+    ((req as any).ip as string | undefined) ||
+    (xff ? xff.split(',')[0].trim() : '') ||
+    req.headers.get('x-real-ip')?.trim() ||
+    ''
 
-  // X-Real-IP (nginx)
-  const realIp = req.headers.get('x-real-ip')
-  if (realIp) return realIp.trim()
+  // Trust Cloudflare's header only when the request really came from Cloudflare.
+  const cfIp = req.headers.get('cf-connecting-ip')?.trim()
+  if (cfIp && connecting && isCloudflareIp(connecting)) return cfIp
 
-  // Cloudflare
-  const cfIp = req.headers.get('cf-connecting-ip')
-  if (cfIp) return cfIp.trim()
-
-  return '127.0.0.1'
+  return connecting || '127.0.0.1'
 }
 
 /** Normalize path to prevent key explosion */
