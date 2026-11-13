@@ -214,7 +214,7 @@ export default async function Home() {
             Ultra Champ
           </h1>
           <a
-            href="/sign-up"
+            href="/login"
             className="bg-white text-black px-6 sm:px-8 py-3 rounded-full font-semibold transition border border-transparent hover:bg-black hover:text-white hover:border-white"
           >
             Εγγραφείτε τώρα
@@ -297,7 +297,7 @@ export default async function Home() {
             Κάντε εγγραφή σήμερα και μπείτε στον γεμάτο δράση κόσμο του Ultra Champ.
           </p>
           <a
-            href="/sign-up"
+            href="/login"
             className="bg-yellow-600 text-white px-6 sm:px-8 py-3 rounded-full font-semibold transition hover:bg-black hover:border hover:border-white"
           >
             Ξεκινήστε
