@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
+import { canEditContent } from "@/app/lib/supabase/apiAuth";
 
 export const runtime = "nodejs";
 
@@ -18,10 +19,11 @@ function guessTypeFromPath(p: string) {
 }
 
 export async function GET(req: NextRequest) {
-  // Require logged-in user; switch to role checks if needed
+  // Staff only: these photos are not public, and players will have logins too
   const supa = await createSupabaseRouteClient();
   const { data: { user } } = await supa.auth.getUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  if (!canEditContent(user)) return new Response("Forbidden", { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const raw = searchParams.get("path");
