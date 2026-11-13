@@ -16,7 +16,7 @@ export default async function MatchesPage() {
   // The explorer is scoped to the ACTIVE season: its dropdown lists that
   // season's tournaments and the "all" view is their union. Older seasons'
   // matches are reachable through the archived tournament pages (/seasons).
-  const { season, tournamentIds } = await getActiveScope();
+  const { season } = await getActiveScope();
 
   const { data } = await supabaseAdmin
     .from("tournaments")
@@ -28,5 +28,5 @@ export default async function MatchesPage() {
     .filter((t): t is { id: number; name: string } => !!t && !!t.name)
     .map((t) => ({ id: t.id, name: t.name }));
 
-  return <MatchesExplorer tournaments={tournaments} tournamentIds={tournamentIds} />;
+  return <MatchesExplorer tournaments={tournaments} />;
 }

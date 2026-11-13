@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
+import { supabaseAdmin as supabase } from '@/app/lib/supabase/supabaseAdmin';
 
+// Public list of PUBLISHED articles. Read with the service role: the anon key
+// has no table access (migrations/lock-anon-reads.sql), so the
+// status = 'published' filters below are what keep drafts private.
 export async function GET() {
   try {
-    const supabase = await createSupabaseRSCClient();
-
     // First, try to fetch with all columns including view_count and featured_image
     let { data: articles, error } = await supabase
       .from('articles')

@@ -133,10 +133,49 @@ function jsonError(status: number, msg: string, err?: any) {
    OPTIONS / HEAD handlers
    ====================== */
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: { Allow: "PATCH,DELETE,OPTIONS,HEAD" } });
+  return new NextResponse(null, { status: 204, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
 }
 export async function HEAD() {
-  return new NextResponse(null, { status: 200, headers: { Allow: "PATCH,DELETE,OPTIONS,HEAD" } });
+  return new NextResponse(null, { status: 200, headers: { Allow: "GET,PATCH,DELETE,OPTIONS,HEAD" } });
+}
+
+/* ======================================
+   GET /api/matches/:id  (admin or editor)
+   The result line of one match — the dashboard RowEditor uses it to load
+   leg 1 of a two-legged tie. Staff only: the browser holds no key that can
+   read matches from Supabase directly (migrations/lock-anon-reads.sql).
+   ====================================== */
+export async function GET(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: idParam } = await ctx.params;
+    const id = parsePositiveInt(idParam);
+    if (!id) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+    const supa = await createSupabaseRouteClient();
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!canEditContent(user)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const { data, error } = await supabaseAdmin
+      .from("matches")
+      .select("id, team_a_id, team_b_id, team_a_score, team_b_score, status")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("GET /api/matches/[id] failed", error);
+      return NextResponse.json({ error: "Fetch failed" }, { status: 500 });
+    }
+    if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    return NextResponse.json({ match: data });
+  } catch (e) {
+    console.error("GET /api/matches/[id] error", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
 }
 
 /* ======================================

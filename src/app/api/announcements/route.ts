@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
+import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 
 // ---- same-origin guard (copy of matches) ----
 function ensureSameOrigin(req: Request) {
@@ -37,15 +38,22 @@ export async function HEAD() {
   return new NextResponse(null, { status: 200, headers: { Allow: "GET,POST,OPTIONS,HEAD" } });
 }
 
+// Public for visitors (published only), full list for staff (the dashboard).
+// Read with the service role: the anon key has no table access
+// (migrations/lock-anon-reads.sql), so the "visitors see published only" rule
+// RLS used to enforce is enforced HERE.
 export async function GET(req: Request) {
   const supa = await createSupabaseRouteClient();
+  const { data: { user } } = await supa.auth.getUser();
+  const canEdit = canEditContent(user);
+
   const url = new URL(req.url);
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? "0"));
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? "10"), 1), 50);
   const active = toBool(url.searchParams.get("active"));
   const nowIso = new Date().toISOString();
 
-  let q = supa
+  let q = supabaseAdmin
     .from("announcements")
     .select("*", { count: "exact" })
     .order("pinned", { ascending: false })
@@ -55,6 +63,8 @@ export async function GET(req: Request) {
 
   // FIX: combine the time-window ORs into a single .or(...) call.
   // Active means: published AND ((start_at IS NULL OR start_at <= now) AND (end_at IS NULL OR end_at >= now))
+  if (!canEdit) q = q.eq("status", "published");
+
   if (active) {
     q = q
       .eq("status", "published")

@@ -14,7 +14,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
-import { supabase } from "@/app/lib/supabase/supabaseClient";
+import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
 import RowEditor from "./RowEditor";
 import PostponeDialog from "./PostponeDialog";
@@ -168,7 +168,8 @@ export default function MatchesDashboard({
   }
 
   async function testRlsCondition() {
-    const { data, error } = await supabase.rpc("test_admin_role");
+    // Cookie-aware client: the call carries the logged-in staff session.
+    const { data, error } = await createSupabaseBrowserClient().rpc("test_admin_role");
     if (error) console.error("RLS Test Error:", error);
     console.log("Is admin role present?:", data);
   }

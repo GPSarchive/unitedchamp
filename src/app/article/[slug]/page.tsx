@@ -6,6 +6,7 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
+import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { canEditContent } from '@/app/lib/supabase/apiAuth';
 import RelatedArticles from '@/components/RelatedArticles';
 import ArticleNavigation from '@/components/ArticleNavigation';
@@ -14,10 +15,16 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-async function getArticle(slug: string) {
-  const supabase = await createSupabaseRSCClient();
+// Rendered per request, as before. (It used to be dynamic implicitly, through
+// the cookie-bound client; the reads below now use the service role, so say
+// it explicitly — otherwise an edited article would be served from cache.)
+export const dynamic = 'force-dynamic';
 
-  const { data, error } = await supabase
+// Articles are read with the service role: the anon key has no table access
+// (migrations/lock-anon-reads.sql). The "published only" rule that RLS used to
+// enforce for visitors is therefore enforced HERE — keep the status checks.
+async function getArticle(slug: string) {
+  const { data, error } = await supabaseAdmin
     .from('articles')
     .select('*')
     .eq('slug', slug)
@@ -29,6 +36,7 @@ async function getArticle(slug: string) {
 
   // Drafts are visible only to content editors (admins/editors)
   if (data.status !== 'published') {
+    const supabase = await createSupabaseRSCClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!canEditContent(user)) {
       return null;
@@ -39,9 +47,7 @@ async function getArticle(slug: string) {
 }
 
 async function getRelatedArticles(currentArticleDate: string, limit: number = 3) {
-  const supabase = await createSupabaseRSCClient();
-
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('articles')
     .select('id, title, slug, excerpt, featured_image, published_at')
     .eq('status', 'published')
@@ -58,10 +64,8 @@ async function getRelatedArticles(currentArticleDate: string, limit: number = 3)
 }
 
 async function getAdjacentArticles(currentArticleDate: string) {
-  const supabase = await createSupabaseRSCClient();
-
   // Get previous article (older)
-  const { data: previousArticle } = await supabase
+  const { data: previousArticle } = await supabaseAdmin
     .from('articles')
     .select('slug, title')
     .eq('status', 'published')
@@ -71,7 +75,7 @@ async function getAdjacentArticles(currentArticleDate: string) {
     .maybeSingle();
 
   // Get next article (newer)
-  const { data: nextArticle } = await supabase
+  const { data: nextArticle } = await supabaseAdmin
     .from('articles')
     .select('slug, title')
     .eq('status', 'published')

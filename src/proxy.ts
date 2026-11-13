@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
 import {
-  checkRateLimits,
+  checkRequestLimits,
+  checkAuthLimit,
   checkApiWriteLimit,
   checkDailyLimit,
   ipFromRequest,
@@ -11,6 +12,7 @@ import {
 } from '@/app/lib/rate-limit'
 import { AUDIT_HEADERS, AUDIT_HEADER_NAMES } from '@/app/lib/audit/headers'
 import { editorMayOpen } from '@/app/lib/dashboardAccess'
+import { SEARCH_ENGINE_BOT_RE, SOCIAL_BOT_RE } from '@/app/lib/botAgents'
 
 const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 
@@ -29,13 +31,10 @@ const originFrom = (u: string) => {
 const supabaseOrigin = originFrom(SUPABASE_URL)
 const appOrigin = originFrom(APP_ORIGIN)
 
-// Known search engine crawlers — exempt from rate limiting
-const SEARCH_ENGINE_BOT_RE =
-  /googlebot|bingbot|yandexbot|baiduspider|duckduckbot|slurp|msnbot|apis-google|mediapartners-google|adsbot-google/i
-
-// Social / preview crawlers that follow redirects aggressively
-const SOCIAL_BOT_RE =
-  /facebookexternalhit|meta-externalagent|meta-webindexer|Twitterbot|LinkedInBot|WhatsApp|Pinterestbot|Slackbot|Discordbot|TelegramBot/i
+// User-Agents that CLAIM to be a search engine / link-preview crawler
+// (lib/botAgents.ts). Anyone can send these strings, so a search-engine UA
+// grants no exemption — only the higher per-IP ceiling in lib/rate-limit.ts
+// (LIMITS.crawler*), which real crawlers never reach here.
 
 function isSearchEngineBot(req: NextRequest): boolean {
   const ua = req.headers.get('user-agent') || ''
@@ -63,6 +62,7 @@ const RATE_LIMIT_MESSAGES: Record<string, string> = {
   global: 'Service is experiencing high traffic. Please try again later.',
   endpoint: 'This endpoint is receiving too many requests.',
   ip: 'Too many requests from your IP address.',
+  ipHour: 'Too many requests from your IP address in the last hour.',
   apiWrite: 'Rate limit exceeded for this action.',
   daily: 'Daily request limit exceeded. Please try again tomorrow.',
   auth: 'Too many authentication attempts. Please wait before trying again.',
@@ -74,6 +74,25 @@ function createRateLimitResponse(
   checkName: string = 'ip'
 ): NextResponse {
   const retryAfter = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000))
+
+  // Server-log line for blocked traffic: this is where an address that keeps
+  // pulling the site in bulk shows up (search "[rate-limit] blocked"). Logged
+  // on the first blocked request of a window and then every 100th, so a flood
+  // does not become a flood of log lines.
+  const over = result.count === undefined ? 1 : result.count - result.limit
+  if (over === 1 || over % 100 === 0) {
+    console.warn(
+      '[rate-limit] blocked',
+      JSON.stringify({
+        check: checkName,
+        limit: result.limit,
+        hits: result.count,
+        ip: ipFromRequest(req),
+        path: req.nextUrl.pathname,
+        ua: (req.headers.get('user-agent') || '').slice(0, 160),
+      })
+    )
+  }
   const message = RATE_LIMIT_MESSAGES[checkName] || 'Too Many Requests'
   const isApi = req.nextUrl.pathname.startsWith('/api')
 
@@ -285,30 +304,32 @@ export async function proxy(req: NextRequest) {
   const isAuthEndpoint = path.startsWith('/api/auth')
 
   // ─────────────────────────────────────────────────────────────
-  // RATE LIMITING — Multi-layer protection
-  // Search engine crawlers bypass rate limiting to avoid 429s
-  // that kill indexation. They still get security headers + CSP.
+  // RATE LIMITING — Multi-layer protection (numbers: lib/rate-limit.ts)
   // ─────────────────────────────────────────────────────────────
 
-  // Layer 1: Global + IP + Endpoint limits
-  // Auth endpoints are NEVER exempt — no crawler needs to POST to /api/auth/*
-  if (!isCrawler || isAuthEndpoint) {
-    const baseCheck = await checkRateLimits({
-      global: true,
-      ip: ip,
-      endpoint: isApi ? path : undefined,
-    })
-
-    if (!baseCheck.success) {
-      return createRateLimitResponse(req, baseCheck.result!, baseCheck.failedCheck!)
-    }
+  // Layer 1: per-IP (minute + hour), then per-endpoint + global.
+  // A search-engine User-Agent gets a higher per-IP ceiling, never a bypass
+  // (the string is trivially faked) — and no extra room on auth endpoints,
+  // which no crawler needs.
+  const baseCheck = await checkRequestLimits({
+    ip,
+    endpoint: isApi ? path : undefined,
+    crawler: isCrawler && !isAuthEndpoint,
+    ua: req.headers.get('user-agent') || '',
+    path,
+    // Every current browser sends Sec-Fetch-Mode on every request (page loads,
+    // prefetches, fetch calls); scripts don't. Feeds /dashboard/traffic only.
+    browser: req.headers.has('sec-fetch-mode'),
+  })
+  if (!baseCheck.success) {
+    return createRateLimitResponse(req, baseCheck.result!, baseCheck.failedCheck!)
   }
 
   // Layer 2: Auth endpoint protection (stricter)
   if (isAuthEndpoint) {
-    const authCheck = await checkRateLimits({ auth: ip })
+    const authCheck = await checkAuthLimit(ip)
     if (!authCheck.success) {
-      return createRateLimitResponse(req, authCheck.result!, 'auth')
+      return createRateLimitResponse(req, authCheck, 'auth')
     }
   }
 
