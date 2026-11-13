@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Check, X, Trophy, CalendarClock, Flag, Users2, Repeat2 } from "lucide-react";
 import type { Id, TeamLite, MatchRow } from "@/app/lib/types";
 import { formatMatchDateTime } from "@/app/lib/datetime";
-import { supabase } from "@/app/lib/supabase/supabaseClient";
 
 // Only two statuses
 const STATUSES: MatchRow["status"][] = ["scheduled", "finished"];
@@ -132,12 +131,13 @@ export default function RowEditor({
       return;
     }
     (async () => {
-      const { data } = await supabase
-        .from("matches")
-        .select("team_a_id, team_b_id, team_a_score, team_b_score")
-        .eq("id", initial.tie_leg1_match_id)
-        .maybeSingle();
-      if (alive) setLeg1((data as any) ?? null);
+      // Through our own staff-only route — the browser never reads Supabase
+      // tables directly.
+      const res = await fetch(`/api/matches/${initial.tie_leg1_match_id}`, {
+        credentials: "include",
+      }).catch(() => null);
+      const body = res && res.ok ? await res.json().catch(() => null) : null;
+      if (alive) setLeg1((body?.match as any) ?? null);
     })();
     return () => {
       alive = false;

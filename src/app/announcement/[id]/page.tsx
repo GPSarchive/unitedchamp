@@ -1,15 +1,20 @@
 import { notFound } from 'next/navigation';
-import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
+import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import AnnouncementContent from '@/components/AnnouncementContent';
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+// Rendered per request, as before (it used to be dynamic implicitly, through
+// the cookie-bound client).
+export const dynamic = 'force-dynamic';
+
+// Read with the service role: the anon key has no table access
+// (migrations/lock-anon-reads.sql), so the status = 'published' filter below
+// is what keeps drafts private — do not remove it.
 async function getAnnouncement(id: string) {
   try {
-    const supabase = await createSupabaseRSCClient();
-
     // Convert string ID to number
     const numericId = Number(id);
     if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -17,7 +22,7 @@ async function getAnnouncement(id: string) {
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('announcements')
       .select('*')
       .eq('id', numericId)

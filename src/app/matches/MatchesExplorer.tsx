@@ -5,7 +5,7 @@
  * Dark palette: near-black ground, ivory ink, orange signal, saffron honours.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,7 +14,6 @@ import {
   JetBrains_Mono,
   Figtree,
 } from "next/font/google";
-import { supabase } from "@/app/lib/supabase/supabaseClient";
 import {
   formatMatchDate,
   formatMatchTime,
@@ -191,14 +190,14 @@ const PageHeader: React.FC<{ total: number; tab: TabKey }> = ({
 // Main component
 // ───────────────────────────────────────────────────────────────────────
 type Props = {
+  /** Tournaments of the ACTIVE season — the explorer never leaves them. */
   tournaments: TournamentOption[];
-  /** Tournament ids of the ACTIVE season — the explorer never leaves them. */
-  tournamentIds: number[];
 };
 
+// Must match PAGE_SIZE in /api/matches/explorer (the server owns the paging).
 const PAGE_SIZE = 12;
 
-export default function MatchesExplorer({ tournaments, tournamentIds }: Props) {
+export default function MatchesExplorer({ tournaments }: Props) {
   const [tab, setTab] = useState<TabKey>("upcoming");
   const [tournamentId, setTournamentId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -207,67 +206,49 @@ export default function MatchesExplorer({ tournaments, tournamentIds }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const currentISO = useMemo(() => new Date().toISOString(), []);
-
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
   }, [tab, tournamentId]);
 
+  // The rows come from our own server (/api/matches/explorer), never from
+  // Supabase directly: the browser holds no key that can read match data.
+  // Scope (active season), tab filters and paging all live in that route.
   useEffect(() => {
+    const ctrl = new AbortController();
+
     const run = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        let q = supabase
-          .from("matches")
-          .select(
-            `id, match_date, status, team_a_score, team_b_score,
-             matchday, round,
-             teamA:teams!matches_team_a_id_fkey (name, logo),
-             teamB:teams!matches_team_b_id_fkey (name, logo),
-             tournament:tournament_id (id, name, logo)`,
-            { count: "exact" }
+        const params = new URLSearchParams({ tab, page: String(page) });
+        if (tournamentId != null) params.set("tournament", String(tournamentId));
+
+        const res = await fetch(`/api/matches/explorer?${params}`, {
+          signal: ctrl.signal,
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(
+            res.status === 429
+              ? "Πάρα πολλά αιτήματα — δοκιμάστε ξανά σε λίγο."
+              : body?.error ?? "Αποτυχία φόρτωσης αγώνων"
           );
-
-        if (tournamentId != null) {
-          q = q.eq("tournament_id", tournamentId);
-        } else {
-          // No tournament picked → every tournament of the active season
-          // (an empty season yields no rows rather than all seasons' matches).
-          q = q.in("tournament_id", tournamentIds.length ? tournamentIds : [-1]);
         }
-
-        const isUpcoming = tab === "upcoming";
-        // The two tabs must PARTITION all dated matches — nothing may vanish
-        // from both. upcoming = future-dated and not finished; past = finished
-        // OR past-dated (so an unscored/postponed yesterday match stays
-        // visible here instead of disappearing until an admin finishes it).
-        q = isUpcoming
-          ? q
-              .gte("match_date", currentISO)
-              .or("status.is.null,status.neq.finished")
-          : q.or(`status.eq.finished,match_date.lt.${currentISO}`);
-
-        q = q.order("match_date", { ascending: isUpcoming });
-
-        const from = (page - 1) * PAGE_SIZE;
-        const to = from + PAGE_SIZE - 1;
-        q = q.range(from, to);
-
-        const { data, error: qErr, count } = await q;
-        if (qErr) throw qErr;
-        setRows((data as MatchRow[]) ?? []);
-        setTotal(count ?? 0);
+        setRows((body?.rows as MatchRow[]) ?? []);
+        setTotal(Number(body?.total) || 0);
       } catch (e: any) {
+        if (ctrl.signal.aborted) return; // superseded by a newer request
         setError(e?.message ?? "Αποτυχία φόρτωσης αγώνων");
       } finally {
-        setLoading(false);
+        if (!ctrl.signal.aborted) setLoading(false);
       }
     };
     run();
-  }, [tab, tournamentId, page, currentISO]);
+
+    return () => ctrl.abort();
+  }, [tab, tournamentId, page]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
