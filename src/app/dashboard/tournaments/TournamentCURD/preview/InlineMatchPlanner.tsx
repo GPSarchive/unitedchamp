@@ -783,7 +783,10 @@ export default function InlineMatchPlanner({
   const toggleIn = (list: number[], id: number) =>
     list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
-  const regenerateStage = () => {
+  // `shuffle` = «Νέα κλήρωση»: the generator is deterministic for a given team
+  // order, so a plain regenerate always rebuilds the same schedule. Shuffling
+  // the teams first is the only way a second press can give a different one.
+  const regenerateStage = (opts?: { shuffle?: boolean }) => {
     // A fresh schedule can't coexist with played matches: it either duplicates
     // them or drops their results. Late teams go through «+ Αγώνες ομάδας».
     if (allRowsForStage.some((m) => (m as any).status === "finished")) {
@@ -805,6 +808,7 @@ export default function InlineMatchPlanner({
     const fresh = generateDraftMatches({
       payload: miniPayload,
       teams,
+      forceShuffle: !!opts?.shuffle,
     });
     const freshHere = fresh.filter((m) => m.stageIdx === effectiveStageIdx);
     const key = (m: DraftMatch) => {
@@ -1056,11 +1060,20 @@ export default function InlineMatchPlanner({
           />
           <button
             className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
-            onClick={regenerateStage}
+            onClick={() => regenerateStage()}
             title="Rebuild this stage's fixtures (keeps scores/status where possible)"
           >
             Regenerate stage
           </button>
+          {!isKO && (
+            <button
+              className="px-2 py-1.5 rounded border border-cyan-400/30 text-cyan-200 hover:bg-cyan-500/10 text-xs"
+              onClick={() => regenerateStage({ shuffle: true })}
+              title="Ανακατεύει τις ομάδες και ξαναδημιουργεί το πρόγραμμα· κάθε πάτημα δίνει διαφορετικές αγωνιστικές"
+            >
+              Νέα κλήρωση
+            </button>
+          )}
           {!isKO && (!isGroups || storeGroups.length > 0) && (
             <button
               className="px-2 py-1.5 rounded border border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/10 text-xs"

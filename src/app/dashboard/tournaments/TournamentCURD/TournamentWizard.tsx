@@ -141,15 +141,31 @@ export default function TournamentWizard({
   }, [payload]);
 
   // ---- EDIT MODE: load full snapshot (standings, maps, etc.) into the store
+  //
+  // The page is server-rendered with the payload, so it LOOKS ready at once,
+  // but the store behind it is empty until this fetch lands — and
+  // hydrateFromSnapshot REPLACES the store. Any edit made in that window is
+  // wiped when the response arrives: «Regenerate stage» on a just-opened
+  // tournament showed its matches for a moment and then they vanished. So the
+  // editor ignores input (`inert`, no visual change) until the fetch settles.
+  // A failed load unlocks too — same as before this guard existed.
+  const [hydrating, setHydrating] = useState(mode === "edit" && !!meta?.id);
+
   useEffect(() => {
-    if (mode !== "edit" || !meta?.id) return;
+    if (mode !== "edit" || !meta?.id) {
+      setHydrating(false);
+      return;
+    }
 
     const ctrl = new AbortController();
+    setHydrating(true);
 
     (async () => {
       try {
         // Fetch + hydrate via helper (includes standings)
         const snap: any = await loadTournamentIntoStore(meta.id, { signal: ctrl.signal });
+        if (ctrl.signal.aborted) return;
+        setHydrating(false);
 
         // Dev-only diagnostics
         if (process.env.NODE_ENV !== "production") {
@@ -189,7 +205,9 @@ export default function TournamentWizard({
           console.groupEnd();
         }
       } catch (err) {
+        if (ctrl.signal.aborted) return; // unmount / tournament switch, not a failure
         console.error("[TournamentWizard] snapshot load failed:", err);
+        setHydrating(false);
       }
     })();
 
@@ -280,6 +298,8 @@ export default function TournamentWizard({
       {/* Advisory validation panel */}
       {errors.length > 0 && <ValidationSummary errors={errors} />}
 
+      {/* Inert (not disabled-looking) while the store is still being hydrated. */}
+      <div inert={hydrating} className="space-y-6">
       {/* 1) Basics */}
       <TournamentBasicsForm
         value={payload.tournament}
@@ -335,6 +355,7 @@ export default function TournamentWizard({
         draftMatches={storeDraftMatches}
         onBack={() => {}}
       />
+      </div>
     </div>
   );
 }
