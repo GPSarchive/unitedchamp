@@ -12,7 +12,7 @@ import {
 } from '@/app/lib/rate-limit'
 import { AUDIT_HEADERS, AUDIT_HEADER_NAMES } from '@/app/lib/audit/headers'
 import { editorMayOpen } from '@/app/lib/dashboardAccess'
-import { SEARCH_ENGINE_BOT_RE, SOCIAL_BOT_RE } from '@/app/lib/botAgents'
+import { BLOCKED_AGENT_RE, SEARCH_ENGINE_BOT_RE, SOCIAL_BOT_RE } from '@/app/lib/botAgents'
 
 const REPORT_ONLY = process.env.CSP_REPORT_ONLY === '1'
 
@@ -268,6 +268,12 @@ function createRateLimitResponse(
 export async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname
   const method = req.method.toUpperCase()
+
+  // Programs we refuse outright, by the name they send (lib/botAgents.ts).
+  // Checked before everything, images included.
+  if (BLOCKED_AGENT_RE.test(req.headers.get('user-agent') || '')) {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
 
   // ─────────────────────────────────────────────────────────────
   // SKIP: Static assets and preflight requests
