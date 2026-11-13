@@ -38,13 +38,20 @@ function matchKey(m: DraftMatch): string {
  *    • Standalone: use global seeding; optional `standalone_bracket_size` trims the field.
  *
  * All KO paths return matches with stable pointers (home/away_source_round + _bracket_pos) and outcome="W".
+ *
+ * `forceShuffle` shuffles the team order of every league/groups stage for this
+ * call only, whatever the stage's saved `shuffle` setting says — it is what
+ * «Νέα κλήρωση» uses so each press gives a different round-robin. Without it
+ * (and with `shuffle` off) the output is fully determined by the team order.
  */
 export function generateDraftMatches({
   payload,
   teams,
+  forceShuffle = false,
 }: {
   payload: NewTournamentPayload;
   teams: TeamDraft[];
+  forceShuffle?: boolean;
 }): DraftMatch[] {
   const out: DraftMatch[] = [];
   const teamIds = teams.map((t) => t.id);
@@ -58,7 +65,7 @@ export function generateDraftMatches({
     const cfg = ((stage as any)?.config ?? {}) as StageConfig;
 
     // reads kept for compatibility (EN/EL keys)
-    const shuffle: boolean = !!(cfg.shuffle ?? (cfg as any)["τυχαία_σειρά"]);
+    const shuffle: boolean = forceShuffle || !!(cfg.shuffle ?? (cfg as any)["τυχαία_σειρά"]);
     const repeatsRaw = cfg.rounds_per_opponent ?? (cfg as any)["αγώνες_ανά_αντίπαλο"];
     const doubleRound = !!(cfg.double_round ?? (cfg as any)["διπλός_γύρος"]);
     const repeats: number = Number.isFinite(repeatsRaw as any)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, RefreshCw, Search } from "lucide-react";
+import { Plus, RefreshCw, Search, Shuffle } from "lucide-react";
 import type { DraftMatch } from "@/app/dashboard/tournaments/TournamentCURD/TournamentWizard";
 import ConfirmDialog from "@/app/dashboard/tournaments/TournamentCURD/stages/ConfirmDialog";
 
@@ -23,7 +23,8 @@ export default function MatchList({
   onOpenMatch: (m: DraftMatch) => void;
 }) {
   const [query, setQuery] = useState("");
-  const [confirmRegen, setConfirmRegen] = useState(false);
+  // null = closed; "shuffle" = «Νέα κλήρωση» (teams shuffled before generating).
+  const [confirmRegen, setConfirmRegen] = useState<null | "same" | "shuffle">(null);
   // On the "All groups" view a new match has no group to land in — creating it
   // anyway would orphan it (groupIdx=null never counts toward any group's
   // standings), so ask which group first.
@@ -83,9 +84,17 @@ export default function MatchList({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Button variant="ghost" onClick={() => setConfirmRegen(true)} title="Αναδημιουργία αγώνων σταδίου">
+        <Button variant="ghost" onClick={() => setConfirmRegen("same")} title="Αναδημιουργία αγώνων σταδίου">
           <RefreshCw size={15} />
           <span className="hidden sm:inline">Αναδημιουργία</span>
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => setConfirmRegen("shuffle")}
+          title="Νέα κλήρωση: ανακατεύει τις ομάδες και ξαναδημιουργεί το πρόγραμμα"
+        >
+          <Shuffle size={15} />
+          <span className="hidden sm:inline">Νέα κλήρωση</span>
         </Button>
         <Button
           variant="primary"
@@ -180,16 +189,21 @@ export default function MatchList({
 
       {confirmRegen && (
         <ConfirmDialog
-          open={confirmRegen}
-          title="Αναδημιουργία αγώνων;"
-          message="Οι αγώνες του σταδίου θα ξαναδημιουργηθούν. Σκορ και IDs διατηρούνται όπου τα ζευγάρια ταιριάζουν."
-          confirmLabel="Αναδημιουργία"
+          open
+          title={confirmRegen === "shuffle" ? "Νέα κλήρωση;" : "Αναδημιουργία αγώνων;"}
+          message={
+            confirmRegen === "shuffle"
+              ? "Οι ομάδες θα ανακατευτούν και οι αγώνες του σταδίου θα ξαναδημιουργηθούν με νέα σειρά. Σκορ και IDs διατηρούνται μόνο όπου τα ζευγάρια ταιριάζουν."
+              : "Οι αγώνες του σταδίου θα ξαναδημιουργηθούν. Σκορ και IDs διατηρούνται όπου τα ζευγάρια ταιριάζουν."
+          }
+          confirmLabel={confirmRegen === "shuffle" ? "Νέα κλήρωση" : "Αναδημιουργία"}
           cancelLabel="Άκυρο"
           onConfirm={() => {
-            setConfirmRegen(false);
-            regenerateStage();
+            const shuffle = confirmRegen === "shuffle";
+            setConfirmRegen(null);
+            regenerateStage({ shuffle });
           }}
-          onCancel={() => setConfirmRegen(false)}
+          onCancel={() => setConfirmRegen(null)}
         />
       )}
     </div>

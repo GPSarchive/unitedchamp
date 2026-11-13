@@ -402,10 +402,13 @@ export function useStageFixtures({
     if (isKO) reindexKOPointers(effectiveStageIdx);
   };
 
-  const regenerateStage = () => {
+  // `shuffle` = «Νέα κλήρωση»: the generator is deterministic for a given team
+  // order, so only shuffling first lets a second press give a different schedule.
+  const regenerateStage = (opts?: { shuffle?: boolean }) => {
     const fresh = generateDraftMatches({
       payload: miniPayload,
       teams: stageFilteredTeams,
+      forceShuffle: !!opts?.shuffle,
     });
     const freshHere = fresh.filter((m) => m.stageIdx === effectiveStageIdx);
     const key = (m: DraftMatch) => {
