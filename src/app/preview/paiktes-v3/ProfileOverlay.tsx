@@ -22,8 +22,8 @@ import { SHIELD } from "../paiktes-v2/[id]/cardShared";
 import HoloShieldCard from "../paiktes-v2/[id]/HoloShieldCard";
 import { LINK } from "../paiktes-v2/[id]/profileParts";
 import type { PlayerExtra } from "./data";
-import { nameStyle, type NameStyleId } from "./nameStyles";
-import SeasonStats, { StatsLayoutPicker, useStatsLayout, type TableLine } from "./SeasonStats";
+import { NAME_LETTERING } from "./nameStyles";
+import SeasonStats, { type TableLine } from "./SeasonStats";
 import type { SeasonStanding } from "./standing";
 
 const GOLD_RIM =
@@ -92,9 +92,10 @@ function bake(path: FlightPath, steps = 30): Keyframe[] {
 
 // ── Light trail ─────────────────────────────────────────────────────────
 // In flight the card bleeds light from its edges and leaves it hanging in
-// the air behind it, cooling as it goes. It comes in two colours while this
-// is a preview — gold (white-hot → gold → orange → ember) and white (white
-// with a touch of pink in the tail) — or not at all. It is a real trail, not a copy of the
+// the air behind it, cooling as it goes: white-hot → gold → orange → ember.
+// A second colour, white with a touch of pink in the tail, is kept for later
+// but not offered (see TRAIL_COLOUR). Visitors can switch the trail off.
+// It is a real trail, not a copy of the
 // card: for every few milliseconds of the flight the card's true outline —
 // turned, pitched and in perspective exactly as the card was at that moment
 // — is laid down as light, so the ribbon narrows where the card was edge-on
@@ -111,24 +112,25 @@ const TRAIL_STEP_MS = 6;
 /** Painted at half size and blurred: it is light, not a drawing. */
 const TRAIL_RES = 0.5;
 
-type TrailMode = "gold" | "white" | "off";
+type TrailColour = "gold" | "white";
 
-/** Gold unless the visitor chose otherwise (remembered in this browser). */
-function storedTrail(): TrailMode {
+/**
+ * The trail's colour. Only gold is shown; the white one (with a pink tail)
+ * is kept for later — set this to "white" to bring it back.
+ */
+const TRAIL_COLOUR: TrailColour = "gold";
+
+/**
+ * On unless the visitor switched it off (remembered in this browser). The
+ * key also holds "gold" / "white" from the preview's colour picker: both mean on.
+ */
+function trailEnabled(): boolean {
   try {
-    const saved = localStorage.getItem(TRAIL_KEY);
-    return saved === "off" || saved === "white" ? saved : "gold";
+    return localStorage.getItem(TRAIL_KEY) !== "off";
   } catch {
-    return "gold";
+    return true;
   }
 }
-
-/** Preview only: once a colour is chosen, keep it and a plain on/off. */
-const TRAIL_OPTIONS: { id: TrailMode; label: string; title: string; dot: string | null }[] = [
-  { id: "gold", label: "Χρυσό", title: "Χρυσό ίχνος φωτός πίσω από την κάρτα", dot: "#fb923c" },
-  { id: "white", label: "Λευκό", title: "Λευκό ίχνος φωτός πίσω από την κάρτα", dot: "#ffffff" },
-  { id: "off", label: "Όχι", title: "Χωρίς ίχνος φωτός", dot: null },
-];
 
 /** SHIELD's corners, measured from the card's centre in card widths / heights. */
 const SHIELD_CORNERS = [
@@ -154,7 +156,7 @@ function ramp(stops: number[][]): string[] {
   });
 }
 
-const HEAT: Record<Exclude<TrailMode, "off">, string[]> = {
+const HEAT: Record<TrailColour, string[]> = {
   // white-hot → gold → orange → ember
   gold: ramp([
     [0, 255, 248, 230],
@@ -364,7 +366,6 @@ export default function ProfileOverlay({
   seasonLabel,
   standing,
   teamLines,
-  lettering,
   origin,
   closing,
   onRequestClose,
@@ -380,8 +381,6 @@ export default function ProfileOverlay({
   teamLines: TableLine[];
   tournaments: DirectoryTournament[];
   seasonLabel: string | null;
-  /** Which lettering the name is set in (same as the list). */
-  lettering: NameStyleId;
   /** Where the row's card was when it was clicked; null when opened by link. */
   origin: DOMRect | null;
   /** Set by the parent to play the way out; `onExited` fires when it is done. */
@@ -390,8 +389,7 @@ export default function ProfileOverlay({
   onExited: () => void;
 }) {
   const { player } = entry;
-  const letters = nameStyle(lettering);
-  const [statsLayout, setStatsLayout] = useStatsLayout();
+  const letters = NAME_LETTERING;
   // When the card has landed and the profile has assembled: nothing in the
   // stats should start moving before then.
   const [settleAt] = useState(() => performance.now() + (origin ? THROW_MS * 0.8 : 380) + 320);
@@ -407,30 +405,31 @@ export default function ProfileOverlay({
 
   // One trail at a time: starting a flight puts out the previous one's light.
   const stopTrailRef = useRef<(() => void) | null>(null);
-  const beginTrail = (flight: Animation, path: FlightPath, duration: number, leaving: boolean, mode: TrailMode) => {
+  const beginTrail = (flight: Animation, path: FlightPath, duration: number, leaving: boolean) => {
     stopTrailRef.current?.();
     const canvas = trailRef.current;
     const card = cardRef.current;
     stopTrailRef.current =
-      mode !== "off" && canvas && card ? startTrail(canvas, card, flight, path, duration, leaving, HEAT[mode]) : null;
+      canvas && card ? startTrail(canvas, card, flight, path, duration, leaving, HEAT[TRAIL_COLOUR]) : null;
   };
   useEffect(() => () => stopTrailRef.current?.(), []);
 
-  // The trail's colour, or none; the buttons show the stored choice.
-  const [trail, setTrail] = useState<TrailMode>("gold");
-  useEffect(() => setTrail(storedTrail()), []);
-  const chooseTrail = (next: TrailMode) => {
-    setTrail(next);
-    if (next === "off") stopTrailRef.current?.();
+  // The trail can be switched off; the button shows the stored choice.
+  const [trailOn, setTrailOn] = useState(true);
+  useEffect(() => setTrailOn(trailEnabled()), []);
+  const toggleTrail = () => {
+    const next = !trailOn;
+    setTrailOn(next);
+    if (!next) stopTrailRef.current?.();
     try {
-      localStorage.setItem(TRAIL_KEY, next);
+      localStorage.setItem(TRAIL_KEY, next ? "on" : "off");
     } catch {
       // Not remembered, still applied while this profile is open.
     }
   };
   // The way out reads the latest choice without re-running its effect.
-  const trailModeRef = useRef(trail);
-  trailModeRef.current = trail;
+  const trailOnRef = useRef(trailOn);
+  trailOnRef.current = trailOn;
 
   // ── Way in ────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
@@ -472,7 +471,7 @@ export default function ProfileOverlay({
       landing = THROW_MS * 0.8;
       // The light it leaves behind. (Read from storage here: this runs before
       // the button's state is set.)
-      beginTrail(flight, path, THROW_MS, false, storedTrail());
+      if (trailEnabled()) beginTrail(flight, path, THROW_MS, false);
     } else {
       // Opened from a link: no row to come from, so it just turns to face us.
       running.push(
@@ -582,7 +581,7 @@ export default function ProfileOverlay({
           ],
           { duration: calm ? 120 : 260, easing: "ease-in", fill: "forwards" },
         );
-    if (wayBack) beginTrail(flight, wayBack, duration, true, trailModeRef.current);
+    if (wayBack && trailOnRef.current) beginTrail(flight, wayBack, duration, true);
     let done = false;
     const finish = () => {
       if (done) return;
@@ -782,15 +781,8 @@ export default function ProfileOverlay({
                 <p className="mt-5 text-[15px] text-[#F3EFE6]/65">Δεν ανήκει σε ομάδα την τρέχουσα σεζόν.</p>
               )}
 
-              {/* Two wrappers that are always there: the arrival animation is
-                  set on this column's children once, so what changes with the
-                  chosen layout has to live inside them. */}
-              <div className="mt-9">
-                <StatsLayoutPicker value={statsLayout} onChange={setStatsLayout} />
-              </div>
-              <div>
+              <div className="mt-4">
                 <SeasonStats
-                  layout={statsLayout}
                   seasonLabel={seasonLabel}
                   season={player.season}
                   standing={standing}
@@ -805,45 +797,30 @@ export default function ProfileOverlay({
         </div>
       </div>
 
-      {/* The light trail's colour, or none; takes effect from the next flight
+      {/* Switches the light trail on and off; takes effect from the next flight
           (closing this profile included). */}
-      <div
-        role="group"
-        aria-label="Ίχνος φωτός"
-        className="absolute right-[4.25rem] top-3 flex h-11 items-stretch border border-[#F3EFE6]/25 bg-[#0a0a14]/80 text-sm md:right-[5.25rem] md:top-6"
+      <button
+        type="button"
+        onClick={toggleTrail}
+        aria-pressed={trailOn}
+        title={trailOn ? "Απενεργοποίηση του φωτεινού ίχνους πίσω από την κάρτα" : "Ενεργοποίηση του φωτεινού ίχνους πίσω από την κάρτα"}
+        className={`absolute right-[4.25rem] top-3 flex h-11 items-center gap-2 border bg-[#0a0a14]/80 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] md:right-[5.25rem] md:top-6 ${
+          trailOn
+            ? "border-[#fb923c]/70 text-[#F3EFE6] hover:border-[#fb923c]"
+            : "border-[#F3EFE6]/25 text-[#F3EFE6]/65 hover:border-[#F3EFE6]/50"
+        }`}
       >
-        <span aria-hidden className="flex items-center pl-3 pr-1.5 text-[13px] text-[#F3EFE6]/65">
-          Ίχνος
-        </span>
-        {TRAIL_OPTIONS.map((option) => {
-          const active = option.id === trail;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => chooseTrail(option.id)}
-              aria-pressed={active}
-              title={option.title}
-              className={`flex min-w-11 items-center justify-center gap-1.5 px-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#fb923c] ${
-                active ? "bg-[#F3EFE6]/[0.14] font-bold text-[#F3EFE6]" : "text-[#F3EFE6]/65 hover:text-[#F3EFE6]"
-              }`}
-            >
-              {option.dot && (
-                <span
-                  aria-hidden
-                  className="h-2 w-2 rounded-full"
-                  style={{
-                    background: option.dot,
-                    boxShadow: active ? `0 0 8px ${option.dot}` : undefined,
-                    opacity: active ? 1 : 0.55,
-                  }}
-                />
-              )}
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+        <span
+          aria-hidden
+          className="h-2 w-2 rounded-full"
+          style={
+            trailOn
+              ? { background: "#fb923c", boxShadow: "0 0 8px #fb923c" }
+              : { background: "rgba(243,239,230,0.3)" }
+          }
+        />
+        Ίχνος φωτός: {trailOn ? "ναι" : "όχι"}
+      </button>
 
       <button
         ref={closeRef}

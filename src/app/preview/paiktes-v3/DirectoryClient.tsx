@@ -42,7 +42,7 @@ import MiniCard from "./MiniCard";
 import ProfileOverlay from "./ProfileOverlay";
 import { seasonStanding } from "./standing";
 import type { TableLine } from "./SeasonStats";
-import { NameStylePicker, nameStyle, useNameStyle, type NameStyleId } from "./nameStyles";
+import { NAME_LETTERING } from "./nameStyles";
 import type { DirectoryV3 } from "./data";
 
 /** Rows rendered at first, and added each time the end of the list nears. */
@@ -58,7 +58,6 @@ const PlayerRow = memo(function PlayerRow({
   sort,
   onPhone,
   away,
-  lettering,
   onOpen,
 }: {
   row: DirectoryRow;
@@ -67,13 +66,11 @@ const PlayerRow = memo(function PlayerRow({
   onPhone: Set<StatKey>;
   /** The row's card is out flying (its profile is open): leave its place empty. */
   away: boolean;
-  /** Which lettering the name is set in. */
-  lettering: NameStyleId;
   onOpen: (id: number, e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const { entry, stats, rank } = row;
   const { player, team, extraTeams } = entry;
-  const letters = nameStyle(lettering);
+  const letters = NAME_LETTERING;
 
   return (
     <li className="border-b border-[#F3EFE6]/[0.08] [content-visibility:auto] [contain-intrinsic-size:auto_93px]">
@@ -194,7 +191,6 @@ export default function DirectoryClient({
   const [query, setQuery] = useState<DirectoryQuery>(DEFAULT_QUERY);
   const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [lettering, setLettering] = useNameStyle();
   const sheetButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // The open profile, and whether it is on its way out.
@@ -503,8 +499,6 @@ export default function DirectoryClient({
           )}
         </div>
 
-        <NameStylePicker value={lettering} onChange={setLettering} />
-
         {/* ── Sticky: search, filters, column header ────────────────── */}
         <div className="sticky top-14 z-20 border-y border-[#F3EFE6]/15 bg-[#0a0a14] md:top-28">
           <div className="flex gap-2 px-4 py-2.5 md:px-6">
@@ -631,7 +625,6 @@ export default function DirectoryClient({
                   sort={listQuery.sort}
                   onPhone={onPhone}
                   away={opened?.id === row.entry.player.id}
-                  lettering={lettering}
                   onOpen={openPlayer}
                 />
               ))}
@@ -720,7 +713,6 @@ export default function DirectoryClient({
           seasonLabel={data.seasonLabel}
           standing={openedStanding}
           teamLines={openedTeamLines}
-          lettering={lettering}
           origin={opened.origin}
           closing={closing}
           onRequestClose={requestClose}
