@@ -10,6 +10,3 @@ export const SEARCH_ENGINE_BOT_RE =
 /** Social / link-preview crawlers. */
 export const SOCIAL_BOT_RE =
   /facebookexternalhit|meta-externalagent|meta-webindexer|Twitterbot|LinkedInBot|WhatsApp|Pinterestbot|Slackbot|Discordbot|TelegramBot/i;
-
-/** Programs refused outright with 403 (proxy.ts). Add one name per `|`. */
-export const BLOCKED_AGENT_RE = /GreekLeadsResearch/i;
