@@ -8,28 +8,26 @@ import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "../paiktes-v2/[id]/cardShared";
 
 const GOLD_RIM = "linear-gradient(150deg, #D4AF37 0%, #FFE08A 35%, #C99A1E 65%, #FFD866 100%)";
-const SURFACE = "radial-gradient(circle at 30% 20%, rgba(212,175,55,0.22) 0%, transparent 65%), #0b0b0d";
+/** «Όνυχας»: flat, a touch lighter than pure black — the same as the profile's card. */
+const SURFACE = "#0b0b0d";
 
 export default function MiniCard({
   photo,
   logo,
   initial,
-  surface = SURFACE,
 }: {
   photo: string | null;
   /** Main team's logo, shown when there is no photo. */
   logo: string | null;
   /** Shown when there is neither. */
   initial: string;
-  /** CSS background behind the logo when there is no photo. */
-  surface?: string;
 }) {
   const hasPhoto = !isPlaceholderPhoto(photo);
   const hasLogo = !isPlaceholderPhoto(logo);
   return (
     <div className="relative aspect-[5/7] w-full">
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: GOLD_RIM }} />
-      <div className="absolute inset-[1.5px] overflow-hidden" style={{ clipPath: SHIELD, background: surface }}>
+      <div className="absolute inset-[1.5px] overflow-hidden" style={{ clipPath: SHIELD, background: SURFACE }}>
         {hasPhoto ? (
           <PlayerImage
             src={photo}

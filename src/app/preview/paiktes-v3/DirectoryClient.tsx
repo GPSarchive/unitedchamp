@@ -42,9 +42,7 @@ import MiniCard from "./MiniCard";
 import ProfileOverlay from "./ProfileOverlay";
 import { seasonStanding } from "./standing";
 import type { TableLine } from "./SeasonStats";
-import { NAME_LETTERING } from "./nameStyles";
-import { cardBackground, useCardBackground } from "./cardBackgrounds";
-import type { DirectoryV3 } from "./data";
+import { NAME_LETTERING } from "./nameStyles";import type { DirectoryV3 } from "./data";
 
 /** Rows rendered at first, and added each time the end of the list nears. */
 const PAGE = 100;
@@ -59,7 +57,6 @@ const PlayerRow = memo(function PlayerRow({
   sort,
   onPhone,
   away,
-  cardSurface,
   onOpen,
 }: {
   row: DirectoryRow;
@@ -68,8 +65,6 @@ const PlayerRow = memo(function PlayerRow({
   onPhone: Set<StatKey>;
   /** The row's card is out flying (its profile is open): leave its place empty. */
   away: boolean;
-  /** Preview: the card background being tried. */
-  cardSurface: string;
   onOpen: (id: number, e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const { entry, stats, rank } = row;
@@ -105,7 +100,6 @@ const PlayerRow = memo(function PlayerRow({
               photo={player.photo}
               logo={team?.logo ?? null}
               initial={(player.last || player.first || "?").charAt(0).toUpperCase()}
-              surface={cardSurface}
             />
           </div>
           <div className="min-w-0">
@@ -196,7 +190,6 @@ export default function DirectoryClient({
   const [query, setQuery] = useState<DirectoryQuery>(DEFAULT_QUERY);
   const [ready, setReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [cardBg, setCardBg] = useCardBackground();
   const sheetButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // The open profile, and whether it is on its way out.
@@ -631,7 +624,6 @@ export default function DirectoryClient({
                   sort={listQuery.sort}
                   onPhone={onPhone}
                   away={opened?.id === row.entry.player.id}
-                  cardSurface={cardBackground(cardBg).mini}
                   onOpen={openPlayer}
                 />
               ))}
@@ -720,8 +712,6 @@ export default function DirectoryClient({
           seasonLabel={data.seasonLabel}
           standing={openedStanding}
           teamLines={openedTeamLines}
-          cardBg={cardBg}
-          onCardBgChange={setCardBg}
           origin={opened.origin}
           closing={closing}
           onRequestClose={requestClose}
