@@ -54,6 +54,7 @@ export default function HoloShieldCard({
   team,
   stats,
   intro = true,
+  surface = WEAVE,
 }: {
   first: string;
   last: string;
@@ -64,6 +65,8 @@ export default function HoloShieldCard({
   stats: StatTuple | null;
   /** Play the tilt sweep on mount (off when something else animates the card in). */
   intro?: boolean;
+  /** CSS background behind the logo when there is no photo; the dark weave by default. */
+  surface?: string;
 }) {
   const tilt = useCardTilt<HTMLDivElement>({ maxDeg: 12, direction: 1, intro });
   const hasPhoto = !isPlaceholderPhoto(photo);
@@ -85,7 +88,7 @@ export default function HoloShieldCard({
 
       <div
         className="absolute inset-[2px] overflow-hidden text-white"
-        style={{ clipPath: SHIELD, background: WEAVE }}
+        style={{ clipPath: SHIELD, background: surface }}
       >
         {hasPhoto && (
           <>

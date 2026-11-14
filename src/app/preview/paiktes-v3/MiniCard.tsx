@@ -14,19 +14,22 @@ export default function MiniCard({
   photo,
   logo,
   initial,
+  surface = SURFACE,
 }: {
   photo: string | null;
   /** Main team's logo, shown when there is no photo. */
   logo: string | null;
   /** Shown when there is neither. */
   initial: string;
+  /** CSS background behind the logo when there is no photo. */
+  surface?: string;
 }) {
   const hasPhoto = !isPlaceholderPhoto(photo);
   const hasLogo = !isPlaceholderPhoto(logo);
   return (
     <div className="relative aspect-[5/7] w-full">
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: GOLD_RIM }} />
-      <div className="absolute inset-[1.5px] overflow-hidden" style={{ clipPath: SHIELD, background: SURFACE }}>
+      <div className="absolute inset-[1.5px] overflow-hidden" style={{ clipPath: SHIELD, background: surface }}>
         {hasPhoto ? (
           <PlayerImage
             src={photo}

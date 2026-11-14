@@ -23,6 +23,7 @@ import HoloShieldCard from "../paiktes-v2/[id]/HoloShieldCard";
 import { LINK } from "../paiktes-v2/[id]/profileParts";
 import type { PlayerExtra } from "./data";
 import { NAME_LETTERING } from "./nameStyles";
+import { CardBackgroundPicker, cardBackground, type CardBackgroundId } from "./cardBackgrounds";
 import SeasonStats, { type TableLine } from "./SeasonStats";
 import type { SeasonStanding } from "./standing";
 
@@ -353,6 +354,8 @@ export default function ProfileOverlay({
   seasonLabel,
   standing,
   teamLines,
+  cardBg,
+  onCardBgChange,
   origin,
   closing,
   onRequestClose,
@@ -366,6 +369,9 @@ export default function ProfileOverlay({
   standing: SeasonStanding | null;
   /** This season split by team, most matches first. */
   teamLines: TableLine[];
+  /** Preview: the card background being tried, and how to change it. */
+  cardBg: CardBackgroundId;
+  onCardBgChange: (id: CardBackgroundId) => void;
   tournaments: DirectoryTournament[];
   seasonLabel: string | null;
   /** Where the row's card was when it was clicked; null when opened by link. */
@@ -654,6 +660,7 @@ export default function ProfileOverlay({
       <div className="absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain" onClick={closeOnSelf}>
         <div className="mx-auto max-w-5xl px-4 pb-16 pt-16 md:px-6 md:pt-20" onClick={closeOnSelf}>
           <div className="grid gap-8 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:gap-10" onClick={closeOnSelf}>
+            <div className="min-w-0">
             {/* The card. `preserve-3d` + hidden back faces give the spin a
                 real back side instead of a mirrored front. */}
             <div className="relative mx-auto w-full max-w-[20rem] md:mx-0">
@@ -681,6 +688,7 @@ export default function ProfileOverlay({
                     team={teams[0] ?? null}
                     stats={player.season}
                     intro={false}
+                    surface={cardBackground(cardBg).big}
                   />
                   {/* One streak of light across the face on landing. */}
                   <div
@@ -711,6 +719,11 @@ export default function ProfileOverlay({
                   <CardBack />
                 </div>
               </div>
+            </div>
+            {/* Preview only: try backgrounds for the card (and the list's small cards). */}
+            <div className="mx-auto mt-5 w-full max-w-[20rem] md:mx-0">
+              <CardBackgroundPicker value={cardBg} onChange={onCardBgChange} />
+            </div>
             </div>
 
             <div ref={contentRef} className="min-w-0">
