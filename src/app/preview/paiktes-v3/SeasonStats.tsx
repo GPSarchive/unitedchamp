@@ -53,7 +53,7 @@ function Cards({ stats, none }: { stats: StatTuple; none: React.ReactNode }) {
   const shown = CARDS.filter((card) => stats[card.index] > 0);
   if (shown.length === 0) return <>{none}</>;
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
       {shown.map((card) => (
         <span key={card.index} className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <CardGlyph color={card.color} />
@@ -136,7 +136,7 @@ function OneTable({
           return (
             <td
               key={key}
-              className={`pb-3 pt-1 tabular-nums ${
+              className={`pb-3 pt-1 text-center tabular-nums ${
                 value === 0 ? "font-normal text-[#F3EFE6]/30" : key === "goals" ? "text-[#fb923c]" : ""
               }`}
             >
@@ -144,7 +144,7 @@ function OneTable({
             </td>
           );
         })}
-        <td className="pb-3 pt-1 text-[15px] font-normal">
+        <td className="pb-3 pt-1 text-center text-[15px] font-normal">
           <Cards stats={line.stats} none={<span className="text-[#F3EFE6]/30">–</span>} />
         </td>
       </tr>
@@ -164,7 +164,7 @@ function OneTable({
         <thead>
           <tr className="text-[13px] text-[#F3EFE6]/65">
             {STAT_KEYS.map((key) => (
-              <th key={key} scope="col" className="pb-2 font-normal">
+              <th key={key} scope="col" className="pb-2 text-center font-normal">
                 {COLUMNS[key].title ? (
                   <abbr title={COLUMNS[key].title} className="no-underline">
                     {COLUMNS[key].label}
@@ -174,7 +174,7 @@ function OneTable({
                 )}
               </th>
             ))}
-            <th scope="col" className="pb-2 font-normal">
+            <th scope="col" className="pb-2 text-center font-normal">
               Κάρτες
             </th>
           </tr>

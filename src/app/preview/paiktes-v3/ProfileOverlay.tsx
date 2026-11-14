@@ -94,8 +94,8 @@ function bake(path: FlightPath, steps = 30): Keyframe[] {
 // In flight the card bleeds light from its edges and leaves it hanging in
 // the air behind it, cooling as it goes: white-hot → gold → orange → ember.
 // A second colour, white with a touch of pink in the tail, is kept for later
-// but not offered (see TRAIL_COLOUR). Visitors can switch the trail off.
-// It is a real trail, not a copy of the
+// but not offered (see TRAIL_COLOUR). Visitors who ask their device for
+// reduced motion get no flight, so no trail. It is a real trail, not a copy of the
 // card: for every few milliseconds of the flight the card's true outline —
 // turned, pitched and in perspective exactly as the card was at that moment
 // — is laid down as light, so the ribbon narrows where the card was edge-on
@@ -104,7 +104,6 @@ function bake(path: FlightPath, steps = 30): Keyframe[] {
 // What is on screen depends only on the flight's own clock, so the trail can
 // never drift from the card, and a slow frame just means it catches up.
 
-const TRAIL_KEY = "paiktes-v3:neon-trail";
 /** How long light hangs in the air behind the card. */
 const TRAIL_MS = 380;
 /** One outline of light is laid down per this many ms of flight. */
@@ -119,18 +118,6 @@ type TrailColour = "gold" | "white";
  * is kept for later — set this to "white" to bring it back.
  */
 const TRAIL_COLOUR: TrailColour = "gold";
-
-/**
- * On unless the visitor switched it off (remembered in this browser). The
- * key also holds "gold" / "white" from the preview's colour picker: both mean on.
- */
-function trailEnabled(): boolean {
-  try {
-    return localStorage.getItem(TRAIL_KEY) !== "off";
-  } catch {
-    return true;
-  }
-}
 
 /** SHIELD's corners, measured from the card's centre in card widths / heights. */
 const SHIELD_CORNERS = [
@@ -414,22 +401,6 @@ export default function ProfileOverlay({
   };
   useEffect(() => () => stopTrailRef.current?.(), []);
 
-  // The trail can be switched off; the button shows the stored choice.
-  const [trailOn, setTrailOn] = useState(true);
-  useEffect(() => setTrailOn(trailEnabled()), []);
-  const toggleTrail = () => {
-    const next = !trailOn;
-    setTrailOn(next);
-    if (!next) stopTrailRef.current?.();
-    try {
-      localStorage.setItem(TRAIL_KEY, next ? "on" : "off");
-    } catch {
-      // Not remembered, still applied while this profile is open.
-    }
-  };
-  // The way out reads the latest choice without re-running its effect.
-  const trailOnRef = useRef(trailOn);
-  trailOnRef.current = trailOn;
 
   // ── Way in ────────────────────────────────────────────────────────────
   useLayoutEffect(() => {
@@ -471,7 +442,7 @@ export default function ProfileOverlay({
       landing = THROW_MS * 0.8;
       // The light it leaves behind. (Read from storage here: this runs before
       // the button's state is set.)
-      if (trailEnabled()) beginTrail(flight, path, THROW_MS, false);
+      beginTrail(flight, path, THROW_MS, false);
     } else {
       // Opened from a link: no row to come from, so it just turns to face us.
       running.push(
@@ -581,7 +552,7 @@ export default function ProfileOverlay({
           ],
           { duration: calm ? 120 : 260, easing: "ease-in", fill: "forwards" },
         );
-    if (wayBack && trailOnRef.current) beginTrail(flight, wayBack, duration, true);
+    if (wayBack) beginTrail(flight, wayBack, duration, true);
     let done = false;
     const finish = () => {
       if (done) return;
@@ -797,30 +768,6 @@ export default function ProfileOverlay({
         </div>
       </div>
 
-      {/* Switches the light trail on and off; takes effect from the next flight
-          (closing this profile included). */}
-      <button
-        type="button"
-        onClick={toggleTrail}
-        aria-pressed={trailOn}
-        title={trailOn ? "Απενεργοποίηση του φωτεινού ίχνους πίσω από την κάρτα" : "Ενεργοποίηση του φωτεινού ίχνους πίσω από την κάρτα"}
-        className={`absolute right-[4.25rem] top-3 flex h-11 items-center gap-2 border bg-[#0a0a14]/80 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] md:right-[5.25rem] md:top-6 ${
-          trailOn
-            ? "border-[#fb923c]/70 text-[#F3EFE6] hover:border-[#fb923c]"
-            : "border-[#F3EFE6]/25 text-[#F3EFE6]/65 hover:border-[#F3EFE6]/50"
-        }`}
-      >
-        <span
-          aria-hidden
-          className="h-2 w-2 rounded-full"
-          style={
-            trailOn
-              ? { background: "#fb923c", boxShadow: "0 0 8px #fb923c" }
-              : { background: "rgba(243,239,230,0.3)" }
-          }
-        />
-        Ίχνος φωτός: {trailOn ? "ναι" : "όχι"}
-      </button>
 
       <button
         ref={closeRef}
