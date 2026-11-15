@@ -115,6 +115,13 @@ export default function RowEditor({
   const [saving, setSaving] = useState(false);
   const isEdit = Boolean(initial.id);
 
+  // A postponed match keeps its real status in the dropdown (otherwise the
+  // select would silently show "scheduled" while still sending "postponed").
+  // Postponing itself is done from the «Αναβολή» dialog, not from here.
+  const statusOptions: MatchRow["status"][] =
+    initial.status === "postponed" ? ["postponed", ...STATUSES] : STATUSES;
+  const postponedGetsDate = form.status === "postponed" && Boolean(form.match_date);
+
   // ----- Two-legged KO context -----
   const leg = initial.leg ?? null;
   const isLeg1 = leg === 1;
@@ -578,10 +585,17 @@ export default function RowEditor({
                   onChange={(e) => set("status", e.target.value as MatchRow["status"])}
                   className="px-3 py-2 min-h-[44px] rounded-md bg-zinc-900 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20"
                 >
-                  {STATUSES.map((s) => (
+                  {statusOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                {form.status === "postponed" && (
+                  <span className="mt-1 text-xs text-orange-200">
+                    {postponedGetsDate
+                      ? "Με ημερομηνία ο αγώνας θα αποθηκευτεί ως scheduled."
+                      : "Ο αγώνας έχει αναβληθεί. Ορίστε ημερομηνία για να επανέλθει στο πρόγραμμα."}
+                  </span>
+                )}
               </label>
 
               <label className="flex flex-col gap-1 lg:col-span-2">

@@ -12,6 +12,7 @@ import { assertTeamsInSeason, getTournamentSeasonLabel } from "@/app/lib/seasons
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { describeDbError } from "@/app/lib/dbErrors/describeDbError";
 import { loadMatchWriteContext } from "@/app/lib/dbErrors/matchContext";
+import { statusForDate } from "@/app/lib/postpone";
 
 const ALLOWED_STATUSES = new Set(["scheduled", "finished"]);
 
@@ -217,7 +218,7 @@ export async function PATCH(
     // Load current row incl. wiring anchors + stage kind
     const { data: current, error: curErr } = await supa
       .from("matches")
-      .select("id, tournament_id, stage_id, round, bracket_pos, team_a_id, team_b_id, status, winner_team_id, team_a_score, team_b_score, leg, tie_leg1_match_id, penalty_a, penalty_b")
+      .select("id, tournament_id, stage_id, round, bracket_pos, team_a_id, team_b_id, status, match_date, winner_team_id, team_a_score, team_b_score, leg, tie_leg1_match_id, penalty_a, penalty_b")
       .eq("id", id)
       .maybeSingle();
 
@@ -308,9 +309,22 @@ export async function PATCH(
       else update.matchday = n;
     }
 
-    // Validate status
-    if ("status" in update && !ALLOWED_STATUSES.has(update.status)) {
-      return jsonError(400, "Invalid status");
+    // Validate status. "postponed" may only be kept (the RowEditor sends the
+    // row's own status back); postponing goes through /postpone, which
+    // records the reason and publishes the announcement.
+    if ("status" in update) {
+      const keepsPostponed = update.status === "postponed" && current.status === "postponed";
+      if (!ALLOWED_STATUSES.has(update.status) && !keepsPostponed) {
+        return jsonError(400, "Invalid status");
+      }
+    }
+
+    // A postponed match that gets a date is back on the schedule (lib/postpone).
+    {
+      const effStatus = "status" in update ? update.status : current.status;
+      const effDate = "match_date" in update ? update.match_date : current.match_date;
+      const resolved = statusForDate(effStatus, effDate);
+      if (resolved !== effStatus) update.status = resolved;
     }
 
     // 🚦 If user manually sets a team on a KO slot, auto-break the linkage on that side

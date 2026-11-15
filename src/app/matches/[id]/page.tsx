@@ -268,12 +268,14 @@ export default async function Page({
       adminSlot={
         isAdmin ? (
           <>
-            {/* Admin Actions (Postpone Match) */}
+            {/* Admin Actions (Postpone Match / set its new date) */}
             <MatchAdminActions
               match={{
                 id: match.id,
                 status: match.status,
                 match_date: match.match_date,
+                original_match_date: match.original_match_date ?? null,
+                postponement_reason: match.postponement_reason ?? null,
                 teamA: match.team_a,
                 teamB: match.team_b,
               }}

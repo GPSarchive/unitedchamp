@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Clock, Shield } from "lucide-react";
+import { Calendar, Clock, Shield } from "lucide-react";
 import PostponeDialog from "@/app/dashboard/matches/PostponeDialog";
 import type { MatchRow } from "@/app/lib/types";
 
@@ -10,6 +10,8 @@ interface MatchAdminActionsProps {
     id: number;
     status: "scheduled" | "postponed" | "finished";
     match_date: string | null;
+    original_match_date?: string | null;
+    postponement_reason?: string | null;
     teamA?: { name: string } | null;
     teamB?: { name: string } | null;
   };
@@ -23,6 +25,8 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
     return null;
   }
 
+  const isPostponed = match.status === "postponed";
+
   // Prepare match data for PostponeDialog
   const matchForDialog: MatchRow & {
     teamA?: { name: string };
@@ -31,6 +35,8 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
     id: match.id,
     status: match.status,
     match_date: match.match_date,
+    original_match_date: match.original_match_date ?? null,
+    postponement_reason: match.postponement_reason ?? null,
     team_a_score: 0,
     team_b_score: 0,
     winner_team_id: null,
@@ -53,8 +59,8 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
             onClick={() => setShowPostpone(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50 text-white font-medium transition-all shadow-lg shadow-orange-500/20"
           >
-            <Clock className="h-4 w-4" />
-            Αναβολή Αγώνα
+            {isPostponed ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+            {isPostponed ? "Νέα Ημερομηνία" : "Αναβολή Αγώνα"}
           </button>
         </div>
       </div>

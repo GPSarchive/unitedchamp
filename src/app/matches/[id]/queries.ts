@@ -30,6 +30,8 @@ export type MatchWithTournament = MatchWithTeams & {
   tie_leg1_match_id: number | null;
   penalty_a: number | null;
   penalty_b: number | null;
+  original_match_date: string | null;
+  postponement_reason: string | null;
 };
 
 export async function fetchMatch(id: Id) {
@@ -50,6 +52,9 @@ export async function fetchMatch(id: Id) {
         "tie_leg1_match_id",
         "penalty_a",
         "penalty_b",
+        // Postponement (admin «Νέα ημερομηνία» dialog)
+        "original_match_date",
+        "postponement_reason",
         // Teams (existing)
         "team_a:teams!matches_team_a_id_fkey(id,name,logo)",
         "team_b:teams!matches_team_b_id_fkey(id,name,logo)",
