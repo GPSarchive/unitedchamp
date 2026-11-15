@@ -49,7 +49,7 @@ const SHOWN = 6;
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * The players list's name lettering («Λευκό χρώμιο») at another size. The
+ * The players list's name lettering (plain white) at another size. The
  * lettering comes with its own sizes for the list; an inline size wins over
  * them, so the typeface and colour stay in one place.
  */

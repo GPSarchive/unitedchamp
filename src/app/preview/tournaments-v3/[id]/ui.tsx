@@ -34,7 +34,7 @@ const GOLD: React.CSSProperties = {
 };
 
 /**
- * The players list's name lettering («Λευκό χρώμιο») at another size. The
+ * The players list's name lettering (plain white) at another size. The
  * lettering comes with its own sizes for the list; an inline size wins over
  * them, so the typeface and colour stay in one place. A span, so it can sit
  * inside a heading, a link or a <summary>.

@@ -48,7 +48,7 @@ const FOCUS =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c]";
 
 /**
- * The players list's name lettering («Λευκό χρώμιο») at another size. The
+ * The players list's name lettering (plain white) at another size. The
  * lettering comes with its own sizes for the list; an inline size wins over
  * them, so the typeface and colour stay in one place.
  */
