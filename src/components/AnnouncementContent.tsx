@@ -1,6 +1,10 @@
-'use client';
-
-import DOMPurify from 'dompurify';
+// Renders an announcement body on the SERVER (used by /announcement/[id]).
+//
+// It used DOMPurify, which needs a browser window: during server rendering
+// `DOMPurify.sanitize` does not exist, so every html/md announcement page
+// crashed with "sanitize is not a function" (500). sanitize-html is plain JS
+// and works on the server.
+import sanitizeHtml from 'sanitize-html';
 import { marked } from 'marked';
 
 interface AnnouncementContentProps {
@@ -8,38 +12,32 @@ interface AnnouncementContentProps {
   format: 'md' | 'html' | 'plain' | null | undefined;
 }
 
-export default function AnnouncementContent({ body, format }: AnnouncementContentProps) {
-  // Handle null/undefined body
-  const safeBody = body ?? '';
+const SANITIZE: sanitizeHtml.IOptions = {
+  allowedTags: [
+    'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span',
+  ],
+  allowedAttributes: {
+    '*': ['href', 'src', 'alt', 'title', 'width', 'height', 'target', 'rel', 'name'],
+  },
+};
 
-  // Default to 'plain' if format is null/undefined
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+export default function AnnouncementContent({ body, format }: AnnouncementContentProps) {
+  const safeBody = body ?? '';
   const safeFormat = format ?? 'plain';
 
-  // Generate HTML based on format
-  let contentHTML = '';
-
+  let contentHTML: string;
   if (safeFormat === 'html') {
-    contentHTML = DOMPurify.sanitize(safeBody, {
-      ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre',
-        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span'
-      ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'width', 'height', 'target', 'rel', 'name'],
-    });
+    contentHTML = sanitizeHtml(safeBody, SANITIZE);
   } else if (safeFormat === 'md') {
-    const html = marked.parse(safeBody, { async: false }) as string;
-    contentHTML = DOMPurify.sanitize(html, {
-      ALLOWED_TAGS: [
-        'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'ul', 'ol', 'li', 'a', 'img', 'blockquote', 'code', 'pre',
-        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'span'
-      ],
-      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'width', 'height', 'target', 'rel', 'name'],
-    });
+    contentHTML = sanitizeHtml(marked.parse(safeBody, { async: false }) as string, SANITIZE);
   } else {
-    // plain text - just replace newlines with <br/>
-    contentHTML = safeBody.replace(/\n/g, '<br/>');
+    // plain text: escape it, then keep the line breaks
+    contentHTML = escapeHtml(safeBody).replace(/\n/g, '<br/>');
   }
 
   return (
