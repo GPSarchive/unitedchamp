@@ -132,6 +132,30 @@ export function formatMatchDateTime(
 }
 
 /**
+ * The current wall-clock time in `timeZone` as a zone-less ISO string
+ * ("YYYY-MM-DDTHH:mm:ss") — the same shape `toNaiveIso` gives a match date,
+ * so "is this kickoff in the future?" is a plain string comparison that works
+ * the same on the server (UTC) and in any browser.
+ */
+export function nowWallClockIso(timeZone = "Europe/Athens", now: Date = new Date()): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(now)
+      .map((x) => [x.type, x.value])
+  );
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
+}
+
+/**
  * A real UTC timestamp (published_at, created_at, …) rendered in Greek
  * local time. Not for match_date — match digits are already wall-clock.
  */

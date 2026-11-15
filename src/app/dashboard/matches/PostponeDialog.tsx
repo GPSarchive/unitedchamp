@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { X, Clock, Calendar, AlertCircle } from "lucide-react";
 import type { MatchRow } from "@/app/lib/types";
-import { formatMatchDateTime } from "@/app/lib/datetime";
+import { formatMatchDateTime, nowWallClockIso } from "@/app/lib/datetime";
 
 interface PostponeDialogProps {
   match: MatchRow & {
@@ -22,11 +22,27 @@ const POSTPONEMENT_REASONS = [
   { value: "other", label: "Άλλο" },
 ];
 
+const LONG_DATE: Intl.DateTimeFormatOptions = {
+  weekday: "long",
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+};
+
+/**
+ * Two modes, picked from the match status:
+ *  - scheduled → «Αναβολή Αγώνα»: postpone, new date optional. With a date the
+ *    match stays on the schedule at that date; without one it is "postponed".
+ *  - postponed → «Νέα Ημερομηνία»: the date is required and puts the match
+ *    back on the schedule (rules in lib/postpone).
+ */
 export default function PostponeDialog({
   match,
   onCancel,
   onSuccess,
 }: PostponeDialogProps) {
+  const isReschedule = match.status === "postponed";
+
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("20:00");
   const [reasonType, setReasonType] = useState("");
@@ -43,50 +59,45 @@ export default function PostponeDialog({
   const teamAName = getTeamName(match.teamA);
   const teamBName = getTeamName(match.teamB);
 
-  // Format current date for display
-  const formatCurrentDate = () => {
-    if (!match.match_date) return "No date set";
-    return formatMatchDateTime(match.match_date, {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  };
+  // The date the match was meant to be played before any postponement.
+  const originalDate = match.original_match_date ?? match.match_date ?? null;
 
-  // Get minimum date (tomorrow)
-  const getMinDate = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
-  };
+  // Today in Athens — a postponement can move the match to later today.
+  const today = nowWallClockIso().slice(0, 10);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Date is now optional
     let newDateTime: string | undefined = undefined;
 
     if (newDate) {
-      // Combine date and time
-      newDateTime = `${newDate}T${newTime}:00.000Z`;
-
-      // Validate future date only if date is provided
-      const selectedDate = new Date(newDateTime);
-      const now = new Date();
-      if (selectedDate <= now) {
-        setError("New date must be in the future");
+      if (!newTime) {
+        setError("Επιλέξτε ώρα έναρξης.");
         return;
       }
+      // Wall-clock digits, stored as-is (see lib/datetime).
+      newDateTime = `${newDate}T${newTime}:00.000Z`;
+
+      // A postponement moves the match forward. A new date for an already
+      // postponed match may be in the past (it may already have been played).
+      if (!isReschedule && `${newDate}T${newTime}:00` <= nowWallClockIso()) {
+        setError("Η νέα ημερομηνία πρέπει να είναι μεταγενέστερη από τώρα.");
+        return;
+      }
+    } else if (isReschedule) {
+      setError("Επιλέξτε τη νέα ημερομηνία του αγώνα.");
+      return;
     }
 
-    // Get reason text - now optional
+    // Reason (postpone mode only, optional)
     let reason: string | undefined = undefined;
-    if (reasonType === "other") {
-      reason = customReason.trim() || undefined;
-    } else if (reasonType) {
-      reason = POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label;
+    if (!isReschedule) {
+      if (reasonType === "other") {
+        reason = customReason.trim() || undefined;
+      } else if (reasonType) {
+        reason = POSTPONEMENT_REASONS.find((r) => r.value === reasonType)?.label;
+      }
     }
 
     setIsSubmitting(true);
@@ -113,7 +124,7 @@ export default function PostponeDialog({
         body: JSON.stringify(requestBody),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(data.error || `HTTP ${response.status}`);
@@ -122,7 +133,7 @@ export default function PostponeDialog({
       // Success!
       onSuccess();
     } catch (err: any) {
-      setError(err.message || "Failed to postpone match");
+      setError(err.message || "Η αποθήκευση απέτυχε.");
       setIsSubmitting(false);
     }
   };
@@ -134,9 +145,15 @@ export default function PostponeDialog({
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-500/20 rounded-lg">
-              <Clock className="h-5 w-5 text-orange-400" />
+              {isReschedule ? (
+                <Calendar className="h-5 w-5 text-orange-400" />
+              ) : (
+                <Clock className="h-5 w-5 text-orange-400" />
+              )}
             </div>
-            <h2 className="text-xl font-bold text-white">Αναβολή Αγώνα</h2>
+            <h2 className="text-xl font-bold text-white">
+              {isReschedule ? "Νέα Ημερομηνία Αγώνα" : "Αναβολή Αγώνα"}
+            </h2>
           </div>
           <button
             onClick={onCancel}
@@ -151,29 +168,47 @@ export default function PostponeDialog({
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
           {/* Match Info */}
           <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-            <div className="text-sm text-white/60 mb-1">Match</div>
+            <div className="text-sm text-white/60 mb-1">Αγώνας</div>
             <div className="text-lg font-semibold text-white">
               {teamAName} vs {teamBName}
             </div>
             <div className="flex items-center gap-2 mt-2 text-sm text-white/70">
               <Calendar className="h-4 w-4" />
-              <span>Current: {formatCurrentDate()}</span>
+              {isReschedule ? (
+                <span>
+                  Αναβλήθηκε · αρχική ημερομηνία:{" "}
+                  {originalDate ? formatMatchDateTime(originalDate, LONG_DATE) : "—"}
+                </span>
+              ) : (
+                <span>
+                  Τρέχουσα ημερομηνία:{" "}
+                  {match.match_date ? formatMatchDateTime(match.match_date, LONG_DATE) : "—"}
+                </span>
+              )}
             </div>
+            {isReschedule && match.postponement_reason && (
+              <div className="mt-1 text-sm text-white/60">
+                Λόγος: {match.postponement_reason}
+              </div>
+            )}
           </div>
 
           {/* New Date */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-white/90">
-              📅 Νέα Ημερομηνία <span className="text-white/60 text-xs">(προαιρετικό)</span>
+              📅 Νέα Ημερομηνία{" "}
+              {!isReschedule && (
+                <span className="text-white/60 text-xs">(προαιρετικό)</span>
+              )}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="date"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
-                min={getMinDate()}
+                min={isReschedule ? undefined : today}
+                required={isReschedule}
                 disabled={isSubmitting}
-                placeholder="Επιλέξτε ημερομηνία"
                 className="px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
               />
               <input
@@ -185,31 +220,35 @@ export default function PostponeDialog({
               />
             </div>
             <p className="text-xs text-white/50">
-              Αφήστε κενό αν η νέα ημερομηνία δεν έχει οριστεί ακόμα
+              {isReschedule
+                ? "Ο αγώνας θα επανέλθει στο πρόγραμμα με αυτή την ημερομηνία και θα δημοσιευτεί ανακοίνωση."
+                : "Αφήστε κενό αν η νέα ημερομηνία δεν έχει οριστεί ακόμα. Αν τη συμπληρώσετε, ο αγώνας παραμένει στο πρόγραμμα με τη νέα ημερομηνία."}
             </p>
           </div>
 
-          {/* Reason */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/90">
-              📝 Λόγος Αναβολής <span className="text-white/60 text-xs">(προαιρετικό)</span>
-            </label>
-            <select
-              value={reasonType}
-              onChange={(e) => setReasonType(e.target.value)}
-              disabled={isSubmitting}
-              className="w-full px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
-            >
-              {POSTPONEMENT_REASONS.map((reason) => (
-                <option key={reason.value} value={reason.value}>
-                  {reason.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Reason (postponing only — a new date keeps the recorded reason) */}
+          {!isReschedule && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-white/90">
+                📝 Λόγος Αναβολής <span className="text-white/60 text-xs">(προαιρετικό)</span>
+              </label>
+              <select
+                value={reasonType}
+                onChange={(e) => setReasonType(e.target.value)}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 bg-zinc-950 text-white rounded-lg border border-white/20 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/50 disabled:opacity-50"
+              >
+                {POSTPONEMENT_REASONS.map((reason) => (
+                  <option key={reason.value} value={reason.value}>
+                    {reason.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Custom Reason Input */}
-          {reasonType === "other" && (
+          {!isReschedule && reasonType === "other" && (
             <div className="space-y-2">
               <label className="block text-sm font-medium text-white/90">
                 Άλλος λόγος
@@ -248,7 +287,11 @@ export default function PostponeDialog({
               disabled={isSubmitting}
               className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-orange-500 text-white font-semibold hover:from-orange-500 hover:to-orange-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
             >
-              {isSubmitting ? "Αναβολή..." : "Αναβολή Αγώνα"}
+              {isSubmitting
+                ? "Αποθήκευση..."
+                : isReschedule
+                ? "Ορισμός ημερομηνίας"
+                : "Αναβολή Αγώνα"}
             </button>
           </div>
         </form>

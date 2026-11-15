@@ -441,7 +441,7 @@ export default function MatchesDashboard({
               </h3>
             </div>
             <p className="text-sm text-white/70 mt-1">
-              Αγώνες που έχουν αναβληθεί και αναμένουν επιβεβαίωση νέας ημερομηνίας
+              Αγώνες που έχουν αναβληθεί και αναμένουν νέα ημερομηνία. Με τον ορισμό της, ο αγώνας επανέρχεται στο πρόγραμμα.
             </p>
           </div>
 
@@ -525,10 +525,10 @@ export default function MatchesDashboard({
                       <button
                         onClick={() => setPostponingId(r.id)}
                         className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 text-white transition-colors"
-                        title="Ενημέρωση ημερομηνίας"
+                        title="Ορισμός νέας ημερομηνίας"
                       >
-                        <Clock className="h-4 w-4" />
-                        <span>Ενημέρωση</span>
+                        <Calendar className="h-4 w-4" />
+                        <span>Νέα ημερομηνία</span>
                       </button>
                       <button
                         onClick={() => setEditingId(r.id)}
@@ -629,9 +629,10 @@ export default function MatchesDashboard({
                         <button
                           onClick={() => setPostponingId(r.id)}
                           className="min-h-[40px] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                          title="Αναβολή αγώνα"
+                          title={r.status === "postponed" ? "Ορισμός νέας ημερομηνίας" : "Αναβολή αγώνα"}
                         >
-                          <Clock className="h-4 w-4" /> <span className="hidden sm:inline">Αναβολή</span>
+                          {r.status === "postponed" ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />}{" "}
+                          <span className="hidden sm:inline">{r.status === "postponed" ? "Νέα ημερομηνία" : "Αναβολή"}</span>
                         </button>
                       )}
                       <button
@@ -760,9 +761,17 @@ export default function MatchesDashboard({
                               <button
                                 onClick={() => setPostponingId(r.id)}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50"
-                                title="Αναβολή αγώνα"
+                                title={r.status === "postponed" ? "Ορισμός νέας ημερομηνίας" : "Αναβολή αγώνα"}
                               >
-                                <Clock className="h-4 w-4" /> Αναβολή
+                                {r.status === "postponed" ? (
+                                  <>
+                                    <Calendar className="h-4 w-4" /> Νέα ημερομηνία
+                                  </>
+                                ) : (
+                                  <>
+                                    <Clock className="h-4 w-4" /> Αναβολή
+                                  </>
+                                )}
                               </button>
                             )}
                             <button

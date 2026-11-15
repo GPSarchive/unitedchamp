@@ -15,6 +15,7 @@ import { snapshotSeason } from "@/app/lib/seasonSnapshot";
 import { fetchInBatches } from "@/app/lib/supabasePaging";
 import { logAdminAction } from "@/app/lib/audit/log";
 import { describeDbError, type WriteContext } from "@/app/lib/dbErrors/describeDbError";
+import { statusForDate } from "@/app/lib/postpone";
 import {
   loadMatchWriteContext,
   loadNewMatchesContext,
@@ -94,7 +95,7 @@ type MatchRow = {
   team_a_score?: number | null;
   team_b_score?: number | null;
   winner_team_id?: number | null;
-  status?: "scheduled" | "finished";
+  status?: "scheduled" | "finished" | "postponed";
   match_date?: string | null;
   matchday?: number | null;
   round?: number | null;
@@ -670,7 +671,7 @@ if (body.matches?.upsert?.length) {
       team_a_score: r.team_a_score ?? null,
       team_b_score: r.team_b_score ?? null,
       winner_team_id: r.winner_team_id ?? null,
-      status: r.status ?? "scheduled",
+      status: statusForDate(r.status ?? "scheduled", r.match_date),
       match_date: r.match_date ?? null,
       matchday: r.matchday ?? null,
       round: r.round ?? null,
@@ -702,7 +703,7 @@ if (body.matches?.upsert?.length) {
         team_a_score: r.team_a_score ?? null,
         team_b_score: r.team_b_score ?? null,
         winner_team_id: r.winner_team_id ?? null,
-        status: r.status ?? "scheduled",
+        status: statusForDate(r.status ?? "scheduled", r.match_date),
         match_date: r.match_date ?? null,
         matchday: r.matchday ?? null,
         round: r.round ?? null,

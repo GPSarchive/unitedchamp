@@ -2,7 +2,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { canEditContent } from "@/app/lib/supabase/apiAuth";
-import { formatMatchDateTime } from "@/app/lib/datetime";
+import { nowWallClockIso } from "@/app/lib/datetime";
+import {
+  buildPostponeAnnouncement,
+  planPostpone,
+  postponeAnnouncementTitles,
+} from "@/app/lib/postpone";
 import { revalidateMatchSurfaces } from "@/app/lib/revalidatePublicPages";
 import { refreshActiveSeasonStandings } from "@/app/lib/refreshStandings";
 
@@ -97,8 +102,12 @@ export async function HEAD() {
 /* ======================================
    POST /api/matches/:id/postpone (admin)
 
-   Postpones a scheduled match and creates an announcement.
-   The new date and reason are both optional.
+   Scheduled match → postpones it (new date and reason optional; with a
+   new date the match stays "scheduled" on that date, without one it is
+   "postponed" with no date).
+   Postponed match → sets its new date (required) and puts it back to
+   "scheduled". Rules in lib/postpone. Either way an announcement is
+   published and the fixture's earlier postponement notices are retired.
 
    Request body:
    {
@@ -139,21 +148,12 @@ export async function POST(
         ? rawReason.replace(/[<>[\](){}*_~`#|!\\]/g, "").trim().slice(0, 500) || null
         : null;
 
-    // Parse and validate new_match_date if provided
+    // Parse new_match_date if provided
     let newDateISO: string | null = null;
-    let newDate: Date | null = null;
-
     if (new_match_date) {
       newDateISO = parseNullableISODate(new_match_date);
       if (!newDateISO) {
         return jsonError(400, "Invalid new_match_date format (must be ISO 8601)");
-      }
-
-      // Validate new date is in the future
-      newDate = new Date(newDateISO);
-      const now = new Date();
-      if (newDate <= now) {
-        return jsonError(400, "New match date must be in the future");
       }
     }
 
@@ -181,14 +181,18 @@ export async function POST(
     }
     if (!current) return jsonError(404, "Match not found");
 
-    // Only allow postponing scheduled or already postponed matches
-    if (current.status !== "scheduled" && current.status !== "postponed") {
-      return jsonError(409, `Cannot postpone a ${current.status} match. Only scheduled matches can be postponed.`);
-    }
-
-    if (!current.match_date) {
-      return jsonError(400, "Cannot postpone a match without a date set");
-    }
+    // Postpone a scheduled match, or give a postponed match its new date
+    // (which puts it back on the schedule) — rules in lib/postpone.
+    const now = new Date();
+    const plan = planPostpone({
+      current,
+      newDateISO,
+      reason: postponement_reason,
+      userId: user.id,
+      nowInstant: now.toISOString(),
+      nowWall: nowWallClockIso(),
+    });
+    if (!plan.ok) return jsonError(plan.status, plan.error);
 
     // Extract team names for announcement
     const teamA = Array.isArray(current.teamA) ? current.teamA[0] : current.teamA;
@@ -196,35 +200,10 @@ export async function POST(
     const teamAName = teamA?.name ?? `Team #${current.team_a_id}`;
     const teamBName = teamB?.name ?? `Team #${current.team_b_id}`;
 
-    // Format dates for announcement (Greek format) — literal wall-clock digits
-    const formatGreekDate = (isoDate: string) =>
-      formatMatchDateTime(isoDate, {
-        weekday: "long",
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      });
-
-    const oldDateFormatted = formatGreekDate(current.match_date);
-    const newDateFormatted = newDateISO ? formatGreekDate(newDateISO) : null;
-
-    // Store original date only if this is the first postponement
-    const originalDate = current.original_match_date ?? current.match_date;
-
-    // Prepare postponement update
-    const postponementUpdate = {
-      status: "postponed" as const,
-      match_date: newDateISO ?? null, // Set to null if no new date provided
-      original_match_date: originalDate,
-      postponement_reason: postponement_reason || null,
-      postponed_at: new Date().toISOString(),
-      postponed_by: user.id,
-    };
-
     // Update the match
     const { data: updatedMatch, error: updateErr } = await supa
       .from("matches")
-      .update(postponementUpdate)
+      .update(plan.update)
       .eq("id", id)
       .select("id, match_date, status, postponement_reason, original_match_date, postponed_at")
       .maybeSingle();
@@ -235,52 +214,41 @@ export async function POST(
     }
     if (!updatedMatch) return jsonError(404, "Match not found after update");
 
-    // Create announcement for users
-    const announcementTitle = `Αναβολή Αγώνα: ${teamAName} - ${teamBName}`;
+    // One live notice per fixture: the new one supersedes any earlier
+    // postponement / new-date notice still showing (e.g. "date TBD").
+    // Announcements carry no match id, so the fixture is matched by title.
+    const titles = postponeAnnouncementTitles(teamAName, teamBName);
+    const { error: staleErr } = await supa
+      .from("announcements")
+      .update({ end_at: now.toISOString() })
+      .in("title", [titles.postpone, titles.reschedule])
+      .eq("status", "published")
+      .gt("end_at", now.toISOString());
+    if (staleErr) console.error("Postpone: failed to retire earlier announcements", staleErr);
 
-    let announcementBody = `Ο αγώνας **${teamAName}** vs **${teamBName}**`;
-
-    if (current.match_date) {
-      announcementBody += ` που ήταν προγραμματισμένος για **${oldDateFormatted}**`;
-    }
-
-    announcementBody += ` αναβλήθηκε.\n\n`;
-
-    if (newDateFormatted) {
-      announcementBody += `📅 **Νέα ημερομηνία**: ${newDateFormatted}\n\n`;
-    } else {
-      announcementBody += `📅 **Νέα ημερομηνία**: Θα ανακοινωθεί σύντομα\n\n`;
-    }
-
-    if (postponement_reason) {
-      announcementBody += `ℹ️ **Λόγος**: ${postponement_reason}\n\n`;
-    }
-
-    announcementBody += `Σας ευχαριστούμε για την κατανόησή σας.`;
-
-    // Calculate announcement end date (show until 1 day after new match date, or 30 days if no date)
-    const endDate = newDate ? new Date(newDate) : new Date();
-    if (newDate) {
-      endDate.setDate(endDate.getDate() + 1);
-    } else {
-      endDate.setDate(endDate.getDate() + 30); // Show for 30 days if no new date set
-    }
-
-    const announcementPayload = {
-      title: announcementTitle,
-      body: announcementBody,
-      status: "published",
-      format: "md",
-      pinned: true,
-      priority: 1, // High priority
-      start_at: new Date().toISOString(),
-      end_at: endDate.toISOString(),
-    };
+    const announcementText = buildPostponeAnnouncement({
+      mode: plan.mode,
+      teamAName,
+      teamBName,
+      previousDate: plan.previousDate,
+      newDateISO,
+      reason: postponement_reason,
+      now,
+    });
 
     // Create the announcement
     const { data: announcement, error: announcementErr } = await supa
       .from("announcements")
-      .insert(announcementPayload)
+      .insert({
+        title: announcementText.title,
+        body: announcementText.body,
+        status: "published",
+        format: "md",
+        pinned: true,
+        priority: 1, // High priority
+        start_at: now.toISOString(),
+        end_at: announcementText.end_at,
+      })
       .select("id, title")
       .maybeSingle();
 
@@ -289,9 +257,12 @@ export async function POST(
       console.error("Postpone: failed to create announcement", announcementErr);
     }
 
-    const message = newDateFormatted
-      ? `Match postponed successfully from ${oldDateFormatted} to ${newDateFormatted}`
-      : `Match postponed successfully (new date TBD)`;
+    const message =
+      plan.mode === "reschedule"
+        ? "Match rescheduled"
+        : newDateISO
+        ? "Match postponed to a new date"
+        : "Match postponed (new date TBD)";
 
     // Date/status changed → rewrite the stored Γενική Κατάταξη rows (same
     // contract as every other match mutation, even though a postponed match
