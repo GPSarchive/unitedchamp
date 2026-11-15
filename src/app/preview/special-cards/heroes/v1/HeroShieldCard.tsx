@@ -3,18 +3,18 @@
 // The «Θρύλος» card (legend/v1/LegendShieldCard.tsx) in another finish: same
 // shield, 5:7, photo filling the card, team logo top left, name and six
 // numbers where they always are, team logo in the middle when there is no
-// photo. Where the Legend card is light with dark text, this one is VIOLET
-// all over, a mid tone, with near-black violet text:
-//   · upper zone: faceted violet, light on the left and deep on the right.
-//     With a photo the photo takes the zone (framed exactly as on the normal
-//     card) and the facets keep only to its four corners, like the corner
-//     mounts of a photo in an album — nothing of the finish lies on the
-//     middle of the picture, where the face is;
-//   · a lavender band, lighter than everything above and below it, between
-//     two pale lines: the name;
-//   · a violet satin plate with slanted folds: the numbers;
-//   · a paler foot under a dark line, left empty for the edition title (to be decided);
-//   · thin plum rim with a lilac line inside it.
+// photo. Where the Legend card is light with dark text, this one is DEEP
+// ROYAL PURPLE all over, with white and pale-lilac text:
+//   · upper zone: faceted royal purple, lighter on the left and deep on the
+//     right. With a photo the photo takes the zone (framed exactly as on the
+//     normal card) and the facets keep only to its four corners, like the
+//     corner mounts of a photo in an album — nothing of the finish lies on
+//     the middle of the picture, where the face is;
+//   · a band a shade lighter than everything above and below it, between two
+//     faint lines of the same purple: the name;
+//   · a purple satin plate with slanted folds: the numbers;
+//   · a slightly lighter foot under a dark line, left empty for the edition title (to be decided);
+//   · thin light-violet rim with a dark line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
 //
@@ -39,17 +39,18 @@ import {
   FACETS_TILTED,
   HERO_RIM,
   HeroFacetStyles,
-  INK,
-  PLUM,
+  LILAC,
   SATIN,
+  SNOW,
   VIOLET,
 } from "./heroFinish";
 
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
-// Pale line above and below the name band, brightest at its middle.
+// Faint line above and below the name band: the band's own purple, a few
+// shades lighter and brightest at its middle — a seam, not a stripe.
 const RULE: React.CSSProperties = {
-  background: "linear-gradient(90deg, #C6A2FF 0%, #D2B6FF 24%, #DEC9FF 50%, #D2B6FF 76%, #C6A2FF 100%)",
+  background: "linear-gradient(90deg, #6A38BA 0%, #7A4ACB 24%, #8A5DD8 50%, #7A4ACB 76%, #6A38BA 100%)",
 };
 
 export default function HeroShieldCard({
@@ -86,15 +87,15 @@ export default function HeroShieldCard({
       style={TILT_STYLE}
     >
       <HeroFacetStyles />
-      <CardShadow glow="#7B3DD8" />
+      <CardShadow glow="#5B26B0" />
 
-      {/* Rim, then a lilac line, then the face: each the shield, each a little further in. */}
+      {/* Rim, then a dark line, then the face: each the shield, each a little further in. */}
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: HERO_RIM }} />
-      <div aria-hidden className="absolute inset-[2.5px]" style={{ clipPath: SHIELD, background: "#C9A8FF" }} />
+      <div aria-hidden className="absolute inset-[2.5px]" style={{ clipPath: SHIELD, background: "#1E0748" }} />
 
       <div
         className="absolute inset-[4px] overflow-hidden"
-        style={{ clipPath: SHIELD, background: VIOLET, color: INK }}
+        style={{ clipPath: SHIELD, background: VIOLET, color: SNOW }}
       >
         {hasPhoto && (
           <PlayerImage
@@ -136,7 +137,7 @@ export default function HeroShieldCard({
           }}
         />
 
-        {/* A photo sinks into violet just above the name band. Almost all of
+        {/* A photo sinks into purple just above the name band. Almost all of
             the fade is in the last few percent, so a face that sits low in the
             picture keeps its mouth and chin. Without a photo the facets run
             straight down to the band. */}
@@ -163,8 +164,8 @@ export default function HeroShieldCard({
               className="absolute left-[9%] top-[10%] h-12 w-12 overflow-hidden rounded-full"
               style={{
                 background: "#F6F1FF",
-                border: "2px solid #8648E3",
-                boxShadow: "0 0 0 1px rgba(220,200,255,0.9), 0 3px 8px rgba(30,8,80,0.4)",
+                border: "2px solid #8F62E0",
+                boxShadow: "0 0 0 1px rgba(20,4,56,0.85), 0 3px 8px rgba(10,2,30,0.5)",
               }}
             >
               <PlayerImage
@@ -182,7 +183,7 @@ export default function HeroShieldCard({
           // outline only if the team has no logo.
           <div
             className="absolute inset-x-[23%] top-[11%] h-[41%]"
-            style={logo ? { filter: "drop-shadow(0 5px 10px rgba(34,10,92,0.5))" } : undefined}
+            style={logo ? { filter: "drop-shadow(0 6px 12px rgba(12,2,36,0.6))" } : undefined}
           >
             {logo ? (
               <PlayerImage
@@ -195,14 +196,14 @@ export default function HeroShieldCard({
                 animate={false}
               />
             ) : (
-              <Silhouette color={PLUM} opacity={0.42} />
+              <Silhouette color={LILAC} opacity={0.4} />
             )}
           </div>
         )}
 
         {/* Name, centred in its band. */}
         <div className="absolute inset-x-[8%] top-[55%] flex h-[13.6%] flex-col items-center justify-center text-center uppercase">
-          <div className="w-full truncate text-[0.8rem] font-bold leading-none tracking-wide" style={{ color: PLUM }}>
+          <div className="w-full truncate text-[0.8rem] font-bold leading-none tracking-wide" style={{ color: LILAC }}>
             {first}
           </div>
           <div className="mt-1 w-full truncate text-[1.65rem] font-bold leading-none tracking-wide">
@@ -210,17 +211,17 @@ export default function HeroShieldCard({
           </div>
         </div>
 
-        {/* The numbers on the plate, and the foot: the same satin, paler, under a dark line. */}
+        {/* The numbers on the plate, and the foot: the same satin, a little lighter, under a dark line. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
           <div
             aria-hidden
             className="absolute inset-x-0 bottom-0 top-[3.25rem]"
-            style={{ background: "rgba(255,255,255,0.3)", boxShadow: "inset 0 2px 0 rgba(82,28,186,0.5)" }}
+            style={{ background: "rgba(255,255,255,0.09)", boxShadow: "inset 0 2px 0 rgba(20,4,56,0.55)" }}
           />
           {stats ? (
-            <CardStatGrid stats={stats} soft={PLUM} className="relative mx-[11%]" />
+            <CardStatGrid stats={stats} soft={LILAC} className="relative mx-[11%]" />
           ) : (
-            <p className="relative mx-[10%] text-center text-[15px]" style={{ color: PLUM }}>
+            <p className="relative mx-[10%] text-center text-[15px]" style={{ color: LILAC }}>
               Χωρίς στατιστικά ακόμα
             </p>
           )}

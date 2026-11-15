@@ -10,7 +10,8 @@
 //     the corner mounts of a photo in an album — nothing of the finish lies
 //     on the middle of the picture, where the face is;
 //   · it ends in black, on
-//   · a glossy black band for the name, between two red rules; then
+//   · a band of black satin for the name, lighter in its middle and shaded
+//     along its edges (no lines round it); then
 //   · the black plate for the numbers, with broad darker stripes leaning
 //     across it, and a foot one shade lighter left empty for the edition title (to be decided);
 //   · thin red rim with a dark line inside it.
@@ -30,14 +31,14 @@ import type { DirectoryTeam, StatTuple } from "@/app/preview/paiktes-v2/model";
 import { CardShadow, CardStatGrid, SHIELD, Silhouette } from "@/app/preview/paiktes-v2/[id]/cardShared";
 import { TILT_STYLE, useCardTilt } from "@/app/preview/paiktes-v2/[id]/useCardTilt";
 import {
+  BAND,
   EMBER,
   FACETS,
   FACETS_MOUNT,
   FACETS_TILTED,
   FOOT_VEIL,
-  JET,
   ONYX,
-  RULE_RED,
+  RING_RED,
   SNOW,
   STRIPES,
   TOTW_RIM,
@@ -47,16 +48,11 @@ import {
 /** The edition's name, written at the foot of the card. */
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
-// Satin red line with a black line above and below it.
-const RULE: React.CSSProperties = {
-  background: "linear-gradient(90deg, #B4121A 0%, #EE4B41 22%, #B8131B 48%, #E63D36 72%, #B4121A 100%)",
-  boxShadow: `0 1px 0 ${JET}, 0 -1px 0 ${JET}`,
-};
-
-// The name band: black, with a soft grey gloss in its middle.
-const BAND =
-  "radial-gradient(ellipse 56% 64% at 50% 42%, rgba(255,255,255,0.19) 0%, rgba(255,255,255,0.13) 36%, " +
-  `rgba(255,255,255,0.045) 70%, rgba(255,255,255,0) 100%), ${JET}`;
+// The name band: its satin, with a little shade along the top and more along
+// the bottom, where it meets the plate. That shade is the band's only edge.
+const BAND_SHADED =
+  "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 6%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0.72) 100%), " +
+  BAND;
 
 export default function TotwShieldCard({
   first,
@@ -156,10 +152,8 @@ export default function TotwShieldCard({
         />
 
         {/* The name band, then the plate with its stripes. */}
-        <div aria-hidden className="absolute inset-x-0 top-[55%] h-[13.6%]" style={{ background: BAND }} />
+        <div aria-hidden className="absolute inset-x-0 top-[55%] h-[13.6%]" style={{ background: BAND_SHADED }} />
         <div aria-hidden className="absolute inset-x-0 bottom-0 top-[68.6%]" style={{ background: STRIPES }} />
-        <div aria-hidden className="absolute inset-x-0 top-[55%] -mt-px h-[2px]" style={RULE} />
-        <div aria-hidden className="absolute inset-x-0 top-[68.6%] -mt-px h-[2px]" style={RULE} />
 
         {hasPhoto ? (
           // Team logo, top left, in a black medallion with a red ring.
@@ -168,7 +162,7 @@ export default function TotwShieldCard({
               className="absolute left-[9%] top-[10%] h-12 w-12 overflow-hidden rounded-full"
               style={{
                 background: ONYX,
-                border: `2px solid ${RULE_RED}`,
+                border: `2px solid ${RING_RED}`,
                 boxShadow: "0 0 0 1px rgba(0,0,0,0.85), 0 3px 8px rgba(0,0,0,0.5)",
               }}
             >

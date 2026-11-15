@@ -7,10 +7,11 @@
 // elements for them, and the picture's text is in the page once (one <style>,
 // however many cards there are).
 //
-// What differs is what the reference differs in: violet instead of pale gold,
+// What differs is what the reference differs in: purple instead of pale gold,
 // fewer and larger facets, some of them four-sided, soft folds with barely a
-// line of light on their edges — and a card that is a mid tone all over, not
-// a light one.
+// line of light on their edges. The purple is a deep royal one (a blue-leaning
+// purple, never toward pink), so the card is dark with light text, like the
+// black editions.
 
 import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 
@@ -19,34 +20,36 @@ import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 // ───────────────────────────────────────────────────────────────────────
 
 /** The plate under the numbers, at its middle tone. Also the face's fill. */
-export const VIOLET = "#A366FF";
-/** The band the name sits in: lavender, lightest at its centre, a little deeper at its two ends. */
-export const BAND = "linear-gradient(90deg, #B07CFF 0%, #B989FF 16%, #BE93FF 50%, #B989FF 84%, #B07CFF 100%)";
+export const VIOLET = "#4E1F96";
+/**
+ * The band the name sits in: a lighter royal purple, lightest at its centre,
+ * a little deeper at its two ends. SNOW on its deepest end: 8.8:1; LILAC on
+ * its lightest middle: 5.1:1.
+ */
+export const BAND = "linear-gradient(90deg, #5A27A6 0%, #6530B4 16%, #6B36BC 50%, #6530B4 84%, #5A27A6 100%)";
 /** What the photo fades into above the name band. The values, for rgba(). */
-export const DUSK_RGB = "141,79,233";
-export const DUSK = "#8D4FE9";
+export const DUSK_RGB = "69,24,138";
+export const DUSK = "#45188A";
 /** Last name and the six numbers. */
-export const INK = "#10061F";
-/** First name, the small labels, the edition mark. */
-export const PLUM = "#2E1468";
+export const SNOW = "#FBF8FF";
+/** First name, the small labels, the edition mark: a pale lilac. */
+export const LILAC = "#E2D0FF";
 /** Fill of the upper zone before the facets have painted. */
-const AMETHYST = "#9153EE";
+const AMETHYST = "#4B1D96";
 
 /**
  * The plate: satin with slanted folds, lighter toward both sides, a darker
- * strip through the middle. The strip is #985AF5 (INK on it: 4.8:1) and
- * nothing on the plate is darker: from #9254EF down the numbers drop under
- * 4.5:1.
+ * strip through the middle. Even the lightest fold keeps LILAC above 5:1.
  */
 export const SATIN =
-  "linear-gradient(68deg, #B382FF 0%, #AB75FF 11%, #A56AFF 26%, #AA72FF 27%, #A163FE 42.5%, " +
-  "#985AF5 43.5%, #995BF6 58%, #A76DFF 59%, #A366FF 70%, #A86FFF 84%, #AF7BFF 100%)";
+  "linear-gradient(68deg, #6230B0 0%, #5A29A7 11%, #5324A0 26%, #5828A5 27%, #4F2299 42.5%, " +
+  "#461C8C 43.5%, #471D8D 58%, #5526A2 59%, #51229C 70%, #5628A4 84%, #5E2EAD 100%)";
 
-/** Thin rim: plum, redder and darker than anything on the face. */
+/** Thin rim: a lighter violet than anything on the face, catching the light in two places. */
 export const HERO_RIM =
-  "conic-gradient(from 124deg at 50% 50%, #853CA7 0%, #914FD1 18%, #B98BFB 30%, #8E47BE 46%, #7A359B 62%, #A469F1 78%, #914FD1 90%, #853CA7 100%)";
+  "conic-gradient(from 124deg at 50% 50%, #7444C8 0%, #8456DA 18%, #C3A3FF 30%, #7F50D4 46%, #6534B6 62%, #A985F5 78%, #8456DA 90%, #7444C8 100%)";
 /** Flat version of the rim for the mini card. */
-export const HERO_RIM_FLAT = "linear-gradient(150deg, #853CA7 0%, #B98BFB 38%, #914FD1 66%, #A469F1 100%)";
+export const HERO_RIM_FLAT = "linear-gradient(150deg, #7444C8 0%, #C3A3FF 38%, #7F50D4 66%, #A985F5 100%)";
 
 // ───────────────────────────────────────────────────────────────────────
 // Facets
@@ -115,17 +118,17 @@ const MOUNT_MESH: Mesh = {
   facets: MOUNT.facets.map(([a, b, c, leanX, leanY]) => [[a, b, c], leanX, leanY] as const),
 };
 
-// Dark → light. From the deepest violet of the surface to its palest.
+// Dark → light. From the deepest royal purple of the surface to its lightest.
 const TONES: readonly (readonly [number, number, number, number])[] = [
-  [0, 0x67, 0x29, 0xc4],
-  [0.14, 0x71, 0x33, 0xce],
-  [0.28, 0x7b, 0x3d, 0xd8],
-  [0.42, 0x86, 0x48, 0xe3],
-  [0.55, 0x91, 0x53, 0xee],
-  [0.68, 0x9c, 0x5e, 0xf9],
-  [0.8, 0xa5, 0x69, 0xff],
-  [0.9, 0xad, 0x77, 0xff],
-  [1, 0xb7, 0x86, 0xff],
+  [0, 0x24, 0x09, 0x55],
+  [0.14, 0x2c, 0x0d, 0x64],
+  [0.28, 0x35, 0x12, 0x74],
+  [0.42, 0x40, 0x17, 0x85],
+  [0.55, 0x4b, 0x1d, 0x96],
+  [0.68, 0x57, 0x24, 0xa7],
+  [0.8, 0x63, 0x2d, 0xb6],
+  [0.9, 0x70, 0x39, 0xc3],
+  [1, 0x7f, 0x48, 0xd0],
 ];
 
 /** Hex colour (no "#") for a brightness 0…1. */
@@ -147,7 +150,7 @@ const bump = (x: number, y: number, cx: number, cy: number, spread: number) =>
 /**
  * How bright the surface is at a spot (0…1 across and down the zone) before
  * the facets' own lean counts: light all down the left side, falling off
- * steadily to deep violet at the right, with a little more light at the top
+ * steadily to deep purple at the right, with a little more light at the top
  * of the middle.
  */
 function ambient(x: number, y: number): number {

@@ -3,33 +3,30 @@
 // on a page) — no tilt, no effects, nothing that moves.
 //
 // It is the big card made small: photo (or the team logo on red facets) on
-// top, then the black band between its two red rules and the striped black
-// plate. Band and plate are empty here, as MiniCard carries no text. The red
-// rim and the two red lines across the black are what tell this card from
-// the normal one (gold rim, photo to the bottom) at a glance.
+// top, then the black satin band and the striped black plate. Band and plate
+// are empty here, as MiniCard carries no text. The red rim and the black
+// half are what tell this card from the normal one (gold rim, photo to the
+// bottom) at a glance.
 "use client";
 
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
-import { FACETS_MINI, FOOT_VEIL, ONYX, SNOW, STRIPES, TOTW_RIM_FLAT, TotwFacetStyles } from "./totwFinish";
-
-const RED = "#E0302B";
+import { BAND, FACETS_MINI, FOOT_VEIL, ONYX, SNOW, STRIPES, TOTW_RIM_FLAT, TotwFacetStyles } from "./totwFinish";
 
 // One layer over the lower part of the card (it starts at 57% of the height).
-// From the top: the fade to black, the first rule, the glossy band, the second
-// rule, the plate with its stripes, the lighter foot.
+// Three pictures, top one first:
+//   · down the layer: the upper zone sinking into black, nothing over the
+//     band except the shade at its lower edge, nothing over the plate, the
+//     lighter foot;
+//   · the band (from 15% to 37% of the layer);
+//   · the striped plate (from 37% down).
 const PLATE =
-  // the band's gloss
-  "radial-gradient(ellipse 50% 13% at 50% 25%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.1) 55%, rgba(255,255,255,0) 100%), " +
-  // fade, rule, band, rule, (plate shows through), foot
   "linear-gradient(to bottom, " +
-  "rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 12%, " +
-  `#000 15%, ${RED} 15%, ${RED} calc(15% + 1px), ` +
-  "#000 calc(15% + 1px), #000 37%, " +
-  `${RED} 37%, ${RED} calc(37% + 1px), ` +
-  `rgba(0,0,0,0) calc(37% + 1px), rgba(0,0,0,0) 68%, ${FOOT_VEIL} 68%, ${FOOT_VEIL} 100%), ` +
-  // the plate: the lower 63% of this layer
+  "rgba(0,0,0,0) 0%, rgba(0,0,0,0.9) 12%, #000 15%, " +
+  "rgba(0,0,0,0) 15%, rgba(0,0,0,0) 31%, rgba(0,0,0,0.7) 37%, " +
+  `rgba(0,0,0,0) 37%, rgba(0,0,0,0) 68%, ${FOOT_VEIL} 68%, ${FOOT_VEIL} 100%), ` +
+  `${BAND} 0 19.23% / 100% 22% no-repeat, ` +
   `${STRIPES} bottom / 100% 63% no-repeat`;
 
 export default function TotwMiniCard({

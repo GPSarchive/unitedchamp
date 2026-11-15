@@ -22,8 +22,8 @@ export const JET = "#000000";
 export const SNOW = "#FFF4F1";
 /** First name, the small labels, the edition mark: the metal's light red. */
 export const EMBER = "#FF5A50";
-/** The two rules around the name, the logo's ring. */
-export const RULE_RED = "#D4221F";
+/** The ring round the team logo. */
+export const RING_RED = "#D4221F";
 /** Fill of the upper zone before the facets have painted. */
 const CRIMSON = "#8A0A11";
 
@@ -32,6 +32,14 @@ export const TOTW_RIM =
   "conic-gradient(from 124deg at 50% 50%, #B20F17 0%, #C8161D 18%, #EE4A40 30%, #C2151C 46%, #A80D15 62%, #DE322C 78%, #C8161D 90%, #B20F17 100%)";
 /** Flat version of the rim for the mini card. */
 export const TOTW_RIM_FLAT = "linear-gradient(150deg, #C2151C 0%, #F2554A 38%, #C8161D 66%, #E63A33 100%)";
+
+/**
+ * The band the name sits on: black satin that catches the light in the
+ * middle (charcoal there, black at both ends). No lines round it — as on the
+ * reference, the band is told from the plate by its light alone.
+ */
+export const BAND =
+  "linear-gradient(90deg, #020202 0%, #0D0D0D 13%, #1E1E1E 26%, #2E2E2E 39%, #343434 50%, #2E2E2E 61%, #1E1E1E 74%, #0D0D0D 87%, #020202 100%)";
 
 /**
  * The plate's texture: broad darker stripes leaning down to the right, on the
