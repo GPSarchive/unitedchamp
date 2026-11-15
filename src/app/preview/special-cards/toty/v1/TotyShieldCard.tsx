@@ -12,8 +12,8 @@
 //   · it ends on a band of black satin that catches the light in the middle:
 //     the name sits there;
 //   · below it the plate: near black with wide, soft, darker diagonal
-//     stripes, the six numbers, and a slightly lighter foot carrying the
-//     edition mark;
+//     stripes, the six numbers, and a slightly lighter foot left empty
+//     for the edition title (to be decided);
 //   · thin silver-white rim, with a hair of blue inside it beside the upper
 //     zone.
 // Name and numbers are white, the first name and the small labels a lighter
@@ -47,9 +47,6 @@ import {
   TotyFacetStyles,
   WHITE,
 } from "./totyFinish";
-
-/** The edition mark at the foot of the card. */
-const EDITION = "ΟΜΑΔΑ ΤΗΣ ΧΡΟΝΙΑΣ";
 
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
@@ -217,7 +214,7 @@ export default function TotyShieldCard({
           </div>
         </div>
 
-        {/* The numbers, and the foot with the edition mark. */}
+        {/* The numbers. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
           <div aria-hidden className="absolute inset-x-0 bottom-0 top-[3.25rem]" style={{ background: FOOT_VEIL }} />
           {stats ? (
@@ -227,12 +224,6 @@ export default function TotyShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
-          <div
-            className="absolute inset-x-0 top-[4.02rem] pl-[0.2em] text-center text-[0.56rem] font-bold leading-none tracking-[0.2em]"
-            style={{ color: AZURE }}
-          >
-            {EDITION}
-          </div>
         </div>
       </div>
     </div>

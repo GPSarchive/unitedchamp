@@ -240,7 +240,7 @@ export default function LegendShieldCard({
           </div>
         </div>
 
-        {/* The numbers, a faint line under each row, and the edition mark. */}
+        {/* The numbers, a faint line under each row. */}
         <div className="absolute inset-x-0 bottom-0 top-[71%]">
           {stats ? (
             <>
@@ -253,12 +253,6 @@ export default function LegendShieldCard({
             </p>
           )}
           <div aria-hidden className="absolute inset-x-0 top-[3.25rem] h-px" style={{ background: HAIRLINE }} />
-          <div
-            className="absolute inset-x-0 top-[4.05rem] pl-[0.3em] text-center text-[0.6rem] font-bold leading-none tracking-[0.3em]"
-            style={{ color: BRONZE }}
-          >
-            ΘΡΥΛΟΣ
-          </div>
         </div>
       </div>
     </div>

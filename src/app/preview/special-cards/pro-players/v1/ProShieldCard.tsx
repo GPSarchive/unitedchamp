@@ -12,7 +12,7 @@
 //     picture, where the face is;
 //   · a lighter aqua band for the name, between two bright mint lines;
 //   · a flat mid-teal plate for the numbers, crossed by a slanted sheen;
-//   · a bright mint foot carrying the edition mark;
+//   · a bright mint foot left empty for the edition title (to be decided);
 //   · thin blue-teal rim with a mint line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
@@ -47,9 +47,6 @@ import {
   SHEEN,
   SOFT,
 } from "./proFinish";
-
-/** The edition mark at the foot of the card. A working name: change it here. */
-const EDITION = "ΕΠΑΓΓΕΛΜΑΤΙΑΣ";
 
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
@@ -233,7 +230,7 @@ export default function ProShieldCard({
           </div>
         </div>
 
-        {/* The numbers and, on the foot, the edition mark. */}
+        {/* The numbers. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
           {stats ? (
             <CardStatGrid stats={stats} soft={SOFT} className="relative mx-[11%]" />
@@ -242,12 +239,6 @@ export default function ProShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
-          <div
-            className="absolute inset-x-0 top-[4.1rem] pl-[0.28em] text-center text-[0.56rem] font-bold leading-none tracking-[0.28em]"
-            style={{ color: SOFT }}
-          >
-            {EDITION}
-          </div>
         </div>
       </div>
     </div>

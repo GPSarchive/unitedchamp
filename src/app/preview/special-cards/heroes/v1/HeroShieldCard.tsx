@@ -13,7 +13,7 @@
 //   · a lavender band, lighter than everything above and below it, between
 //     two pale lines: the name;
 //   · a violet satin plate with slanted folds: the numbers;
-//   · a paler foot under a dark line, carrying the edition mark;
+//   · a paler foot under a dark line, left empty for the edition title (to be decided);
 //   · thin plum rim with a lilac line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
@@ -44,9 +44,6 @@ import {
   SATIN,
   VIOLET,
 } from "./heroFinish";
-
-/** The edition mark at the foot of the card. */
-const EDITION = "ΗΡΩΑΣ";
 
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
@@ -227,12 +224,6 @@ export default function HeroShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
-          <div
-            className="absolute inset-x-0 top-[4.1rem] pl-[0.34em] text-center text-[0.56rem] font-bold leading-none tracking-[0.34em]"
-            style={{ color: PLUM }}
-          >
-            {EDITION}
-          </div>
         </div>
       </div>
     </div>

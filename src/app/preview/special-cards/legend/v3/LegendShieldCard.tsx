@@ -10,7 +10,7 @@
 //     of the finish lies on the middle of the picture, where the face is;
 //   · it fades to white at the bottom, into
 //   · an ivory plate: the name between two gold rules, then the numbers on
-//     faint ruled lines, then a pearl foot carrying the edition mark;
+//     faint ruled lines, then a pearl foot left empty for the edition title (to be decided);
 //   · thin deep-gold rim with a white line inside it.
 // Name and numbers sit on the plate, never on the photo, so they read the
 // same whatever the photo is.
@@ -234,12 +234,6 @@ export default function LegendShieldCard({
             </p>
           )}
           <div aria-hidden className="absolute inset-x-0 top-[3.25rem] h-px" style={{ background: HAIRLINE }} />
-          <div
-            className="absolute inset-x-0 top-[4.1rem] pl-[0.34em] text-center text-[0.56rem] font-bold leading-none tracking-[0.34em]"
-            style={{ color: BRONZE }}
-          >
-            ΘΡΥΛΟΣ
-          </div>
         </div>
       </div>
     </div>

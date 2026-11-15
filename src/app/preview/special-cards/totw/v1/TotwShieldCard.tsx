@@ -12,7 +12,7 @@
 //   · it ends in black, on
 //   · a glossy black band for the name, between two red rules; then
 //   · the black plate for the numbers, with broad darker stripes leaning
-//     across it, and a foot one shade lighter carrying the edition mark;
+//     across it, and a foot one shade lighter left empty for the edition title (to be decided);
 //   · thin red rim with a dark line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
@@ -45,8 +45,6 @@ import {
 } from "./totwFinish";
 
 /** The edition's name, written at the foot of the card. */
-const EDITION_MARK = "ΟΜΑΔΑ ΤΗΣ ΕΒΔΟΜΑΔΑΣ";
-
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
 
 // Satin red line with a black line above and below it.
@@ -227,12 +225,6 @@ export default function TotwShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
-          <div
-            className="absolute inset-x-0 top-[3.7rem] whitespace-nowrap pl-[0.18em] text-center text-[0.56rem] font-bold leading-none tracking-[0.18em]"
-            style={{ color: EMBER }}
-          >
-            {EDITION_MARK}
-          </div>
         </div>
       </div>
     </div>
