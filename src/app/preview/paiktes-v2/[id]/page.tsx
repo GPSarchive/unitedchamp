@@ -62,6 +62,7 @@ export default async function PlayerPage({ params }: Props) {
         <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:gap-10">
           <div className="mx-auto w-full max-w-[20rem] md:mx-0">
             <PlayerCard
+              playerId={profile.id}
               first={profile.first}
               last={profile.last}
               photo={profile.photo}

@@ -37,7 +37,7 @@ import {
   SortHeader,
   phoneStats,
 } from "../paiktes-v2/DirectoryClient";
-import MiniCard from "./MiniCard";
+import { SkinnedMiniCard } from "../special-cards/SkinnedCards";
 import ProfileOverlay from "./ProfileOverlay";
 import { profileFor } from "./profile";
 import { NAME_LETTERING } from "./nameStyles";
@@ -95,7 +95,8 @@ const PlayerRow = memo(function PlayerRow({
             className="w-[3.25rem] shrink-0 transition-transform duration-200 group-hover:scale-105 md:w-14"
             style={away ? { visibility: "hidden" } : undefined}
           >
-            <MiniCard
+            <SkinnedMiniCard
+              playerId={player.id}
               photo={player.photo}
               logo={team?.logo ?? null}
               initial={(player.last || player.first || "?").charAt(0).toUpperCase()}

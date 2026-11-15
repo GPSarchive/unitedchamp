@@ -1,17 +1,19 @@
 // The two player cards of the players page, as the match page uses them: the
 // small flat shield (MiniCard) wherever a player is listed, and the big
 // holographic one (HoloShieldCard) for the few players a match singles out.
+// A player who holds a special card skin gets that skin instead (see
+// special-cards/SkinnedCards.tsx).
 "use client";
 
-import MiniCard from "../../paiktes-v3/MiniCard";
-import HoloShieldCard from "../../paiktes-v2/[id]/HoloShieldCard";
+import { SkinnedBigCard, SkinnedMiniCard } from "../../special-cards/SkinnedCards";
 import type { StatTuple } from "../../paiktes-v2/model";
 import type { MatchPlayer, MatchTeam } from "./model";
 
 /** The small card. Takes the width of its parent. */
 export function PlayerMini({ player, logo }: { player: MatchPlayer; logo: string | null }) {
   return (
-    <MiniCard
+    <SkinnedMiniCard
+      playerId={player.id}
       photo={player.photo}
       logo={logo}
       initial={(player.last || player.first || "?").charAt(0).toUpperCase()}
@@ -30,7 +32,8 @@ export function PlayerHolo({
   season: StatTuple | null;
 }) {
   return (
-    <HoloShieldCard
+    <SkinnedBigCard
+      playerId={player.id}
       first={player.first}
       last={player.last}
       photo={player.photo}

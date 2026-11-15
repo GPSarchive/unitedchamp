@@ -19,7 +19,7 @@ import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { FormerPlayerBadge } from "@/components/FormerPlayerBadge";
 import type { ProfileStatLine } from "../paiktes-v2/data";
 import { SHIELD } from "../paiktes-v2/[id]/cardShared";
-import HoloShieldCard from "../paiktes-v2/[id]/HoloShieldCard";
+import { SkinnedBigCard } from "../special-cards/SkinnedCards";
 import { LINK } from "../paiktes-v2/[id]/profileParts";
 import { NAME_LETTERING } from "./nameStyles";
 import type { PlayerProfile } from "./profile";
@@ -666,7 +666,8 @@ export default function ProfileOverlay({
                 style={{ transformStyle: "preserve-3d", willChange: "transform" }}
               >
                 <div className="relative" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-                  <HoloShieldCard
+                  <SkinnedBigCard
+                    playerId={player.id}
                     first={player.first}
                     last={player.last}
                     photo={player.photo}

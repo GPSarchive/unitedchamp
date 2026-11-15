@@ -8,7 +8,7 @@
 // caller is an admin before touching player_card_skins. Writes go through the
 // service role (the table's RLS admits admins only).
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createSupabaseRouteClient } from "@/app/lib/supabase/supabaseServer";
 import { isAdmin } from "@/app/lib/supabase/apiAuth";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
@@ -21,9 +21,16 @@ import {
   type SkinKey,
   type SkinRow,
 } from "./skins";
+import { CARD_SKINS_TAG } from "@/app/preview/special-cards/skinTypes";
 
 const TABLE = "player_card_skins";
 const PAGE = "/dashboard/protathlites";
+
+/** After every write: this page, and the skins every public card reads. */
+function refresh() {
+  revalidatePath(PAGE);
+  updateTag(CARD_SKINS_TAG);
+}
 /** Biggest team roster is ~30; this only stops absurd payloads. */
 const MAX_PLAYERS_PER_CALL = 200;
 
@@ -111,7 +118,7 @@ export async function giveSkin(input: {
     );
     if (error) return { success: false, error: readableError(error) };
 
-    revalidatePath(PAGE);
+    refresh();
     return readHolders(input.skin, ids);
   } catch (err) {
     console.error("[protathlites/giveSkin]", err);
@@ -131,7 +138,7 @@ export async function takeSkin(input: { skin: string; playerIds: number[] }): Pr
     const { error } = await supabaseAdmin.from(TABLE).delete().eq("skin", input.skin).in("player_id", ids);
     if (error) return { success: false, error: readableError(error) };
 
-    revalidatePath(PAGE);
+    refresh();
     return { success: true, data: undefined };
   } catch (err) {
     console.error("[protathlites/takeSkin]", err);
@@ -175,7 +182,7 @@ export async function updateSkinCard(input: {
     if (error) return { success: false, error: readableError(error) };
     if (!data) return { success: false, error: "Ο παίκτης δεν έχει πια αυτή την κάρτα. Ανανεώστε τη σελίδα." };
 
-    revalidatePath(PAGE);
+    refresh();
     return { success: true, data: holderFromRow(data as SkinRow) };
   } catch (err) {
     console.error("[protathlites/updateSkinCard]", err);

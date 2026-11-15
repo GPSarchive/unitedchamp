@@ -14,7 +14,7 @@ import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import type { CardTier } from "../data";
 import type { DirectoryTeam, StatTuple } from "../model";
 import { CardShadow, CardStatGrid, SHIELD, Silhouette } from "./cardShared";
-import HoloShieldCard from "./HoloShieldCard";
+import { SkinnedBigCard } from "../../special-cards/SkinnedCards";
 import { TILT_STYLE, useCardTilt } from "./useCardTilt";
 
 type FlatStyle = "gold" | "tier" | "team" | "dark";
@@ -291,6 +291,7 @@ function FlatShieldCard({
 }
 
 export default function PlayerCard({
+  playerId,
   first,
   last,
   photo,
@@ -299,6 +300,8 @@ export default function PlayerCard({
   stats,
   tier,
 }: {
+  /** For the special card skin, if the player holds one. */
+  playerId: number;
   first: string;
   last: string;
   photo: string | null;
@@ -346,7 +349,7 @@ export default function PlayerCard({
   return (
     <div>
       {style === "holo" ? (
-        <HoloShieldCard first={first} last={last} photo={photo} team={teams[0] ?? null} stats={stats} />
+        <SkinnedBigCard playerId={playerId} first={first} last={last} photo={photo} team={teams[0] ?? null} stats={stats} />
       ) : (
         <FlatShieldCard
           // Remount per finish so the intro sweep shows the new one.
