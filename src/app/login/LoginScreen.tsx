@@ -82,7 +82,7 @@ function Teaser() {
     <>
       <div className="lv2-tease">
         <p className="lv2-tease-title">Κάτι έρχεται.</p>
-        <p className="lv2-tease-sub">Είσαι μέσα. Τα υπόλοιπα, σύντομα.</p>
+        <p className="lv2-tease-sub">Η αντίστροφη μέτρηση άρχισε, έρχεται σύντομα.</p>
       </div>
 
       <div className="lv2-form lv2-rise">
