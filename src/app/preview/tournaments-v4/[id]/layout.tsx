@@ -7,7 +7,7 @@
 //
 //   (this address)  the stages in order — tables, then the knockout tree — with
 //                   the next and the latest matches beside
-//   /matches        the programme and the results, by round
+//   /matches        the matches, stage by stage
 //   /players        the scorers, and the tournament's leaders on the big card
 //   /teams          every team as a tile, opening to its squad in the new player cards
 //

@@ -2,12 +2,13 @@
 // read: pairs of teams joined by lines that narrow, round by round, to one
 // final, with the winner's crest in a ring standing on that final.
 //
-// The whole tree shows at once on any screen — it never hides its shape behind
-// sideways scrolling: the rounds share out the frame's width, and a tie that
-// comes out narrow keeps only crests and scores (the names come back wherever
-// there is room; every tie opens its match). Drawn from the last tie backwards
-// (model.buildBracket of tournaments-v3), by plain nested boxes and the lines
-// in dispatch.module.css — no measuring, no script.
+// Every tie keeps the teams' names. Where the rounds have room (a desk) the
+// whole tree shows at once; where they do not (a phone) the frame scrolls
+// sideways and opens on the round being played, or on the final once the
+// stage is over (TreeScroller), so the first look already shows pairs joining
+// into the next round. Drawn from the last tie backwards (model.buildBracket
+// of tournaments-v3), by plain nested boxes and the lines in
+// dispatch.module.css.
 //
 // A stage of one round only has nothing to narrow to: there every tie is drawn
 // with a line to the ring of the team that went through.
@@ -24,6 +25,7 @@ import {
 import styles from "./dispatch.module.css";
 import { MATCH_PATH } from "./paths";
 import { FOCUS, LABEL, SAFFRON } from "./tokens";
+import TreeScroller from "./TreeScroller";
 import { Crest } from "./ui";
 
 
@@ -206,7 +208,7 @@ function Node({ node, bracket, championId }: { node: BracketNode; bracket: Brack
         // Nothing drawn before it: leave the earlier rounds' room, so it stands in its own column.
         <div aria-hidden className={styles.spacer} style={{ "--skip": node.column } as React.CSSProperties} />
       ) : null}
-      <div className={`${styles.slot} ${feeders.length > 0 ? styles.fed : ""}`}>
+      <div data-col={node.column} className={`${styles.slot} ${feeders.length > 0 ? styles.fed : ""}`}>
         {final ? (
           // Standing on the final, joined to it by a short line.
           <span className="pointer-events-none absolute bottom-full left-1/2 flex -translate-x-1/2 flex-col items-center">
@@ -249,6 +251,20 @@ function Duels({ bracket, championId }: { bracket: Bracket; championId: number |
   );
 }
 
+/**
+ * The column the frame opens on: the earliest round with a tie still to be
+ * decided, or the last column when every tie is.
+ */
+function focusColumn(bracket: Bracket): number {
+  let open = bracket.columns - 1;
+  const walk = (node: BracketNode) => {
+    if (node.tie.winner === null && node.column < open) open = node.column;
+    node.feeders.forEach(walk);
+  };
+  bracket.roots.forEach(walk);
+  return open;
+}
+
 /** One knockout stage in its frame. */
 export default function KnockoutTree({ bracket, championId }: { bracket: Bracket; championId: number | null }) {
   const frame = "border-2 border-[#F3EFE6]/20 bg-[#0c0c17] px-3 py-5 md:px-6 md:py-7";
@@ -262,8 +278,12 @@ export default function KnockoutTree({ bracket, championId }: { bracket: Bracket
   // The ring stands above the final: a small tree has no height to spare for it.
   const room = bracket.top.length === 1 && leaves(bracket.roots[0]) < 4;
   return (
-    // If a tree of many rounds cannot fit even as crests, the frame scrolls.
-    <div className={`${frame} overflow-x-auto`}>
+    // Wider than the screen, the frame scrolls, and opens where the stage stands.
+    <TreeScroller
+      focus={focusColumn(bracket)}
+      last={bracket.columns - 1}
+      className={`${frame} overflow-x-auto overscroll-x-contain`}
+    >
       <div className={styles.bracket}>
         <div className={styles.tree} style={{ "--cols": bracket.columns } as React.CSSProperties}>
           {bracket.roundNames.length > 0 ? (
@@ -283,6 +303,6 @@ export default function KnockoutTree({ bracket, championId }: { bracket: Bracket
           </div>
         </div>
       </div>
-    </div>
+    </TreeScroller>
   );
 }

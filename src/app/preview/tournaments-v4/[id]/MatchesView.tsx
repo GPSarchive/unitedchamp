@@ -1,15 +1,17 @@
 // The tournament's matches, stage by stage in playing order (the same numbered
-// stages as the first tab). A table stage lists its rounds — matchdays —
-// each a panel that opens and closes, played and unplayed matches together;
-// the latest round with a result and the next one to be played start open.
-// A knockout stage is drawn as its tree, with the same matches as a list
-// under it. Postponed matches are not listed.
+// stages as the first tab). A table stage is one list of its matches in the
+// order they are played, played and unplayed together — never split into
+// matchdays, and no row names its matchday (owner, 2026-11-16: «split by
+// stage, not by αγωνιστική»). A knockout stage is drawn as its tree, with the
+// same matches as a list under it, by knockout round. Postponed matches are
+// not listed.
 import type { Base } from "../../tournaments-v3/[id]/data";
 import {
   buildBracket,
   groupByRound,
   knockoutRounds,
   matchNote,
+  roundLabel,
   type KnockoutRound,
   type LabelContext,
   type MatchGroup,
@@ -18,6 +20,7 @@ import {
 import KnockoutTree from "./BracketView";
 import { StageDisc, StageRail, stageStates, stageTitle } from "./stages";
 import { FOCUS, LABEL, NAME } from "./tokens";
+import { toNaiveIso } from "@/app/lib/datetime";
 import { Chevron, MatchRow, Panel, Rubric, plural } from "./ui";
 
 const matchesOf = (n: number) => plural(n, "αγώνας", "αγώνες");
@@ -32,6 +35,17 @@ export function labelContext(base: Base): LabelContext {
   }
   return { stages: new Map(base.stages.map((s) => [s.id, s])), knockout };
 }
+
+/**
+ * The round a match belongs to, for a note under it, without ever naming a
+ * matchday: a knockout round («Ημιτελικά»), the stage when there are two of a
+ * kind, or nothing.
+ */
+export const roundNote = (m: TMatch, ctx: LabelContext) => roundLabel(m.ko ? m : { ...m, matchday: null }, ctx);
+
+/** Kick-off order; a match with no date yet comes after the dated ones. */
+const byKickoff = (x: TMatch, y: TMatch) =>
+  (x.date ? toNaiveIso(x.date) : "9999").localeCompare(y.date ? toNaiveIso(y.date) : "9999") || x.id - y.id;
 
 function Rows({ matches, day, ctx }: { matches: TMatch[]; day: boolean; ctx: LabelContext }) {
   return (
@@ -88,7 +102,8 @@ export default function MatchesView({ base }: { base: Base }) {
         state: states.get(stage.id) ?? ("next" as const),
         matches: own,
         // Under its own stage heading a round does not repeat the stage's name.
-        groups: groupByRound(own, ctx, stageOrder, false).map((g) => ({
+        // Only a knockout stage is split, by its rounds (from its tree).
+        groups: (stage.kind === "knockout" ? groupByRound(own, ctx, stageOrder, false) : []).map((g) => ({
           ...g,
           title: g.title.startsWith(stage.name + ", ") ? g.title.slice(stage.name.length + 2) : g.title,
         })),
@@ -110,9 +125,6 @@ export default function MatchesView({ base }: { base: Base }) {
 
       {blocks.map((block, index) => {
         const { stage, groups, bracket } = block;
-        // In a table stage two rounds start open: the latest one with a result and the first one still to be played.
-        const played = groups.map((g) => g.matches.some((m) => m.status === "finished")).lastIndexOf(true);
-        const toPlay = groups.findIndex((g) => g.matches.some((m) => m.status !== "finished"));
         return (
           // The margin clears the site's fixed top bar when the rail leads here.
           <section key={stage.id} aria-labelledby={`stage-${stage.id}`} className="min-w-0 scroll-mt-24 md:scroll-mt-40">
@@ -129,9 +141,9 @@ export default function MatchesView({ base }: { base: Base }) {
                 <Rounds groups={groups} ctx={ctx} open={() => false} />
               </div>
             ) : (
-              <div className="max-w-3xl">
-                <Rounds groups={groups} ctx={ctx} open={(i) => i === played || i === toPlay} />
-              </div>
+              <Panel className="max-w-3xl">
+                <Rows matches={[...block.matches].sort(byKickoff)} day ctx={ctx} />
+              </Panel>
             )}
           </section>
         );
@@ -141,7 +153,7 @@ export default function MatchesView({ base }: { base: Base }) {
         <section aria-labelledby="loose" className="min-w-0">
           <Rubric id="loose" title={blocks.length > 0 ? "Άλλοι αγώνες" : "Αγώνες"} meta={matchesOf(loose.length)} />
           <Panel className="max-w-3xl">
-            <Rows matches={loose} day ctx={ctx} />
+            <Rows matches={[...loose].sort(byKickoff)} day ctx={ctx} />
           </Panel>
         </section>
       ) : null}

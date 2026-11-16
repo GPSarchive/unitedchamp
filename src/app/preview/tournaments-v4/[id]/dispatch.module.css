@@ -73,20 +73,20 @@
    comes from. The lines are drawn by the feeders' wrappers: a stub out of each
    feeder, a vertical joining the pair, and a stub into the tie they lead to.
 
-   The whole tree shows at once on any screen: its frame is the measuring
-   stick, and the rounds share out the frame's width (--cols of them). A tie
-   that comes out narrow drops the names and keeps crests and scores (the
-   classes that do it are on the tie, in BracketView). */
+   The rounds share out the frame's width (--cols of them), but a tie never
+   gets narrower than its teams' names need: where the share is smaller (a
+   phone) the tree runs wider than the frame and the frame scrolls
+   (TreeScroller opens it where the stage stands). */
 
 .bracket {
   container-type: inline-size;
 }
 
 .tree {
-  --gap: clamp(0.75rem, 4.5cqw, 2.5rem); /* room between two rounds, where the lines run */
+  --gap: clamp(1.5rem, 4.5cqw, 2.5rem); /* room between two rounds, where the lines run */
   /* Width of a tie: an even share of the frame, never wider than a full card,
-     never too narrow for a crest and a score (then the frame scrolls). */
-  --tie: max(3.5rem, min(15rem, calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols))));
+     never too narrow for the names (then the frame scrolls). */
+  --tie: max(11.5rem, min(15rem, calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols))));
   --line: rgb(243 239 230 / 0.5);
   width: max-content;
   margin-inline: auto;

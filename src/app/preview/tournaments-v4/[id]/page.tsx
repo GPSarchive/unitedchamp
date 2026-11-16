@@ -14,7 +14,6 @@ import { loadBase, loadTables } from "../../tournaments-v3/[id]/data";
 import {
   buildBracket,
   matchNote,
-  roundLabel,
   splitMatches,
   type Bracket,
   type LabelContext,
@@ -23,7 +22,7 @@ import {
   type TStage,
 } from "../../tournaments-v3/[id]/model";
 import KnockoutTree from "./BracketView";
-import MatchesView, { labelContext } from "./MatchesView";
+import MatchesView, { labelContext, roundNote } from "./MatchesView";
 import { TOURNAMENT_PATH } from "./paths";
 import { StageDisc, StageRail, stageStates, stageTitle, type StageState } from "./stages";
 import { BUTTON } from "./tokens";
@@ -121,7 +120,7 @@ function Beside({
                 key={m.id}
                 match={m}
                 day
-                note={[roundLabel(m, ctx), matchNote(m, ctx)].filter(Boolean).join(", ") || null}
+                note={[roundNote(m, ctx), matchNote(m, ctx)].filter(Boolean).join(", ") || null}
               />
             ))}
           </ul>

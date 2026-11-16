@@ -1,4 +1,4 @@
-// The tournament's «Αγώνες» tab: the programme and the results, by round.
+// The tournament's «Αγώνες» tab: its matches, stage by stage.
 import { notFound } from "next/navigation";
 import { loadBase } from "../../../tournaments-v3/[id]/data";
 import MatchesView from "../MatchesView";

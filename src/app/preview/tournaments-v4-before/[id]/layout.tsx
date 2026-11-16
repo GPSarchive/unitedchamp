@@ -97,13 +97,6 @@ function State({ head }: { head: Headline }) {
   return `Ολοκληρώθηκε. ${head.played === 1 ? "Παίχτηκε 1 αγώνας" : `Παίχτηκαν ${head.played} αγώνες`}.`;
 }
 
-const STATUS: Record<Headline["kind"], string> = {
-  champion: "Ολοκληρώθηκε",
-  over: "Ολοκληρώθηκε",
-  running: "Σε εξέλιξη",
-  upcoming: "Προσεχώς",
-};
-
 /** The winner's plate: tilted the other way from the emblem, on a hard shadow in the team's colour. */
 function ChampionPlate({ team, colour }: { team: TTeam; colour: string }) {
   return (
@@ -169,14 +162,13 @@ export default async function TournamentLayout({
   const across = !base.logo;
 
   const [first, ...rest] = base.name.split(/\s+/);
-  const status = base.season?.archived ? "Αρχείο" : STATUS[head.kind];
 
   return (
     <ProfileHost>
       <div className={`${mono.variable} relative isolate min-h-screen overflow-x-hidden text-[#F3EFE6] selection:bg-[#fb923c] selection:text-[#0a0a14]`}>
         <div aria-hidden className={styles.ground} />
 
-        {/* The line across the top: where this page is, and how the tournament stands. */}
+        {/* The line across the top: where this page is. (No season, no status label: owner, 2026-11-16.) */}
         <div className="border-b-2 border-[#F3EFE6]/20 bg-[#0a0a14]/70">
           <div className={`${LABEL} mx-auto flex max-w-[1320px] items-center justify-between gap-4 px-4 py-2.5 md:px-6`}>
             <nav aria-label="Διαδρομή" className="flex min-w-0 items-center gap-2 text-[#F3EFE6]/65">
@@ -188,12 +180,6 @@ export default async function TournamentLayout({
                 Διοργανώσεις
               </Link>
             </nav>
-            <p className="flex shrink-0 items-center gap-2.5 font-bold">
-              {head.kind === "running" && !base.season?.archived ? (
-                <span aria-hidden className="h-2 w-2 rounded-full bg-[#fb923c]" />
-              ) : null}
-              {status}
-            </p>
           </div>
         </div>
 
@@ -209,11 +195,6 @@ export default async function TournamentLayout({
 
           <div className="relative mx-auto grid max-w-[1320px] gap-x-10 gap-y-9 px-4 pb-10 pt-8 md:grid-cols-12 md:px-6 md:pb-16 md:pt-14">
             <div className="min-w-0 md:col-span-8">
-              {base.season ? (
-                <p className={`${LABEL} mb-5 flex flex-wrap gap-2.5`}>
-                  <span className="border border-[#F3EFE6]/25 px-2 py-1">Σεζόν {base.season.display}</span>
-                </p>
-              ) : null}
               <h1
                 className="font-bold leading-[0.88] tracking-[-0.03em] [overflow-wrap:anywhere]"
                 style={{ fontSize: "clamp(2.75rem, 8.5vw, 7.5rem)" }}
