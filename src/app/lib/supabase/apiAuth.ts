@@ -31,6 +31,15 @@ export const canEditContent = (user: any) => {
 };
 
 /**
+ * True for anyone the dashboard lets in: admin, editor, or the ADMIN_EMAIL
+ * fallback the proxy also honours. Used to route a fresh sign-in: staff go
+ * on to where they were headed, everyone else lands on the /login teaser.
+ */
+export const isStaff = (user: any) =>
+  canEditContent(user) ||
+  (!!process.env.ADMIN_EMAIL && user?.email === process.env.ADMIN_EMAIL);
+
+/**
  * Verifies a valid Supabase session exists (any authenticated user).
  * Returns the user on success, or a ready-to-return 401 NextResponse on failure.
  *
