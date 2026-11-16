@@ -14,7 +14,7 @@ import HomeHero from "@/app/home/HomeHero";
 import SeasonRecapOverlay from "@/app/home/SeasonRecapModal";
 import { loadSeasonRecap } from "@/app/home/seasonRecap";
 import GridBgSection from "@/app/home/GridBgSection";
-import VantaSection from "@/app/home/VantaSection";
+import PasteUpSection from "@/app/home/PasteUpSection";
 import HomeArticles from "@/app/home/HomeArticles";
 import HomeVideos from "@/app/home/HomeVideos";
 import LeftSideBubbles from "@/app/home/LeftSideBubbles";
@@ -56,7 +56,7 @@ const figtree = Figtree({
 
 // ───────────────────────────────────────────────────────────────────────
 // PaperBgSection — shared editorial background matching /tournaments, /paiktes.
-// Used for sections lifted out of Vanta (Articles, Top Players, Tournaments CTA).
+// Used for the Articles, Top Players and Tournaments CTA sections.
 // ───────────────────────────────────────────────────────────────────────
 const PaperBgSection: React.FC<React.PropsWithChildren<{ className?: string }>> = ({
   className = "",
@@ -166,8 +166,8 @@ export default async function Home() {
         ]}
       />
 
-      {/* ═══ Welcome / VantaSection ═══ */}
-      <VantaSection className="py-12 sm:py-16 text-white" overlayClassName="bg-black/20">
+      {/* ═══ Welcome / PasteUpSection ═══ */}
+      <PasteUpSection className="py-12 sm:py-16 text-white">
         <div className="container mx-auto px-4 text-center">
           <h1
             className="font-[var(--f-display)] font-black italic leading-[0.95] tracking-[-0.02em] mb-4 text-white"
@@ -191,7 +191,7 @@ export default async function Home() {
             Ultrachamp! Αγωνίσου σε κλίμα ασφάλειας, οργάνωσης και ηθικής!
           </p>
         </div>
-      </VantaSection>
+      </PasteUpSection>
 
       {/* ═══ Dashboard + Calendar / GridBgSection ═══ */}
       <GridBgSection
