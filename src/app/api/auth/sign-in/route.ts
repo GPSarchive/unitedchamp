@@ -3,6 +3,7 @@ import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { checkLimit } from '@/app/lib/rate-limit';
 import { safeNextUrl } from '@/app/lib/safe-redirect';
 import { validateCsrfToken } from '@/app/lib/csrf';
+import { isStaff } from '@/app/lib/supabase/apiAuth';
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createSupabaseRouteClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     console.error('Auth sign-in error:', error.message);
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
     if (nextRaw) url.searchParams.set('next', nextRaw);
     return NextResponse.redirect(url);
   }
+
+  // Players have no area yet: anyone who isn't staff gets the /login teaser.
+  if (!isStaff(data.user)) return NextResponse.redirect(new URL('/login', req.url));
 
   return NextResponse.redirect(new URL(safeNext, req.url));
 }

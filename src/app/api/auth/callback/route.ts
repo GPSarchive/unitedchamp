@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseRouteClient } from '@/app/lib/supabase/supabaseServer';
 import { safeNextUrl } from '@/app/lib/safe-redirect';
+import { isStaff } from '@/app/lib/supabase/apiAuth';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(back);
   }
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
     console.error('Auth callback error:', error.message);
     const back = new URL('/login', url);
@@ -25,6 +26,10 @@ export async function GET(req: Request) {
     if (nextRaw) back.searchParams.set('next', nextRaw);
     return NextResponse.redirect(back);
   }
+
+  // Players have no area yet: anyone who isn't staff gets the /login teaser
+  // (the dashboard would only answer 403).
+  if (!isStaff(data.user)) return NextResponse.redirect(new URL('/login', url));
 
   return NextResponse.redirect(new URL(safeNext, url));
 }
