@@ -1,0 +1,136 @@
+/* Reading styles for the TipTap HTML. The site has no typography plugin, so
+   the old `prose-*` classes never applied; these do the job on the dark ground. */
+
+.body {
+  color: rgb(243 239 230 / 0.82);
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.body p {
+  margin: 0 0 1.4em;
+}
+
+.body h1,
+.body h2,
+.body h3,
+.body h4 {
+  color: #f3efe6;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.body h1 {
+  font-size: 1.875rem;
+  margin: 2em 0 0.6em;
+}
+.body h2 {
+  font-size: 1.5rem;
+  margin: 1.9em 0 0.6em;
+  padding-left: 0.75rem;
+  box-shadow: inset 3px 0 0 #fb923c;
+}
+.body h3 {
+  font-size: 1.25rem;
+  margin: 1.6em 0 0.5em;
+}
+.body h4 {
+  font-size: 1.0625rem;
+  margin: 1.4em 0 0.4em;
+}
+.body > :first-child {
+  margin-top: 0;
+}
+
+.body strong {
+  color: #f3efe6;
+  font-weight: 700;
+}
+
+.body a {
+  color: #fb923c;
+  text-decoration: underline;
+  text-decoration-color: rgb(251 146 60 / 0.4);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s, color 0.2s;
+}
+.body a:hover {
+  color: #fdba74;
+  text-decoration-color: currentColor;
+}
+
+.body ul,
+.body ol {
+  margin: 0 0 1.4em;
+  padding-left: 1.4em;
+}
+.body ul {
+  list-style: disc;
+}
+.body ol {
+  list-style: decimal;
+}
+.body li {
+  margin-bottom: 0.4em;
+}
+.body li::marker {
+  color: #fb923c;
+}
+.body li > p {
+  margin: 0;
+}
+
+.body blockquote {
+  margin: 1.8em 0;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  background: rgb(251 146 60 / 0.08);
+  box-shadow: inset 3px 0 0 #fb923c;
+  color: rgb(243 239 230 / 0.9);
+  font-style: italic;
+}
+.body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.body code {
+  font-family: var(--f-mono), ui-monospace, monospace;
+  font-size: 0.875em;
+  color: #fdba74;
+  background: rgb(243 239 230 / 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 0.375rem;
+}
+.body pre {
+  margin: 1.6em 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgb(0 0 0 / 0.35);
+  overflow-x: auto;
+}
+.body pre code {
+  background: none;
+  padding: 0;
+  color: rgb(243 239 230 / 0.85);
+}
+
+.body hr {
+  margin: 2.4em 0;
+  border: 0;
+  border-top: 1px solid rgb(243 239 230 / 0.1);
+}
+
+.body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.8em auto;
+  border-radius: 0.75rem;
+}
+
+.body br {
+  display: block;
+  content: "";
+  margin: 0.5em 0;
+}

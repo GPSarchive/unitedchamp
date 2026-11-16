@@ -1,28 +1,52 @@
+// /article/[slug] in the site's dark "flat layered" look.
+
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import Link from '@tiptap/extension-link';
+import TiptapLink from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { Paragraph } from '@tiptap/extension-paragraph';
+import { Fraunces, JetBrains_Mono, Figtree } from 'next/font/google';
 import { createSupabaseRSCClient } from '@/app/lib/supabase/supabaseServer';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
 import { canEditContent } from '@/app/lib/supabase/apiAuth';
-import RelatedArticles from '@/components/RelatedArticles';
-import ArticleNavigation from '@/components/ArticleNavigation';
+import { formatInstant } from '@/app/lib/datetime';
+import { SURFACE, layers, LINE, CHIP_ORANGE } from '@/app/lib/ui/flat';
+import ArticleNavigation from './ArticleNavigation';
+import RelatedArticles from './RelatedArticles';
+import styles from './article.module.css';
+
+const fraunces = Fraunces({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '600', '700', '900'],
+  style: ['normal', 'italic'],
+  variable: '--f-display',
+  display: 'swap',
+});
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin', 'greek'],
+  weight: ['400', '500', '700'],
+  variable: '--f-mono',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--f-body',
+  display: 'swap',
+});
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-// Rendered per request, as before. (It used to be dynamic implicitly, through
-// the cookie-bound client; the reads below now use the service role, so say
-// it explicitly — otherwise an edited article would be served from cache.)
 export const dynamic = 'force-dynamic';
 
 // Articles are read with the service role: the anon key has no table access
-// (migrations/lock-anon-reads.sql). The "published only" rule that RLS used to
-// enforce for visitors is therefore enforced HERE — keep the status checks.
+// (migrations/lock-anon-reads.sql), so the "published only" rule is enforced
+// HERE. Keep the status checks.
 async function getArticle(slug: string) {
   const { data, error } = await supabaseAdmin
     .from('articles')
@@ -30,26 +54,37 @@ async function getArticle(slug: string) {
     .eq('slug', slug)
     .maybeSingle();
 
-  if (error || !data) {
-    return null;
-  }
+  if (error || !data) return null;
 
-  // Drafts are visible only to content editors (admins/editors)
   if (data.status !== 'published') {
     const supabase = await createSupabaseRSCClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!canEditContent(user)) {
-      return null;
-    }
+    if (!canEditContent(user)) return null;
   }
 
   return data;
 }
 
-async function getRelatedArticles(currentArticleDate: string, limit: number = 3) {
+// First image anywhere in a TipTap doc (the same idea as /articles' cards).
+function firstImage(node: any): string | null {
+  if (!node || typeof node !== 'object') return null;
+  if (node.type === 'image' && typeof node.attrs?.src === 'string') return node.attrs.src;
+  if (Array.isArray(node.content)) {
+    for (const child of node.content) {
+      const src = firstImage(child);
+      if (src) return src;
+    }
+  }
+  return null;
+}
+
+// The articles table has no `featured_image` column (selecting it made this
+// query fail, so «Πρόσφατα Άρθρα» never rendered). Each card takes the first
+// image in its article body, like the /articles cards.
+async function getRelatedArticles(currentArticleDate: string, limit = 3) {
   const { data, error } = await supabaseAdmin
     .from('articles')
-    .select('id, title, slug, excerpt, featured_image, published_at')
+    .select('id, title, slug, excerpt, content, published_at')
     .eq('status', 'published')
     .lt('published_at', currentArticleDate)
     .order('published_at', { ascending: false })
@@ -59,214 +94,200 @@ async function getRelatedArticles(currentArticleDate: string, limit: number = 3)
     console.error('Error fetching related articles:', error);
     return [];
   }
-
-  return data || [];
+  return (data || []).map(({ content, ...a }) => ({ ...a, featured_image: firstImage(content) }));
 }
 
 async function getAdjacentArticles(currentArticleDate: string) {
-  // Get previous article (older)
-  const { data: previousArticle } = await supabaseAdmin
-    .from('articles')
-    .select('slug, title')
-    .eq('status', 'published')
-    .lt('published_at', currentArticleDate)
-    .order('published_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // Get next article (newer)
-  const { data: nextArticle } = await supabaseAdmin
-    .from('articles')
-    .select('slug, title')
-    .eq('status', 'published')
-    .gt('published_at', currentArticleDate)
-    .order('published_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
+  const [{ data: previousArticle }, { data: nextArticle }] = await Promise.all([
+    supabaseAdmin
+      .from('articles')
+      .select('slug, title')
+      .eq('status', 'published')
+      .lt('published_at', currentArticleDate)
+      .order('published_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('articles')
+      .select('slug, title')
+      .eq('status', 'published')
+      .gt('published_at', currentArticleDate)
+      .order('published_at', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ]);
   return { previousArticle, nextArticle };
 }
 
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const article = await getArticle(slug);
-
-  if (!article) {
-    return {
-      title: 'Article Not Found',
-    };
-  }
-
+  if (!article) return { title: 'Article Not Found' };
   return {
     title: article.title,
     description: article.excerpt || `Read ${article.title}`,
   };
 }
 
+// The page ground used across the site (tournaments, standings, …).
+const Atmosphere = () => (
+  <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+    <div
+      className="absolute inset-0"
+      style={{
+        background:
+          'radial-gradient(ellipse at 20% 0%, #1a1a2e 0%, #0a0a14 45%, #08080f 100%)',
+      }}
+    />
+    <div
+      className="absolute -top-40 -left-40 h-[60rem] w-[60rem] rounded-full opacity-[0.16] blur-3xl"
+      style={{ background: 'radial-gradient(closest-side, #fb923c 0%, rgba(251,146,60,0) 70%)' }}
+    />
+    <div
+      className="absolute -bottom-60 -right-40 h-[55rem] w-[55rem] rounded-full opacity-[0.12] blur-3xl"
+      style={{ background: 'radial-gradient(closest-side, #a855f7 0%, rgba(168,85,247,0) 70%)' }}
+    />
+    <svg className="absolute inset-0 h-full w-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="agrid" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F3EFE6" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#agrid)" />
+    </svg>
+  </div>
+);
+
+const BackLink = () => (
+  <Link
+    href="/articles"
+    className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/60 hover:text-[#fb923c] transition-colors"
+  >
+    <span aria-hidden>←</span> Πίσω στα Άρθρα
+  </Link>
+);
+
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
   const article = await getArticle(slug);
+  if (!article) notFound();
 
-  if (!article) {
-    notFound();
-  }
+  const [relatedArticles, { previousArticle, nextArticle }] = article.published_at
+    ? await Promise.all([
+        getRelatedArticles(article.published_at),
+        getAdjacentArticles(article.published_at),
+      ])
+    : [[], { previousArticle: null, nextArticle: null }];
 
-  // Fetch related articles and navigation
-  const relatedArticles = article.published_at
-    ? await getRelatedArticles(article.published_at)
-    : [];
-
-  const { previousArticle, nextArticle } = article.published_at
-    ? await getAdjacentArticles(article.published_at)
-    : { previousArticle: null, nextArticle: null };
-
-  // Generate HTML from TipTap JSON
   const contentHTML = article.content
     ? generateHTML(article.content, [
         StarterKit.configure({
-          paragraph: false, // Disable default paragraph to use custom one
-          hardBreak: {
-            keepMarks: true,
-          },
+          paragraph: false,
+          hardBreak: { keepMarks: true },
         }),
         Paragraph.extend({
           renderHTML({ node, HTMLAttributes }) {
-            // Check if paragraph is empty (used for extra spacing)
+            // Empty paragraphs are the editors' way of adding space: keep their height.
             const isEmpty = !node.textContent || node.textContent.trim() === '';
-            const classes = isEmpty ? 'mb-6 min-h-[24px]' : 'mb-6';
-
-            return [
-              'p',
-              { ...HTMLAttributes, class: classes },
-              0,
-            ];
+            return ['p', { ...HTMLAttributes, class: isEmpty ? 'min-h-[24px]' : undefined }, 0];
           },
         }),
         Underline,
-        Link.configure({
-          openOnClick: true,
-          HTMLAttributes: {
-            class: 'text-blue-400 underline hover:text-blue-300 transition-colors',
-          },
-        }),
-        Image.configure({
-          HTMLAttributes: {
-            class: 'max-w-full h-auto rounded-lg my-6 shadow-lg',
-          },
-        }),
+        TiptapLink.configure({ openOnClick: true }),
+        Image,
       ])
     : '';
 
-  const publishedDate = article.published_at
-    ? new Date(article.published_at).toLocaleDateString('el-GR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-    : null;
+  const publishedDate = formatInstant(article.published_at, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className={`${fraunces.variable} ${jetbrains.variable} ${figtree.variable} relative min-h-screen text-[#F3EFE6] font-[var(--f-body)] selection:bg-[#fb923c] selection:text-[#0a0a14]`}
+    >
+      <Atmosphere />
 
       {/* Header with back navigation */}
-      <div className="border-b border-neutral-200 bg-white/90 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <a
-            href="/articles"
-            className="inline-flex items-center text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
-          >
-            ← Πίσω στα Άρθρα
-          </a>
+      <div className={`border-b ${LINE}`}>
+        <div className="mx-auto max-w-4xl px-4 py-4">
+          <BackLink />
         </div>
       </div>
 
-      {/* Article content */}
-      <article className="max-w-4xl mx-auto px-4 py-12">
+      <article className="mx-auto max-w-4xl px-4 py-8 md:py-12">
         {/* Status badge for drafts (admin only) */}
         {article.status !== 'published' && (
-          <div className="mb-6 inline-block px-3 py-1 rounded-full bg-amber-600/20 border border-amber-500/40 text-amber-200 text-sm font-semibold">
-            DRAFT - Preview Mode
+          <div
+            className={`mb-6 inline-flex items-center gap-2 ${CHIP_ORANGE} px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[#fb923c]" />
+            Πρόχειρο · Προεπισκόπηση
           </div>
         )}
 
-        {/* White content container */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+        {/* Content panel */}
+        <div className={`${SURFACE} overflow-hidden`} style={{ boxShadow: layers('#fb923c') }}>
           {/* Featured image */}
           {article.featured_image && (
-            <div className="w-full">
+            <div className="relative w-full bg-black/40">
               <img
                 src={article.featured_image}
                 alt={article.title}
-                className="w-full h-auto object-cover max-h-[500px]"
+                className="w-full h-auto max-h-[500px] object-cover"
+              />
+              {/* fade the photo into the panel */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#12121e] to-transparent"
               />
             </div>
           )}
 
-          {/* Article content wrapper with padding */}
-          <div className="px-8 md:px-12 py-10">
+          <div className="px-5 py-8 sm:px-8 md:px-12 md:py-10">
             {/* Article header */}
-            <header className="mb-8 pb-8 border-b border-neutral-200">
-              <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-4 leading-tight">
+            <header className={`mb-8 border-b pb-8 ${LINE}`}>
+              <div className="mb-4 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
+                <span className="h-[2px] w-8 bg-[#fb923c]" />
+                Άρθρο
+              </div>
+
+              <h1
+                className="mb-4 font-[var(--f-display)] font-black italic leading-[1.05] tracking-[-0.02em] text-[#F3EFE6]"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.25rem)' }}
+              >
                 {article.title}
               </h1>
 
               {article.excerpt && (
-                <p className="text-xl text-neutral-600 mb-6 leading-relaxed">{article.excerpt}</p>
+                <p className="mb-6 text-lg leading-relaxed text-[#F3EFE6]/70 md:text-xl">
+                  {article.excerpt}
+                </p>
               )}
 
-              {/* Article metadata */}
               {publishedDate && (
-                <div className="flex items-center gap-4 flex-wrap text-sm text-neutral-500">
-                  <time className="flex items-center gap-1.5" dateTime={article.published_at!}>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    {publishedDate}
-                  </time>
+                <div className="flex flex-wrap items-center gap-4 font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3EFE6]/55">
+                  <time dateTime={article.published_at!}>{publishedDate}</time>
                 </div>
               )}
             </header>
 
             {/* Article content */}
-            <div
-              className="prose prose-lg max-w-none
-                prose-headings:text-neutral-900 prose-headings:font-bold
-                prose-h1:text-3xl prose-h1:mb-4
-                prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-8
-                prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-6
-                prose-p:text-neutral-700 prose-p:leading-relaxed
-                prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline hover:prose-a:text-blue-700
-                prose-strong:text-neutral-900 prose-strong:font-semibold
-                prose-ul:text-neutral-700 prose-ul:list-disc prose-ul:pl-6
-                prose-ol:text-neutral-700 prose-ol:list-decimal prose-ol:pl-6
-                prose-li:mb-2 prose-li:text-neutral-700
-                prose-blockquote:border-l-4 prose-blockquote:border-blue-500
-                prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-neutral-600 prose-blockquote:bg-neutral-50
-                prose-code:text-emerald-600 prose-code:bg-neutral-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
-                prose-pre:bg-neutral-900 prose-pre:border prose-pre:border-neutral-800 prose-pre:rounded-lg prose-pre:p-4
-                prose-img:rounded-lg prose-img:shadow-lg
-                [&_br]:block [&_br]:my-2"
-              dangerouslySetInnerHTML={{ __html: contentHTML }}
-            />
+            <div className={styles.body} dangerouslySetInnerHTML={{ __html: contentHTML }} />
           </div>
         </div>
 
-        {/* Article Navigation (Previous/Next) */}
+        {/* Previous / next */}
         <ArticleNavigation previousArticle={previousArticle} nextArticle={nextArticle} />
 
-        {/* Related Articles */}
+        {/* Related articles */}
         <RelatedArticles articles={relatedArticles} />
 
-        {/* Article footer */}
-        <footer className="mt-12 pt-8 border-t border-neutral-200">
-          <div className="flex items-center justify-between">
-            <a
-              href="/articles"
-              className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors"
-            >
-              ← Πίσω στα Άρθρα
-            </a>
-          </div>
+        {/* Footer */}
+        <footer className={`mt-12 border-t pt-8 ${LINE}`}>
+          <BackLink />
         </footer>
       </article>
     </div>
