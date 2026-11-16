@@ -17,7 +17,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatMatchDate, nowWallClockIso } from "@/app/lib/datetime";
 import { layers } from "@/app/lib/ui/flat";
 import type { TTeam } from "@/app/preview/tournaments-v3/[id]/model";
-import { openingDay, stageRuns, teamMatches, toDays, type Day, type StageInfo, type ViewMatch } from "./model";
+import { matchdayLabel, openingDay, stageRuns, teamMatches, toDays, type Day, type StageInfo, type ViewMatch } from "./model";
 import { Crest } from "../ui";
 import { Row } from "./Row";
 
@@ -292,8 +292,9 @@ function partTitle(vm: ViewMatch, stages: StageInfo[], twoTrees: boolean) {
 /** Whether matches of more than one knockout stage are listed. */
 const severalTrees = (matches: ViewMatch[]) => new Set(matches.filter((vm) => vm.round).map((vm) => vm.stage)).size > 1;
 
-/** A leg's name stays under its row; a group's name goes into the part's heading instead. */
-const rowNote = (vm: ViewMatch) => (vm.m.leg != null ? vm.note : null);
+/** Under a row: its matchday and a leg's name; a group's name goes into the part's heading instead. */
+const rowNote = (vm: ViewMatch) =>
+  [matchdayLabel(vm.m), vm.m.leg != null ? vm.note : null].filter(Boolean).join(" · ") || null;
 
 function Parts({ matches, stages, now, twoTrees }: { matches: ViewMatch[]; stages: StageInfo[]; now: string; twoTrees: boolean }) {
   const parts: { key: string; title: string | null; matches: ViewMatch[] }[] = [];

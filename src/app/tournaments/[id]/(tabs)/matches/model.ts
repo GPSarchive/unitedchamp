@@ -21,7 +21,7 @@ export type ViewMatch = {
   m: TMatch;
   /** Index into the stages list; -1 for a match entered without a stage. */
   stage: number;
-  /** A knockout round's name («Ημιτελικά»), from the stage's tree. Never a matchday. */
+  /** A knockout round's name («Ημιτελικά»), from the stage's tree. The matchday goes under the row (matchdayLabel). */
   round: string | null;
   /** The group, or which leg («Ρεβάνς»). */
   note: string | null;
@@ -35,6 +35,9 @@ export type Day = {
   stage: number;
   matches: ViewMatch[];
 };
+
+/** «3η αγωνιστική» for a league or group match that has a matchday; null otherwise. */
+export const matchdayLabel = (m: TMatch) => (!m.ko && m.matchday != null ? `${m.matchday}η αγωνιστική` : null);
 
 const kickoff = (m: TMatch) => (m.date ? toNaiveIso(m.date) : null);
 

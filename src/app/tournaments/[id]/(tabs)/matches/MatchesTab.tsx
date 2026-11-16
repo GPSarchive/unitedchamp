@@ -1,5 +1,5 @@
 // The server part of the «Αγώνες» tab: shapes the matches (postponed matches
-// left out, a knockout match named by its round, never a matchday) and draws
+// left out, a knockout match named by its round) and draws
 // each knockout stage's tree, then hands everything to MatchesClient as plain
 // data, so the page stays ISR. Also drawn on the first tab while a tournament
 // has neither a table nor a tree.
