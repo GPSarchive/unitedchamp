@@ -1,5 +1,7 @@
 // The tournament's first tab: its table — every league and group table, the
 // latest stage first — with the next matches and the latest results beside it.
+// Under the table of the stage being played (a single table): the course of
+// its top four teams (drawn by tournaments-v4's teams/TopTeams).
 // A tournament that is only a knockout shows its tree here instead; one that
 // has neither yet shows its matches.
 import Link from "next/link";
@@ -16,6 +18,8 @@ import {
 } from "../../tournaments-v3/[id]/model";
 import BracketView from "./BracketView";
 import MatchesView, { labelContext } from "./MatchesView";
+import TopTeams from "../../tournaments-v4/[id]/teams/TopTeams";
+import { loadColours } from "./extra";
 import { TOURNAMENT_PATH } from "./paths";
 import { BUTTON } from "./tokens";
 import { MatchRow, Panel, Rubric, StandingsTable, parseId, plural } from "./ui";
@@ -41,7 +45,7 @@ function qualifiers(stage: StageTables): string | null {
     : `Στα νοκ άουτ ${verb} ${who}: όσες είναι πάνω από τη διακεκομμένη γραμμή.`;
 }
 
-function Stage({ stage, named }: { stage: StageTables; named: boolean }) {
+function Stage({ stage, named, under }: { stage: StageTables; named: boolean; under?: React.ReactNode }) {
   const note = qualifiers(stage);
   const side = stage.tables.length > 1;
   const teams = stage.tables.reduce((n, t) => n + t.rows.length, 0);
@@ -72,6 +76,7 @@ function Stage({ stage, named }: { stage: StageTables; named: boolean }) {
         ))}
       </div>
       {note ? <p className="mt-4 max-w-xl text-[15px] leading-snug text-[#F3EFE6]/70">{note}</p> : null}
+      {under}
     </section>
   );
 }
@@ -116,7 +121,7 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
   if (!id) notFound();
   const base = await loadBase(id);
   if (!base) notFound();
-  const stages = await loadTables(id);
+  const [stages, colours] = await Promise.all([loadTables(id), loadColours(id)]);
 
   if (stages.length === 0) {
     return base.stages.some((s) => s.kind === "knockout") ? <BracketView base={base} /> : <MatchesView base={base} />;
@@ -130,7 +135,23 @@ export default async function TablePage({ params }: { params: Promise<{ id: stri
       <div className="grid min-w-0 content-start gap-14">
         {/* The stage being played first; the ones before it underneath. */}
         {[...stages].reverse().map((stage) => (
-          <Stage key={stage.stage.id} stage={stage} named={stages.length > 1} />
+          <Stage
+            key={stage.stage.id}
+            stage={stage}
+            named={stages.length > 1}
+            under={
+              // The latest table stage, when it is one table (a league, not groups): its top teams' course.
+              stage === stages.at(-1) && stage.tables.length === 1 ? (
+                <TopTeams
+                  stage={stage}
+                  matches={base.matches}
+                  colours={colours}
+                  championId={base.winner?.id ?? null}
+                  headingId={`top-${stage.stage.id}`}
+                />
+              ) : null
+            }
+          />
         ))}
       </div>
 

@@ -195,7 +195,7 @@ export function MatchRow({ match, day, note }: { match: TMatch; day: boolean; no
         {day && match.date ? <DayBlock date={match.date} /> : null}
         <span className="min-w-0 flex-1">
           <span className="flex items-stretch gap-3">
-            <span className="grid min-w-0 flex-1">
+            <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)]">
               <Side team={match.a} lost={winner === "b"} />
               <Side team={match.b} lost={winner === "a"} />
             </span>

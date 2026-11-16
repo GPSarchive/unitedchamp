@@ -73,13 +73,6 @@ function State({ head }: { head: Exclude<Headline, { kind: "champion" }> }) {
   return `Ολοκληρώθηκε. ${head.played === 1 ? "Παίχτηκε 1 αγώνας" : `Παίχτηκαν ${head.played} αγώνες`}.`;
 }
 
-const STATUS: Record<Headline["kind"], string> = {
-  champion: "Ολοκληρώθηκε",
-  over: "Ολοκληρώθηκε",
-  running: "Σε εξέλιξη",
-  upcoming: "Προσεχώς",
-};
-
 /**
  * The winner's plate, where the sentence would be: the one thing in the
  * header that stands on the old page's hard shadow, in the colour kept for
@@ -146,8 +139,6 @@ export default async function TournamentLayout({
   ];
   const upcoming = splitMatches(base.matches, nowWallClockIso()).upcoming.slice(0, IN_TICKER);
 
-  const archived = Boolean(base.season?.archived);
-  const status = archived ? "Αρχείο" : STATUS[head.kind];
 
   return (
     <ProfileHost>
@@ -167,18 +158,7 @@ export default async function TournamentLayout({
 
             <div className="mt-7 grid gap-x-10 gap-y-7 md:mt-11 md:grid-cols-12 md:items-end">
               <div className="min-w-0 md:col-span-8">
-                {/* Which season, and how the tournament stands. */}
-                <p className={`${LABEL} mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 md:mb-5`}>
-                  {base.season ? (
-                    <span className="border border-[#F3EFE6]/30 px-2 py-1">Σεζόν {base.season.display}</span>
-                  ) : null}
-                  <span className="flex items-center gap-2 font-bold">
-                    {head.kind === "running" && !archived ? (
-                      <span aria-hidden className="h-2 w-2 rounded-full bg-[#fb923c]" />
-                    ) : null}
-                    {status}
-                  </span>
-                </p>
+                {/* No season chip and no status label above the name (owner, 2026-11-16). */}
                 <h1
                   className="text-balance font-bold italic leading-[0.94] tracking-[-0.025em] [overflow-wrap:anywhere]"
                   style={{ fontSize: "clamp(2.5rem, 7vw, 5.75rem)" }}

@@ -3,7 +3,8 @@
 // other, first stage first, with a rail on top that numbers them left to
 // right (1 → 2 → 3) and leads to each. So a reader sees that the knockout came
 // after the groups, and where the tournament is now, without reading it.
-// Beside them: the next matches and the latest results.
+// Beside them: the next matches and the latest results. Under the table of
+// the stage being played (a single table): the course of its top four teams.
 //
 // A tournament of one stage shows just that stage; one with no table and no
 // tree yet shows its matches.
@@ -22,9 +23,12 @@ import {
   type TStage,
 } from "../../tournaments-v3/[id]/model";
 import KnockoutTree from "./BracketView";
-import MatchesView, { labelContext, roundNote } from "./MatchesView";
+import MatchesTab from "./matches/MatchesTab";
+import { labelContext, roundNote } from "./labels";
+import { loadColours } from "./extra";
 import { TOURNAMENT_PATH } from "./paths";
 import { StageDisc, StageRail, stageStates, stageTitle, type StageState } from "./stages";
+import TopTeams from "./teams/TopTeams";
 import { BUTTON } from "./tokens";
 import { MatchRow, Panel, Rubric, StandingsTable, parseId, plural } from "./ui";
 
@@ -67,8 +71,11 @@ function StageSection({
   block,
   number,
   championId,
+  under,
 }: {
   block: Block;
+  /** Drawn under the stage's table: its top teams' course. */
+  under?: React.ReactNode;
   /** Its place in the order, when the tournament has more than one stage. */
   number: number | null;
   championId: number | null;
@@ -85,7 +92,10 @@ function StageSection({
         meta={tables ? plural(teams, "ομάδα", "ομάδες") : null}
       />
       {tables ? (
-        <Tables stage={tables} />
+        <>
+          <Tables stage={tables} />
+          {under}
+        </>
       ) : bracket ? (
         <KnockoutTree bracket={bracket} championId={championId} />
       ) : (
@@ -135,7 +145,10 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
   if (!id) notFound();
   const base = await loadBase(id);
   if (!base) notFound();
-  const tables = await loadTables(id);
+  const [tables, colours] = await Promise.all([loadTables(id), loadColours(id)]);
+  // The latest table stage, when it is one table (a league, not groups), gets its top teams' course under it.
+  const latestTable = tables.at(-1);
+  const topOf = latestTable && latestTable.tables.length === 1 ? latestTable : null;
 
   const states = stageStates(base);
   const tablesOf = new Map(tables.map((t) => [t.stage.id, t]));
@@ -154,12 +167,12 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
     })
     .filter((b): b is Block => b !== null);
 
-  if (!blocks.some((b) => b.tables || b.bracket)) return <MatchesView base={base} />;
+  if (!blocks.some((b) => b.tables || b.bracket)) return <MatchesTab base={base} />;
 
   const many = blocks.length > 1;
   const ctx = labelContext(base);
   const lists = splitMatches(base.matches, nowWallClockIso());
-  // Postponed matches are not shown anywhere (see MatchesView), so they do not count as "to come".
+  // Postponed matches are not shown anywhere (see matches/MatchesTab), so they do not count as "to come".
   const toCome = lists.upcoming.length + lists.awaiting.length + lists.undated.length;
   return (
     <div className="grid gap-x-10 gap-y-12 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)]">
@@ -172,6 +185,17 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
             block={block}
             number={many ? index + 1 : null}
             championId={base.winner?.id ?? null}
+            under={
+              topOf && topOf.stage.id === block.stage.id ? (
+                <TopTeams
+                  stage={topOf}
+                  matches={base.matches}
+                  colours={colours}
+                  championId={base.winner?.id ?? null}
+                  headingId={`top-${block.stage.id}`}
+                />
+              ) : null
+            }
           />
         ))}
       </div>

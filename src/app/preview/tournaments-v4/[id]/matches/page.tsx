@@ -1,7 +1,8 @@
-// The tournament's «Αγώνες» tab: its matches, stage by stage.
+// The tournament's «Αγώνες» tab: the teams' crests as a filter, the match days
+// in a strip, the chosen day's matches, the knockout trees (MatchesTab).
 import { notFound } from "next/navigation";
 import { loadBase } from "../../../tournaments-v3/[id]/data";
-import MatchesView from "../MatchesView";
+import MatchesTab from "./MatchesTab";
 import { parseId } from "../ui";
 
 export const revalidate = 60;
@@ -15,5 +16,5 @@ export default async function MatchesPage({ params }: { params: Promise<{ id: st
   if (!id) notFound();
   const base = await loadBase(id);
   if (!base) notFound();
-  return <MatchesView base={base} />;
+  return <MatchesTab base={base} />;
 }
