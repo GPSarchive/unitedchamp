@@ -38,6 +38,23 @@ const LOWER =
   `${BAND} 0 19.23% / 100% 22% no-repeat, ` +
   `${STRIPES} 0 100% / 100% 63% no-repeat`;
 
+// Photo cards only: the same lower layer with the black turned to deep blue —
+// the fade, the band and the striped plate all keep their shapes.
+const BLUE_DEEP = "#04143A";
+const BLUE_STRIPE = "#0A2558";
+const BLUE_BAND =
+  "linear-gradient(90deg, #020C24 0%, #061A44 13%, #0C2A63 26%, #133B80 39%, #17448F 50%, #133B80 61%, #0C2A63 74%, #061A44 87%, #020C24 100%)";
+const BLUE_STRIPES =
+  `linear-gradient(57deg, ${BLUE_DEEP} 0%, ${BLUE_DEEP} 9%, ${BLUE_STRIPE} 12%, ${BLUE_STRIPE} 20%, ${BLUE_DEEP} 23%, ${BLUE_DEEP} 32.5%, ` +
+  `${BLUE_STRIPE} 35.5%, ${BLUE_STRIPE} 43.5%, ${BLUE_DEEP} 46.5%, ${BLUE_DEEP} 55.5%, ${BLUE_STRIPE} 58.5%, ${BLUE_STRIPE} 100%)`;
+const LOWER_BLUE =
+  "linear-gradient(to bottom, " +
+  `rgba(4,20,58,0) 0%, rgba(4,20,58,0.85) 12%, ${BLUE_DEEP} 15%, ` +
+  "rgba(0,0,0,0) 15%, rgba(0,0,0,0) 31%, rgba(0,4,20,0.55) 37%, " +
+  `rgba(0,0,0,0) 37%, rgba(0,0,0,0) 66%, ${FOOT_VEIL} 66%, ${FOOT_VEIL} 100%), ` +
+  `${BLUE_BAND} 0 19.23% / 100% 22% no-repeat, ` +
+  `${BLUE_STRIPES} 0 100% / 100% 63% no-repeat`;
+
 export default function TotyMiniCard({
   photo,
   logo,
@@ -71,7 +88,7 @@ export default function TotyMiniCard({
         ) : (
           <div aria-hidden className={`absolute inset-x-0 top-0 h-[64%] ${FACETS_MINI}`} />
         )}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: LOWER }} />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: hasPhoto ? LOWER_BLUE : LOWER }} />
         {hasPhoto ? null : hasLogo ? (
           <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
             <PlayerImage
