@@ -1,17 +1,12 @@
 "use client";
 
-// Sign-in screen. Signed out: one «Συνέχεια με Google» button, and
-// «Είσοδος προσωπικού» opens the email + password form staff use. Signed in
-// (a player, not staff): a teaser line and the way back to the home page;
-// there is no player area yet.
-//
-// Kept from the old page: the CSRF token, the `next` target, the error text,
-// the Google link and the email/password POST.
+// Sign-in screen. Signed out: one «Συνέχεια με Google» button, the only way
+// in (staff included). Signed in (a player, not staff): a teaser line and the
+// way back to the home page; there is no player area yet.
 //
 // The intro (crest and sheen) plays once and hands over to the screen
 // underneath. Any click, tap or key press skips it; with reduced motion it is
-// not shown at all. The form is in the page from the first paint, only
-// invisible during the intro, so password managers can fill it.
+// not shown at all.
 import { useEffect, useState } from "react";
 
 const INTRO_MS = 1450;
@@ -57,8 +52,6 @@ export default function LoginScreen(
         /** Where the visitor was going; passed through untouched, the server routes validate it. */
         next: string;
         error: string | null;
-        /** The error came from the email + password form: open it again. */
-        staffError: boolean;
         inAppBrowser: boolean;
       },
 ) {
@@ -108,27 +101,8 @@ function Teaser() {
   );
 }
 
-function SignIn({
-  next,
-  error,
-  staffError,
-  inAppBrowser,
-}: {
-  next: string;
-  error: string | null;
-  staffError: boolean;
-  inAppBrowser: boolean;
-}) {
-  const [staffOpen, setStaffOpen] = useState(staffError);
-  const [csrfToken, setCsrfToken] = useState("");
+function SignIn({ next, error, inAppBrowser }: { next: string; error: string | null; inAppBrowser: boolean }) {
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/csrf")
-      .then((r) => r.json())
-      .then((d) => setCsrfToken(d.token))
-      .catch(() => {});
-  }, []);
 
   const nextQS = next ? `&next=${encodeURIComponent(next)}` : "";
 
@@ -185,45 +159,6 @@ function SignIn({
           Συνέχεια με Google
         </a>
       )}
-
-      <button
-        type="button"
-        className="lv2-toggle"
-        aria-expanded={staffOpen}
-        aria-controls="lv2-staff"
-        onClick={() => setStaffOpen((o) => !o)}
-      >
-        Είσοδος προσωπικού
-      </button>
-
-      <div id="lv2-staff" className="lv2-staff" data-open={staffOpen}>
-        {/* Email/password posts to the server route that sets HttpOnly cookies. */}
-        <form method="post" action="/api/auth/sign-in" inert={!staffOpen}>
-          <input
-            className="lv2-field"
-            name="email"
-            type="email"
-            autoComplete="username"
-            placeholder="Email"
-            aria-label="Email"
-            required
-          />
-          <input
-            className="lv2-field"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="Κωδικός πρόσβασης"
-            aria-label="Κωδικός πρόσβασης"
-            required
-          />
-          <input type="hidden" name="next" value={next} />
-          <input type="hidden" name="_csrf" value={csrfToken} />
-          <button type="submit" className="lv2-btn">
-            Είσοδος
-          </button>
-        </form>
-      </div>
     </div>
   );
 }
