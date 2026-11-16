@@ -17,7 +17,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 import { formatMatchDate } from "@/app/lib/datetime";
-import { ProfileHost } from "../../paiktes-v3/ProfileHost";
+import { ProfileHost } from "@/app/paiktes/ProfileHost";
 import { loadBase, loadTables } from "./data";
 import { headline, type Headline } from "./model";
 import { TEAM_PATH, TOURNAMENT_PATH } from "./paths";

@@ -6,8 +6,8 @@
 // assists, most MVP and best-goalkeeper awards). The live page reads them from
 // a table nothing fills (tournament_awards), so there they never show.
 import { notFound } from "next/navigation";
-import { PlayerHolo, PlayerMini } from "../../../matches-v3/[id]/cards";
-import { mainName, smallName } from "../../../matches-v3/[id]/model";
+import { PlayerHolo, PlayerMini } from "@/app/matches/[id]/cards";
+import { mainName, smallName } from "@/app/matches/[id]/model";
 import { loadBase, loadPlayers } from "../../../tournaments-v3/[id]/data";
 import {
   rankScorers,

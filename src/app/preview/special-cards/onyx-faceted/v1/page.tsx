@@ -12,9 +12,9 @@ import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import HoloShieldCard from "@/app/preview/paiktes-v2/[id]/HoloShieldCard";
 import { ONYX } from "@/app/preview/paiktes-v2/[id]/onyxFinish";
 import type { DirectoryPlayer, DirectoryTeam } from "@/app/preview/paiktes-v2/model";
-import DefaultMiniCard from "@/app/preview/paiktes-v3/MiniCard";
-import { loadDirectoryV3 } from "@/app/preview/paiktes-v3/data";
-import { NAME_LETTERING } from "@/app/preview/paiktes-v3/nameStyles";
+import DefaultMiniCard from "@/app/paiktes/MiniCard";
+import { loadDirectoryV3 } from "@/app/paiktes/data";
+import { NAME_LETTERING } from "@/app/paiktes/nameStyles";
 
 /** The mini card as it was: flat onyx. */
 function MiniCard(props: Omit<React.ComponentProps<typeof DefaultMiniCard>, "surface">) {

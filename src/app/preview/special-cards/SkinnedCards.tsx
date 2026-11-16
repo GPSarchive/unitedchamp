@@ -3,30 +3,19 @@
 // player who holds a skin (given on /dashboard/protathlites) gets that skin's
 // card, framed as set there; everyone else gets the normal card unchanged.
 //
-// The skins arrive once per page through CardSkinsProvider (mounted by
-// src/app/preview/layout.tsx with the server-loaded map), so no card fetches
-// anything. Outside a provider every card is normal.
+// The skins arrive once per page through CardSkinsProvider (./skinsContext,
+// mounted by the root layout src/app/layout.tsx with the server-loaded map),
+// so no card fetches anything. Outside a provider every card is normal.
+// The provider lives in its own tiny module so the root layout does not pull
+// this file's card code into every page.
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
 import HoloShieldCard from "@/app/preview/paiktes-v2/[id]/HoloShieldCard";
 import type { DirectoryTeam, StatTuple } from "@/app/preview/paiktes-v2/model";
-import MiniCard from "@/app/preview/paiktes-v3/MiniCard";
+import MiniCard from "@/app/paiktes/MiniCard";
 import { SKIN_CARDS } from "@/app/dashboard/protathlites/skinCards";
 import { Framed, FramingStyles } from "./framing";
-import type { PublicSkin, PublicSkinMap } from "./skinTypes";
-
-const SkinsContext = createContext<PublicSkinMap>({});
-
-export function CardSkinsProvider({ skins, children }: { skins: PublicSkinMap; children: ReactNode }) {
-  return <SkinsContext.Provider value={skins}>{children}</SkinsContext.Provider>;
-}
-
-/** The skin a player's cards show, or null. */
-export function useCardSkin(playerId: number | null | undefined): PublicSkin | null {
-  const skins = useContext(SkinsContext);
-  return playerId != null ? (skins[playerId] ?? null) : null;
-}
+import { useCardSkin } from "./skinsContext";
 
 /** The big card: HoloShieldCard, or the player's skin card. */
 export function SkinnedBigCard({

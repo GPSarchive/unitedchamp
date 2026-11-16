@@ -5,7 +5,7 @@ import "server-only";
 
 import { cache } from "react";
 import { fetchInBatches } from "@/app/lib/supabasePaging";
-import { teamAccent } from "../../omada-v3/[id]/accent";
+import { teamAccent } from "@/app/OMADA/[id]/accent";
 import { loadBase } from "../../tournaments-v3/[id]/data";
 import { TOURNAMENT_PATH } from "./paths";
 

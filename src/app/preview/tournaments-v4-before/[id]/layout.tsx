@@ -19,7 +19,7 @@ import { notFound } from "next/navigation";
 import { JetBrains_Mono } from "next/font/google";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 import { formatMatchDate, nowWallClockIso } from "@/app/lib/datetime";
-import { ProfileHost } from "../../paiktes-v3/ProfileHost";
+import { ProfileHost } from "@/app/paiktes/ProfileHost";
 import { loadBase, loadTables } from "../../tournaments-v3/[id]/data";
 import { headline, splitMatches, type Headline, type TTeam } from "../../tournaments-v3/[id]/model";
 import styles from "./dispatch.module.css";

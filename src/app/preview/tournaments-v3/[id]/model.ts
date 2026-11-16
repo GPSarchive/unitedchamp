@@ -8,7 +8,7 @@ import {
   type TieLegLite,
 } from "@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie";
 import { toNaiveIso } from "@/app/lib/datetime";
-import type { MatchPlayer, MatchTeam } from "../../matches-v3/[id]/model";
+import type { MatchPlayer, MatchTeam } from "@/app/matches/[id]/model";
 import type { StatTuple } from "../../paiktes-v2/model";
 
 export type TTeam = MatchTeam;

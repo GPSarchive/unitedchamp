@@ -10,8 +10,8 @@
 // one after the other — is in dispatch.module.css.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PlayerMini } from "../../../matches-v3/[id]/cards";
-import { mainName, smallName } from "../../../matches-v3/[id]/model";
+import { PlayerMini } from "@/app/matches/[id]/cards";
+import { mainName, smallName } from "@/app/matches/[id]/model";
 import { loadBase, loadSquads, loadTables } from "../../../tournaments-v3/[id]/data";
 import { standingOf, type Squad, type SquadMember } from "../../../tournaments-v3/[id]/model";
 import styles from "../dispatch.module.css";

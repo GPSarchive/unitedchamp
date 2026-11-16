@@ -9,6 +9,10 @@ import ConsentProvider from "./lib/consent/ConsentProvider";
 import ConsentGatedAnalytics from "./lib/consent/ConsentGatedAnalytics";
 import CookieBanner from "./lib/consent/CookieBanner";
 import Footer from "./lib/Footer/Footer";
+import { loadPublicSkinsCached } from "./preview/special-cards/publicSkins";
+// Only the tiny context module: importing SkinnedCards here would ship all the
+// card code to every page.
+import { CardSkinsProvider } from "./preview/special-cards/skinsContext";
 import {
   Geist,
   Geist_Mono,
@@ -74,6 +78,13 @@ function NoncedScript(
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // The special card skins given on /dashboard/protathlites, for every page
+  // that draws a player card (SkinnedMiniCard / SkinnedBigCard). One read from
+  // the data cache (unstable_cache with no time limit, tag expired by the
+  // dashboard on every change): no cookies/headers and no revalidate of its
+  // own, so static pages stay static and ISR pages keep their own interval.
+  const skins = await loadPublicSkinsCached();
+
   const htmlClass = [
     robotoCondensed.variable,
     ubuntuCondensed.variable,
@@ -138,7 +149,7 @@ export default async function RootLayout({
             React.createElement(
               "main",
               { key: "main", className: "pt-16 md:pt-32" },
-              children
+              React.createElement(CardSkinsProvider, { skins, children })
             ),
             React.createElement(Footer, { key: "footer" }),
             React.createElement(ConsentGatedAnalytics, { key: "gated-analytics" }),

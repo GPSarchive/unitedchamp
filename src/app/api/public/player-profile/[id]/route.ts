@@ -11,10 +11,10 @@
 // warm request costs no database work. Unknown and dummy players are a 404.
 // Every request passes the rate limiter in proxy.ts.
 //
-// Used by the preview pages for now (/preview/matches-v3); it moves with them
-// when the new players page is promoted.
+// Used by the team, match and tournament pages (ProfileHost in
+// src/app/paiktes/ProfileHost.tsx).
 import { NextResponse } from "next/server";
-import { loadAnyProfile } from "@/app/preview/paiktes-v3/profileLoader";
+import { loadAnyProfile } from "@/app/paiktes/profileLoader";
 
 type Ctx = { params: Promise<{ id: string }> };
 

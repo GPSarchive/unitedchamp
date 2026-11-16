@@ -18,7 +18,7 @@ import {
 } from "../../tournaments-v3/[id]/model";
 import BracketView from "./BracketView";
 import MatchesView, { labelContext } from "./MatchesView";
-import TopTeams from "../../tournaments-v4/[id]/teams/TopTeams";
+import TopTeams from "@/app/tournaments/[id]/(tabs)/teams/TopTeams";
 import { loadColours } from "./extra";
 import { TOURNAMENT_PATH } from "./paths";
 import { BUTTON } from "./tokens";

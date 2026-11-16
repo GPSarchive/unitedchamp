@@ -4,7 +4,7 @@
 // players directory; static + ISR like the directory itself.
 import type { Metadata } from "next";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
-import { loadDirectoryV3 } from "@/app/preview/paiktes-v3/data";
+import { loadDirectoryV3 } from "@/app/paiktes/data";
 import CardInspector, { type InspectedPlayer } from "./CardInspector";
 
 export const revalidate = 300;

@@ -7,9 +7,9 @@
 import Link from "next/link";
 import { TeamImage } from "@/app/lib/OptimizedImage";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
-import { NAME_LETTERING } from "../../paiktes-v3/nameStyles";
-import { ProfileTrigger } from "../../paiktes-v3/ProfileHost";
-import { playerName, type MatchPlayer } from "../../matches-v3/[id]/model";
+import { NAME_LETTERING } from "@/app/paiktes/nameStyles";
+import { ProfileTrigger } from "@/app/paiktes/ProfileHost";
+import { playerName, type MatchPlayer } from "@/app/matches/[id]/model";
 import { matchWinner, type TMatch, type TTeam, type Table } from "./model";
 import { MATCH_PATH, TEAM_PATH } from "./paths";
 

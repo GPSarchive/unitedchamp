@@ -68,11 +68,13 @@ export function revalidateSeasonSurfaces(...labels: string[]) {
     revalidatePath(p);
   }
   // Per-entity live routes: after a close every cached team/tournament page
-  // must re-render — archived rows start redirecting, the new season's rows
-  // render live. The "page" form drops every cached instance of the route.
-  for (const p of ["/OMADA/[id]", "/tournaments/[id]", "/tournaments/[id]/v2", "/tournaments/[id]/v2-dark"]) {
-    revalidatePath(p, "page");
-  }
+  // must re-render. The "page" form drops every cached instance of the route.
+  revalidatePath("/OMADA/[id]", "page");
+  // The tournament page is a layout with tab pages inside the route group
+  // "(tabs)" (/tournaments/[id], /matches, /players, /teams), next to the
+  // older /v2 and /v2-dark pages: the "layout" form of the [id] segment drops
+  // every cached page under it, tabs and variants alike.
+  revalidatePath("/tournaments/[id]", "layout");
   // Archive routes: the touched hubs, plus every nested archive page (they
   // read the stored snapshot that a re-snapshot just rewrote).
   for (const label of labels) revalidatePath(`/seasons/${encodeURIComponent(label)}`);
@@ -85,10 +87,17 @@ export function revalidateSeasonSurfaces(...labels: string[]) {
   }
 }
 
-/** The tournament detail routes (all three variants render the same loader). */
+/**
+ * The tournament detail routes: the page's tabs (each tab is a page of its own,
+ * cached on its own, and all of them draw the shared header with its counts and
+ * next-matches strip) and the older /v2 and /v2-dark variants.
+ */
 export function revalidateTournamentSurfaces(tournamentId: number | string) {
   revalidatePath("/tournaments");
   revalidatePath(`/tournaments/${tournamentId}`);
+  revalidatePath(`/tournaments/${tournamentId}/matches`);
+  revalidatePath(`/tournaments/${tournamentId}/players`);
+  revalidatePath(`/tournaments/${tournamentId}/teams`);
   revalidatePath(`/tournaments/${tournamentId}/v2`);
   revalidatePath(`/tournaments/${tournamentId}/v2-dark`);
 }

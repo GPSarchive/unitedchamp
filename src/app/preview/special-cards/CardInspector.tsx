@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import HoloShieldCard from "@/app/preview/paiktes-v2/[id]/HoloShieldCard";
 import { foldText, type DirectoryTeam, type StatTuple } from "@/app/preview/paiktes-v2/model";
-import MiniCard from "@/app/preview/paiktes-v3/MiniCard";
+import MiniCard from "@/app/paiktes/MiniCard";
 import {
   DEFAULT_FRAMING,
   Framed,

@@ -5,8 +5,8 @@
 // the player cards go with, taken from tournaments-v3 as they are.
 import Link from "next/link";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
-import { ProfileTrigger } from "../../paiktes-v3/ProfileHost";
-import { playerName, type MatchPlayer } from "../../matches-v3/[id]/model";
+import { ProfileTrigger } from "@/app/paiktes/ProfileHost";
+import { playerName, type MatchPlayer } from "@/app/matches/[id]/model";
 import { matchWinner, type TMatch, type TTeam, type Table } from "../../tournaments-v3/[id]/model";
 import { Chrome, Crest, fitName, parseId, plural } from "../../tournaments-v3/[id]/ui";
 import { MATCH_PATH, TEAM_PATH } from "./paths";

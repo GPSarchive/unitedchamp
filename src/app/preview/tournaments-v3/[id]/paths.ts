@@ -1,6 +1,6 @@
-// Where these pages' links lead while the redesign lives under /preview. On
-// promotion: TOURNAMENT_PATH → "/tournaments", TEAM_PATH → "/OMADA",
-// MATCH_PATH → "/matches".
+// Where these pages' links lead. This page is still a preview, so its own
+// address stays under /preview; the team and match pages it links to have
+// been promoted to their real addresses.
 export const TOURNAMENT_PATH = "/preview/tournaments-v3";
-export const TEAM_PATH = "/preview/omada-v3";
-export const MATCH_PATH = "/preview/matches-v3";
+export const TEAM_PATH = "/OMADA";
+export const MATCH_PATH = "/matches";
