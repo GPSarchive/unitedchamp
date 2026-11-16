@@ -504,9 +504,13 @@ export default function EditorialTeamDashboard({
             className={`relative overflow-hidden ${SURFACE}`}
             style={{ boxShadow: layers("#fb923c") }}
           >
-            {listMatches.map((m, i) => (
-              <EditorialMatchRow key={m.id} match={m} index={i} />
-            ))}
+            {/* Top accent strip — same as the calendar */}
+            <div className="h-[3px] w-full bg-[#fb923c]" />
+            <div>
+              {listMatches.map((m, i) => (
+                <EditorialMatchRow key={m.id} match={m} index={i} />
+              ))}
+            </div>
           </div>
 
           {hasMore && (
