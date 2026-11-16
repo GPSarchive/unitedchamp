@@ -10,12 +10,15 @@
 //
 // Plain data (no React) so the server actions can validate keys with it.
 
+// The names follow the card's colour (owner's list, 2026-11-16), so some keys
+// no longer match their label — the keys are kept because they are stored:
+//   legend = white · toty = blue · totw = red · hero = purple · pro = green.
 export const CARD_SKINS = [
-  { key: "legend", label: "Θρύλος" },
-  { key: "toty", label: "Ομάδα της Χρονιάς" },
+  { key: "legend", label: "Θρύλοι" },
+  { key: "toty", label: "Ομάδα του Μήνα" },
   { key: "totw", label: "Ομάδα της Εβδομάδας" },
-  { key: "hero", label: "Ήρωας" },
-  { key: "pro", label: "Επαγγελματίας" },
+  { key: "hero", label: "Champions" },
+  { key: "pro", label: "Ομάδα της Χρονιάς" },
 ] as const;
 
 export type SkinKey = (typeof CARD_SKINS)[number]["key"];
