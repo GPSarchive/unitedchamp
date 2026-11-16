@@ -37,7 +37,7 @@ export type SkinPlayer = {
   teamIds: number[];
   /** Team a card gets when the skin is given to the player alone. */
   mainTeamId: number | null;
-  /** Career numbers (all seasons added up); null = never played. */
+  /** Active-season numbers, as on /paiktes; null = no appearances this season. */
   stats: StatTuple | null;
 };
 

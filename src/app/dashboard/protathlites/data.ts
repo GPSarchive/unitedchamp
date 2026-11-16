@@ -1,6 +1,6 @@
 // app/dashboard/protathlites/data.ts — «Πρωταθλητές»
 // SERVER: everything the skin dashboard needs in one go — every player, every
-// team of every season with its roster, career numbers for the cards, and who
+// team of every season with its roster, active-season numbers for the cards, and who
 // holds which special card skin.
 
 import "server-only";
@@ -85,15 +85,15 @@ export async function loadProtathlitesData(): Promise<ProtathlitesData> {
     teams.map((t) => [t.id, t.season == null ? Number.MAX_SAFE_INTEGER : (seasonRank.get(t.season) ?? Number.MAX_SAFE_INTEGER)] as const),
   );
 
-  // Career numbers = every season added up. Main team = the primary team of
-  // the newest season that has one.
-  const career = new Map<number, StatTuple>();
+  // Card numbers = the active season's, the same as /paiktes and every other
+  // page (no career totals: they read as this season's and looked wrong).
+  // Main team = the primary team of the newest season that has one.
+  const activeIndex = seasonsDesc.findIndex((s) => s.status === "active");
+  const seasonNumbers = new Map<number, StatTuple>();
+  for (const r of activeIndex >= 0 ? statsBySeason[activeIndex] : []) seasonNumbers.set(r.player_id, toTuple(r));
   const mainTeam = new Map<number, number>();
   for (const rows of statsBySeason) {
     for (const r of rows) {
-      const line = toTuple(r);
-      const sum = career.get(r.player_id);
-      career.set(r.player_id, sum ? (sum.map((n, i) => n + line[i]) as StatTuple) : line);
       if (r.primary_team_id != null && !mainTeam.has(r.player_id)) mainTeam.set(r.player_id, r.primary_team_id);
     }
   }
@@ -122,7 +122,7 @@ export async function loadProtathlitesData(): Promise<ProtathlitesData> {
         hasPhoto: !isPlaceholderPhoto(p.photo),
         teamIds,
         mainTeamId: main != null && teamSeasonRank.has(main) ? main : (teamIds[0] ?? null),
-        stats: career.get(p.id) ?? null,
+        stats: seasonNumbers.get(p.id) ?? null,
       };
     })
     .sort((a, b) => `${a.last} ${a.first}`.localeCompare(`${b.last} ${b.first}`, "el"));
