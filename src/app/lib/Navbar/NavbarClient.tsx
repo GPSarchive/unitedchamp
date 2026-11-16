@@ -29,50 +29,15 @@ const COLUMN_2 = [
 ];
 
 /* ================================================================ *
- *  Animated kintsugi background (original)                         *
+ *  Animated background: light streams                             *
+ *  Shapes, colours and motion live in globals.css (.nav-stream*).  *
+ *  Only `transform` animates, so nothing is repainted per frame.   *
  * ================================================================ */
 const AnimatedBackground = memo(() => (
-  <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden>
-    <svg className="kintsugi-svg w-full h-full mix-blend-screen" viewBox="0 0 1440 200" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#f6e27a" />
-          <stop offset="35%" stopColor="#e8c66a" />
-          <stop offset="65%" stopColor="#caa94d" />
-          <stop offset="100%" stopColor="#f6e27a" />
-          <animate attributeName="x1" values="0;0.2;0" dur="9s" repeatCount="indefinite" />
-          <animate attributeName="x2" values="1;0.8;1" dur="9s" repeatCount="indefinite" />
-        </linearGradient>
-        <filter id="glow" x="-20%" y="-20%" width="140%" height="160%">
-          <feGaussianBlur stdDeviation="2.5" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      <path
-        d="M-20,120 C180,40 360,200 560,90 C760,-10 960,220 1160,120 C1300,60 1460,120 1500,80"
-        fill="none"
-        stroke="url(#gold)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeOpacity=".9"
-        filter="url(#glow)"
-        strokeDasharray="10 18"
-      >
-        <animate attributeName="stroke-dashoffset" from="420" to="0" dur="10s" repeatCount="indefinite" />
-      </path>
-      <path
-        d="M-40,170 C120,110 300,160 520,140 C740,120 900,40 1140,80 C1300,110 1480,60 1520,20"
-        fill="none"
-        stroke="url(#gold)"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeOpacity=".85"
-        filter="url(#glow)"
-        strokeDasharray="8 20"
-      >
-        <animate attributeName="stroke-dashoffset" from="620" to="0" dur="12s" repeatCount="indefinite" />
-      </path>
-    </svg>
+  <div className="nav-streams" aria-hidden>
+    <div className="nav-stream nav-stream-a"><i /></div>
+    <div className="nav-stream nav-stream-b"><i /></div>
+    <div className="nav-stream nav-stream-c"><i /></div>
   </div>
 ));
 AnimatedBackground.displayName = "AnimatedBackground";

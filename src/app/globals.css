@@ -141,20 +141,88 @@ body {
 
 /* === Crimson Kintsugi: premium dark-red animated navbar === */
 @layer utilities {
-  /* Deep crimson base with subtle radial warmth + slow drift */
+  /* Deep crimson base. The slow warm drift sits on ::before and moves with
+     transform only, so the bar is not repainted while it animates.
+     Needs `relative isolate overflow-hidden` on the element (the nav has them). */
   .crimson-kintsugi {
+    background-image: linear-gradient(to bottom, #0b0606, #160808 55%, #0b0606);
+  }
+  .crimson-kintsugi::before {
+    content: ""; position: absolute; z-index: -1; pointer-events: none;
+    top: -60%; left: 0; width: 220%; height: 220%;
     background-image:
       radial-gradient(80% 100% at 50% -40%, rgba(248,113,113,0.08), transparent 60%),
       radial-gradient(60% 80% at 0% 120%, rgba(127,29,29,0.12), transparent 70%),
-      radial-gradient(40% 80% at 100% 0%, rgba(190,18,60,0.10), transparent 60%),
-      linear-gradient(to bottom, #0b0606, #160808 55%, #0b0606);
-    background-size: 220% 220%, 220% 220%, 220% 220%, auto;
-    animation: kintsugi-pan 24s ease-in-out infinite;
+      radial-gradient(40% 80% at 100% 0%, rgba(190,18,60,0.10), transparent 60%);
+    will-change: transform;
+    animation: kintsugi-pan 12s ease-in-out infinite alternate;
   }
   @keyframes kintsugi-pan {
-    0%   { background-position: 0% 50%, 100% 50%, 0% 100%, 0% 0%; }
-    50%  { background-position: 100% 50%, 0% 50%, 100% 0%, 0% 0%; }
-    100% { background-position: 0% 50%, 100% 50%, 0% 100%, 0% 0%; }
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(-54.5%, 0, 0); }
+  }
+
+  /* Light streams behind the nav content.
+     Each stream is a fixed, soft strand shape (a static mask, drawn once) with
+     a band of light sliding underneath it. Only `transform` animates, so the
+     browser does no layout or paint per frame. The layer keeps the bar's full
+     height (64px / 128px) so the mask is not redrawn when the bar shrinks on
+     scroll. To change the look, edit the strand paths inside the mask SVGs or
+     the gradient stops below. */
+  .nav-streams {
+    position: absolute; top: 0; left: 0; right: 0; height: 4rem;
+    z-index: 0; pointer-events: none; contain: strict;
+  }
+  @media (min-width: 48rem) {
+    .nav-streams { height: 8rem; }
+  }
+  .nav-stream {
+    position: absolute; inset: 0; overflow: hidden;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    /* never squeeze the strands below 720px wide: phones see the left part */
+    -webkit-mask-size: max(100%, 720px) 100%; mask-size: max(100%, 720px) 100%;
+  }
+  .nav-stream > i {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 200%;
+    background-repeat: repeat-x; background-size: 50% 100%;
+    will-change: transform;
+    animation: nav-stream-flow 12s linear infinite;
+  }
+  @keyframes nav-stream-flow {
+    from { transform: translate3d(-50%, 0, 0); }
+    to   { transform: translate3d(0, 0, 0); }
+  }
+  /* bar slid away on scroll: nothing to show, so stop moving */
+  header[data-stage="hidden"] .nav-stream > i,
+  header[data-stage="hidden"] .crimson-kintsugi::before {
+    animation-play-state: paused;
+  }
+  .nav-stream-a {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='15' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='10.5' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='4' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='1.5'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='1' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='15' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='10.5' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='4' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,84 C200,30 380,22 600,60 S1000,112 1200,66 S1400,26 1480,40' stroke-width='1.5'/%3E%3Cpath d='M-40,92 C210,46 400,8 600,56 S980,126 1200,72 S1410,16 1480,32' stroke-width='1' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .nav-stream-a > i {
+    background-image: linear-gradient(90deg, rgba(226,170,84,.15) 0%, rgba(226,170,84,.15) 6%, rgba(214,120,48,.42) 20%, rgba(245,190,90,.9) 31%, #fff1c9 36%, rgba(255,236,190,.6) 38%, rgba(240,190,110,.28) 41%, rgba(226,170,84,.15) 45%, rgba(226,170,84,.15) 58%, rgba(232,160,70,.5) 70%, rgba(255,228,170,.95) 75%, rgba(250,210,140,.5) 77%, rgba(226,170,84,.15) 82%, rgba(226,170,84,.15) 100%);
+    animation-duration: 11s;
+    animation-delay: -3s;
+  }
+  .nav-stream-b {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='13' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='9.1' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='4.5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='3.6' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='1.3'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='0.9' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='13' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='9.1' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='4.5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='3.6' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,30 C220,84 430,112 680,88 S1040,24 1250,50 S1420,98 1480,90' stroke-width='1.3'/%3E%3Cpath d='M-40,20 C230,98 440,98 680,96 S1030,38 1250,42 S1410,110 1480,100' stroke-width='0.9' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .nav-stream-b > i {
+    background-image: linear-gradient(90deg, rgba(226,170,84,.15) 0%, rgba(226,170,84,.15) 30%, rgba(200,96,44,.4) 48%, rgba(240,178,84,.85) 62%, #ffecc0 68%, rgba(255,232,184,.6) 70%, rgba(238,186,108,.28) 73%, rgba(226,170,84,.15) 77%, rgba(226,170,84,.15) 100%);
+    animation-duration: 17s;
+    animation-delay: -9s;
+  }
+  .nav-stream-c {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='10' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='7' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='3.5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='2.8000000000000003' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='1.1'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='0.8' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 128' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='h' x='-5%25' y='-60%25' width='110%25' height='220%25'%3E%3CfeGaussianBlur stdDeviation='7'/%3E%3C/filter%3E%3Cfilter id='g' x='-5%25' y='-40%25' width='110%25' height='180%25'%3E%3CfeGaussianBlur stdDeviation='2.2'/%3E%3C/filter%3E%3C/defs%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round'%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='10' opacity='.34' filter='url(%23h)'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='7' opacity='.22' filter='url(%23h)'/%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='3.5' opacity='.55' filter='url(%23g)'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='2.8000000000000003' opacity='.38' filter='url(%23g)'/%3E%3Cpath d='M-40,108 C260,120 460,58 740,42 S1160,92 1480,22' stroke-width='1.1'/%3E%3Cpath d='M-40,116 C250,106 470,72 740,35 S1150,106 1480,30' stroke-width='0.8' opacity='.75'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .nav-stream-c > i {
+    background-image: linear-gradient(90deg, rgba(226,170,84,.15) 0%, rgba(226,170,84,.15) 10%, rgba(236,170,80,.5) 22%, #fff4d6 28%, rgba(255,236,190,.55) 30%, rgba(226,170,84,.15) 35%, rgba(226,170,84,.15) 62%, rgba(214,120,48,.4) 76%, rgba(250,205,120,.9) 85%, rgba(246,200,124,.45) 87%, rgba(226,170,84,.15) 91%, rgba(226,170,84,.15) 100%);
+    animation-duration: 8s;
+    animation-delay: -5s;
   }
 
   /* Fine film grain for richness (very subtle) */
@@ -187,8 +255,8 @@ body {
 
   /* Respect reduced motion */
   @media (prefers-reduced-motion: reduce) {
-    .crimson-kintsugi { animation: none; }
-    .kintsugi-svg .stroke { animation: none; }
+    .crimson-kintsugi::before,
+    .nav-stream > i { animation: none; }
   }
 }
 
