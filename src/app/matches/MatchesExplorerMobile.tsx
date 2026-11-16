@@ -312,7 +312,7 @@ const FiltersRail: React.FC<{
       <div className="flex items-stretch gap-2">
         <button
           onClick={onOpenSheet}
-          className="flex min-w-0 flex-1 items-center gap-2 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 transition-colors active:border-[#fb923c]/60"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 transition-colors active:bg-[#F3EFE6]/[0.14]"
         >
           <span className="shrink-0 text-[#F3EFE6]/40">ΔΙΟΡΓ·</span>
           <span

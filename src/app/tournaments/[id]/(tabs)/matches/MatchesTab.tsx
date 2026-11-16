@@ -32,7 +32,8 @@ export default function MatchesTab({ base }: { base: Base }) {
   }));
   const stageIndex = new Map(stages.map((s, index) => [s.id, index]));
 
-  const matches: ViewMatch[] = listed.map((m) => ({
+  // A match with no date yet is not listed (owner, 2026-11-16); the knockout trees below still draw every tie.
+  const matches: ViewMatch[] = listed.filter((m) => m.date).map((m) => ({
     m,
     stage: m.stageId != null ? (stageIndex.get(m.stageId) ?? -1) : -1,
     round: m.ko ? ctx.knockout.get(m.id)?.name || null : null,

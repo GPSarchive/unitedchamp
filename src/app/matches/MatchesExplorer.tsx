@@ -418,7 +418,7 @@ const Controls: React.FC<{
           onChange={(e) =>
             setTournamentId(e.target.value ? Number(e.target.value) : null)
           }
-          className="appearance-none border-2 border-[#F3EFE6]/20 bg-[#13131d] pl-20 pr-10 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors min-w-[260px]"
+          className="appearance-none rounded-lg bg-[#24242e] hover:bg-[#31313a] pl-20 pr-10 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3EFE6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] transition-colors min-w-[260px]"
         >
           <option value="">Όλα τα τουρνουά</option>
           {tournaments.map((t) => (
