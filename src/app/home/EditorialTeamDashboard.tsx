@@ -14,7 +14,7 @@ import { ChevronRight, Trophy, MapPin } from "lucide-react";
 import TeamFilter from "@/components/TeamFilter";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 import { wallClockDate, formatMatchTime } from "@/app/lib/datetime";
-import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, BUTTON_SHAPE } from "@/app/lib/ui/flat";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, BUTTON_SHAPE, LINE } from "@/app/lib/ui/flat";
 
 // =========================================================
 // Types
@@ -285,14 +285,14 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
   return (
     <Link
       href={`/matches/${match.id}`}
-      className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08080f]"
+      className={`group block border-t ${LINE} first:border-t-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#fb923c]`}
     >
       <motion.div
         initial={{ opacity: 0, x: -12 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.3) }}
-        className="relative border-t border-[#F3EFE6]/10 first:border-t-0 transition-colors group-hover:bg-[#F3EFE6]/[0.03]"
+        className="relative transition-colors group-hover:bg-[#F3EFE6]/[0.03]"
       >
         {/* Left accent bar — slides in on hover */}
         <span
@@ -302,7 +302,7 @@ function EditorialMatchRow({ match, index }: { match: Match; index: number }) {
 
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 md:gap-4 px-3 py-4 md:px-5 md:py-5">
           {/* Date block */}
-          <div className="flex flex-col items-center w-12 md:w-16 shrink-0 border-r border-[#F3EFE6]/10 pr-2.5 md:pr-4">
+          <div className={`flex flex-col items-center w-12 md:w-16 shrink-0 border-r ${LINE} pr-2.5 md:pr-4`}>
             <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/55">
               {GREEK_WEEKDAYS_SHORT[p.weekday]}
             </span>
@@ -500,7 +500,10 @@ export default function EditorialTeamDashboard({
             )}
           </div>
 
-          <div className="border-y border-[#F3EFE6]/10 bg-[#0a0a14]/40">
+          <div
+            className={`relative overflow-hidden ${SURFACE}`}
+            style={{ boxShadow: layers("#fb923c") }}
+          >
             {listMatches.map((m, i) => (
               <EditorialMatchRow key={m.id} match={m} index={i} />
             ))}
