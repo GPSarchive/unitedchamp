@@ -115,10 +115,13 @@ const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean })
     </svg>
   );
 
+  // The account links go to /login, not /dashboard: it sends signed-in staff
+  // on to the dashboard and shows everyone else the teaser (the dashboard
+  // would answer a player with 403).
   if (isMobile) {
     return (
       <Link
-        href="/dashboard"
+        href="/login"
         aria-label="Account"
         className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 size-9"
         title={user.email ?? "Account"}
@@ -130,7 +133,7 @@ const UserAvatar = memo(({ user, isMobile }: { user: User; isMobile?: boolean })
 
   return (
     <Link
-      href="/dashboard"
+      href="/login"
       className="inline-flex flex-col items-center bg-black/60 gap-1 rounded-full border border-white/15 px-3 py-2 hover:bg-white/5 transition min-w-0"
       aria-label={`Account: ${user.email ?? "Unknown user"}`}
       title={user.email ?? "Account"}
@@ -465,7 +468,7 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
                   {user ? (
                     <div className="flex flex-col">
                       <Link
-                        href="/dashboard"
+                        href="/login"
                         onClick={closeMenu}
                         className="flex h-[38px] md:h-9 min-w-0 items-center gap-2 rounded-[3px] pl-3.5 pr-2.5 text-[#F3EFE6]/75 hover:text-[#F3EFE6] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#fb923c]"
                       >
