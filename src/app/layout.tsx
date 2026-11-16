@@ -148,7 +148,7 @@ export default async function RootLayout({
             ),
             React.createElement(
               "main",
-              { key: "main", className: "pt-16 md:pt-32" },
+              { key: "main", className: "pt-[var(--nav-h)]" },
               React.createElement(CardSkinsProvider, { skins, children })
             ),
             React.createElement(Footer, { key: "footer" }),

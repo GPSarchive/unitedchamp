@@ -48,14 +48,29 @@
 html { /* [CTRL-1] */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Account for fixed navbar: 64px mobile, 128px desktop */
-  scroll-padding-top: 4rem; /* 64px for mobile navbar */
+  /* The fixed navbar, in one place.
+     --nav-h      = its height (64px phone, 128px desktop). Page padding uses it.
+     --nav-offset = how much of it is showing right now: the same height, or 0
+                    when it has slid away on scroll (NavbarClient sets
+                    html[data-nav]). Sticky bars use it as their `top`. */
+  --nav-h: 4rem;
+  --nav-offset: var(--nav-h);
+  scroll-padding-top: var(--nav-h);
 }
 
 @media (min-width: 768px) {
-  html {
-    scroll-padding-top: 8rem; /* 128px for desktop navbar */
-  }
+  html { --nav-h: 8rem; }
+}
+
+html[data-nav="hidden"] { --nav-offset: 0px; }
+
+/* A sticky bar that sits right under the navbar and follows it up and down. */
+.below-nav {
+  top: var(--nav-offset);
+  transition: top 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .below-nav { transition: none; }
 }
 
 /* IMPORTANT: use background-color (not shorthand 'background') so we don't wipe out the dot-grid image */

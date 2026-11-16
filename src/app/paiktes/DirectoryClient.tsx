@@ -478,7 +478,7 @@ export default function DirectoryClient({
         </div>
 
         {/* ── Sticky: search, filters, column header ────────────────── */}
-        <div className="sticky top-14 z-20 border-y border-[#F3EFE6]/15 bg-[#0a0a14] md:top-28">
+        <div className="below-nav sticky z-20 border-y border-[#F3EFE6]/15 bg-[#0a0a14]">
           <div className="flex gap-2 px-4 py-2.5 md:px-6">
             <div className="relative min-w-0 flex-1">
               <svg

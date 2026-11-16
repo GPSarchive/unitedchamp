@@ -33,7 +33,7 @@ export function PlayerSearch({
   return (
     <>
       {/* Stays in reach while the list scrolls, under the site's navbar (same offsets as /paiktes). */}
-      <div className="sticky top-14 z-20 -mx-1 mb-4 bg-[#0a0a14] px-1 py-2 md:top-28">
+      <div className="below-nav sticky z-20 -mx-1 mb-4 bg-[#0a0a14] px-1 py-2">
         <div className="relative">
           <svg
             aria-hidden

@@ -10,7 +10,7 @@ import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { createSupabaseBrowserClient } from "@/app/lib/supabase/supabaseBrowser";
 
 /* ================================================================ *
- *  Navigation data - Two columns                                   *
+ *  Navigation data - one column, two groups                        *
  * ================================================================ */
 const COLUMN_1 = [
   { href: "/home", label: "HOME" },
@@ -28,6 +28,8 @@ const COLUMN_2 = [
   { href: "/seasons", label: "ΑΡΧΕΙΟ ΣΕΖΟΝ" },
 ];
 
+const MENU_GROUPS = [COLUMN_1, COLUMN_2];
+
 /* ================================================================ *
  *  Animated background: light streams                             *
  *  Shapes, colours and motion live in globals.css (.nav-stream*).  *
@@ -43,7 +45,9 @@ const AnimatedBackground = memo(() => (
 AnimatedBackground.displayName = "AnimatedBackground";
 
 /* ================================================================ *
- *  Menu link with luxurious underline animation                    *
+ *  Menu link: one row of the single-column menu                    *
+ *  Current page = solid orange row (same as the filter chips).     *
+ *  Hover = a short orange tick that grows in (transform only).     *
  * ================================================================ */
 const MenuLink = memo(
   ({
@@ -51,77 +55,46 @@ const MenuLink = memo(
     label,
     isActive,
     onClick,
-    index,
-    columnOffset = 0,
     count,
   }: {
     href: string;
     label: string;
     isActive?: "page";
     onClick: () => void;
-    index: number;
-    columnOffset?: number;
     count?: number;
   }) => {
-    const prefersReduced = useReducedMotion();
-    const delay = prefersReduced ? 0 : 0.08 + (index + columnOffset) * 0.05;
-
+    const current = isActive === "page";
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          delay,
-          duration: 0.5,
-          ease: [0.22, 1, 0.36, 1],
-        }}
+      <Link
+        href={href}
+        onClick={onClick}
+        aria-current={isActive}
+        className={`
+          group relative flex h-[38px] md:h-9 items-center gap-2 rounded-[3px] pl-3.5 pr-2.5
+          text-[13px] tracking-[0.1em] uppercase whitespace-nowrap
+          focus:outline-none focus-visible:ring-1 focus-visible:ring-[#fb923c]
+          ${current
+            ? "bg-[#fb923c] font-semibold text-[#0a0a14]"
+            : "font-medium text-[#F3EFE6]/75 hover:text-[#F3EFE6]"}
+        `}
       >
-        <Link
-          href={href}
-          onClick={onClick}
-          aria-current={isActive}
-          className="group relative block py-3"
-        >
-          <span className="inline-flex items-center gap-2">
-            <span
-              className={`
-                text-sm md:text-base font-medium tracking-[0.15em] uppercase
-                transition-colors duration-500
-                ${isActive === "page" ? "text-amber-400" : "text-white/70 group-hover:text-white"}
-              `}
-            >
-              {label}
-            </span>
-            {count != null && count > 0 && (
-              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold shadow-[0_0_8px_rgba(251,191,36,0.7),0_0_16px_rgba(251,191,36,0.4)]">
-                {count > 9 ? "9+" : count}
-              </span>
-            )}
-          </span>
-          
-          {/* Luxurious underline */}
-          <span className="absolute bottom-2 left-0 h-px w-full overflow-hidden">
-            <span
-              className={`
-                block h-full bg-gradient-to-r from-amber-400/80 via-amber-300 to-amber-400/80
-                transition-all duration-500 ease-out
-                ${isActive === "page" ? "w-full" : "w-0 group-hover:w-full"}
-              `}
-              style={{ transformOrigin: "left" }}
-            />
-          </span>
-
-          {/* Subtle glow on hover */}
+        {!current && (
           <span
-            className={`
-              absolute bottom-2 left-0 h-px w-full blur-sm
-              bg-gradient-to-r from-transparent via-amber-400/50 to-transparent
-              opacity-0 group-hover:opacity-100 transition-opacity duration-500
-              ${isActive === "page" ? "opacity-50" : ""}
-            `}
+            aria-hidden
+            className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 scale-y-0 bg-[#fb923c] transition-transform duration-150 group-hover:scale-y-100 group-focus-visible:scale-y-100 motion-reduce:transition-none"
           />
-        </Link>
-      </motion.div>
+        )}
+        {label}
+        {count != null && count > 0 && (
+          <span
+            className={`ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-[3px] px-1 text-[10px] font-bold leading-none tracking-normal ${
+              current ? "bg-[#0a0a14] text-[#fb923c]" : "bg-[#fb923c] text-[#0a0a14]"
+            }`}
+          >
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </Link>
     );
   },
 );
@@ -309,6 +282,15 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
   // Mobile navbar always visible, desktop uses scroll behavior
   const currentStage = isMobile ? "visible" : desktopStage;
 
+  // Tell the page whether the bar is showing. globals.css turns this into
+  // --nav-offset, which sticky bars use as their `top` so they follow the bar.
+  useEffect(() => {
+    document.documentElement.dataset.nav = currentStage;
+    return () => {
+      delete document.documentElement.dataset.nav;
+    };
+  }, [currentStage]);
+
   return (
     <>
       <motion.header
@@ -323,7 +305,7 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
       >
         <nav
           aria-label="Main"
-          className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi nav-blur edge-glow border-b border-white/10 overflow-hidden transition-[background-color,backdrop-filter,box-shadow,border-color,height] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:backdrop-blur-md data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15 data-[scrolled=true]:h-14 md:data-[scrolled=true]:h-28"
+          className="relative isolate w-full h-16 md:h-32 flex items-center justify-between px-3 sm:px-4 lg:px-8 text-white crimson-kintsugi edge-glow border-b border-white/10 overflow-hidden transition-[background-color,box-shadow,border-color] duration-300 data-[scrolled=true]:bg-black/60 data-[scrolled=true]:shadow-[0_4px_20px_0_rgba(0,0,0,0.35)] data-[scrolled=true]:border-white/15"
           data-scrolled={scrolled}
         >
           {/* Original animated background */}
@@ -440,191 +422,91 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
           </div>
         </nav>
 
-        {/* ─────────────── Dropdown Menu ─────────────── */}
+        {/* ─────────────── Menu: one narrow column under the button ─────────────── */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
               id="main-menu"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
               transition={
                 prefersReduced
                   ? { duration: 0 }
-                  : { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+                  : { type: "tween", duration: 0.16, ease: [0.22, 1, 0.36, 1] }
               }
-              className="overflow-hidden"
+              // Only transform + opacity animate: no layout or repaint per frame.
+              className="absolute top-full left-3 sm:left-4 lg:left-8 mt-2 w-[236px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[4px] border border-[#F3EFE6]/15 bg-[#0a0a14] shadow-[0_12px_32px_rgba(0,0,0,0.55)]"
             >
-              {/* Menu background - static red/crimson gradient */}
-              <div
-                className="relative border-b border-white/10"
-                style={{
-                  background: "linear-gradient(180deg, #150a0a 0%, #0d0707 60%, #0a0606 100%)",
-                }}
-              >
-                {/* Subtle vignette overlay */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%)",
-                  }}
-                />
+              {/* Orange top edge */}
+              <div className="h-[2px] bg-[#fb923c]" aria-hidden />
 
-                {/* Top accent line */}
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ delay: 0.1, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute top-0 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-red-800/40 to-transparent origin-center"
-                />
-
-                {/* Content container */}
-                <div className="relative max-h-[75vh] overflow-y-auto overscroll-contain menu-scroll">
-                  <div className="px-6 sm:px-10 lg:px-16 py-10 md:py-14">
-                    {/* Two columns grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 lg:gap-x-24 gap-y-1 max-w-4xl mx-auto">
-                      
-                      {/* Column 1 */}
-                      <div className="flex flex-col">
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.05, duration: 0.4 }}
-                          className="mb-4"
-                        >
-                          <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
-                            Πλοήγηση
-                          </span>
-                        </motion.div>
-
-                        {COLUMN_1.map((item, idx) => (
-                          <MenuLink
-                            key={item.href}
-                            href={item.href}
-                            label={item.label}
-                            isActive={isActive(item.href)}
-                            onClick={closeMenu}
-                            index={idx}
-                            columnOffset={0}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Column 2 */}
-                      <div className="flex flex-col mt-8 md:mt-0">
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.15, duration: 0.4 }}
-                          className="mb-4"
-                        >
-                          <span className="text-[10px] font-medium tracking-[0.3em] uppercase text-white/30">
-                            Πληροφορίες
-                          </span>
-                        </motion.div>
-
-                        {COLUMN_2.map((item, idx) => (
-                          <MenuLink
-                            key={item.href}
-                            href={item.href}
-                            label={item.label}
-                            isActive={isActive(item.href)}
-                            onClick={closeMenu}
-                            index={idx}
-                            columnOffset={COLUMN_1.length}
-                            count={item.href === "/articles" ? newsCount : undefined}
-                          />
-                        ))}
-
-                        {/* Auth section at bottom of column 2 */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            delay: prefersReduced ? 0 : 0.08 + (COLUMN_1.length + COLUMN_2.length) * 0.05,
-                            duration: 0.5,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                          className="mt-8 pt-6 border-t border-white/10"
-                        >
-                          {user ? (
-                            <div className="flex items-center justify-between gap-4">
-                              <Link
-                                href="/dashboard"
-                                onClick={closeMenu}
-                                className="group flex items-center gap-3"
-                              >
-                                <div className="size-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden group-hover:border-white/20 transition-all duration-300">
-                                  {user.user_metadata?.avatar_url ? (
-                                    <Image
-                                      src={user.user_metadata.avatar_url}
-                                      alt="Profile"
-                                      width={40}
-                                      height={40}
-                                      className="rounded-full"
-                                    />
-                                  ) : (
-                                    <svg viewBox="0 0 24 24" width={20} height={20} className="text-white/60">
-                                      <path
-                                        fill="currentColor"
-                                        d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"
-                                      />
-                                    </svg>
-                                  )}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-xs text-white/40 uppercase tracking-wider">Λογαριασμός</span>
-                                  <span className="text-sm font-medium text-white/80 group-hover:text-white truncate max-w-[180px] transition-colors duration-300">
-                                    {user.email}
-                                  </span>
-                                </div>
-                              </Link>
-                              <form method="post" action="/api/auth/sign-out">
-                                <button
-                                  type="submit"
-                                  onClick={closeMenu}
-                                  className="px-5 py-2.5 text-xs font-medium tracking-wider uppercase text-white/50 hover:text-white border border-white/15 rounded-lg hover:bg-white/5 hover:border-white/25 transition-all duration-300"
-                                >
-                                  Αποσύνδεση
-                                </button>
-                              </form>
-                            </div>
-                          ) : (
-                            <Link
-                              href={loginUrl}
-                              onClick={closeMenu}
-                              className="group relative flex items-center justify-center gap-3 w-full py-4 overflow-hidden rounded-lg border border-white/10 hover:border-white/20 transition-all duration-500"
-                            >
-                              {/* Button background glow */}
-                              <div className="absolute inset-0 bg-gradient-to-r from-red-950/30 via-red-900/20 to-red-950/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                              
-                              <svg viewBox="0 0 24 24" width={18} height={18} className="relative z-10 text-white/60 group-hover:text-amber-400 transition-colors duration-500">
-                                <path
-                                  fill="currentColor"
-                                  d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"
-                                />
-                              </svg>
-                              <span className="relative z-10 text-sm font-medium tracking-[0.15em] uppercase text-white/60 group-hover:text-white transition-colors duration-500">
-                                Σύνδεση / Εγγραφή
-                              </span>
-                            </Link>
-                          )}
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* Bottom decorative element */}
-                    <motion.div
-                      initial={{ opacity: 0, scaleX: 0 }}
-                      animate={{ opacity: 1, scaleX: 1 }}
-                      transition={{
-                        delay: prefersReduced ? 0 : 0.5,
-                        duration: 0.8,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                      className="mt-12 mx-auto max-w-xs h-px bg-gradient-to-r from-transparent via-white/10 to-transparent origin-center"
-                    />
+              <div className="max-h-[calc(100dvh-5.5rem)] md:max-h-[calc(100dvh-9.5rem)] overflow-y-auto overscroll-contain p-1.5">
+                {MENU_GROUPS.map((group, i) => (
+                  <div
+                    key={i}
+                    className={`flex flex-col ${i > 0 ? "mt-1.5 border-t border-[#F3EFE6]/15 pt-1.5" : ""}`}
+                  >
+                    {group.map((item) => (
+                      <MenuLink
+                        key={item.href}
+                        href={item.href}
+                        label={item.label}
+                        isActive={isActive(item.href)}
+                        onClick={closeMenu}
+                        count={item.href === "/articles" ? newsCount : undefined}
+                      />
+                    ))}
                   </div>
+                ))}
+
+                {/* Account */}
+                <div className="mt-1.5 border-t border-[#F3EFE6]/15 pt-1.5">
+                  {user ? (
+                    <div className="flex flex-col">
+                      <Link
+                        href="/dashboard"
+                        onClick={closeMenu}
+                        className="flex h-[38px] md:h-9 min-w-0 items-center gap-2 rounded-[3px] pl-3.5 pr-2.5 text-[#F3EFE6]/75 hover:text-[#F3EFE6] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#fb923c]"
+                      >
+                        {user.user_metadata?.avatar_url ? (
+                          <Image
+                            src={user.user_metadata.avatar_url}
+                            alt=""
+                            width={20}
+                            height={20}
+                            className="shrink-0 rounded-full"
+                          />
+                        ) : (
+                          <svg viewBox="0 0 24 24" width={16} height={16} aria-hidden className="shrink-0 text-[#fb923c]">
+                            <path
+                              fill="currentColor"
+                              d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-5.33 0-9 2.67-9 6v1h18v-1c0-3.33-3.67-6-9-6Z"
+                            />
+                          </svg>
+                        )}
+                        <span className="truncate text-[12px]">{user.email}</span>
+                      </Link>
+                      <form method="post" action="/api/auth/sign-out">
+                        <button
+                          type="submit"
+                          onClick={closeMenu}
+                          className="flex h-[38px] md:h-9 w-full items-center rounded-[3px] pl-3.5 pr-2.5 text-left text-[12px] font-medium tracking-[0.1em] uppercase text-[#F3EFE6]/50 hover:text-[#fb923c] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#fb923c]"
+                        >
+                          Αποσύνδεση
+                        </button>
+                      </form>
+                    </div>
+                  ) : (
+                    <Link
+                      href={loginUrl}
+                      onClick={closeMenu}
+                      className="flex h-[38px] md:h-9 items-center justify-center gap-2 rounded-[3px] border border-[#fb923c]/70 text-[12px] font-semibold tracking-[0.1em] uppercase text-[#fb923c] hover:bg-[#fb923c] hover:text-[#0a0a14] focus:outline-none focus-visible:ring-1 focus-visible:ring-[#fb923c]"
+                    >
+                      <Image src="/UltraChampLogo3.png" alt="" width={20} height={20} className="rounded-[2px]" />
+                      Σύνδεση / Εγγραφή
+                    </Link>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -632,40 +514,21 @@ export default function NavbarClient({ initialUser, newsCount = 0 }: { initialUs
         </AnimatePresence>
       </motion.header>
 
-      {/* Backdrop */}
+      {/* Backdrop: flat dim, opacity only */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
+            transition={{ duration: prefersReduced ? 0 : 0.15 }}
+            className="fixed inset-0 z-40 bg-black/50"
             onClick={closeMenu}
             aria-hidden="true"
           />
         )}
       </AnimatePresence>
 
-      <style jsx>{`
-        .menu-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-        }
-        .menu-scroll::-webkit-scrollbar {
-          width: 4px;
-        }
-        .menu-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .menu-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.15);
-          border-radius: 9999px;
-        }
-        .menu-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
     </>
   );
 }
