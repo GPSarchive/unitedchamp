@@ -1,7 +1,9 @@
-/* Sign-in screen: pure black under slow colour fields, a vignette and film
-   grain (`.auth` + AuthBackdrop), the crest with its intro, the Google
-   button, and the signed-in teaser. Ported from
-   the /preview/login-v2 design. */
+/* Sign-in screen: the site's flat layered look at page size. The screen is
+   one flat panel on the ground, and two sheets in the yellow of the crest
+   show under its bottom edge, like a stack of cards (`.auth` + AuthBackdrop;
+   the same drawing as `layers()` in lib/ui/flat.ts). No glow, no gradient,
+   no motion. Then the crest with its intro, the Google button, and the
+   signed-in teaser. */
 
 .auth {
   position: fixed;
@@ -11,7 +13,12 @@
   /* The 288px crest is wider than the content box on a 320px phone. */
   overflow-x: hidden;
   isolation: isolate;
-  background: #000;
+  /* ground / surface: the tokens of lib/ui/flat.ts. --auth-sheet is the
+     yellow field of the crest poster. */
+  --auth-ground: #0a0a14;
+  --auth-surface: #12121e;
+  --auth-sheet: #f2c84b;
+  background: var(--auth-ground);
   color: #f4f4f1;
   font-family: var(--font-auth-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -25,62 +32,27 @@
   overflow: hidden;
   pointer-events: none;
 }
-.auth-field {
+/* The panel. It stops short of the screen's bottom edge so the two sheets
+   show under it; the button's bottom margin (32px) keeps it clear of them. */
+.auth-panel {
   position: absolute;
-  border-radius: 50%;
-  will-change: transform;
+  inset: 6px 6px 16px;
+  border-radius: 22px;
+  background: var(--auth-surface);
+  box-shadow:
+    0 9px 0 -4px var(--auth-sheet),
+    0 19px 0 -10px color-mix(in srgb, var(--auth-sheet) 40%, transparent);
 }
-.auth-field-amber {
-  width: 78vmax;
-  height: 78vmax;
-  left: -26vmax;
-  top: -30vmax;
-  background: radial-gradient(closest-side, rgba(255, 176, 0, 0.34), rgba(255, 176, 0, 0.08) 60%, transparent);
-  animation: auth-drift-amber 44s ease-in-out infinite alternate;
+/* On a wide screen the panel is a column, not a wall: the 496px form plus
+   the same 16px margin the button has from the panel's bottom edge. */
+@media (min-width: 600px) {
+  .auth-panel {
+    left: 50%;
+    right: auto;
+    width: 528px;
+    margin-left: -264px;
+  }
 }
-.auth-field-maroon {
-  width: 92vmax;
-  height: 66vmax;
-  left: 50%;
-  bottom: -34vmax;
-  margin-left: -46vmax;
-  background: radial-gradient(closest-side, rgba(126, 16, 34, 0.6), rgba(126, 16, 34, 0.14) 62%, transparent);
-  animation: auth-drift-maroon 58s ease-in-out infinite alternate;
-}
-.auth-field-haze {
-  width: 56vmax;
-  height: 74vmax;
-  right: -24vmax;
-  top: 6vh;
-  background: radial-gradient(closest-side, rgba(186, 172, 156, 0.15), transparent);
-  animation: auth-drift-haze 66s ease-in-out infinite alternate;
-}
-.auth-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(95% 75% at 50% 35%, transparent 45%, rgba(0, 0, 0, 0.7) 100%);
-}
-.auth-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.16;
-  mix-blend-mode: overlay;
-  background-size: 180px 180px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>");
-}
-@keyframes auth-drift-amber {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-6vmax, -5vmax, 0) scale(1.08); }
-}
-@keyframes auth-drift-maroon {
-  from { transform: translate3d(-4vmax, 0, 0) scale(1); }
-  to   { transform: translate3d(5vmax, -4vmax, 0) scale(1.06); }
-}
-@keyframes auth-drift-haze {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-5vmax, 6vmax, 0); }
-}
-
 
 .lv2 {
   /* Full-bleed: the intro starts from a black screen, above the site navbar
@@ -98,11 +70,18 @@
   height: 288px;
   margin: -88px auto;
 }
+/* Was a glow. Now the same two sheets, under the poster itself. */
 .lv2-glow {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 176, 0, 0.3), transparent);
+  left: 50%;
+  top: 50%;
+  height: 112px;
+  aspect-ratio: 789 / 1101;
+  margin: -56px 0 0 -40.13px;
+  border-radius: 2px;
+  box-shadow:
+    0 6px 0 -3px var(--auth-sheet),
+    0 12px 0 -8px color-mix(in srgb, var(--auth-sheet) 40%, transparent);
 }
 /* The badge file is a framed poster on a white canvas: show only the frame. */
 .lv2-logo {
@@ -254,10 +233,6 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-field { animation: none; }
 }
 
 /* ── Signed-in teaser ───────────────────────────────────────────────────
