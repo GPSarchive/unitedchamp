@@ -277,36 +277,30 @@ export default async function Home() {
           <div className="grid md:grid-cols-3 gap-5 sm:gap-6">
             {[
               {
-                n: "01",
                 icon: Users,
                 title: "Φιλόξενη Κοινότητα",
                 body:
                   "Σε καλωσορίζουμε με χαμόγελο — γνώρισε συμπαίκτες, βρες παρέες και γίνε μέλος μιας ζωντανής κοινότητας.",
               },
               {
-                n: "02",
                 icon: Trophy,
                 title: "Ποιοτικοί Αγώνες",
                 body:
                   "Καλοοργανωμένα παιχνίδια, δίκαιη διαιτησία και ευκαιρίες για όλους — όχι μόνο για τους «πρωταθλητές».",
               },
               {
-                n: "03",
                 icon: BarChart3,
                 title: "Προφίλ & Στατιστικά",
                 body:
                   "Γκολ, ασίστ, συμμετοχές και MVPs — κράτα το ιστορικό σου και δες την πρόοδό σου σε κάθε σεζόν.",
               },
-            ].map(({ n, icon: Icon, title, body }) => (
+            ].map(({ icon: Icon, title, body }) => (
               <div
-                key={n}
+                key={title}
                 className={`group relative p-8 ${SURFACE} hover:bg-[#171724] transition-all`}
                 style={{ boxShadow: layers("#fb923c") }}
               >
-                <div className="flex items-start justify-between mb-7">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#fb923c]">
-                    № {n}
-                  </span>
+                <div className="flex items-start justify-end mb-7">
                   <Icon className="w-6 h-6 text-white/40 group-hover:text-[#fb923c] transition-colors" />
                 </div>
                 <h3 className="font-[var(--f-display)] font-black italic leading-tight text-white mb-4 text-2xl md:text-3xl">
