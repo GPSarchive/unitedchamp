@@ -14,6 +14,7 @@ import { ChevronRight, Trophy, MapPin } from "lucide-react";
 import TeamFilter from "@/components/TeamFilter";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 import { wallClockDate, formatMatchTime } from "@/app/lib/datetime";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // =========================================================
 // Types
@@ -106,15 +107,15 @@ function NextMatchHero({ match }: { match: Match }) {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.2 }}
         transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-        className="relative"
-        style={{ boxShadow: `10px 10px 0 0 ${accent}` }}
+        className="relative rounded-xl"
+        style={{ boxShadow: layers(accent) }}
       >
-        <div className="relative overflow-hidden border-2 border-[#F3EFE6]/25 bg-[#0a0a14] transition-all duration-300 group-hover:border-[#F3EFE6]/45 group-hover:-translate-y-0.5 group-hover:translate-x-0.5">
+        <div className={`relative overflow-hidden ${SURFACE} transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5`}>
           {/* Top accent strip */}
           <div className="h-[3px] w-full" style={{ background: accent }} />
 
           {/* Masthead row */}
-          <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.3em]">
+          <div className={`flex items-center justify-between ${STRIP_TOP} px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.3em]`}>
             <span
               className="flex items-center gap-2 font-bold"
               style={{ color: accent }}
@@ -173,8 +174,8 @@ function NextMatchHero({ match }: { match: Match }) {
               <div className="flex flex-col items-center gap-3 px-2 md:px-4">
                 {/* Day block */}
                 <div
-                  className="border-2 px-3 py-2 text-center"
-                  style={{ borderColor: accent }}
+                  className="rounded-md px-3 py-2 text-center"
+                  style={{ backgroundColor: `color-mix(in srgb, ${accent} 16%, transparent)` }}
                 >
                   <div
                     className="font-mono text-[9px] uppercase tracking-[0.3em]"
@@ -219,7 +220,7 @@ function NextMatchHero({ match }: { match: Match }) {
           </div>
 
           {/* Footer meta strip */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t-2 border-[#F3EFE6]/15 bg-[#0d0d18] px-5 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+          <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 ${STRIP_BOTTOM} px-5 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70`}>
             {match.tournament_name && (
               <span className="flex items-center gap-2">
                 {match.tournament_logo ? (
@@ -457,8 +458,7 @@ export default function EditorialTeamDashboard({
       {/* Empty state */}
       {filteredMatches.length === 0 && (
         <div
-          className="relative border-2 border-dashed border-[#F3EFE6]/25 p-10 text-center"
-          style={{ background: "rgba(19,19,29,0.4)" }}
+          className={`relative ${SURFACE} p-10 text-center`}
         >
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
             / 00 · Πρόγραμμα
@@ -510,7 +510,7 @@ export default function EditorialTeamDashboard({
             <div className="mt-5 text-center">
               <Link
                 href="/matches"
-                className="inline-flex items-center gap-2 border-2 border-[#F3EFE6]/25 bg-transparent px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.28em] text-[#F3EFE6] hover:border-[#fb923c] hover:text-[#fb923c] transition-colors"
+                className={`inline-flex items-center gap-2 ${BUTTON_SHAPE} px-5 py-2.5 font-mono text-[10px] uppercase tracking-[0.28em] text-[#F3EFE6] hover:text-[#fb923c] transition-colors`}
               >
                 Προβολή όλων ({pad2(filteredMatches.length)})
                 <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />

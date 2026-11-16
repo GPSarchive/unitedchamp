@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { X, Search, Plus, UserPlus, Loader2, Lock } from "lucide-react";
 import type { PlayerRow as Player } from "@/app/lib/types";
 import { safeJson } from "@/app/dashboard/teams/teamHelpers";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM } from "@/app/lib/ui/flat";
 
 export default function AddPlayerToTeamModal({
   open,
@@ -128,8 +129,11 @@ export default function AddPlayerToTeamModal({
   return (
     <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="absolute left-1/2 top-[10%] -translate-x-1/2 w-[92%] max-w-xl bg-zinc-950 border border-white/10 rounded-2xl shadow-xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div
+        className={`absolute left-1/2 top-[10%] -translate-x-1/2 w-[92%] max-w-xl ${SURFACE}`}
+        style={{ boxShadow: layers("#fb923c") }}
+      >
+        <div className={`flex items-center justify-between px-4 py-3 rounded-t-xl ${STRIP_TOP}`}>
           <h3 className="text-white font-semibold">Add player to team</h3>
           <button type="button" onClick={onClose} className="p-1 rounded hover:bg-white/10" aria-label="Close">
             <X className="w-5 h-5" />
@@ -143,7 +147,7 @@ export default function AddPlayerToTeamModal({
           </div>
         ) : (
           <div className="px-4 pt-3">
-            <div className="inline-flex rounded-lg border border-white/10 overflow-hidden mb-4">
+            <div className="inline-flex rounded-lg bg-[#F3EFE6]/[0.08] overflow-hidden mb-4">
               <button
                 type="button"
                 onClick={() => setTab("existing")}
@@ -175,7 +179,7 @@ export default function AddPlayerToTeamModal({
                   </div>
                 </div>
 
-                <div className="min-h-[180px] border border-white/10 rounded-lg overflow-hidden">
+                <div className="min-h-[180px] bg-[#F3EFE6]/[0.04] rounded-lg overflow-hidden">
                   {loading ? (
                     <div className="p-4 text-white/80 flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" /> Loading…
@@ -191,7 +195,7 @@ export default function AddPlayerToTeamModal({
                             type="button"
                             disabled={saving}
                             onClick={() => linkExisting(p.id)}
-                            className="inline-flex items-center gap-1 text-sm px-2 py-1 rounded border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-60"
+                            className="inline-flex items-center gap-1 text-sm px-2 py-1 rounded-lg bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-60"
                           >
                             <UserPlus className="w-4 h-4" /> Add
                           </button>
@@ -256,7 +260,7 @@ export default function AddPlayerToTeamModal({
                     type="button"
                     disabled={saving || !firstName.trim() || !lastName.trim()}
                     onClick={createAndLink}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-400/40 bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-60"
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-700/30 hover:bg-emerald-700/50 disabled:opacity-60"
                   >
                     <Plus className="w-4 h-4" /> {saving ? "Saving…" : "Create & add"}
                   </button>
@@ -266,7 +270,7 @@ export default function AddPlayerToTeamModal({
           </div>
         )}
 
-        <div className="px-4 py-3 border-t border-white/10 flex justify-end">
+        <div className={`px-4 py-3 rounded-b-xl ${STRIP_BOTTOM} flex justify-end`}>
           <button type="button" onClick={onClose} className="px-3 py-2 text-sm rounded-lg hover:bg-white/10">
             Close
           </button>

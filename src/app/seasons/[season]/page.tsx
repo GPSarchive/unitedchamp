@@ -22,6 +22,7 @@ import {
   ArchiveFooter,
   pad2,
 } from "../archiveUi";
+import { SURFACE, layers, layer, STRIP_TOP, LINE } from "@/app/lib/ui/flat";
 
 export const revalidate = 3600;
 
@@ -110,7 +111,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
   const teamHref = (id: number) => (isActive ? `/OMADA/${id}` : `${base}/teams/${id}`);
 
   const Leader = ({ rows, k, title }: { rows: LeaderRow[]; k: keyof LeaderRow; title: string }) => (
-    <div className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+    <div className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
       <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">{title}</div>
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-[#F3EFE6]/45">—</p>
@@ -133,7 +134,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
 
   return (
     <ArchiveShell>
-      <header className="relative border-b-2 border-[#F3EFE6]/20">
+      <header className={`relative border-b ${LINE}`}>
         <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-8 md:pt-10">
           <Crumbs items={[{ href: "/seasons", label: "Αρχείο Σεζόν" }, { label: season.display_label }]} />
           <Kicker>{isActive ? "Τρέχουσα σεζόν" : "Αρχείο σεζόν"}</Kicker>
@@ -150,7 +151,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
             {isActive ? " · σε εξέλιξη" : ""}
           </p>
           {recap && (
-            <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-6 grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
               <StatTile k="Τουρνουά" v={recap.totals.tournaments} />
               <StatTile k="Ομάδες" v={recap.totals.teams} />
               <StatTile k="Παίκτες" v={recap.totals.players} />
@@ -174,14 +175,13 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {recap && recap.podium.length > 0 && (
           <section>
             <SectionTitle kicker="Γενική Κατάταξη" title="Το βάθρο" />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-5 md:grid-cols-3">
               {recap.podium.map((p, i) => (
                 <Link
                   key={p.teamId}
                   href={teamHref(p.teamId)}
-                  className={`flex items-center gap-4 border-2 p-4 transition-colors hover:border-[#fb923c] ${
-                    i === 0 ? "border-[#e8c66b]/60 bg-[#e8c66b]/5" : "border-[#F3EFE6]/20 bg-[#13131d]/60"
-                  }`}
+                  className={`flex items-center gap-4 p-4 transition-colors hover:bg-[#171724] ${SURFACE}`}
+                  style={{ boxShadow: layers(i === 0 ? "#e8c66b" : "#fb923c") }}
                 >
                   <span className="font-[var(--f-display)] text-4xl font-black italic text-[#e8c66b]">{pad2(i + 1)}</span>
                   {p.logo && (
@@ -205,14 +205,14 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
               <SectionTitle kicker="Κατάταξη" title="Τελικός πίνακας" />
               <Link
                 href={`${base}/katataxi`}
-                className="mb-5 border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
+                className="mb-5 rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
               >
                 Πλήρης κατάταξη →
               </Link>
             </div>
-            <div className="overflow-x-auto border border-[#F3EFE6]/15">
+            <div className={`overflow-x-auto ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
               <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-[#13131d] font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/55">
+                <thead className={`${STRIP_TOP} font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/55`}>
                   <tr>
                     {["#", "Ομάδα", "Πόντοι", "Ν", "Ι", "Η", "Γκολ", "Σερί"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-normal">
@@ -260,7 +260,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {tournaments.length > 0 && (
           <section>
             <SectionTitle kicker="Τουρνουά" title="Οι διοργανώσεις της σεζόν" />
-            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-x-3 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
               {tournaments.map((t) => {
                 const h = honourByTid.get(t.id);
                 const logo = h?.logo ?? (t.logo ? resolveImageUrl(t.logo, ImageType.TOURNAMENT) : null);
@@ -269,7 +269,8 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
                   <li key={t.id}>
                     <Link
                       href={tournamentHref(t.id)}
-                      className="flex items-center gap-4 border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4 transition-colors hover:border-[#fb923c]"
+                      className={`flex items-center gap-4 ${SURFACE} p-4 transition-colors hover:bg-[#171724]`}
+                      style={{ boxShadow: layer("#fb923c") }}
                     >
                       {logo ? (
                         <Image src={logo} alt="" width={44} height={44} className="h-11 w-11 object-contain" unoptimized />
@@ -295,7 +296,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {recap && (
           <section>
             <SectionTitle kicker="Βραβεία" title="Οι κορυφαίοι της σεζόν" />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-5 md:grid-cols-2 xl:grid-cols-4">
               {(
                 [
                   ["Σκόρερ", recap.awards.scorer, "γκολ"],
@@ -304,7 +305,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
                   ["Τερματοφύλακας", recap.awards.gk, "βραβεία"],
                 ] as const
               ).map(([title, a, unit]) => (
-                <div key={title} className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+                <div key={title} className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
                   <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">{title}</div>
                   {a ? (
                     <div className="mt-3 flex items-center gap-3">
@@ -330,7 +331,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
 
         <section>
           <SectionTitle kicker="Στατιστικά" title="Λίστες κορυφής" />
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-x-3 gap-y-5 md:grid-cols-2 xl:grid-cols-4">
             <Leader rows={scorers} k="goals" title="Γκολ" />
             <Leader rows={assisters} k="assists" title="Ασίστ" />
             <Leader rows={mvps} k="mvp_count" title="MVP" />
@@ -341,9 +342,9 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {recap && (recap.records.highestScoring || recap.records.bestHaul || recap.records.mostTeamWins) && (
           <section>
             <SectionTitle kicker="Ρεκόρ" title="Το βιβλίο της σεζόν" />
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-5 md:grid-cols-2">
               {recap.records.highestScoring && (
-                <div className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+                <div className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
                   <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">Ο αγώνας με τα περισσότερα γκολ</div>
                   <div className="mt-2 font-[var(--f-display)] text-2xl font-black italic">
                     {recap.records.highestScoring.teamAName} {recap.records.highestScoring.scoreA}–
@@ -355,7 +356,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
                 </div>
               )}
               {recap.records.bestHaul && (
-                <div className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+                <div className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
                   <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">Τα περισσότερα γκολ σε έναν αγώνα</div>
                   <div className="mt-2 font-[var(--f-display)] text-2xl font-black italic">
                     {recap.records.bestHaul.playerName} · {recap.records.bestHaul.goals} γκολ
@@ -367,7 +368,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
                 </div>
               )}
               {recap.records.mostTeamWins && (
-                <div className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+                <div className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
                   <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">Οι περισσότερες νίκες</div>
                   <div className="mt-2 font-[var(--f-display)] text-2xl font-black italic">
                     {recap.records.mostTeamWins.teamName} · {recap.records.mostTeamWins.wins}
@@ -375,7 +376,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
                 </div>
               )}
               {recap.records.mostAppearances && (
-                <div className="border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+                <div className={`${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
                   <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#fb923c]">Οι περισσότερες συμμετοχές</div>
                   <div className="mt-2 font-[var(--f-display)] text-2xl font-black italic">
                     {recap.records.mostAppearances.playerName} · {recap.records.mostAppearances.matches}
@@ -389,7 +390,7 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {recap && recap.months.length > 0 && (
           <section>
             <SectionTitle kicker="Ρυθμός" title="Αγώνες ανά μήνα" />
-            <div className="flex items-end gap-2 overflow-x-auto border border-[#F3EFE6]/15 bg-[#13131d]/60 p-4">
+            <div className={`flex items-end gap-2 overflow-x-auto ${SURFACE} p-4`} style={{ boxShadow: layers("#fb923c") }}>
               {(() => {
                 const max = Math.max(...recap.months.map((m) => m.matches), 1);
                 return recap.months.map((m) => (
@@ -407,12 +408,13 @@ export default async function SeasonHubPage({ params }: { params: Promise<{ seas
         {teams.length > 0 && (
           <section>
             <SectionTitle kicker="Ομάδες" title={`Οι ομάδες της σεζόν (${teams.length})`} />
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            <ul className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {teams.map((t) => (
                 <li key={t.id}>
                   <Link
                     href={teamHref(t.id)}
-                    className="flex items-center gap-2 border border-[#F3EFE6]/15 bg-[#13131d]/60 p-2.5 text-sm transition-colors hover:border-[#fb923c]"
+                    className={`flex items-center gap-2 ${SURFACE} p-2.5 text-sm transition-colors hover:bg-[#171724]`}
+                    style={{ boxShadow: layer("#fb923c") }}
                   >
                     {t.logoUrl ? (
                       <Image src={t.logoUrl} alt="" width={28} height={28} className="h-7 w-7 object-contain" unoptimized />

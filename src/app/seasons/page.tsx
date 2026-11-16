@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { listSeasons } from "@/app/lib/seasons";
 import { ArchiveShell, Crumbs, Kicker, StateBlock, ArchiveFooter, pad2 } from "./archiveUi";
+import { SURFACE, layers, LINE } from "@/app/lib/ui/flat";
 
 export const revalidate = 3600;
 
@@ -26,7 +27,7 @@ export default async function SeasonsArchivePage() {
 
   return (
     <ArchiveShell>
-      <header className="relative border-b-2 border-[#F3EFE6]/20">
+      <header className={`relative border-b ${LINE}`}>
         <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-6 md:pt-10 md:pb-8">
           <Crumbs items={[{ label: "Αρχείο Σεζόν" }]} />
           <Kicker>Αρχείο</Kicker>
@@ -54,7 +55,8 @@ export default async function SeasonsArchivePage() {
                 <li key={s.label}>
                   <Link
                     href={`/seasons/${encodeURIComponent(s.label)}`}
-                    className="group block border-2 border-[#F3EFE6]/20 bg-[#13131d]/60 p-5 transition-colors hover:border-[#fb923c]"
+                    className={`group block ${SURFACE} p-5 transition-colors hover:bg-[#171724]`}
+                    style={{ boxShadow: layers("#fb923c") }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>

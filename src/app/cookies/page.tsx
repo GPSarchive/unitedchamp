@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import VantaBg from "@/app/lib/VantaBg";
+import { SURFACE, STRIP_TOP, layers } from "@/app/lib/ui/flat";
 import OpenConsentSettingsButton from "./OpenConsentSettingsButton";
 
 export const metadata: Metadata = {
@@ -93,7 +94,7 @@ export default function CookiesPage() {
 
         {/* ── Content ── */}
         <div className="container mx-auto px-4 pb-16 max-w-4xl">
-          <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 p-6 sm:p-10 shadow-2xl">
+          <div className={`${SURFACE} p-6 sm:p-10`} style={{ boxShadow: layers("#fb923c") }}>
             <div className="space-y-10">
 
               {/* 1. Τι είναι τα cookies */}
@@ -139,9 +140,9 @@ export default function CookiesPage() {
                 <h2 className="text-xl font-bold text-orange-400 mb-3">
                   3. Αναλυτικός Πίνακας Cookies
                 </h2>
-                <div className="overflow-x-auto rounded-xl border border-white/10">
+                <div className="overflow-x-auto rounded-lg bg-[#F3EFE6]/[0.04]">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-white/5 text-white/80 uppercase tracking-wider text-xs">
+                    <thead className={`${STRIP_TOP} text-white/80 uppercase tracking-wider text-xs`}>
                       <tr>
                         <th className="px-3 py-2 font-semibold">Όνομα</th>
                         <th className="px-3 py-2 font-semibold">Πάροχος</th>

@@ -8,6 +8,7 @@ import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { getSeasonByLabel } from "@/app/lib/seasons";
 import { getSeasonStandings } from "@/app/lib/refreshStandings";
 import StandingsViewGrand, { type TeamInfo } from "@/app/geniki-katataxi/StandingsViewGrand";
+import { CHIP_ORANGE } from "@/app/lib/ui/flat";
 
 export const revalidate = 3600;
 
@@ -45,7 +46,7 @@ export default async function SeasonStandingsPage({ params }: { params: Promise<
       teams={(teamsRes.data ?? []) as TeamInfo[]}
       archiveHref={hub}
       banner={
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border border-[#fb923c]/40 bg-[#13131d]/80 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.25em]">
+        <div className={`mb-6 flex flex-wrap items-center justify-between gap-3 ${CHIP_ORANGE} px-4 py-3 font-mono text-[10px] uppercase tracking-[0.25em]`}>
           <span className="text-[#fb923c]">
             Αρχείο · Σεζόν {season.display_label}
             {season.status === "active" ? " (σε εξέλιξη)" : ""}

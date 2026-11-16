@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import type { DraftMatch, Stage, Team } from "@/app/tournaments/useTournamentData";
 import { formatMatchDate } from "@/app/lib/datetime";
+import { SURFACE, layers, layer, STRIP_TOP, STRIP_BOTTOM, LINE, CHIP, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // Palette aliases — dark edition (matches site: zinc-950 family + orange-400 accent)
 const INK = "#F3EFE6";             // primary foreground (ivory on dark)
@@ -114,21 +115,15 @@ const MatchNode: React.FC<{
 
   return (
     <div
-      className={`relative flex h-full flex-col border-2 overflow-hidden ${
-        tba ? "border-dashed" : ""
-      }`}
+      className={`relative flex h-full flex-col overflow-hidden ${SURFACE}`}
       style={{
-        borderColor: INK,
-        background: IVORY,
-        boxShadow: `4px 4px 0 0 ${INK}`,
+        boxShadow: layer(accent),
       }}
     >
       {/* Header strip — round label (or leg tag) + date */}
       <div
-        className={`flex items-center justify-between border-b-2 ${compact ? "px-2.5 py-1" : "px-3 py-1.5"}`}
+        className={`flex items-center justify-between ${STRIP_TOP} ${compact ? "px-2.5 py-1" : "px-3 py-1.5"}`}
         style={{
-          borderColor: INK,
-          background: node.isFinal && !isLeg ? PANEL : IVORY,
           color: INK,
         }}
       >
@@ -140,9 +135,9 @@ const MatchNode: React.FC<{
         </span>
         {isFinished ? (
           <span
-            className="border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em]"
+            className={`${node.isFinal ? "rounded-md" : CHIP} px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em]`}
             style={{
-              borderColor: node.isFinal ? SAFFRON : INK,
+              backgroundColor: node.isFinal ? `color-mix(in srgb, ${SAFFRON} 16%, transparent)` : undefined,
               color: node.isFinal ? SAFFRON : INK,
             }}
           >
@@ -175,7 +170,7 @@ const MatchNode: React.FC<{
           isFinal={node.isFinal}
           compact={compact}
         />
-        <div className="h-[2px]" style={{ background: `${INK}1A` }} />
+        <div className="h-px" style={{ background: `${INK}14` }} />
         <TeamRow
           team={b}
           score={isFinished ? match.team_b_score : null}
@@ -301,10 +296,9 @@ const TeamRow: React.FC<{
 
       {score != null ? (
         <div
-          className={`flex ${scoreBox} shrink-0 items-center justify-center border-2 font-[var(--f-brutal)] leading-none tabular-nums`}
+          className={`flex ${scoreBox} shrink-0 items-center justify-center rounded-md font-[var(--f-brutal)] leading-none tabular-nums`}
           style={{
-            borderColor: isWinner ? accent : INK,
-            background: isWinner ? accent : IVORY,
+            background: isWinner ? accent : `${INK}14`,
             color: isWinner ? IVORY : isLoser ? `${INK}55` : INK,
           }}
         >
@@ -312,9 +306,8 @@ const TeamRow: React.FC<{
         </div>
       ) : (
         <div
-          className={`flex ${scoreBox} shrink-0 items-center justify-center border-2 border-dashed font-mono text-xs`}
+          className={`flex ${scoreBox} shrink-0 items-center justify-center ${CHIP} font-mono text-xs`}
           style={{
-            borderColor: `${INK}33`,
             color: `${INK}33`,
           }}
         >
@@ -677,8 +670,8 @@ const KOBracketV2: React.FC<{
   if (!nodes.length) {
     return (
       <div
-        className="border-2 border-dashed p-10 text-center font-mono text-sm uppercase tracking-[0.2em]"
-        style={{ borderColor: `${INK}33`, color: `${INK}80` }}
+        className="rounded-lg bg-[#F3EFE6]/[0.04] p-10 text-center font-mono text-sm uppercase tracking-[0.2em]"
+        style={{ color: `${INK}80` }}
       >
         Δεν έχει οριστεί ακόμα το δέντρο νοκ άουτ
       </div>
@@ -691,17 +684,15 @@ const KOBracketV2: React.FC<{
 
   return (
     <div
-      className="relative overflow-hidden border-2"
-      style={{ borderColor: INK, background: IVORY }}
+      className="relative overflow-hidden rounded-lg bg-[#F3EFE6]/[0.04]"
     >
       {/* Bracket header — editorial row with round rubrics */}
       <div
-        className="flex items-stretch border-b-2"
-        style={{ borderColor: INK, background: PANEL, color: INK }}
+        className={`flex items-stretch ${STRIP_TOP}`}
+        style={{ color: INK }}
       >
         <div
-          className="flex items-center gap-3 border-r-2 px-4 py-3"
-          style={{ borderColor: `${INK}1F` }}
+          className={`flex items-center gap-3 border-r ${LINE} px-4 py-3`}
         >
           <span
             className="font-mono text-[10px] font-bold uppercase tracking-[0.3em]"
@@ -721,8 +712,8 @@ const KOBracketV2: React.FC<{
           <div className="flex items-center gap-1">
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center border font-mono text-xs font-bold transition-colors"
-              style={{ borderColor: `${INK}4D`, color: INK }}
+              className={`flex h-6 w-6 items-center justify-center ${BUTTON_SHAPE} font-mono text-xs font-bold transition-colors`}
+              style={{ color: INK }}
               onClick={() => setZoomAt(zoom / 1.2)}
               aria-label="Σμίκρυνση"
             >
@@ -736,8 +727,8 @@ const KOBracketV2: React.FC<{
             </span>
             <button
               type="button"
-              className="flex h-6 w-6 items-center justify-center border font-mono text-xs font-bold transition-colors"
-              style={{ borderColor: `${INK}4D`, color: INK }}
+              className={`flex h-6 w-6 items-center justify-center ${BUTTON_SHAPE} font-mono text-xs font-bold transition-colors`}
+              style={{ color: INK }}
               onClick={() => setZoomAt(zoom * 1.2)}
               aria-label="Μεγέθυνση"
             >
@@ -745,8 +736,8 @@ const KOBracketV2: React.FC<{
             </button>
             <button
               type="button"
-              className="ml-1 border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors"
-              style={{ borderColor: SAFFRON, color: SAFFRON }}
+              className="ml-1 rounded-lg px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors"
+              style={{ backgroundColor: `color-mix(in srgb, ${SAFFRON} 16%, transparent)`, color: SAFFRON }}
               onClick={() => {
                 if (!containerRef.current) return;
                 const next = clamp(
@@ -769,9 +760,8 @@ const KOBracketV2: React.FC<{
 
       {/* Round headers (sticky column rubrics) */}
       <div
-        className="relative overflow-hidden border-b-2"
+        className={`relative overflow-hidden border-b ${LINE}`}
         style={{
-          borderColor: INK,
           height: headerHeight,
           background: `${IVORY}F2`,
         }}
@@ -980,14 +970,13 @@ const KOBracketV2: React.FC<{
             {frames.map((f) => (
               <div
                 key={f.id}
-                className="absolute border-2 border-dashed"
+                className="absolute rounded-lg"
                 style={{
                   left: f.x,
                   top: f.y,
                   width: f.w,
                   height: f.h,
-                  borderColor: f.finished ? (f.isFinal ? SAFFRON : VERMILLION) : `${INK}66`,
-                  background: `${INK}06`,
+                  background: f.finished ? `color-mix(in srgb, ${f.isFinal ? SAFFRON : VERMILLION} 16%, transparent)` : `${INK}0A`,
                 }}
               >
                 <span
@@ -1052,12 +1041,10 @@ const KOBracketV2: React.FC<{
                   }}
                 >
                   <div
-                    className="flex items-center gap-2 border-2 px-3 py-1.5 rotate-[1.5deg]"
+                    className={`flex items-center gap-2 ${SURFACE} px-3 py-1.5 rotate-[1.5deg]`}
                     style={{
-                      borderColor: SAFFRON,
-                      background: PANEL,
                       color: INK,
-                      boxShadow: `6px 6px 0 0 ${SAFFRON}`,
+                      boxShadow: layers(SAFFRON),
                     }}
                   >
                     <span
@@ -1079,11 +1066,9 @@ const KOBracketV2: React.FC<{
 
       {/* Footer hint */}
       <div
-        className="flex items-center justify-between border-t-2 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em]"
+        className={`flex items-center justify-between ${STRIP_BOTTOM} px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em]`}
         style={{
-          borderColor: INK,
           color: `${INK}99`,
-          background: `${IVORY}F2`,
         }}
       >
         <span>Σύρετε για περιήγηση · Ctrl + scroll για ζουμ</span>

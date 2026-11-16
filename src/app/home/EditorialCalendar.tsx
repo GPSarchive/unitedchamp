@@ -14,6 +14,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { resolveImageUrl, ImageType } from "@/app/lib/image-config";
 import { formatMatchTime } from "@/app/lib/datetime";
+import {
+  SURFACE,
+  layers,
+  layer,
+  STRIP_TOP,
+  STRIP_BOTTOM,
+  CHIP,
+  CHIP_HOVER,
+  CHIP_ORANGE,
+  BUTTON_SHAPE_ORANGE,
+} from "@/app/lib/ui/flat";
 
 // ===================== Types =====================
 type Match = {
@@ -246,7 +257,7 @@ function DayCell({
           {/* +N overflow chip */}
           {extraMatches > 0 && (
             <span
-              className="font-[var(--f-brutal)] text-[9px] md:text-[10px] text-[#fb923c] border border-[#fb923c]/60 px-1 leading-none py-[3px]"
+              className={`font-[var(--f-brutal)] text-[9px] md:text-[10px] text-[#fb923c] ${CHIP_ORANGE} px-1 leading-none py-[3px]`}
               title={`${day.matches.length} αγώνες συνολικά`}
             >
               +{extraMatches}
@@ -288,21 +299,17 @@ function ModalMatchRow({ match, isHighlighted }: { match: Match; isHighlighted: 
     <Link
       href={`/matches/${match.id}`}
       className={`
-        group block relative border-2 transition-all duration-300
-        ${
-          isHighlighted
-            ? "border-[#60a5fa]/60 bg-[#13131d]"
-            : "border-[#F3EFE6]/20 bg-[#0a0a14] hover:border-[#fb923c]/60"
-        }
+        group block relative overflow-hidden transition-all duration-300
+        ${SURFACE}
       `}
       style={
         isHighlighted
-          ? { boxShadow: "6px 6px 0 0 #60a5fa" }
-          : { boxShadow: "6px 6px 0 0 #fb923c" }
+          ? { boxShadow: layer("#60a5fa") }
+          : { boxShadow: layer("#fb923c") }
       }
     >
       {/* Top strip */}
-      <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.3em]">
+      <div className={`flex items-center justify-between ${STRIP_TOP} px-4 py-2 font-mono text-[10px] uppercase tracking-[0.3em]`}>
         {isHighlighted ? (
           <span className="flex items-center gap-2 text-[#60a5fa] font-bold">
             <span className="h-1.5 w-1.5 bg-[#60a5fa] rounded-full animate-pulse" />
@@ -357,7 +364,7 @@ function ModalMatchRow({ match, isHighlighted }: { match: Match; isHighlighted: 
 
       {/* Bottom strip */}
       {(match.tournament_name || match.matchday || match.round || match.venue) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[#F3EFE6]/10 bg-[#0d0d18] px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/65">
+        <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 ${STRIP_BOTTOM} px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/65`}>
           {match.tournament_name && (
             <span className="flex items-center gap-1.5">
               {match.tournament_logo ? (
@@ -469,10 +476,10 @@ function DayModal({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 20, opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="relative w-full max-w-2xl bg-[#0a0a14] border-2 border-[#F3EFE6]/25 flex flex-col"
+          className={`relative w-full max-w-2xl overflow-hidden ${SURFACE} flex flex-col`}
           style={{
             maxHeight: "min(85vh, 85dvh)",
-            boxShadow: "12px 12px 0 0 #fb923c",
+            boxShadow: layers("#fb923c"),
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -480,7 +487,7 @@ function DayModal({
           <div className="h-[3px] w-full bg-[#fb923c]" />
 
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-[#13131d] border-b-2 border-[#F3EFE6]/15 px-6 py-4">
+          <div className="sticky top-0 z-10 bg-[#1d1d29] px-6 py-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c] mb-2">
@@ -500,7 +507,7 @@ function DayModal({
               <button
                 onClick={onClose}
                 aria-label="Κλείσιμο"
-                className="shrink-0 border-2 border-[#F3EFE6]/25 bg-[#0a0a14] p-2 hover:border-[#fb923c] hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors"
+                className={`shrink-0 ${CHIP} ${CHIP_HOVER} p-2 hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors`}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -520,8 +527,7 @@ function DayModal({
           >
             {sortedMatches.length === 0 ? (
               <div
-                className="relative border-2 border-dashed border-[#F3EFE6]/25 p-8 text-center"
-                style={{ background: "rgba(19,19,29,0.4)" }}
+                className={`relative ${SURFACE} p-8 text-center`}
               >
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
                   / 00 · Κενή ημέρα
@@ -599,17 +605,17 @@ export default function EditorialCalendar({
   return (
     <>
       <div
-        className={`relative border-2 border-[#F3EFE6]/20 bg-[#0a0a14] ${className}`}
-        style={{ boxShadow: "8px 8px 0 0 #fb923c" }}
+        className={`relative overflow-hidden ${SURFACE} ${className}`}
+        style={{ boxShadow: layers("#fb923c") }}
       >
         {/* Top accent strip */}
         <div className="h-[3px] w-full bg-[#fb923c]" />
 
         {/* Masthead row */}
-        <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-3 select-none">
+        <div className={`flex items-center justify-between ${STRIP_TOP} px-4 py-3 select-none`}>
           <button
             onClick={goPrev}
-            className="shrink-0 border border-[#F3EFE6]/20 bg-[#0a0a14] p-1.5 hover:border-[#fb923c] hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors"
+            className={`shrink-0 ${CHIP} ${CHIP_HOVER} p-1.5 hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors`}
             aria-label="Προηγούμενος μήνας"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
@@ -643,7 +649,7 @@ export default function EditorialCalendar({
                   transition={{ opacity: { duration: 0.18 } }}
                   onClick={() => setIsMinimized(true)}
                   aria-label="Σύμπτυξη"
-                  className="shrink-0 border border-[#F3EFE6]/20 bg-[#0a0a14] p-1.5 hover:border-[#fb923c] hover:text-[#fb923c] text-[#F3EFE6]/60 transition-colors"
+                  className={`shrink-0 ${CHIP} ${CHIP_HOVER} p-1.5 hover:text-[#fb923c] text-[#F3EFE6]/60 transition-colors`}
                 >
                   <ChevronsUp className="h-3.5 w-3.5" strokeWidth={2} />
                 </motion.button>
@@ -651,7 +657,7 @@ export default function EditorialCalendar({
             </AnimatePresence>
             <button
               onClick={goNext}
-              className="shrink-0 border border-[#F3EFE6]/20 bg-[#0a0a14] p-1.5 hover:border-[#fb923c] hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors"
+              className={`shrink-0 ${CHIP} ${CHIP_HOVER} p-1.5 hover:text-[#fb923c] text-[#F3EFE6]/70 transition-colors`}
               aria-label="Επόμενος μήνας"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -660,7 +666,7 @@ export default function EditorialCalendar({
         </div>
 
         {/* Sub-toolbar — stats + Σήμερα */}
-        <div className="flex items-center justify-between gap-3 border-b border-[#F3EFE6]/10 bg-[#0d0d18] px-4 py-2.5">
+        <div className={`flex items-center justify-between gap-3 ${STRIP_BOTTOM} px-4 py-2.5`}>
           <div className="flex items-center gap-4 font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/55">
             <span>
               Αγώνες ·{" "}
@@ -677,7 +683,7 @@ export default function EditorialCalendar({
           </div>
           <button
             onClick={goToday}
-            className="border-2 border-[#fb923c] bg-[#fb923c]/10 px-4 py-1.5 font-mono text-[12px] md:text-[13px] uppercase tracking-[0.3em] text-[#fb923c] hover:bg-[#fb923c] hover:text-[#08080f] transition-colors"
+            className={`${BUTTON_SHAPE_ORANGE} px-4 py-1.5 font-mono text-[12px] md:text-[13px] uppercase tracking-[0.3em] text-[#fb923c] transition-colors`}
           >
             Σήμερα
           </button>
@@ -691,7 +697,7 @@ export default function EditorialCalendar({
             style={{ overflow: "hidden" }}
           >
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 border-b-2 border-[#F3EFE6]/15 bg-[#0d0d18]">
+            <div className={`grid grid-cols-7 ${STRIP_BOTTOM}`}>
               {GR_WEEKDAY_HEADERS.map((d, i) => (
                 <div
                   key={i}
@@ -718,7 +724,7 @@ export default function EditorialCalendar({
             </div>
 
             {/* Footer / legend */}
-            <div className="border-t-2 border-[#F3EFE6]/15 bg-[#0d0d18] px-4 py-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/55">
+            <div className={`${STRIP_BOTTOM} px-4 py-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/55`}>
               <span>Πατήστε σε ημέρα για λεπτομέρειες</span>
               <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1.5">
@@ -755,7 +761,7 @@ export default function EditorialCalendar({
                   animate={{ y: [0, 4, 0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   aria-label="Ανάπτυξη ημερολογίου"
-                  className="pointer-events-auto flex items-center gap-2 border-2 border-[#F3EFE6]/30 bg-[#0a0a14] px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c] transition-colors"
+                  className="pointer-events-auto flex items-center gap-2 rounded-lg bg-[#24242e] hover:bg-[#31313a] px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.3em] text-[#F3EFE6]/75 hover:text-[#fb923c] transition-colors"
                 >
                   <ChevronsDown className="h-3 w-3" strokeWidth={2} />
                   Ανάπτυξη

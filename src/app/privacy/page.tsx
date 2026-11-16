@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import VantaBg from "@/app/lib/VantaBg";
+import { SURFACE, layers } from "@/app/lib/ui/flat";
 
 export const metadata: Metadata = {
   title: "Πολιτική Απορρήτου | UltraChamp.gr",
@@ -38,7 +39,7 @@ export default function PrivacyPage() {
 
         {/* ── Content ── */}
         <div className="container mx-auto px-4 pb-16 max-w-4xl">
-          <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 p-6 sm:p-10 shadow-2xl">
+          <div className={`${SURFACE} p-6 sm:p-10`} style={{ boxShadow: layers("#fb923c") }}>
             <div className="space-y-10">
 
               {/* 1. Εισαγωγή */}

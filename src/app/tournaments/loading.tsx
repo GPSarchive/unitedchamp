@@ -1,3 +1,5 @@
+import { SURFACE, layers } from "@/app/lib/ui/flat";
+
 export default function TournamentsLoading() {
   return (
     <section className="relative min-h-screen bg-black text-white">
@@ -21,7 +23,8 @@ export default function TournamentsLoading() {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
-              className="h-48 rounded-2xl border border-white/10 bg-neutral-950 p-6 animate-pulse"
+              className={`h-48 ${SURFACE} p-6 animate-pulse`}
+              style={{ boxShadow: layers("#fb923c") }}
             >
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full bg-neutral-800" />

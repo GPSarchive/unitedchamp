@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
 import { Trophy, Users, BarChart3 } from "lucide-react";
 import { loadHomeData } from "@/app/home/data";
+import { SURFACE, layers } from "@/app/lib/ui/flat";
 
 // Existing home wrappers (backgrounds kept for Welcome / Videos / Features / Testimonials)
 import HomeHero from "@/app/home/HomeHero";
@@ -299,7 +300,8 @@ export default async function Home() {
             ].map(({ n, icon: Icon, title, body }) => (
               <div
                 key={n}
-                className="group relative p-8 border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:border-[#fb923c]/40 hover:bg-white/[0.06] transition-all"
+                className={`group relative p-8 ${SURFACE} hover:bg-[#171724] transition-all`}
+                style={{ boxShadow: layers("#fb923c") }}
               >
                 <div className="flex items-start justify-between mb-7">
                   <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#fb923c]">
@@ -330,7 +332,7 @@ export default async function Home() {
 
           <Link
             href="/tournaments"
-            className="group mb-10 inline-flex items-center gap-3 border-2 border-[#fb923c] bg-[#fb923c] px-7 py-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#08080f] hover:bg-[#fb923c]/90 transition-all"
+            className="group mb-10 inline-flex items-center gap-3 rounded-lg bg-[#fb923c] px-7 py-3 font-mono text-[11px] uppercase tracking-[0.28em] text-[#08080f] hover:bg-[#fb923c]/90 transition-all"
           >
             Όλα τα Τουρνουά
             <span className="transition-transform group-hover:translate-x-1">→</span>
@@ -369,7 +371,8 @@ export default async function Home() {
             ].map((t, i) => (
               <figure
                 key={i}
-                className="relative p-8 border border-white/10 bg-white/[0.03] backdrop-blur-sm hover:border-[#fb923c]/30 hover:bg-white/[0.06] transition-all flex flex-col gap-5"
+                className={`relative p-8 ${SURFACE} hover:bg-[#171724] transition-all flex flex-col gap-5`}
+                style={{ boxShadow: layers("#fb923c") }}
               >
                 <span
                   aria-hidden

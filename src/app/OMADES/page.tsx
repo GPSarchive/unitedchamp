@@ -6,6 +6,7 @@ import TeamCard from "@/app/OMADES/TeamCard";
 import { supabaseAdmin } from "@/app/lib/supabase/supabaseAdmin";
 import { getActiveSeasonCached, NO_SEASON } from "@/app/lib/seasonScope";
 import type { Team } from "@/app/lib/types";
+import { SURFACE, layers, CHIP, CHIP_ORANGE } from "@/app/lib/ui/flat";
 import {
   Fraunces,
   Archivo_Black,
@@ -150,11 +151,11 @@ function PageHeader({ total, season }: { total: number; season: string | null })
           </div>
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
             {season && (
-              <span className="border border-[#fb923c]/40 bg-[#13131d] px-2.5 py-1 text-[#fb923c]">
+              <span className={`${CHIP_ORANGE} px-2.5 py-1 text-[#fb923c]`}>
                 Σεζόν · {season}
               </span>
             )}
-            <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
+            <span className={`${CHIP} px-2.5 py-1`}>
               Σύνολο · {pad2(total)}
             </span>
           </div>
@@ -178,8 +179,8 @@ function StateBlock({
 }) {
   return (
     <div
-      className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center"
-      style={{ background: "rgba(19,19,29,0.4)" }}
+      className={`relative ${SURFACE} p-12 text-center`}
+      style={{ boxShadow: layers("#fb923c") }}
     >
       <div className="mx-auto max-w-md">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
@@ -208,7 +209,7 @@ function Colophon({ total }: { total: number }) {
         </p>
         <Link
           href="/"
-          className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
+          className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
         >
           ← Επιστροφή στην Αρχική
         </Link>
@@ -304,7 +305,7 @@ export default async function TeamsPage({
                 {pad2(teams.length)} / {pad2(count)} ομάδες
               </span>
               {search && (
-                <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2 py-0.5 text-[#F3EFE6]/70">
+                <span className={`${CHIP} px-2 py-0.5 text-[#F3EFE6]/70`}>
                   « {search} »
                 </span>
               )}

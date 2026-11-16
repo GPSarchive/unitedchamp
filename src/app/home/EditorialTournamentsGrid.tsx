@@ -9,6 +9,7 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, CHIP } from "@/app/lib/ui/flat";
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
@@ -50,10 +51,10 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({ t, index }
         className="group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a14]"
       >
         <div
-          className="relative flex h-full flex-col overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] transition-all duration-300 group-hover:border-[#F3EFE6]/40 group-hover:-translate-y-1"
+          className={`relative flex h-full flex-col overflow-hidden ${SURFACE} transition-all duration-300 group-hover:-translate-y-1`}
           style={{
             transform: `rotate(${rotation})`,
-            boxShadow: `6px 6px 0 0 ${accent}`,
+            boxShadow: layers(accent),
           }}
         >
           {/* hover spotlight */}
@@ -66,7 +67,7 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({ t, index }
           />
 
           {/* header strip */}
-          <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]">
+          <div className={`flex items-center justify-between ${STRIP_TOP} px-4 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]`}>
             <span className="flex items-center gap-1.5 font-bold" style={{ color: accent }}>
               {isRunning && (
                 <span
@@ -112,12 +113,12 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({ t, index }
                 </h3>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em]">
                   {t.season && (
-                    <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 text-[#F3EFE6]/75">
+                    <span className={`${CHIP} px-1.5 py-0.5 text-[#F3EFE6]/75`}>
                       Σεζόν {t.season}
                     </span>
                   )}
                   {t.format && (
-                    <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 text-[#F3EFE6]/75">
+                    <span className={`${CHIP} px-1.5 py-0.5 text-[#F3EFE6]/75`}>
                       {t.format}
                     </span>
                   )}
@@ -128,10 +129,9 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({ t, index }
             {/* champion row */}
             {isCompleted && (t as any).winner_team_name && (
               <div
-                className="mt-4 flex items-center gap-2 border-2 px-3 py-2"
+                className="mt-4 flex items-center gap-2 rounded-md px-3 py-2"
                 style={{
-                  borderColor: "#E8B931",
-                  background: "rgba(232,185,49,0.08)",
+                  backgroundColor: "color-mix(in srgb, #E8B931 16%, transparent)",
                 }}
               >
                 <span className="font-[var(--f-brutal)] text-sm text-[#E8B931]">★</span>
@@ -158,9 +158,8 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({ t, index }
 
           {/* bottom strip — tournament id */}
           <div
-            className="flex items-center justify-between border-t px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.28em]"
+            className={`flex items-center justify-between ${STRIP_BOTTOM} px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.28em]`}
             style={{
-              borderColor: "rgba(243,239,230,0.1)",
               color: "rgba(243,239,230,0.4)",
             }}
           >
@@ -185,8 +184,8 @@ export default function EditorialTournamentsGrid({ tournaments }: Props) {
   if (!tournaments || tournaments.length === 0) {
     return (
       <div
-        className="relative border-2 border-dashed border-[#F3EFE6]/25 p-10 text-center"
-        style={{ background: "rgba(19,19,29,0.4)" }}
+        className={`relative ${SURFACE} p-10 text-center`}
+        style={{ boxShadow: layers("#fb923c") }}
       >
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
           / 00 · Κατάλογος

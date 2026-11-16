@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useConsent } from "./use-consent";
 import { CONSENT_REOPEN_EVENT } from "./use-consent";
+import { SURFACE, BUTTON_SHAPE, layers } from "@/app/lib/ui/flat";
 
 export default function CookieBanner() {
   const { state, ready, accept, setAnalytics } = useConsent();
@@ -63,7 +64,8 @@ export default function CookieBanner() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 40, opacity: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 28 }}
-        className="fixed z-[100] bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-md bg-black/70 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl p-5 sm:p-6 text-white"
+        className={`fixed z-[100] bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 md:max-w-md ${SURFACE} p-5 sm:p-6 text-white`}
+        style={{ boxShadow: layers("#fb923c") }}
       >
         {!expanded ? (
           <div>
@@ -93,14 +95,14 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-orange-500/20"
+                className="inline-flex items-center rounded-lg bg-[#fb923c] px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
                 Αποδοχή όλων
               </button>
               <button
                 type="button"
                 onClick={handleRejectAll}
-                className="inline-flex items-center rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className={`inline-flex items-center ${BUTTON_SHAPE} px-4 py-2 text-sm font-semibold text-white transition-colors`}
               >
                 Απόρριψη
               </button>
@@ -125,7 +127,7 @@ export default function CookieBanner() {
 
             <div className="mt-4 space-y-3">
               {/* Essential row — always on */}
-              <div className="flex items-start justify-between gap-3 rounded-xl bg-white/5 border border-white/10 p-3">
+              <div className="flex items-start justify-between gap-3 rounded-lg bg-[#F3EFE6]/[0.04] p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white">
                     Απαραίτητα
@@ -141,7 +143,7 @@ export default function CookieBanner() {
               </div>
 
               {/* Analytics row */}
-              <label className="flex items-start justify-between gap-3 rounded-xl bg-white/5 border border-white/10 p-3 cursor-pointer">
+              <label className="flex items-start justify-between gap-3 rounded-lg bg-[#F3EFE6]/[0.04] p-3 cursor-pointer">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white">
                     Αναλυτικά & ενσωματώσεις
@@ -165,14 +167,14 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="inline-flex items-center rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                className={`inline-flex items-center ${BUTTON_SHAPE} px-4 py-2 text-sm font-semibold text-white transition-colors`}
               >
                 Αποδοχή όλων
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-orange-500/20"
+                className="inline-flex items-center rounded-lg bg-[#fb923c] px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform"
               >
                 Αποθήκευση
               </button>

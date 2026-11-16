@@ -17,6 +17,7 @@ import { rankVisible, type RankedLine, type SeasonStandingRow } from "./standing
 import PointsLog, { type LogTeam } from "./PointsLog";
 import MarqueeText from "@/app/home/cards/MarqueeText";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
+import { SURFACE, layers, STRIP_TOP, CHIP, BUTTON_SHAPE_ORANGE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography (same stack as the live page)
@@ -243,12 +244,12 @@ function Masthead({
             {archiveHref && (
               <Link
                 href={archiveHref}
-                className="border border-[#fb923c]/40 bg-[#13131d]/80 px-2.5 py-1 text-[#fb923c] transition-colors hover:bg-[#fb923c] hover:text-[#0a0a14]"
+                className={`${BUTTON_SHAPE_ORANGE} px-2.5 py-1 text-[#fb923c] transition-colors`}
               >
                 Αρχείο σεζόν →
               </Link>
             )}
-            <span className="hidden border border-[#F3EFE6]/20 bg-[#13131d]/80 px-2.5 py-1 sm:inline-block">
+            <span className={`hidden ${CHIP} px-2.5 py-1 sm:inline-block`}>
               Ομάδες · {pad2(teamCount)}
             </span>
           </div>
@@ -421,18 +422,15 @@ function ChampionAltar({
       </div>
 
       <div
-        className="relative overflow-hidden border"
+        className={`relative overflow-hidden ${SURFACE}`}
         style={{
-          borderColor: `${GOLD}66`,
-          background:
-            "linear-gradient(180deg, rgba(232,198,107,0.10) 0%, rgba(19,19,29,0.85) 34%, rgba(10,10,20,0.92) 100%)",
-          boxShadow: `0 0 60px rgba(232,198,107,0.10), inset 0 1px 0 ${GOLD}55`,
+          boxShadow: layers(GOLD),
         }}
       >
         {/* inner hairline frame — the plaque engraving */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-2 border"
+          className="pointer-events-none absolute inset-2 rounded-lg border"
           style={{ borderColor: `${GOLD}2e` }}
         />
 
@@ -519,8 +517,8 @@ function PodiumFlank({
   const name = team?.name ?? `Ομάδα #${line.teamId}`;
   return (
     <div
-      className="relative overflow-hidden border bg-[#0f0f19]/80"
-      style={{ borderColor: `${tone}40`, boxShadow: `inset 0 1px 0 ${tone}40` }}
+      className={`relative overflow-hidden ${SURFACE}`}
+      style={{ boxShadow: layers(tone) }}
     >
       <div className="px-2.5 pt-5 pb-0 text-center sm:px-5 sm:pt-7">
         <p
@@ -586,11 +584,11 @@ function LedgerTable({
           Θέσεις {pad2(lines[0].rank)} — {pad2(lines[lines.length - 1].rank)}
         </span>
       </div>
-      <div className="border border-[#F3EFE6]/15 bg-[#0f0f19]/70">
+      <div className={`overflow-hidden ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-[#F3EFE6]/20 bg-[#13131d]">
+              <tr className={STRIP_TOP}>
                 <th className={`${th} w-12 text-left`}>#</th>
                 <th className={`${th} text-left`}>Ομάδα</th>
                 <th className={`${th} text-center`} title="Συμμετοχές σε τουρνουά">Συμ.</th>
@@ -614,7 +612,7 @@ function LedgerTable({
                     className="border-b border-[#F3EFE6]/10 transition-colors last:border-b-0 hover:bg-[#e8c66b]/[0.05]"
                   >
                     <td className="px-3 py-2.5">
-                      <span className="inline-flex h-7 w-7 items-center justify-center border border-[#F3EFE6]/15 font-mono text-[11px] font-bold tabular-nums text-[#F3EFE6]/70">
+                      <span className={`inline-flex h-7 w-7 items-center justify-center ${CHIP} font-mono text-[11px] font-bold tabular-nums text-[#F3EFE6]/70`}>
                         {pad2(r.rank)}
                       </span>
                     </td>
@@ -746,8 +744,8 @@ function PointsLegend() {
 function StateBlock({ kicker, title, body }: { kicker: string; title: string; body: string }) {
   return (
     <div
-      className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center"
-      style={{ background: "rgba(19,19,29,0.4)" }}
+      className={`relative ${SURFACE} p-12 text-center`}
+      style={{ boxShadow: layers("#fb923c") }}
     >
       <div className="mx-auto max-w-md">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
@@ -881,7 +879,7 @@ export default function StandingsViewGrand({
           </p>
           <Link
             href="/"
-            className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
+            className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
           >
             ← Επιστροφή στην Αρχική
           </Link>

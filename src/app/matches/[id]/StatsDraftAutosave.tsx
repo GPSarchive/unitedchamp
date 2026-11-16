@@ -288,15 +288,15 @@ export default function StatsDraftAutosave({
   const savedAtLabel = lastSavedAt
     ? formatInstant(new Date(lastSavedAt).toISOString(), { timeStyle: "medium" })
     : "";
-  const barButton = "rounded border px-2.5 py-1 text-xs font-medium transition-colors";
+  const barButton = "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors";
 
   return (
     <div ref={anchorRef}>
       {lastSavedAt ? (
         <div
           data-draft-bar
-          className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
-            viewingSaved ? "border-white/20 bg-white/5" : "border-cyan-400/40 bg-cyan-500/10"
+          className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 ${
+            viewingSaved ? "bg-[#F3EFE6]/[0.04]" : "bg-cyan-500/[0.16]"
           }`}
         >
           <span className={`text-xs ${viewingSaved ? "text-white/70" : "text-cyan-100"}`}>
@@ -316,7 +316,7 @@ export default function StatsDraftAutosave({
               <button
                 type="button"
                 onClick={reapplyDraft}
-                className={`${barButton} border-cyan-500 bg-cyan-600 text-white hover:bg-cyan-500`}
+                className={`${barButton} bg-cyan-600 text-white hover:bg-cyan-500`}
               >
                 Εφαρμογή πρόχειρου
               </button>
@@ -325,7 +325,7 @@ export default function StatsDraftAutosave({
                 type="button"
                 onClick={showSaved}
                 title="Εμφάνιση των στοιχείων της βάσης — το πρόχειρο δεν διαγράφεται"
-                className={`${barButton} border-white/25 text-white/85 hover:bg-white/10`}
+                className={`${barButton} bg-[#F3EFE6]/[0.08] text-white/85 hover:bg-[#F3EFE6]/[0.14]`}
               >
                 Επαναφορά
               </button>
@@ -334,7 +334,7 @@ export default function StatsDraftAutosave({
               type="button"
               onClick={wipeDraft}
               title="Οριστική διαγραφή του πρόχειρου"
-              className={`${barButton} border-red-400/40 text-red-200 hover:bg-red-500/15`}
+              className={`${barButton} bg-red-500/[0.16] text-red-200 hover:bg-red-500/25`}
             >
               Απόρριψη
             </button>

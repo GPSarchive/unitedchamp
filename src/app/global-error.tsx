@@ -7,6 +7,8 @@
 //
 // SECURITY: never render error.message or error.stack.
 
+import { BUTTON_SHAPE } from '@/app/lib/ui/flat'
+
 export default function GlobalError({
   error,
   reset,
@@ -35,7 +37,7 @@ export default function GlobalError({
           <div className="mt-8 flex gap-4 justify-center">
             <button
               onClick={reset}
-              className="rounded-md bg-white/10 px-6 py-2.5 text-sm font-medium
+              className="rounded-lg bg-white/10 px-6 py-2.5 text-sm font-medium
                          text-white transition hover:bg-white/20"
             >
               Δοκιμάστε ξανά
@@ -43,8 +45,8 @@ export default function GlobalError({
 
             <a
               href="/"
-              className="rounded-md border border-white/10 px-6 py-2.5 text-sm
-                         font-medium text-gray-400 transition hover:text-white"
+              className={`${BUTTON_SHAPE} px-6 py-2.5 text-sm
+                         font-medium text-gray-400 transition hover:text-white`}
             >
               Αρχική
             </a>

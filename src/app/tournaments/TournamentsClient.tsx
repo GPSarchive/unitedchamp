@@ -10,6 +10,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
 import type { Tournament } from "@/app/tournaments/useTournamentData";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, LINE, CHIP, CHIP_ORANGE, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography
@@ -130,7 +131,7 @@ const PageHeader: React.FC<{ total: number; running: number }> = ({
   total,
   running,
 }) => (
-  <header className="relative border-b-2 border-[#F3EFE6]/20">
+  <header className={`relative border-b ${LINE}`}>
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-6 md:pt-10 md:pb-8">
       {/* breadcrumb */}
       <nav className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
@@ -166,12 +167,12 @@ const PageHeader: React.FC<{ total: number; running: number }> = ({
           className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70"
         >
           {running > 0 && (
-            <span className="inline-flex items-center gap-2 border border-[#fb923c]/60 bg-[#fb923c]/10 px-2.5 py-1 text-[#fb923c]">
+            <span className={`inline-flex items-center gap-2 ${CHIP_ORANGE} px-2.5 py-1 text-[#fb923c]`}>
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#fb923c]" />
               {pad2(running)} Ζωντανά
             </span>
           )}
-          <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
+          <span className={`${CHIP} px-2.5 py-1`}>
             Σύνολο · {pad2(total)}
           </span>
         </motion.div>
@@ -214,10 +215,10 @@ const Controls: React.FC<{
             <button
               key={f.value}
               onClick={() => setStatusFilter(f.value)}
-              className={`group flex items-center gap-2 border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
+              className={`group flex items-center gap-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
                 active
-                  ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+                  ? "rounded-lg bg-[#fb923c] text-[#0a0a14]"
+                  : `${BUTTON_SHAPE} text-[#F3EFE6]/70 hover:text-[#F3EFE6]`
               }`}
             >
               <span>{f.label}</span>
@@ -264,10 +265,10 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({
         className="group block h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a14]"
       >
         <div
-          className="relative flex h-full flex-col overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] transition-all duration-300 group-hover:border-[#F3EFE6]/40 group-hover:-translate-y-1"
+          className={`relative flex h-full flex-col overflow-hidden ${SURFACE} transition-all duration-300 group-hover:-translate-y-1`}
           style={{
             transform: `rotate(${rotation})`,
-            boxShadow: `6px 6px 0 0 ${accent}`,
+            boxShadow: layers(accent),
           }}
         >
           {/* hover spotlight */}
@@ -281,7 +282,7 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({
 
           {/* header strip */}
           <div
-            className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]"
+            className={`flex items-center justify-between ${STRIP_TOP} px-4 py-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]`}
           >
             <span
               className="flex items-center gap-1.5 font-bold"
@@ -333,12 +334,12 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({
                 </h3>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em]">
                   {t.season && (
-                    <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 text-[#F3EFE6]/75">
+                    <span className={`${CHIP} px-1.5 py-0.5 text-[#F3EFE6]/75`}>
                       Σεζόν {t.season}
                     </span>
                   )}
                   {t.format && (
-                    <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 text-[#F3EFE6]/75">
+                    <span className={`${CHIP} px-1.5 py-0.5 text-[#F3EFE6]/75`}>
                       {t.format}
                     </span>
                   )}
@@ -349,10 +350,9 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({
             {/* champion row */}
             {isCompleted && t.winner_team_name && (
               <div
-                className="mt-4 flex items-center gap-2 border-2 px-3 py-2"
+                className="mt-4 flex items-center gap-2 rounded-md px-3 py-2"
                 style={{
-                  borderColor: "#E8B931",
-                  background: "rgba(232,185,49,0.08)",
+                  backgroundColor: "color-mix(in srgb, #E8B931 16%, transparent)",
                 }}
               >
                 <span className="font-[var(--f-brutal)] text-sm text-[#E8B931]">
@@ -387,9 +387,8 @@ const TournamentCard: React.FC<{ t: Tournament; index: number }> = ({
 
           {/* bottom strip — tournament id */}
           <div
-            className="flex items-center justify-between border-t px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.28em]"
+            className={`flex items-center justify-between ${STRIP_BOTTOM} px-4 py-1.5 font-mono text-[9px] uppercase tracking-[0.28em]`}
             style={{
-              borderColor: "rgba(243,239,230,0.1)",
               color: "rgba(243,239,230,0.4)",
             }}
           >
@@ -427,8 +426,8 @@ const CountBlock: React.FC<{ value: string; label: string }> = ({
 // ───────────────────────────────────────────────────────────────────────
 const EmptyState: React.FC<{ hasAny: boolean }> = ({ hasAny }) => (
   <div
-    className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center"
-    style={{ background: "rgba(19,19,29,0.4)" }}
+    className={`relative ${SURFACE} p-12 text-center`}
+    style={{ boxShadow: layers("#fb923c") }}
   >
     <div className="mx-auto max-w-md">
       <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
@@ -451,14 +450,14 @@ const EmptyState: React.FC<{ hasAny: boolean }> = ({ hasAny }) => (
 // Footer colophon
 // ───────────────────────────────────────────────────────────────────────
 const Colophon: React.FC<{ total: number }> = ({ total }) => (
-  <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+  <footer className={`border-t ${LINE} bg-[#13131d] text-[#F3EFE6]`}>
     <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-6 py-6 md:flex-row md:items-center">
       <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
         Σύνολο τουρνουά · {pad2(total)}
       </p>
       <Link
         href="/"
-        className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
+        className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
       >
         ← Επιστροφή στην Αρχική
       </Link>

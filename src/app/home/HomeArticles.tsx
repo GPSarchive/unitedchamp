@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/app/lib/supabase/supabaseAdmin';
+import { SURFACE, BUTTON_SHAPE, layers } from '@/app/lib/ui/flat';
 
 type Article = {
   id: number;
@@ -73,7 +74,7 @@ export default async function HomeArticles() {
         </div>
 
         {/* ── 4-col grid ────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-5 lg:gap-6">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-5 sm:gap-5 lg:gap-6">
           {(articles as Article[]).map((article, index) => {
             const image = extractFirstImage(article.content);
             const publishedDate = new Date(article.published_at).toLocaleDateString('el-GR', {
@@ -88,7 +89,7 @@ export default async function HomeArticles() {
                 href={`/article/${article.slug}`}
                 className="group block"
               >
-                <article className="relative h-full flex flex-col bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 group-hover:border-orange-500/50 group-hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]">
+                <article className={`relative h-full flex flex-col ${SURFACE} overflow-hidden transition-all duration-500`} style={{ boxShadow: layers('#fb923c') }}>
 
                   {/* ── Image ───────────────────────────────── */}
                   <div className="relative overflow-hidden aspect-video flex-shrink-0">
@@ -110,7 +111,7 @@ export default async function HomeArticles() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
 
                     {/* Index counter badge */}
-                    <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 font-mono text-[10px] sm:text-xs font-bold text-orange-400 bg-black/70 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 tracking-widest">
+                    <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 font-mono text-[10px] sm:text-xs font-bold text-orange-400 bg-black/70 rounded-md px-1.5 py-0.5 sm:px-2 sm:py-1 tracking-widest">
                       {String(index + 1).padStart(2, '0')}
                     </div>
 
@@ -149,8 +150,8 @@ export default async function HomeArticles() {
                   </div>
 
                   {/* ── Corner bracket accents (hover) ───────── */}
-                  <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t-2 border-l-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b-2 border-r-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t-2 border-l-2 rounded-tl-xl border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b-2 border-r-2 rounded-br-xl border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </article>
               </Link>
             );
@@ -161,7 +162,7 @@ export default async function HomeArticles() {
         <div className="mt-10 sm:mt-16 text-center">
           <Link
             href="/articles"
-            className="inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white transition-all duration-300 font-medium tracking-widest text-sm uppercase"
+            className={`inline-flex items-center gap-3 px-7 sm:px-10 py-3.5 sm:py-4 ${BUTTON_SHAPE} text-white transition-all duration-300 font-medium tracking-widest text-sm uppercase`}
           >
             Δείτε Περισσότερα
             <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
