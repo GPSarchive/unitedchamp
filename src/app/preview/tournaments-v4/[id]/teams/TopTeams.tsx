@@ -8,6 +8,7 @@
 // the four), so the cards compare at a glance: a steeper, higher line is the
 // better run. Server component; the measures come from ./progress.
 import Link from "next/link";
+import { STRIP_BOTTOM, SURFACE, layer } from "@/app/lib/ui/flat";
 import type { StageTables, TMatch, TTeam } from "../../../tournaments-v3/[id]/model";
 import { MATCH_PATH, TEAM_PATH } from "../paths";
 import { FOCUS, SAFFRON } from "../tokens";
@@ -78,8 +79,8 @@ function Card({
   const form = results.slice(-5).map((r) => r.outcome);
   return (
     <li
-      className="flex min-w-0 flex-col border-2 border-[#F3EFE6]/20 bg-[#0e0e1a]"
-      style={champion ? { borderColor: SAFFRON } : undefined}
+      className={`flex min-w-0 flex-col overflow-hidden ${SURFACE}`}
+      style={{ boxShadow: layer(champion ? SAFFRON : (colour ?? ORANGE)) }}
     >
       <span aria-hidden className="block h-1.5" style={{ background: colour ?? "rgb(243 239 230 / 0.2)" }} />
       <Link
@@ -128,7 +129,7 @@ function Card({
         <Link
           href={`${MATCH_PATH}/${last.match.id}`}
           title={`${last.opponent?.name ?? "Αντίπαλος"} ${last.own}–${last.opp}`}
-          className={`flex items-center gap-2 border-t border-[#F3EFE6]/15 bg-[#151522] px-3 py-2 transition-colors hover:bg-[#1c1c2b] md:px-3.5 ${FOCUS}`}
+          className={`flex items-center gap-2 ${STRIP_BOTTOM} px-3 py-2 transition-colors hover:bg-[#1c1c2b] md:px-3.5 ${FOCUS}`}
         >
           <OutcomeMark outcome={last.outcome} className="h-6 w-6 text-[13px]" />
           <Crest team={last.opponent} className="h-6 w-6 text-[11px]" sizes="24px" />

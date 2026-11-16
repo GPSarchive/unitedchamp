@@ -24,6 +24,7 @@ import { ProfileHost, ProfileTrigger } from "../../paiktes-v3/ProfileHost";
 import { PlayerMini } from "../../matches-v3/[id]/cards";
 import { mainName, playerName, smallName } from "../../matches-v3/[id]/model";
 import { teamAccent } from "./accent";
+import { BUTTON_SHAPE, SURFACE, layer, layers } from "@/app/lib/ui/flat";
 import Kickoff from "./Kickoff";
 import {
   OUTCOME_LETTER,
@@ -119,14 +120,14 @@ function ListHead({ title, note }: { title: React.ReactNode; note?: string }) {
 function OutcomeMark({ outcome, small = false }: { outcome: Outcome; small?: boolean }) {
   const tone =
     outcome === "W"
-      ? "border-[#4ade80]/60 text-[#86efac]"
+      ? "bg-[#4ade80]/[0.16] text-[#86efac]"
       : outcome === "L"
-        ? "border-[#f87171]/60 text-[#fca5a5]"
-        : "border-[#F3EFE6]/30 text-[#F3EFE6]/75";
+        ? "bg-[#f87171]/[0.16] text-[#fca5a5]"
+        : "bg-[#F3EFE6]/[0.08] text-[#F3EFE6]/75";
   return (
     <span
       title={OUTCOME_WORD[outcome]}
-      className={`inline-flex shrink-0 items-center justify-center border font-bold ${tone} ${
+      className={`inline-flex shrink-0 items-center justify-center rounded-md font-bold ${tone} ${
         small ? "h-7 w-7 text-[13px]" : "h-9 w-9 text-[15px]"
       }`}
     >
@@ -230,7 +231,7 @@ function NextMatch({ view }: { view: TeamView }) {
           {view.kickoffMs !== null && match.date ? <Kickoff kickoffMs={view.kickoffMs} date={match.date} /> : null}
           <Link
             href={`${MATCH_PATH}/${match.id}`}
-            className={`inline-flex h-11 items-center border border-[#F3EFE6]/25 px-5 text-[15px] hover:border-[color:var(--team)] hover:text-[color:var(--team)] ${FOCUS}`}
+            className={`inline-flex h-11 items-center ${BUTTON_SHAPE} px-5 text-[15px] hover:text-[color:var(--team)] ${FOCUS}`}
           >
             Σελίδα αγώνα
           </Link>
@@ -246,7 +247,7 @@ function NextMatch({ view }: { view: TeamView }) {
 
 function Tile({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex flex-col-reverse bg-[#0a0a14] px-1 py-3 text-center">
+    <div className="flex flex-col-reverse bg-[#12121e] px-1 py-3 text-center">
       <dt className="mt-1 text-[13px] leading-tight text-[#F3EFE6]/65">{label}</dt>
       <dd className="m-0">
         <Chrome size="2.4rem" className="px-1 tabular-nums">
@@ -384,7 +385,10 @@ function Season({ view }: { view: TeamView }) {
       <SectionTitle id="season-title" title="Η σεζόν" />
       <div className="mt-5 grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-12">
         <div className="min-w-0">
-          <dl className="grid grid-cols-3 gap-px bg-[#F3EFE6]/15 p-px sm:grid-cols-6 lg:grid-cols-3">
+          <dl
+            className="grid grid-cols-3 gap-px overflow-hidden rounded-xl bg-[#F3EFE6]/[0.08] sm:grid-cols-6 lg:grid-cols-3"
+            style={{ boxShadow: layers("var(--team)") }}
+          >
             <Tile value={record.played} label="Αγώνες" />
             <Tile value={record.won} label="Νίκες" />
             <Tile value={record.drawn} label="Ισοπαλίες" />
@@ -464,7 +468,7 @@ function SquadRow({ player, logo }: { player: SquadPlayer; logo: string | null }
   const mvp = n?.[4] ?? 0;
   const bestGk = n?.[5] ?? 0;
   const icon = "h-3.5 w-3.5 shrink-0";
-  const award = "inline-flex items-center gap-1 border border-[#D4AF37]/60 px-1.5 py-1 font-bold text-[#FFE08A]";
+  const award = "inline-flex items-center gap-1 rounded-md bg-[#D4AF37]/[0.16] px-1.5 py-1 font-bold text-[#FFE08A]";
   return (
     <li className="border-b border-[#F3EFE6]/[0.08]">
       <ProfileLink
@@ -655,7 +659,7 @@ function Collapsible<T>({
       {rest.length > 0 ? (
         <details className="group/more">
           <summary
-            className={`mt-3 inline-flex h-11 cursor-pointer list-none items-center border border-[#F3EFE6]/25 px-5 text-[15px] hover:border-[color:var(--team)] hover:text-[color:var(--team)] group-open/more:hidden [&::-webkit-details-marker]:hidden ${FOCUS}`}
+            className={`mt-3 inline-flex h-11 cursor-pointer list-none items-center ${BUTTON_SHAPE} px-5 text-[15px] hover:text-[color:var(--team)] group-open/more:hidden [&::-webkit-details-marker]:hidden ${FOCUS}`}
           >
             {more} ({items.length})
           </summary>
@@ -761,16 +765,13 @@ function Tournaments({ view }: { view: TeamView }) {
         title="Διοργανώσεις"
         lede={titles > 0 ? `${plural(titles, "τίτλος", "τίτλοι")} αυτή τη σεζόν.` : undefined}
       />
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {view.tournaments.map((t) => (
           <li key={t.id}>
             <Link
               href={`${TOURNAMENT_PATH}/${t.id}`}
-              className={`group flex h-full flex-col gap-1 border px-4 py-3 transition-colors ${
-                t.won
-                  ? "border-[#D4AF37]/60 hover:border-[#FFE08A]"
-                  : "border-[#F3EFE6]/15 hover:border-[color:var(--team)]"
-              } ${FOCUS}`}
+              className={`group flex h-full flex-col gap-1 ${SURFACE} px-4 py-3 transition-colors hover:bg-[#171724] ${FOCUS}`}
+              style={{ boxShadow: layer(t.won ? "#D4AF37" : "var(--team)") }}
             >
               <span className="text-lg font-bold italic leading-tight group-hover:text-[color:var(--team)]">
                 {t.name}
@@ -876,7 +877,7 @@ export default function TeamPage({ view }: { view: TeamView }) {
           <footer className="py-6">
             <Link
               href="/OMADES"
-              className={`inline-flex h-11 items-center border border-[#F3EFE6]/25 px-5 text-[15px] hover:border-[color:var(--team)] hover:text-[color:var(--team)] ${FOCUS}`}
+              className={`inline-flex h-11 items-center ${BUTTON_SHAPE} px-5 text-[15px] hover:text-[color:var(--team)] ${FOCUS}`}
             >
               Όλες οι ομάδες
             </Link>

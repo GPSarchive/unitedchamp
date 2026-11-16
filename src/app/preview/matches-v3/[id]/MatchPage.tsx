@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { TeamImage, TournamentImage } from "@/app/lib/OptimizedImage";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
+import { BUTTON_SHAPE, CHIP, SURFACE, layers } from "@/app/lib/ui/flat";
 import { FormerPlayerBadge } from "@/components/FormerPlayerBadge";
 import {
   AssistIcon,
@@ -111,7 +112,7 @@ function TeamLogo({ team, className, sizes }: { team: MatchTeam; className: stri
       {team.logo ? (
         <TeamImage src={team.logo} alt="" fill objectFit="contain" sizes={sizes} animate={false} />
       ) : (
-        <div className="flex h-full w-full items-center justify-center border border-[#F3EFE6]/20 text-lg font-bold text-[#F3EFE6]/50">
+        <div className={`flex h-full w-full items-center justify-center ${CHIP} text-lg font-bold text-[#F3EFE6]/50`}>
           {team.name.charAt(0)}
         </div>
       )}
@@ -267,7 +268,7 @@ function Scoreboard({ view }: { view: MatchView }) {
         <div className="mt-3 flex flex-col items-center gap-2 text-center">
           <p className="text-[15px] font-bold text-[#fb923c]">{result}</p>
           {penalties ? (
-            <p className="border border-[#D4AF37]/60 px-2.5 py-1 text-[15px] font-bold tabular-nums text-[#FFE08A]">
+            <p className="rounded-md bg-[#D4AF37]/[0.16] px-2.5 py-1 text-[15px] font-bold tabular-nums text-[#FFE08A]">
               Πέναλτι {penalties.a}–{penalties.b}
             </p>
           ) : null}
@@ -427,7 +428,7 @@ function SheetItem({ row, logo }: { row: SheetRow; logo: string | null }) {
                   key={b.key}
                   className={`inline-flex items-center gap-1 text-[13px] leading-none ${
                     b.award
-                      ? "border border-[#D4AF37]/60 px-1.5 py-1 font-bold text-[#FFE08A]"
+                      ? "rounded-md bg-[#D4AF37]/[0.16] px-1.5 py-1 font-bold text-[#FFE08A]"
                       : "text-[#F3EFE6]/85"
                   }`}
                 >
@@ -565,7 +566,7 @@ function PhaseSwitch({ view, basePath }: { view: MatchView; basePath: string }) 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#F3EFE6]/10 py-3">
       <span className="text-[13px] text-[#F3EFE6]/65">Έκδοση σελίδας (προεπισκόπηση)</span>
-      <div className="flex gap-px border border-[#F3EFE6]/20">
+      <div className="flex gap-px overflow-hidden rounded-lg bg-[#F3EFE6]/[0.08]">
         {options.map((o) => {
           const active = o.phase === view.phase;
           return (
@@ -662,7 +663,10 @@ export default function MatchPage({
           {view.videoId ? (
             <section aria-labelledby="video-title" className="border-t border-[#F3EFE6]/15 py-8 md:py-12">
               <SectionTitle id="video-title" title="Βίντεο αγώνα" />
-              <div className="mt-5 aspect-video w-full overflow-hidden border border-[#F3EFE6]/15">
+              <div
+                className={`mt-5 aspect-video w-full overflow-hidden ${SURFACE}`}
+                style={{ boxShadow: layers("#fb923c") }}
+              >
                 <iframe
                   className="h-full w-full"
                   src={`https://www.youtube.com/embed/${view.videoId}`}
@@ -678,7 +682,7 @@ export default function MatchPage({
           <footer className="border-t border-[#F3EFE6]/15 py-6">
             <Link
               href="/matches"
-              className={`inline-flex h-11 items-center border border-[#F3EFE6]/25 px-5 text-[15px] hover:border-[#fb923c] hover:text-[#fb923c] ${FOCUS}`}
+              className={`inline-flex h-11 items-center ${BUTTON_SHAPE} px-5 text-[15px] hover:text-[#fb923c] ${FOCUS}`}
             >
               Όλοι οι αγώνες
             </Link>

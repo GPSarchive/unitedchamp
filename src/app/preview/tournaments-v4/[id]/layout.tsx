@@ -18,6 +18,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TournamentImage } from "@/app/lib/OptimizedImage";
 import { formatMatchDate, nowWallClockIso } from "@/app/lib/datetime";
+import { LINE, SURFACE, layers } from "@/app/lib/ui/flat";
 import { ProfileHost } from "../../paiktes-v3/ProfileHost";
 import { loadBase, loadSquads, loadTables } from "../../tournaments-v3/[id]/data";
 import { headline, splitMatches, type Headline, type TTeam } from "../../tournaments-v3/[id]/model";
@@ -82,8 +83,8 @@ function ChampionPlate({ team }: { team: TTeam }) {
   return (
     <Link
       href={`${TEAM_PATH}/${team.id}`}
-      className={`mt-7 inline-flex max-w-[calc(100%-6px)] items-center gap-4 border-2 bg-[#0a0a14] py-3 pl-4 pr-6 transition-colors hover:bg-[#151522] md:mt-8 md:gap-5 md:py-3.5 md:pl-5 md:pr-8 ${FOCUS}`}
-      style={{ borderColor: SAFFRON, boxShadow: `6px 6px 0 0 ${SAFFRON}` }}
+      className={`mt-7 inline-flex max-w-[calc(100%-6px)] items-center gap-4 ${SURFACE} py-3 pl-4 pr-6 transition-colors hover:bg-[#171724] md:mt-8 md:gap-5 md:py-3.5 md:pl-5 md:pr-8 ${FOCUS}`}
+      style={{ boxShadow: layers(SAFFRON) }}
     >
       <Crest team={team} className="h-12 w-12 text-xl md:h-14 md:w-14" sizes="56px" />
       <span className="min-w-0">
@@ -144,7 +145,7 @@ export default async function TournamentLayout({
     <ProfileHost>
       <div className="relative isolate min-h-screen overflow-x-hidden bg-[#0a0a14] text-[#F3EFE6] selection:bg-[#fb923c] selection:text-[#0a0a14]">
         {/* The strip of next matches closes the header when there is one; otherwise a line does. */}
-        <header className={`${styles.masthead} ${upcoming.length === 0 ? "border-b-2 border-[#F3EFE6]/15" : ""}`}>
+        <header className={`${styles.masthead} ${upcoming.length === 0 ? `border-b ${LINE}` : ""}`}>
           <div className="mx-auto max-w-[1320px] px-4 pb-8 pt-4 md:px-6 md:pb-12 md:pt-5">
             <nav aria-label="Διαδρομή" className={`${LABEL} flex items-center gap-2 text-[#F3EFE6]/65`}>
               <Link href="/" className={`hover:text-[#fb923c] ${FOCUS}`}>
@@ -189,7 +190,10 @@ export default async function TournamentLayout({
                     />
                   </div>
                 ) : null}
-                <dl className="grid min-w-0 flex-1 grid-cols-3 border-2 border-[#F3EFE6]/20 bg-[#0a0a14]/70 md:flex-none">
+                <dl
+                  className={`grid min-w-0 flex-1 grid-cols-3 ${SURFACE} md:flex-none`}
+                  style={{ boxShadow: layers("#fb923c") }}
+                >
                   {counts.map((c, index) => (
                     <div
                       key={c.label}
@@ -221,7 +225,7 @@ export default async function TournamentLayout({
           <main className="pb-14 pt-8 md:pb-20 md:pt-11">{children}</main>
         </div>
 
-        <footer className="border-t-2 border-[#F3EFE6]/15">
+        <footer className={`border-t ${LINE}`}>
           <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-x-6 gap-y-4 px-4 py-6 md:px-6">
             <p className={`${LABEL} text-[#F3EFE6]/65`}>
               {base.name}

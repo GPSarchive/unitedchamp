@@ -15,6 +15,7 @@
 // data, so the page stays ISR.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatMatchDate, nowWallClockIso } from "@/app/lib/datetime";
+import { layers } from "@/app/lib/ui/flat";
 import type { TTeam } from "../../../tournaments-v3/[id]/model";
 import { openingDay, stageRuns, teamMatches, toDays, type Day, type StageInfo, type ViewMatch } from "./model";
 import { Crest } from "../ui";
@@ -322,7 +323,11 @@ function Parts({ matches, stages, now, twoTrees }: { matches: ViewMatch[]; stage
 }
 
 function Surface({ children }: { children: React.ReactNode }) {
-  return <div className="overflow-hidden rounded-xl bg-[var(--mc-panel)] text-[var(--mc-ink)]">{children}</div>;
+  return (
+    <div className="overflow-hidden rounded-xl bg-[var(--mc-panel)] text-[var(--mc-ink)]" style={{ boxShadow: layers("#fb923c") }}>
+      {children}
+    </div>
+  );
 }
 
 function DayList({ day, stages, now, twoTrees }: { day: Day; stages: StageInfo[]; now: string; twoTrees: boolean }) {

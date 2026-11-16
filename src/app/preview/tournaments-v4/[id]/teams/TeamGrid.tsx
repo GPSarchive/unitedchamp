@@ -14,6 +14,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
+import { SURFACE, layer, layers } from "@/app/lib/ui/flat";
 import styles from "../dispatch.module.css";
 import { BUTTON } from "../tokens";
 
@@ -84,11 +85,12 @@ export default function TeamGrid({ teams }: { teams: TeamEntry[] }) {
               aria-controls={isOpen ? squadId : undefined}
               onClick={() => setOpen(isOpen ? null : team.id)}
               // The scroll margin clears the site's fixed top bar when the tile is scrolled back into view.
-              className={`group relative flex min-w-0 scroll-mt-20 flex-col border-2 py-3 pl-4 pr-3 text-left transition-colors md:scroll-mt-36 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] ${
+              className={`group relative flex min-w-0 scroll-mt-20 flex-col rounded-xl py-3 pl-4 pr-3 text-left transition-colors md:scroll-mt-36 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] ${
                 isOpen
-                  ? "border-[#F3EFE6]/45 bg-[#151522]"
-                  : "border-[#F3EFE6]/20 bg-[#0e0e1a] hover:border-[#F3EFE6]/45 hover:bg-[#151522]"
+                  ? "bg-[#171724]"
+                  : "bg-[#12121e] hover:bg-[#171724]"
               }`}
+              style={{ boxShadow: layer("#fb923c") }}
             >
               {team.tile}
               <svg
@@ -104,7 +106,7 @@ export default function TeamGrid({ teams }: { teams: TeamEntry[] }) {
               {isOpen ? (
                 <span
                   aria-hidden
-                  className="absolute left-1/2 top-full z-10 mt-[7px] h-3 w-3 -translate-x-1/2 rotate-45 border-l-2 border-t-2 border-[#F3EFE6]/45 bg-[#151522]"
+                  className="absolute left-1/2 top-full z-10 mt-[7px] h-3 w-3 -translate-x-1/2 rotate-45 bg-[#1d1d29]"
                 />
               ) : null}
             </button>
@@ -113,7 +115,8 @@ export default function TeamGrid({ teams }: { teams: TeamEntry[] }) {
               <section
                 id={squadId}
                 aria-label={`Ρόστερ: ${team.name}`}
-                className={`${styles.roster} col-span-full min-w-0 border-2 border-[#F3EFE6]/45 bg-[#0e0e1a]`}
+                className={`${styles.roster} col-span-full min-w-0 ${SURFACE}`}
+                style={{ boxShadow: layers("#fb923c") }}
               >
                 {team.squad}
                 <p className="flex flex-wrap gap-2.5 border-t border-[#F3EFE6]/20 px-4 py-4 md:px-5">

@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { countdownParts, dayLabel } from "./clock";
+import { layers } from "@/app/lib/ui/flat";
 
 const two = (v: number) => String(v).padStart(2, "0");
 
@@ -38,17 +39,18 @@ export default function Kickoff({ kickoffMs, date }: { kickoffMs: number; date: 
       <div
         role="timer"
         aria-label={c ? `Σέντρα σε ${c.days} μέρες, ${c.hours} ώρες και ${c.minutes} λεπτά` : "Αντίστροφη μέτρηση"}
-        className="flex gap-px bg-[#F3EFE6]/15 p-px"
+        className="flex gap-px overflow-hidden rounded-xl bg-[#F3EFE6]/[0.08]"
+        style={{ boxShadow: layers("var(--team)") }}
       >
         {cells.map(([value, unit]) => (
-          <div key={unit} aria-hidden className="min-w-[3.6rem] bg-[#0a0a14] px-2 py-2 text-center">
+          <div key={unit} aria-hidden className="min-w-[3.6rem] bg-[#12121e] px-2 py-2 text-center">
             <b className="block text-2xl font-bold leading-none tabular-nums">{value}</b>
             <span className="mt-1.5 block text-[13px] leading-none text-[#F3EFE6]/65">{unit}</span>
           </div>
         ))}
       </div>
       {label ? (
-        <span className="bg-[color:var(--team)] px-2.5 py-1 text-[15px] font-bold text-[color:var(--team-ink)]">
+        <span className="rounded-md bg-[color:var(--team)] px-2.5 py-1 text-[15px] font-bold text-[color:var(--team-ink)]">
           {label}
         </span>
       ) : null}

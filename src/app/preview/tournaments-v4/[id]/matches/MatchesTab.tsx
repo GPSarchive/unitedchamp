@@ -59,7 +59,7 @@ export default function MatchesTab({ base }: { base: Base }) {
                   {stage.title}
                 </h2>
                 {/* The tree's own frame, quietened: no heavy border, the same flat surface as the match list. */}
-                <div className="[&>*]:rounded-xl [&>*]:border-0! [&>*]:bg-[#11111c]!">
+                <div className="[&>*]:rounded-xl [&>*]:border-0! [&>*]:bg-[#12121e]!">
                   <KnockoutTree bracket={bracket!} championId={base.winner?.id ?? null} />
                 </div>
               </section>

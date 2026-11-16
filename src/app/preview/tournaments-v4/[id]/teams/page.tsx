@@ -10,6 +10,7 @@
 // is the only thing the browser keeps (TeamGrid).
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { STRIP_TOP } from "@/app/lib/ui/flat";
 import { PlayerMini } from "../../../matches-v3/[id]/cards";
 import { mainName, smallName } from "../../../matches-v3/[id]/model";
 import { loadBase, loadSquads, loadTables } from "../../../tournaments-v3/[id]/data";
@@ -95,7 +96,7 @@ function Tile({
     <>
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-1"
+        className="absolute inset-y-0 left-0 w-1 [mask:radial-gradient(circle_12px_at_12px_12px,#000_99%,transparent),radial-gradient(circle_12px_at_12px_calc(100%_-_12px),#000_99%,transparent),linear-gradient(#000,#000)_0_12px/100%_calc(100%_-_24px)_no-repeat]"
         style={{ background: colour ?? "rgb(243 239 230 / 0.2)" }}
       />
       <Crest team={team} className="h-12 w-12 text-lg md:h-14 md:w-14" sizes="56px" />
@@ -139,7 +140,7 @@ function SquadPanel({
   const { team, players } = squad;
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-[#F3EFE6]/20 bg-[#151522] px-4 py-3 md:px-5">
+      <div className={`flex items-center gap-3 rounded-t-xl ${STRIP_TOP} px-4 py-3 md:px-5`}>
         <Crest team={team} className="h-8 w-8 text-sm" sizes="32px" />
         <h3 className="min-w-0 flex-1 text-xl font-bold italic leading-[1.1] [overflow-wrap:anywhere]">{team.name}</h3>
         <span className={`${LABEL} shrink-0 text-[#F3EFE6]/65`}>{playersOf(players.length)}</span>

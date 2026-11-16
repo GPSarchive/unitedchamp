@@ -5,6 +5,7 @@
 // the player cards go with, taken from tournaments-v3 as they are.
 import Link from "next/link";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
+import { CHIP, LINE, STRIP_TOP, SURFACE, layers } from "@/app/lib/ui/flat";
 import { ProfileTrigger } from "../../paiktes-v3/ProfileHost";
 import { playerName, type MatchPlayer } from "../../matches-v3/[id]/model";
 import { matchWinner, type TMatch, type TTeam, type Table } from "../../tournaments-v3/[id]/model";
@@ -38,7 +39,7 @@ export function Rubric({
   meta?: string | null;
 }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-6 border-b-2 border-[#F3EFE6]/20 pb-3 md:mb-6">
+    <div className={`mb-5 flex items-end justify-between gap-6 border-b ${LINE} pb-3 md:mb-6`}>
       <div className="flex min-w-0 items-center gap-3">
         {mark}
         <div className="min-w-0">
@@ -74,9 +75,9 @@ export function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`border-2 border-[#F3EFE6]/20 bg-[#0e0e1a] ${className}`}>
+    <div className={`overflow-hidden ${SURFACE} ${className}`} style={{ boxShadow: layers("#fb923c") }}>
       {title ? (
-        <div className="flex items-baseline justify-between gap-4 border-b border-[#F3EFE6]/20 bg-[#151522] px-4 py-2.5 md:px-5">
+        <div className={`flex items-baseline justify-between gap-4 ${STRIP_TOP} px-4 py-2.5 md:px-5`}>
           <Heading id={id} className={`${NAME} first-letter:uppercase`}>
             {title}
           </Heading>
@@ -167,7 +168,7 @@ function Outcome({ match }: { match: TMatch }) {
   }
   if (match.status === "postponed") {
     return (
-      <span className={`${LABEL} shrink-0 self-center border border-[#F3EFE6]/35 px-2 py-1.5 text-[#F3EFE6]/80`}>
+      <span className={`${LABEL} shrink-0 self-center ${CHIP} px-2 py-1.5 text-[#F3EFE6]/80`}>
         Αναβολή
       </span>
     );

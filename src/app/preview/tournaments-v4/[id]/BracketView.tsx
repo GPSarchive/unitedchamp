@@ -14,6 +14,7 @@
 // with a line to the ring of the team that went through.
 import Link from "next/link";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
+import { STRIP_TOP, SURFACE, layer } from "@/app/lib/ui/flat";
 import {
   isThirdPlace,
   type Bracket,
@@ -128,12 +129,10 @@ function TieCard({
       href={`${MATCH_PATH}/${tie.matchId}`}
       // A narrow tie shows crests only: the pointer still gets the two names.
       title={tie.a || tie.b ? `${tie.a?.name ?? "Αναμένεται"} – ${tie.b?.name ?? "Αναμένεται"}` : undefined}
-      className={`block border-2 bg-[#0e0e1a] transition-colors hover:border-[#fb923c] ${
-        champion ? "" : tie.a || tie.b ? "border-[#F3EFE6]/30" : "border-dashed border-[#F3EFE6]/25"
-      } ${FOCUS}`}
-      style={champion ? { borderColor: SAFFRON } : undefined}
+      className={`block overflow-hidden ${SURFACE} transition-colors hover:bg-[#171724] ${FOCUS}`}
+      style={{ boxShadow: layer(champion ? SAFFRON : "#fb923c") }}
     >
-      {top ? <span className={`${strip} border-b border-[#F3EFE6]/15 bg-[#151522]`}>{top}</span> : null}
+      {top ? <span className={`${strip} ${STRIP_TOP}`}>{top}</span> : null}
       <TieSide
         team={tie.a}
         scores={scores("a")}
@@ -267,7 +266,8 @@ function focusColumn(bracket: Bracket): number {
 
 /** One knockout stage in its frame. */
 export default function KnockoutTree({ bracket, championId }: { bracket: Bracket; championId: number | null }) {
-  const frame = "border-2 border-[#F3EFE6]/20 bg-[#0c0c17] px-3 py-5 md:px-6 md:py-7";
+  // The sheets as a class (layers("#fb923c") from lib/ui/flat): TreeScroller takes no style.
+  const frame = `${SURFACE} shadow-[0_6px_0_-3px_#fb923c,0_12px_0_-8px_color-mix(in_srgb,#fb923c_40%,transparent)] px-3 py-5 md:px-6 md:py-7`;
   if (bracket.columns <= 1) {
     return (
       <div className={frame}>

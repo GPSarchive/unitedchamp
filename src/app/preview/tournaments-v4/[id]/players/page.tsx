@@ -7,6 +7,7 @@
 // assists, most MVP and best-goalkeeper awards). The live page reads them from
 // a table nothing fills (tournament_awards), so there they never show.
 import { notFound } from "next/navigation";
+import { STRIP_TOP, SURFACE, layers } from "@/app/lib/ui/flat";
 import { PlayerHolo, PlayerMini } from "../../../matches-v3/[id]/cards";
 import { mainName, smallName } from "../../../matches-v3/[id]/model";
 import { loadBase, loadPlayers, loadSquads } from "../../../tournaments-v3/[id]/data";
@@ -168,10 +169,10 @@ export default async function PlayersPage({ params }: { params: Promise<{ id: st
 
       <section aria-labelledby="everyone" className="min-w-0">
         <Rubric id="everyone" title="Όλοι οι παίκτες" meta={plural(all.length, "παίκτης", "παίκτες")} />
-        <div className="border-2 border-[#F3EFE6]/20 bg-[#0e0e1a]">
+        <div className={`overflow-hidden ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
           <div
             aria-hidden
-            className={`${GRID} ${LABEL} items-center border-b border-[#F3EFE6]/20 bg-[#151522] px-3 py-2.5 text-[#F3EFE6]/65 md:px-5`}
+            className={`${GRID} ${LABEL} items-center ${STRIP_TOP} px-3 py-2.5 text-[#F3EFE6]/65 md:px-5`}
           >
             <span>Παίκτης</span>
             <span className="text-center">Αγ</span>

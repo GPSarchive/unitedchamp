@@ -208,7 +208,7 @@ export default function Progress({
       {standing ? (
         <div className="min-w-0">
           <h4 className={TITLE}>Βαθμολογία{standing.table.groupName ? `, ${standing.table.groupName}` : ""}</h4>
-          <div className="border border-[#F3EFE6]/20">
+          <div className="overflow-hidden rounded-lg bg-[#F3EFE6]/[0.04]">
             {/* Called as a plain function on purpose, not as <StandingsTable>. As a
                 component here — one per team, each handed a freshly cut table —
                 it made the dev server run out of memory while packing the page

@@ -42,6 +42,7 @@ import ProfileOverlay from "./ProfileOverlay";
 import { profileFor } from "./profile";
 import { NAME_LETTERING } from "./nameStyles";
 import type { DirectoryV3 } from "./data";
+import { BUTTON_SHAPE, BUTTON_SHAPE_ORANGE } from "@/app/lib/ui/flat";
 
 /** Rows rendered at first, and added each time the end of the list nears. */
 const PAGE = 100;
@@ -523,10 +524,10 @@ export default function DirectoryClient({
               type="button"
               onClick={() => setSheetOpen(true)}
               aria-haspopup="dialog"
-              className={`inline-flex h-11 shrink-0 items-center gap-2 border px-3 text-[15px] md:hidden ${
+              className={`inline-flex h-11 shrink-0 items-center gap-2 px-3 text-[15px] md:hidden ${
                 filterCount > 0
-                  ? "border-[#fb923c] text-[#fb923c]"
-                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]"
+                  ? `${BUTTON_SHAPE_ORANGE} text-[#fb923c]`
+                  : `${BUTTON_SHAPE} text-[#F3EFE6]`
               } ${FOCUS_RING}`}
             >
               Φίλτρα
@@ -586,7 +587,7 @@ export default function DirectoryClient({
             <button
               type="button"
               onClick={clearAll}
-              className={`mt-5 h-11 border border-[#fb923c] px-5 text-[15px] font-bold text-[#fb923c] hover:bg-[#fb923c] hover:text-[#0a0a14] ${FOCUS_RING}`}
+              className={`mt-5 h-11 ${BUTTON_SHAPE_ORANGE} px-5 text-[15px] font-bold text-[#fb923c] ${FOCUS_RING}`}
             >
               Καθαρισμός φίλτρων
             </button>
@@ -611,7 +612,7 @@ export default function DirectoryClient({
                 <button
                   type="button"
                   onClick={showMore}
-                  className={`h-11 border border-[#F3EFE6]/25 px-5 text-[15px] text-[#F3EFE6] hover:border-[#fb923c] hover:text-[#fb923c] ${FOCUS_RING}`}
+                  className={`h-11 ${BUTTON_SHAPE} px-5 text-[15px] text-[#F3EFE6] hover:text-[#fb923c] ${FOCUS_RING}`}
                 >
                   Εμφάνιση περισσότερων ({rows.length - visibleCount})
                 </button>
@@ -635,7 +636,9 @@ export default function DirectoryClient({
             className="absolute inset-0 bg-black/70"
             onClick={() => setSheetOpen(false)}
           />
-          <div className="relative max-h-[85vh] w-full space-y-4 overflow-y-auto border-t-2 border-[#fb923c] bg-[#0a0a14] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div
+            className="relative max-h-[85vh] w-full space-y-4 overflow-y-auto rounded-t-xl border-t-2 border-[#fb923c] bg-[#12121e] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          >
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Φίλτρα και ταξινόμηση</h2>
               {filterCount > 0 && (
@@ -671,7 +674,7 @@ export default function DirectoryClient({
               type="button"
               autoFocus
               onClick={() => setSheetOpen(false)}
-              className={`h-12 w-full bg-[#fb923c] text-base font-bold text-[#0a0a14] ${FOCUS_RING}`}
+              className={`h-12 w-full rounded-lg bg-[#fb923c] text-base font-bold text-[#0a0a14] ${FOCUS_RING}`}
             >
               {rows.length === 0 ? "Κανένας παίκτης" : `Εμφάνιση: ${playersLabel(rows.length)}`}
             </button>

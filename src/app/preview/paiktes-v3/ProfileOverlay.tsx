@@ -768,7 +768,7 @@ export default function ProfileOverlay({
         type="button"
         onClick={onRequestClose}
         aria-label="Κλείσιμο προφίλ"
-        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center border border-[#F3EFE6]/25 bg-[#0a0a14]/80 text-[#F3EFE6] hover:border-[#fb923c] hover:text-[#fb923c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] md:right-6 md:top-6"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-lg bg-[#1d1d29] text-[#F3EFE6] hover:text-[#fb923c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fb923c] md:right-6 md:top-6"
       >
         <svg aria-hidden viewBox="0 0 10 10" className="h-3.5 w-3.5">
           <path d="M1 1l8 8M9 1l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" />

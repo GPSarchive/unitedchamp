@@ -36,6 +36,7 @@ import {
   type StatKey,
 } from "./model";
 import { PAIKTES_VIEW_KEY, type SavedListView } from "./paths";
+import { CHIP_ORANGE } from "@/app/lib/ui/flat";
 
 /** Rows rendered at first, and added each time the end of the list nears. */
 const PAGE = 100;
@@ -300,7 +301,7 @@ export function Chip({ label, onRemove }: { label: string; onRemove: () => void 
       type="button"
       onClick={onRemove}
       aria-label={`Αφαίρεση φίλτρου: ${label}`}
-      className={`inline-flex max-w-full items-center gap-2 border border-[#fb923c]/60 bg-[#fb923c]/10 py-1 pl-2.5 pr-2 text-sm text-[#F3EFE6] transition-colors hover:bg-[#fb923c]/20 ${FOCUS_RING}`}
+      className={`inline-flex max-w-full items-center gap-2 ${CHIP_ORANGE} py-1 pl-2.5 pr-2 text-sm text-[#F3EFE6] transition-colors hover:bg-[#fb923c]/20 ${FOCUS_RING}`}
     >
       <span className="truncate">{label}</span>
       <svg aria-hidden viewBox="0 0 10 10" className="h-2.5 w-2.5 shrink-0 text-[#fb923c]">
