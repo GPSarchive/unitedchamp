@@ -75,18 +75,6 @@ async function fetchPlayers(ids: number[]): Promise<PlayerRow[]> {
   return (data ?? []) as PlayerRow[];
 }
 
-/** The season the match belongs to (its tournament's), or null if unknown. */
-async function fetchSeasonLabel(tournamentId: number | null): Promise<string | null> {
-  if (tournamentId == null) return null;
-  const { data, error } = await supabaseAdmin
-    .from("tournaments")
-    .select("season")
-    .eq("id", tournamentId)
-    .maybeSingle();
-  if (error) throw new Error(`Failed reading tournaments: ${error.message}`);
-  return (data?.season as string | null) ?? null;
-}
-
 async function fetchSeasonStats(label: string, playerIds: number[]): Promise<Map<number, StatTuple>> {
   const out = new Map<number, StatTuple>();
   if (playerIds.length === 0) return out;
@@ -112,17 +100,18 @@ export async function loadMatchView(id: number): Promise<MatchView | null> {
   const teamB: MatchTeam = { id: match.team_b.id, name: match.team_b.name, logo: match.team_b.logo ?? null };
   const isDecider = match.leg === 2 && match.tie_leg1_match_id != null;
 
-  const [squadA, squadB, stats, participants, legOne, seasonLabel, activeSeason] = await Promise.all([
+  const [squadA, squadB, stats, participants, legOne, activeSeason] = await Promise.all([
     fetchPlayersForTeam(teamA.id),
     fetchPlayersForTeam(teamB.id),
     fetchMatchStatsMap(match.id),
     fetchParticipantsMap(match.id),
     isDecider ? fetchLegOneScores(match.tie_leg1_match_id as number) : Promise.resolve(null),
-    fetchSeasonLabel(match.tournament?.id ?? null),
     getActiveSeasonCached(),
   ]);
 
-  const label = seasonLabel ?? activeSeason?.label ?? null;
+  // The cards print the active season's numbers on every page, the same as
+  // /paiktes — also on a match of an earlier season.
+  const label = activeSeason?.label ?? null;
 
   const players = new Map<number, MatchPlayer>();
   const add = (row: PlayerRow) => {
