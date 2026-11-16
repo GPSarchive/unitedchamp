@@ -3,7 +3,11 @@
 //           photo's hidden overflow (50, 0 = centred, aligned to the top:
 //           what every card does today);
 //   zoom  — 1 (as today) up to MAX_ZOOM.
-// The photo always covers its box, so no setting can leave a gap.
+// Between 0 and 100 the photo covers its box. Past them (MIN_POS…MAX_POS)
+// the photo is slid on further, by box widths/heights (−100 or 200 = one
+// whole box out), so it can be moved anywhere without zooming in first —
+// the card's own background shows in the gap left behind. Values from
+// before this (all within 0…100) still mean exactly what they meant.
 //
 // The cards themselves are not changed. Every card (normal, «Θρύλος» 1 and 2,
 // big and mini) draws its photo as `<img class="… object-cover object-top">`
@@ -21,16 +25,26 @@ export type Framing = { x: number; y: number; zoom: number };
 
 export const DEFAULT_FRAMING: Framing = { x: 50, y: 0, zoom: 1 };
 export const MAX_ZOOM = 3;
+/** How far x / y may go: one whole box past either edge. */
+export const MIN_POS = -100;
+export const MAX_POS = 200;
 
 const PHOTO = ".card-framing img.object-top";
 const CSS =
   `${PHOTO}{object-position:var(--frame-x,50%) var(--frame-y,0%);` +
-  `transform-origin:var(--frame-x,50%) var(--frame-y,0%);transform:scale(var(--frame-zoom,1))}`;
+  `transform-origin:var(--frame-x,50%) var(--frame-y,0%);` +
+  `transform:translate(var(--frame-tx,0%),var(--frame-ty,0%)) scale(var(--frame-zoom,1))}`;
+
+/** The part of x / y inside 0…100 (focus point) and the slide past it (in % of the box). */
+function split(pos: number) {
+  const inside = Math.min(100, Math.max(0, pos));
+  return { inside, slide: inside - pos };
+}
 
 /** The one rule that applies a framing. React keeps a single copy in <head>. */
 export function FramingStyles() {
   return (
-    <style href="card-framing" precedence="medium">
+    <style href="card-framing-v2" precedence="medium">
       {CSS}
     </style>
   );
@@ -38,9 +52,18 @@ export function FramingStyles() {
 
 /** Wrap a card in this to frame its photo; `null` leaves the card as it is. */
 export function Framed({ framing, children }: { framing: Framing | null; children: React.ReactNode }) {
-  const style = framing
-    ? ({ "--frame-x": `${framing.x}%`, "--frame-y": `${framing.y}%`, "--frame-zoom": framing.zoom } as React.CSSProperties)
-    : undefined;
+  let style: React.CSSProperties | undefined;
+  if (framing) {
+    const x = split(framing.x);
+    const y = split(framing.y);
+    style = {
+      "--frame-x": `${x.inside}%`,
+      "--frame-y": `${y.inside}%`,
+      "--frame-tx": `${x.slide}%`,
+      "--frame-ty": `${y.slide}%`,
+      "--frame-zoom": framing.zoom,
+    } as React.CSSProperties;
+  }
   return (
     <div className="card-framing" style={style}>
       {children}
@@ -98,10 +121,46 @@ export function useFramings() {
  * its parent). While it is there the card under it gets no pointer events, so
  * the card's own tilt stays still.
  */
+/**
+ * One axis of a drag, in screen pixels: `box` is the box's size, `overflow`
+ * how much of the (zoomed) photo is hidden along it. Within 0…100 the photo
+ * pans over its overflow; past that it slides by box sizes (see `split`).
+ */
+type Axis = { box: number; overflow: number };
+
+/** Where the photo's edge sits for `pos` (0 = flush with the box's start). */
+function offsetOf(pos: number, { box, overflow }: Axis) {
+  const { inside, slide } = split(pos);
+  return (-inside / 100) * overflow + (slide / 100) * box;
+}
+
+/** The inverse of `offsetOf`; `fallback` is kept when the photo sits flush (no overflow). */
+function posOf(offset: number, { box, overflow }: Axis, fallback: number) {
+  if (offset > 0) return (-offset / box) * 100;
+  if (offset < -overflow) return 100 + ((-overflow - offset) / box) * 100;
+  return overflow > 0.01 ? (-offset / overflow) * 100 : clamp(fallback, 0, 100);
+}
+
 export function PhotoDragLayer({ framing, onChange }: { framing: Framing; onChange: (next: Framing) => void }) {
   const layer = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ px: number; py: number; from: Framing; perX: number; perY: number } | null>(null);
+  const drag = useRef<{ px: number; py: number; from: Framing; ax: Axis; ay: Axis } | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  // The mouse wheel zooms (a native listener: React's wheel events cannot stop the page scrolling).
+  const latest = useRef({ framing, onChange });
+  latest.current = { framing, onChange };
+  useEffect(() => {
+    const el = layer.current;
+    if (!el) return;
+    const wheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const { framing: f, onChange: change } = latest.current;
+      const zoom = round(clamp(f.zoom * Math.exp(-event.deltaY * 0.0015), 1, MAX_ZOOM), 2);
+      if (zoom !== f.zoom) change({ ...f, zoom });
+    };
+    el.addEventListener("wheel", wheel, { passive: false });
+    return () => el.removeEventListener("wheel", wheel);
+  }, []);
 
   function start(event: React.PointerEvent<HTMLDivElement>) {
     const photo = layer.current?.parentElement?.querySelector<HTMLImageElement>(PHOTO);
@@ -115,9 +174,8 @@ export function PhotoDragLayer({ framing, onChange }: { framing: Framing; onChan
       px: event.clientX,
       py: event.clientY,
       from: framing,
-      // Screen pixels the photo moves for one percent of x / y.
-      perX: (framing.zoom * photo.naturalWidth * cover - boxW) / 100,
-      perY: (framing.zoom * photo.naturalHeight * cover - boxH) / 100,
+      ax: { box: boxW, overflow: framing.zoom * photo.naturalWidth * cover - boxW },
+      ay: { box: boxH, overflow: framing.zoom * photo.naturalHeight * cover - boxH },
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
@@ -126,10 +184,10 @@ export function PhotoDragLayer({ framing, onChange }: { framing: Framing; onChan
   function move(event: React.PointerEvent<HTMLDivElement>) {
     const d = drag.current;
     if (!d) return;
-    // No hidden overflow on an axis = nothing to move along it (zoom in first).
-    const dx = d.perX > 0.01 ? (event.clientX - d.px) / d.perX : 0;
-    const dy = d.perY > 0.01 ? (event.clientY - d.py) / d.perY : 0;
-    onChange({ ...d.from, x: round(clamp(d.from.x - dx, 0, 100), 1), y: round(clamp(d.from.y - dy, 0, 100), 1) });
+    // The photo's edge follows the pointer, on both axes, zoomed in or not.
+    const x = posOf(offsetOf(d.from.x, d.ax) + event.clientX - d.px, d.ax, d.from.x);
+    const y = posOf(offsetOf(d.from.y, d.ay) + event.clientY - d.py, d.ay, d.from.y);
+    onChange({ ...d.from, x: round(clamp(x, MIN_POS, MAX_POS), 1), y: round(clamp(y, MIN_POS, MAX_POS), 1) });
   }
 
   function end() {

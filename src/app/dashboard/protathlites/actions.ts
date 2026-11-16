@@ -68,8 +68,9 @@ function cleanFraming(f: unknown): CardFraming | null {
   if (!v || ![v.x, v.y, v.zoom].every((n) => typeof n === "number" && Number.isFinite(n))) return null;
   const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
   return {
-    x: Number(clamp(v.x, 0, 100).toFixed(1)),
-    y: Number(clamp(v.y, 0, 100).toFixed(1)),
+    // MIN_POS…MAX_POS of framing.tsx (a client module, so not imported here).
+    x: Number(clamp(v.x, -100, 200).toFixed(1)),
+    y: Number(clamp(v.y, -100, 200).toFixed(1)),
     zoom: Number(clamp(v.zoom, 1, 3).toFixed(2)),
   };
 }
