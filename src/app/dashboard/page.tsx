@@ -10,6 +10,7 @@ const CARDS = [
   { href: "/dashboard/matches", title: "Αγώνες", desc: "Πρόγραμμα, σκορ και κατάσταση." },
   { href: "/dashboard/match-notes", title: "Σημειώσεις διαιτητή", desc: "Εσωτερικές σημειώσεις ανά αγώνα." },
   { href: "/dashboard/tournaments", title: "Διοργανώσεις", desc: "Ροές, όμιλοι & νοκ-άουτ." },
+  { href: "/dashboard/protathlites", title: "Πρωταθλητές", desc: "Ειδικές κάρτες για ομάδες και παίκτες." },
   { href: "/dashboard/announcements", title: "Ανακοινώσεις", desc: "Δημοσιεύσεις & προγραμματισμός." },
   { href: "/dashboard/articles", title: "Άρθρα", desc: "Κείμενα, εικόνες & δημοσίευση." },
   { href: "/dashboard/audit", title: "Ιστορικό ενεργειών", desc: "Ποιος άλλαξε τι, πότε και από πού." },

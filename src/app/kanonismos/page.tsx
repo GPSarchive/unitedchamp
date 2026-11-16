@@ -1,6 +1,7 @@
 // app/kanonismos/page.tsx
 import Image from "next/image";
 import VantaBg from "@/app/lib/VantaBg";
+import { SURFACE, layers } from "@/app/lib/ui/flat";
 
 export const metadata = { title: "Κανονισμός" };
 
@@ -83,12 +84,12 @@ export default function KanonismosPage() {
           </div>
 
           {/* Rules Container */}
-          <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 p-6 sm:p-8 shadow-2xl">
+          <div className={`${SURFACE} p-6 sm:p-8`} style={{ boxShadow: layers("#fb923c") }}>
             <div className="space-y-6">
               {RULES.map((rule, i) => (
                 <div key={i} className="group">
                   <div className="flex gap-3">
-                    <span className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-500/20 border border-orange-400/30 text-orange-400 font-bold text-sm">
+                    <span className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 font-bold text-sm">
                       {i + 1}
                     </span>
                     <p className="flex-1 text-white/90 leading-relaxed pt-1">

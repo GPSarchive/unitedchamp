@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import AddPlayerToTeamModal from "./AddPlayerToTeamModal"; // ← no .tsx
+import { BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 export default function AddPlayerToTeamLauncher({
   teamId,
@@ -23,7 +24,7 @@ export default function AddPlayerToTeamLauncher({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={className ?? "inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/10 hover:bg-white/10"}
+        className={className ?? `inline-flex items-center gap-2 px-3 py-2 ${BUTTON_SHAPE}`}
       >
         <Plus className="w-4 h-4" />
         {label}

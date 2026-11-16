@@ -2,6 +2,7 @@
 // Same dark editorial language as /OMADES and /geniki-katataxi.
 import Link from "next/link";
 import { Fraunces, Archivo_Black, JetBrains_Mono, Figtree } from "next/font/google";
+import { SURFACE, layers, layer, LINE } from "@/app/lib/ui/flat";
 
 const fraunces = Fraunces({
   subsets: ["latin", "latin-ext"],
@@ -101,7 +102,7 @@ export function SectionTitle({ kicker, title }: { kicker: string; title: string 
 
 export function StatTile({ k, v }: { k: string; v: string | number }) {
   return (
-    <div className="border border-[#F3EFE6]/15 bg-[#13131d]/70 px-3 py-3">
+    <div className={`${SURFACE} px-3 py-3`} style={{ boxShadow: layer("#fb923c") }}>
       <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/50">{k}</div>
       <div className="mt-1 font-[var(--f-display)] text-2xl font-black italic text-[#F3EFE6]">{v}</div>
     </div>
@@ -110,7 +111,7 @@ export function StatTile({ k, v }: { k: string; v: string | number }) {
 
 export function StateBlock({ kicker, title, body }: { kicker: string; title: string; body: string }) {
   return (
-    <div className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center" style={{ background: "rgba(19,19,29,0.4)" }}>
+    <div className={`relative ${SURFACE} p-12 text-center`} style={{ boxShadow: layers("#fb923c") }}>
       <div className="mx-auto max-w-md">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">/ 00 · {kicker}</span>
         <p className="mt-4 font-[var(--f-display)] text-3xl font-black italic leading-tight text-[#F3EFE6]">{title}</p>
@@ -122,12 +123,12 @@ export function StateBlock({ kicker, title, body }: { kicker: string; title: str
 
 export function ArchiveFooter({ label }: { label: string }) {
   return (
-    <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+    <footer className={`border-t ${LINE} bg-[#13131d] text-[#F3EFE6]`}>
       <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-6 py-6 md:flex-row md:items-center">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">{label}</p>
         <Link
           href="/seasons"
-          className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
+          className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors hover:bg-[#F3EFE6] hover:text-[#0a0a14]"
         >
           ← Αρχείο Σεζόν
         </Link>

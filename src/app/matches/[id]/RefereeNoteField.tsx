@@ -12,7 +12,7 @@ export default function RefereeNoteField({ initialNote }: { initialNote: string 
   const [note, setNote] = React.useState(initialNote);
 
   return (
-    <div className="mt-4 rounded-lg border border-white/15 bg-black/40 p-4">
+    <div className="mt-4 rounded-lg bg-[#F3EFE6]/[0.04] p-4">
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor="referee_note" className="text-sm font-semibold text-white">
           Σημειώσεις διαιτητή

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Search, X, Check, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SURFACE, layers } from "@/app/lib/ui/flat";
 
 // =========================================================
 // Types
@@ -149,10 +150,10 @@ export default function TeamFilter({
                 <button
                   key={t}
                   onClick={() => select(t)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors border flex items-center gap-2 ${
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${
                     value === t
-                      ? "bg-orange-500 text-white border-orange-400"
-                      : "bg-zinc-800/60 text-white/80 border-zinc-700 hover:bg-zinc-700/60"
+                      ? "bg-orange-500 text-white"
+                      : "bg-[#F3EFE6]/[0.08] text-white/80 hover:bg-[#F3EFE6]/[0.14]"
                   }`}
                 >
                   {logo ? (
@@ -181,7 +182,10 @@ export default function TeamFilter({
             className="relative z-50 mt-2"
             onKeyDown={onKeyDown}
           >
-            <div className="absolute left-0 right-0 rounded-2xl border border-zinc-800 bg-zinc-900/90 backdrop-blur-xl shadow-2xl">
+            <div
+              className={`absolute left-0 right-0 ${SURFACE}`}
+              style={{ boxShadow: layers("#fb923c") }}
+            >
               {/* Search input */}
               <div className="flex items-center gap-2 px-3 pt-3">
                 <div className="flex items-center gap-2 flex-1 rounded-xl bg-zinc-800/60 px-3">
@@ -209,7 +213,7 @@ export default function TeamFilter({
                 {value && (
                   <button
                     onClick={() => select(null)}
-                    className="h-9 px-3 rounded-xl text-sm font-semibold bg-zinc-800/60 text-white/80 hover:bg-zinc-700/60 border border-zinc-700"
+                    className="h-9 px-3 rounded-lg text-sm font-semibold bg-[#F3EFE6]/[0.08] text-white/80 hover:bg-[#F3EFE6]/[0.14]"
                   >
                     Καμία επιλογή
                   </button>

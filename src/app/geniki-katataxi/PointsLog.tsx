@@ -7,6 +7,7 @@ import Image from "next/image";
 import { ADJUSTMENT_PRESETS, type EventKind, type PointsEvent } from "./rules";
 import { formatMatchDate } from "@/app/lib/datetime";
 import TeamFilter from "@/components/TeamFilter";
+import { SURFACE, layers, STRIP_TOP, CHIP, CHIP_HOVER } from "@/app/lib/ui/flat";
 
 export type LogTeam = { name: string; logo: string | null };
 
@@ -41,9 +42,9 @@ const KIND_LABEL: Record<EventKind, string> = {
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
 
 function chipTone(kind: EventKind, points: number): string {
-  if (kind === "title") return "border-[#fb923c]/70 bg-[#fb923c]/15 text-[#fb923c]";
-  if (points < 0) return "border-red-400/40 bg-red-500/10 text-red-300";
-  return "border-[#F3EFE6]/25 bg-[#13131d] text-[#F3EFE6]/75";
+  if (kind === "title") return "bg-[#fb923c]/[0.16] text-[#fb923c]";
+  if (points < 0) return "bg-red-500/[0.16] text-red-300";
+  return "bg-[#F3EFE6]/[0.08] text-[#F3EFE6]/75";
 }
 
 export default function PointsLog({
@@ -108,8 +109,8 @@ export default function PointsLog({
   }, [events, filter, teamFilter, teams]);
 
   return (
-    <section className="mt-10 border-2 border-[#F3EFE6]/20 bg-[#0f0f19]/70">
-      <div className="flex flex-col gap-3 border-b border-[#F3EFE6]/15 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+    <section className={`mt-10 ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
+      <div className={`flex flex-col gap-3 rounded-t-xl ${STRIP_TOP} px-5 py-4 lg:flex-row lg:items-center lg:justify-between`}>
         <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-[#fb923c]">
           Αναλυτικό μητρώο πόντων
         </h2>
@@ -136,10 +137,10 @@ export default function PointsLog({
                   key={f.key}
                   type="button"
                   onClick={() => setFilter(f.key)}
-                  className={`border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     active
-                      ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                      : "border-[#F3EFE6]/25 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#fb923c]/60 hover:text-[#fb923c]"
+                      ? "rounded-md bg-[#fb923c] text-[#0a0a14]"
+                      : `${CHIP} ${CHIP_HOVER} text-[#F3EFE6]/70 hover:text-[#fb923c]`
                   }`}
                 >
                   {f.label}
@@ -155,7 +156,7 @@ export default function PointsLog({
           Δεν υπάρχουν εγγραφές για αυτό το φίλτρο.
         </p>
       ) : (
-        <div className="max-h-[32rem] overflow-y-auto overflow-x-auto">
+        <div className="max-h-[32rem] overflow-y-auto overflow-x-auto rounded-b-xl">
           <table className="min-w-full text-sm">
             <tbody>
               {shown.map((e, i) => {
@@ -206,7 +207,7 @@ export default function PointsLog({
                     </td>
                     <td className="px-3 py-2.5">
                       <span
-                        className={`inline-flex whitespace-nowrap border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] ${chipTone(
+                        className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] ${chipTone(
                           e.kind,
                           e.points
                         )}`}

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Calendar, Clock, Shield } from "lucide-react";
 import PostponeDialog from "@/app/dashboard/matches/PostponeDialog";
 import type { MatchRow } from "@/app/lib/types";
+import { SURFACE, layers, BUTTON_SHAPE_ORANGE } from "@/app/lib/ui/flat";
 
 interface MatchAdminActionsProps {
   match: {
@@ -49,7 +50,10 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
   return (
     <>
       {/* Admin Actions Bar */}
-      <div className="rounded-lg border border-orange-400/30 bg-gradient-to-r from-orange-950/20 via-black to-orange-950/20 p-4">
+      <div
+        className={`${SURFACE} p-4`}
+        style={{ boxShadow: layers("#fb923c") }}
+      >
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2 text-orange-300">
             <Shield className="h-5 w-5" />
@@ -57,7 +61,7 @@ export default function MatchAdminActions({ match }: MatchAdminActionsProps) {
           </div>
           <button
             onClick={() => setShowPostpone(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-400/40 bg-orange-700/30 hover:bg-orange-700/50 text-white font-medium transition-all shadow-lg shadow-orange-500/20"
+            className={`inline-flex items-center gap-2 px-4 py-2 ${BUTTON_SHAPE_ORANGE} text-white font-medium transition-all`}
           >
             {isPostponed ? <Calendar className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
             {isPostponed ? "Νέα Ημερομηνία" : "Αναβολή Αγώνα"}

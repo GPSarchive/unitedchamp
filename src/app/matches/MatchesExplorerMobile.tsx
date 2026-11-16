@@ -19,6 +19,7 @@ import {
   formatMatchTime,
   parseIsoPreserveClock,
 } from "@/app/lib/datetime";
+import { SURFACE, layers, layer, STRIP_TOP, STRIP_BOTTOM, LINE, CHIP, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Types (local mirror — kept minimal for props)
@@ -157,7 +158,7 @@ export default function MatchesExplorerMobile({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.22 }}
-              className="space-y-3"
+              className="space-y-4"
             >
               {rows.map((m, i) => (
                 <li key={m.id}>
@@ -213,7 +214,7 @@ const TopStrip: React.FC<{ tab: TabKey; total: number }> = ({
   tab,
   total,
 }) => (
-  <div className="border-b-2 border-[#F3EFE6]/20 bg-[#0a0a14]/90 backdrop-blur-sm">
+  <div className={`border-b ${LINE} bg-[#0a0a14]/90 backdrop-blur-sm`}>
     <div className="flex items-center justify-between gap-3 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/85">
       <span>N°{pad2(total)} · ΑΓΩΝΕΣ</span>
       <div className="flex items-center gap-2">
@@ -235,7 +236,7 @@ const TopStrip: React.FC<{ tab: TabKey; total: number }> = ({
 // Masthead
 // ───────────────────────────────────────────────────────────────────────
 const Masthead: React.FC<{ tab: TabKey }> = ({ tab }) => (
-  <header className="relative border-b-2 border-[#F3EFE6]/20">
+  <header className={`relative border-b ${LINE}`}>
     <div className="px-5 pt-6 pb-8">
       <nav className="mb-5 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
         <Link href="/" className="hover:text-[#fb923c] transition-colors">
@@ -280,7 +281,7 @@ const FiltersRail: React.FC<{
   onClearTournament: () => void;
 }> = ({ tab, setTab, selectedTournament, onOpenSheet, onClearTournament }) => (
   <div
-    className="sticky top-0 z-40 border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/90 backdrop-blur-md"
+    className={`sticky top-0 z-40 border-b ${LINE} bg-[#0a0a14]/90 backdrop-blur-md`}
     style={{ WebkitBackdropFilter: "blur(12px)" }}
   >
     <div className="flex flex-col gap-2 px-4 py-2.5">
@@ -295,10 +296,10 @@ const FiltersRail: React.FC<{
             <button
               key={t.k}
               onClick={() => setTab(t.k)}
-              className={`relative border-2 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.22em] transition-all active:scale-[0.98] ${
+              className={`relative px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.22em] transition-all active:scale-[0.98] ${
                 active
-                  ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/70"
+                  ? "rounded-md bg-[#fb923c] text-[#0a0a14]"
+                  : `${CHIP} text-[#F3EFE6]/70`
               }`}
             >
               {t.label}
@@ -311,7 +312,7 @@ const FiltersRail: React.FC<{
       <div className="flex items-stretch gap-2">
         <button
           onClick={onOpenSheet}
-          className="flex min-w-0 flex-1 items-center gap-2 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 transition-colors active:border-[#fb923c]/60"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 transition-colors active:bg-[#F3EFE6]/[0.14]"
         >
           <span className="shrink-0 text-[#F3EFE6]/40">ΔΙΟΡΓ·</span>
           <span
@@ -327,7 +328,7 @@ const FiltersRail: React.FC<{
           <button
             onClick={onClearTournament}
             aria-label="Καθαρισμός φίλτρου"
-            className="shrink-0 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-3 font-mono text-[14px] text-[#F3EFE6]/70 transition-colors active:border-[#fb923c] active:text-[#fb923c]"
+            className={`shrink-0 ${BUTTON_SHAPE} px-3 font-mono text-[14px] text-[#F3EFE6]/70 transition-colors active:text-[#fb923c]`}
           >
             ×
           </button>
@@ -420,7 +421,8 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
     >
       <Link
         href={`/matches/${m.id}`}
-        className="group relative block overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14] active:bg-[#13131d] transition-colors"
+        className={`group relative block overflow-hidden ${SURFACE} active:bg-[#171724] transition-colors`}
+        style={{ boxShadow: layer(outcomeLabel ? outcomeColor : "#fb923c") }}
       >
         {/* Left outcome stripe */}
         <span
@@ -432,7 +434,7 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
         />
 
         {/* Header strip */}
-        <div className="flex items-center justify-between gap-2 border-b border-[#F3EFE6]/10 bg-[#13131d] px-3 py-1.5 pl-4 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
+        <div className={`flex items-center justify-between gap-2 ${STRIP_TOP} px-3 py-1.5 pl-4 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/70`}>
           <span className="flex items-center gap-1.5">
             <span className="text-[#F3EFE6]/45">
               {formatMatchDate(m.match_date, { weekday: "short" })}
@@ -481,7 +483,7 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
 
           <div className="shrink-0">
             {finished ? (
-              <div className="flex items-center gap-1 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums">
+              <div className={`flex items-center gap-1 ${CHIP} px-2.5 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums`}>
                 <span className={aWon ? "text-[#fb923c]" : "text-[#F3EFE6]"}>
                   {aScore ?? 0}
                 </span>
@@ -491,7 +493,7 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
                 </span>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-[#F3EFE6]/30 px-2.5 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
+              <div className={`${CHIP} px-2.5 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70`}>
                 {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
               </div>
             )}
@@ -523,13 +525,13 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
         </div>
 
         {/* Footer strip */}
-        <div className="flex items-center justify-between gap-2 border-t border-[#F3EFE6]/10 bg-[#13131d]/60 px-3 py-1.5 pl-4 font-mono text-[9px] uppercase tracking-[0.22em]">
+        <div className={`flex items-center justify-between gap-2 ${STRIP_BOTTOM} px-3 py-1.5 pl-4 font-mono text-[9px] uppercase tracking-[0.22em]`}>
           <div className="flex min-w-0 items-center gap-2">
             {outcomeLabel && (
               <span
-                className="shrink-0 border px-1.5 py-[1px] font-bold"
+                className="shrink-0 rounded-md px-1.5 py-[1px] font-bold"
                 style={{
-                  borderColor: outcomeColor,
+                  backgroundColor: `color-mix(in srgb, ${outcomeColor} 16%, transparent)`,
                   color: outcomeColor,
                 }}
               >
@@ -558,13 +560,14 @@ const MatchCard: React.FC<{ m: MatchRow; index: number }> = ({ m, index }) => {
 // Skeleton
 // ───────────────────────────────────────────────────────────────────────
 const Skeleton: React.FC = () => (
-  <div className="space-y-3">
+  <div className="space-y-4">
     {Array.from({ length: 5 }).map((_, i) => (
       <div
         key={i}
-        className="overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14]"
+        className={`overflow-hidden ${SURFACE}`}
+        style={{ boxShadow: layer("#fb923c") }}
       >
-        <div className="h-6 border-b border-[#F3EFE6]/10 bg-[#13131d]" />
+        <div className={`h-6 ${STRIP_TOP}`} />
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-3">
           <div className="flex items-center justify-end gap-2">
             <div className="h-3 w-24 animate-pulse bg-[#F3EFE6]/10" />
@@ -576,7 +579,7 @@ const Skeleton: React.FC = () => (
             <div className="h-3 w-24 animate-pulse bg-[#F3EFE6]/10" />
           </div>
         </div>
-        <div className="h-6 border-t border-[#F3EFE6]/10 bg-[#13131d]/60" />
+        <div className={`h-6 ${STRIP_BOTTOM}`} />
       </div>
     ))}
   </div>
@@ -591,8 +594,8 @@ const StateBlock: React.FC<{
   body: string;
 }> = ({ kicker, title, body }) => (
   <div
-    className="relative border-2 border-dashed border-[#F3EFE6]/25 p-8 text-center"
-    style={{ background: "rgba(19,19,29,0.4)" }}
+    className={`relative ${SURFACE} p-8 text-center`}
+    style={{ boxShadow: layers("#fb923c") }}
   >
     <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#fb923c]">
       / 00 · {kicker}
@@ -617,14 +620,14 @@ const Pagination: React.FC<{
   if (totalPages <= 1) return null;
 
   return (
-    <nav className="mt-6 flex items-center justify-between gap-3 border-t-2 border-[#F3EFE6]/15 pt-4">
+    <nav className={`mt-6 flex items-center justify-between gap-3 border-t ${LINE} pt-4`}>
       <button
         disabled={page <= 1}
         onClick={() => onChange(Math.max(1, page - 1))}
-        className={`border-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           page <= 1
-            ? "cursor-not-allowed border-[#F3EFE6]/10 text-[#F3EFE6]/25"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 active:border-[#fb923c] active:text-[#fb923c]"
+            ? "cursor-not-allowed rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 active:text-[#fb923c]`
         }`}
       >
         ← Προηγ.
@@ -639,10 +642,10 @@ const Pagination: React.FC<{
       <button
         disabled={page >= totalPages}
         onClick={() => onChange(Math.min(totalPages, page + 1))}
-        className={`border-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-2 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           page >= totalPages
-            ? "cursor-not-allowed border-[#F3EFE6]/10 text-[#F3EFE6]/25"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 active:border-[#fb923c] active:text-[#fb923c]"
+            ? "cursor-not-allowed rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 active:text-[#fb923c]`
         }`}
       >
         Επόμ. →
@@ -699,7 +702,8 @@ const TournamentSheet: React.FC<{
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 360, damping: 38 }}
-            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-hidden border-t-2 border-[#F3EFE6]/25 bg-[#0a0a14] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8)]"
+            className="absolute inset-x-0 bottom-0 max-h-[82vh] overflow-hidden rounded-t-xl bg-[#12121e]"
+            style={{ boxShadow: layers("#fb923c") }}
           >
             {/* Grip handle */}
             <div className="flex justify-center pt-3">
@@ -707,7 +711,7 @@ const TournamentSheet: React.FC<{
             </div>
 
             {/* Header */}
-            <div className="flex items-end justify-between gap-3 border-b-2 border-[#F3EFE6]/15 px-5 pb-3 pt-3">
+            <div className={`flex items-end justify-between gap-3 border-b ${LINE} px-5 pb-3 pt-3`}>
               <div>
                 <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.3em] text-[#fb923c]">
                   <span className="h-[2px] w-5 bg-[#fb923c]" />
@@ -719,7 +723,7 @@ const TournamentSheet: React.FC<{
               </div>
               <button
                 onClick={onClose}
-                className="border-2 border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 active:border-[#fb923c] active:text-[#fb923c]"
+                className={`${BUTTON_SHAPE} px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/75 active:text-[#fb923c]`}
               >
                 Κλείσιμο
               </button>
@@ -797,14 +801,14 @@ const SheetOption: React.FC<{
 // Colophon
 // ───────────────────────────────────────────────────────────────────────
 const Colophon: React.FC<{ total: number }> = ({ total }) => (
-  <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d]">
+  <footer className={`border-t ${LINE} bg-[#13131d]`}>
     <div className="flex flex-col items-start gap-3 px-5 py-5">
       <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
         Σύνολο αγώνων · {pad2(total)}
       </p>
       <Link
         href="/"
-        className="border border-[#F3EFE6]/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors active:bg-[#F3EFE6] active:text-[#0a0a14]"
+        className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] transition-colors active:bg-[#F3EFE6] active:text-[#0a0a14]"
       >
         ← Επιστροφή στην Αρχική
       </Link>

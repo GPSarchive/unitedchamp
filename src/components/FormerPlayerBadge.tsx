@@ -3,6 +3,7 @@
 // where an archived player still needs to appear but should be clearly marked.
 
 import type { CSSProperties } from "react";
+import { CHIP } from "@/app/lib/ui/flat";
 
 type FormerPlayerLike = { deleted_at?: string | null } | null | undefined;
 
@@ -31,7 +32,7 @@ export function FormerPlayerBadge({
   if (!show) return null;
   return (
     <span
-      className={`inline-flex items-center rounded font-semibold uppercase tracking-wide text-white/60 border border-white/20 bg-white/5 ${SIZE_CLASSES[size]} ${className}`}
+      className={`inline-flex items-center ${CHIP} font-semibold uppercase tracking-wide text-white/60 ${SIZE_CLASSES[size]} ${className}`}
       style={style}
       title="πρώην παίκτης"
     >

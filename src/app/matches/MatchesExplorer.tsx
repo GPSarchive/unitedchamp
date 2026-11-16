@@ -20,6 +20,7 @@ import {
   parseIsoPreserveClock,
 } from "@/app/lib/datetime";
 import MatchesExplorerMobile from "./MatchesExplorerMobile";
+import { SURFACE, layers, LINE, CHIP, CHIP_HOVER, CHIP_ORANGE, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography
@@ -138,7 +139,7 @@ const PageHeader: React.FC<{ total: number; tab: TabKey }> = ({
   total,
   tab,
 }) => (
-  <header className="relative border-b-2 border-[#F3EFE6]/20">
+  <header className={`relative border-b ${LINE}`}>
     <div className="mx-auto max-w-[1400px] px-6 pt-8 pb-6 md:pt-10 md:pb-8">
       <nav className="mb-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
         <Link href="/" className="hover:text-[#fb923c] transition-colors">
@@ -163,10 +164,10 @@ const PageHeader: React.FC<{ total: number; tab: TabKey }> = ({
         </div>
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
           <span
-            className={`inline-flex items-center gap-2 border px-2.5 py-1 ${
+            className={`inline-flex items-center gap-2 px-2.5 py-1 ${
               tab === "upcoming"
-                ? "border-[#fb923c]/60 bg-[#fb923c]/10 text-[#fb923c]"
-                : "border-[#E8B931]/60 bg-[#E8B931]/10 text-[#E8B931]"
+                ? `${CHIP_ORANGE} text-[#fb923c]`
+                : "rounded-md bg-[#E8B931]/[0.16] text-[#E8B931]"
             }`}
           >
             <span
@@ -177,7 +178,7 @@ const PageHeader: React.FC<{ total: number; tab: TabKey }> = ({
             />
             {tab === "upcoming" ? "Προσεχείς" : "Τελειωμένοι"}
           </span>
-          <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1">
+          <span className={`${CHIP} px-2.5 py-1`}>
             Σύνολο · {pad2(total)}
           </span>
         </div>
@@ -347,7 +348,8 @@ export default function MatchesExplorer({ tournaments }: Props) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
-                className="divide-y-2 divide-[#F3EFE6]/10 border-2 border-[#F3EFE6]/20 bg-[#0a0a14]"
+                className={`divide-y divide-[#F3EFE6]/[0.08] overflow-hidden ${SURFACE}`}
+                style={{ boxShadow: layers("#fb923c") }}
               >
                 {rows.map((m, i) => (
                   <MatchRowView key={m.id} m={m} index={i} />
@@ -394,10 +396,10 @@ const Controls: React.FC<{
             <button
               key={t.k}
               onClick={() => setTab(t.k)}
-              className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
+              className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
                 active
-                  ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+                  ? "rounded-md bg-[#fb923c] text-[#0a0a14]"
+                  : `${CHIP} ${CHIP_HOVER} text-[#F3EFE6]/70 hover:text-[#F3EFE6]`
               }`}
             >
               {t.label}
@@ -416,7 +418,7 @@ const Controls: React.FC<{
           onChange={(e) =>
             setTournamentId(e.target.value ? Number(e.target.value) : null)
           }
-          className="appearance-none border-2 border-[#F3EFE6]/20 bg-[#13131d] pl-20 pr-10 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3EFE6] focus:border-[#fb923c] focus:outline-none transition-colors min-w-[260px]"
+          className="appearance-none rounded-lg bg-[#24242e] hover:bg-[#31313a] pl-20 pr-10 py-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3EFE6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] transition-colors min-w-[260px]"
         >
           <option value="">Όλα τα τουρνουά</option>
           {tournaments.map((t) => (
@@ -482,17 +484,17 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
     >
       <Link
         href={`/matches/${m.id}`}
-        className="group block transition-colors hover:bg-[#13131d]/80"
+        className="group block transition-colors hover:bg-[#171724]"
       >
         <div className="grid grid-cols-12 items-center gap-3 px-4 py-4 md:px-5">
           {/* Date block */}
           <div className="col-span-3 sm:col-span-2">
             <div
-              className="inline-flex flex-col items-center border-2 px-3 py-1.5"
+              className="inline-flex flex-col items-center rounded-md px-3 py-1.5"
               style={{
-                borderColor: outcomeLabel
-                  ? outcomeColor
-                  : "rgba(243,239,230,0.3)",
+                backgroundColor: outcomeLabel
+                  ? `color-mix(in srgb, ${outcomeColor} 16%, transparent)`
+                  : "rgba(243,239,230,0.08)",
                 color: outcomeLabel ? outcomeColor : "#F3EFE6",
               }}
             >
@@ -526,13 +528,13 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
 
             <div className="shrink-0">
               {finished ? (
-                <div className="flex items-center gap-1 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums text-[#F3EFE6]">
+                <div className={`flex items-center gap-1 ${CHIP} px-2.5 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums text-[#F3EFE6]`}>
                   <span>{aScore ?? 0}</span>
                   <span className="text-[#F3EFE6]/30">:</span>
                   <span>{bScore ?? 0}</span>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+                <div className={`${CHIP} px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70`}>
                   {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
                 </div>
               )}
@@ -560,9 +562,9 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
           <div className="col-span-12 sm:col-span-3 flex items-center justify-end gap-2 font-mono text-[10px] uppercase tracking-[0.22em]">
             {outcomeLabel && (
               <span
-                className="border px-2 py-0.5 font-bold"
+                className="rounded-md px-2 py-0.5 font-bold"
                 style={{
-                  borderColor: outcomeColor,
+                  backgroundColor: `color-mix(in srgb, ${outcomeColor} 16%, transparent)`,
                   color: outcomeColor,
                 }}
               >
@@ -597,7 +599,10 @@ const MatchRowView: React.FC<{ m: MatchRow; index: number }> = ({
 // Loading skeleton
 // ───────────────────────────────────────────────────────────────────────
 const ListSkeleton: React.FC = () => (
-  <div className="divide-y-2 divide-[#F3EFE6]/10 border-2 border-[#F3EFE6]/15 bg-[#0a0a14]">
+  <div
+    className={`divide-y divide-[#F3EFE6]/[0.08] overflow-hidden ${SURFACE}`}
+    style={{ boxShadow: layers("#fb923c") }}
+  >
     {Array.from({ length: 6 }).map((_, i) => (
       <div key={i} className="grid grid-cols-12 items-center gap-3 px-5 py-5">
         <div className="col-span-2 h-11 w-14 animate-pulse bg-[#F3EFE6]/10" />
@@ -621,8 +626,8 @@ const StateBlock: React.FC<{
   body: string;
 }> = ({ kicker, title, body }) => (
   <div
-    className="relative border-2 border-dashed border-[#F3EFE6]/25 p-12 text-center"
-    style={{ background: "rgba(19,19,29,0.4)" }}
+    className={`relative ${SURFACE} p-12 text-center`}
+    style={{ boxShadow: layers("#fb923c") }}
   >
     <div className="mx-auto max-w-md">
       <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#fb923c]">
@@ -663,14 +668,14 @@ const PaginationBar: React.FC<{
   }
 
   return (
-    <nav className="mt-8 flex items-center justify-between gap-3 border-t-2 border-[#F3EFE6]/15 pt-5">
+    <nav className={`mt-8 flex items-center justify-between gap-3 border-t ${LINE} pt-5`}>
       <button
         disabled={page <= 1}
         onClick={() => onChange(Math.max(1, page - 1))}
-        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           page <= 1
-            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 cursor-not-allowed"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+            ? "rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25 cursor-not-allowed"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#fb923c]`
         }`}
       >
         ← Προηγ.
@@ -690,10 +695,10 @@ const PaginationBar: React.FC<{
               <button
                 onClick={() => onChange(p)}
                 aria-current={p === page ? "page" : undefined}
-                className={`border-2 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tabular-nums transition-colors ${
+                className={`px-3 py-1.5 font-mono text-[11px] font-bold uppercase tabular-nums transition-colors ${
                   p === page
-                    ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                    : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+                    ? "rounded-lg bg-[#fb923c] text-[#0a0a14]"
+                    : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#F3EFE6]`
                 }`}
               >
                 {pad2(p)}
@@ -706,10 +711,10 @@ const PaginationBar: React.FC<{
       <button
         disabled={page >= totalPages}
         onClick={() => onChange(Math.min(totalPages, page + 1))}
-        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           page >= totalPages
-            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 cursor-not-allowed"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+            ? "rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25 cursor-not-allowed"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#fb923c]`
         }`}
       >
         Επόμ. →
@@ -722,14 +727,14 @@ const PaginationBar: React.FC<{
 // Colophon
 // ───────────────────────────────────────────────────────────────────────
 const Colophon: React.FC<{ total: number }> = ({ total }) => (
-  <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+  <footer className={`border-t ${LINE} bg-[#13131d] text-[#F3EFE6]`}>
     <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-4 px-6 py-6 md:flex-row md:items-center">
       <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
         Σύνολο αγώνων · {pad2(total)}
       </p>
       <Link
         href="/"
-        className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
+        className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
       >
         ← Επιστροφή στην Αρχική
       </Link>

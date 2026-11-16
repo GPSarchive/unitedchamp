@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import VantaBg from '@/app/lib/VantaBg';
+import { SURFACE, layers } from '@/app/lib/ui/flat';
 
 type Article = {
   id: number;
@@ -174,7 +175,7 @@ export default function UnifiedContentPage() {
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   filter === 'all'
                     ? 'bg-white text-neutral-900'
-                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 Όλα
@@ -184,7 +185,7 @@ export default function UnifiedContentPage() {
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   filter === 'articles'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 Άρθρα
@@ -194,7 +195,7 @@ export default function UnifiedContentPage() {
                 className={`px-6 py-2 rounded-lg font-medium transition-all ${
                   filter === 'announcements'
                     ? 'bg-amber-600 text-white'
-                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 Ανακοινώσεις
@@ -247,14 +248,14 @@ export default function UnifiedContentPage() {
                       href={item.link}
                       className="group block"
                     >
-                      <article className="h-full bg-black/80 backdrop-blur-lg rounded-2xl border-2 border-white/20 hover:border-amber-500 transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_20px_60px_-15px_rgba(245,158,11,0.5)] p-6">
+                      <article className={`h-full ${SURFACE} transition-all duration-500 hover:scale-[1.03] p-6`} style={{ boxShadow: layers('#f59e0b') }}>
                         {/* Header with Badge and Pin */}
                         <div className="flex items-center justify-between mb-4">
-                          <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg bg-amber-500 text-white">
+                          <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide bg-amber-500 text-white">
                             Ανακοίνωση
                           </span>
                           {item.pinned && (
-                            <span className="text-xs px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 text-neutral-700 font-medium shadow-lg">
+                            <span className="text-xs px-3 py-1 rounded-full bg-white/90 text-neutral-700 font-medium">
                               📌 Pinned
                             </span>
                           )}
@@ -291,14 +292,14 @@ export default function UnifiedContentPage() {
                     href={item.link}
                     className="group block"
                   >
-                    <article className="h-full bg-black/60 backdrop-blur-lg rounded-xl overflow-hidden border-2 border-white/20 hover:border-blue-500 transition-all duration-500 hover:scale-[1.03] hover:shadow-[0_20px_60px_-15px_rgba(59,130,246,0.5)] hover:-translate-y-1">
+                    <article className={`relative h-full ${SURFACE} overflow-hidden transition-all duration-500 hover:scale-[1.03] hover:-translate-y-1`} style={{ boxShadow: layers('#3b82f6') }}>
                       {/* Content Type Badge & Pin */}
                       <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-                        <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg bg-blue-600 text-white">
+                        <span className="text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wide bg-blue-600 text-white">
                           Άρθρο
                         </span>
                         {item.pinned && (
-                          <span className="text-xs px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm border border-white/30 text-neutral-700 font-medium shadow-lg">
+                          <span className="text-xs px-3 py-1 rounded-full bg-white/90 text-neutral-700 font-medium">
                             📌 Pinned
                           </span>
                         )}

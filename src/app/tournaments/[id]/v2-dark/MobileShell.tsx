@@ -28,6 +28,7 @@ import type {
 import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 import KOBracketV2Dark from "./KOBracketV2Dark";
+import { SURFACE, layers, layer, STRIP_TOP, STRIP_BOTTOM, LINE, CHIP, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Shared types
@@ -314,7 +315,7 @@ const MobileTopStrip: React.FC<{ tournament: Tournament }> = ({
       : "ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΟ";
 
   return (
-    <div className="border-b-2 border-[#F3EFE6]/20 bg-[#0a0a14]/85 backdrop-blur-sm">
+    <div className={`border-b ${LINE} bg-[#0a0a14]/85`}>
       <div className="flex items-center justify-between gap-3 px-4 py-2 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/85">
         <span>N°{pad2(tournament.id)}</span>
         <div className="flex items-center gap-2">
@@ -335,7 +336,7 @@ const MobileMasthead: React.FC<{
   tournament: Tournament;
   totals: { teams: number; stages: number; matches: number; goals: number };
 }> = ({ tournament }) => (
-  <header className="relative border-b-2 border-[#F3EFE6]/20">
+  <header className={`relative border-b ${LINE}`}>
     <div className="px-5 pt-6 pb-8">
       {/* breadcrumb */}
       <nav className="mb-5 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.22em] text-[#F3EFE6]/55">
@@ -389,11 +390,11 @@ const MobileMasthead: React.FC<{
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.22em]">
           {tournament.season && (
-            <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2 py-1 text-[#F3EFE6]/75">
+            <span className={`${CHIP} px-2 py-1 text-[#F3EFE6]/75`}>
               Σεζόν {tournament.season}
             </span>
           )}
-          <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2 py-1 text-[#F3EFE6]/75">
+          <span className={`${CHIP} px-2 py-1 text-[#F3EFE6]/75`}>
             {tournament.format}
           </span>
         </div>
@@ -413,7 +414,7 @@ const Section: React.FC<{
 }> = ({ id, children, className = "", style }) => (
   <section
     id={id}
-    className={`scroll-mt-[84px] border-b-2 border-[#F3EFE6]/15 px-5 py-10 ${className}`}
+    className={`scroll-mt-[84px] border-b ${LINE} px-5 py-10 ${className}`}
     style={style}
   >
     {children}
@@ -437,7 +438,7 @@ const RubricMobile: React.FC<{
       <span className="h-[2px] w-6" style={{ background: accent }} />
       {kicker}
     </div>
-    <div className="mt-2 flex items-end justify-between gap-3 border-b-2 border-[#F3EFE6]/15 pb-2">
+    <div className={`mt-2 flex items-end justify-between gap-3 border-b ${LINE} pb-2`}>
       <h2
         className="font-[var(--f-display)] font-black italic leading-none tracking-[-0.02em] text-[#F3EFE6]"
         style={{ fontSize: "clamp(1.75rem, 8vw, 2.25rem)" }}
@@ -518,7 +519,7 @@ const JumpNav: React.FC<{ sections: ReadonlyArray<{ id: string; label: string }>
   return (
     <nav
       aria-label="Section navigation"
-      className="sticky top-0 z-40 border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/90 backdrop-blur-md"
+      className={`sticky top-0 z-40 border-b ${LINE} bg-[#0a0a14]/90 backdrop-blur-md`}
       style={{ WebkitBackdropFilter: "blur(12px)" }}
     >
       <div
@@ -533,10 +534,10 @@ const JumpNav: React.FC<{ sections: ReadonlyArray<{ id: string; label: string }>
               href={`#${s.id}`}
               data-jump-target={s.id}
               onClick={onJump(s.id)}
-              className={`relative shrink-0 border-2 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] transition-all ${
+              className={`relative shrink-0 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] transition-all ${
                 isActive
-                  ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                  : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/70 active:scale-[0.97]"
+                  ? "rounded-lg bg-[#fb923c] text-[#0a0a14]"
+                  : `${BUTTON_SHAPE} text-[#F3EFE6]/70 active:scale-[0.97]`
               }`}
             >
               {s.label}
@@ -587,11 +588,11 @@ const OverviewBlock: React.FC<{
           {statCards.map((s, i) => (
             <div
               key={s.label}
-              className="relative shrink-0 snap-start border-2 border-[#F3EFE6]/20 bg-[#13131d] p-5"
+              className={`relative shrink-0 snap-start ${SURFACE} p-5`}
               style={{
                 width: "70vw",
                 maxWidth: 260,
-                boxShadow: `4px 4px 0 0 ${s.accent}`,
+                boxShadow: layers(s.accent),
               }}
             >
               <div
@@ -626,8 +627,8 @@ const MobileChampionCard: React.FC<{ winner: Team }> = ({ winner }) => {
   const colour = safeColour(winner.colour) ?? "#E8B931";
   return (
     <div
-      className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#13131d]"
-      style={{ boxShadow: `6px 6px 0 0 ${colour}` }}
+      className={`relative overflow-hidden ${SURFACE}`}
+      style={{ boxShadow: layers(colour) }}
     >
       <div
         aria-hidden
@@ -642,7 +643,7 @@ const MobileChampionCard: React.FC<{ winner: Team }> = ({ winner }) => {
         }}
       />
 
-      <div className="relative flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/60 px-4 py-1.5 pl-5 font-mono text-[10px] uppercase tracking-[0.3em]">
+      <div className={`relative flex items-center justify-between ${STRIP_TOP} px-4 py-1.5 pl-5 font-mono text-[10px] uppercase tracking-[0.3em]`}>
         <span className="font-bold text-[#E8B931]">★ Πρωταθλητής</span>
         <span className="text-[#F3EFE6]/55">01</span>
       </div>
@@ -718,7 +719,7 @@ const MobileStandings: React.FC<{
 }> = ({ standings, teamById, groupById }) => {
   if (!standings.length)
     return (
-      <div className="border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 p-8 text-center font-mono text-xs uppercase tracking-[0.2em] text-[#F3EFE6]/55">
+      <div className="rounded-lg bg-[#F3EFE6]/[0.04] p-8 text-center font-mono text-xs uppercase tracking-[0.2em] text-[#F3EFE6]/55">
         Καμία βαθμολογία ακόμα
       </div>
     );
@@ -776,14 +777,7 @@ const StandingRow: React.FC<{
 
   return (
     <div
-      className="relative border-2 border-[#F3EFE6]/15 bg-[#0a0a14]"
-      style={
-        isLead
-          ? {
-              boxShadow: "3px 3px 0 0 #fb923c",
-            }
-          : undefined
-      }
+      className="relative overflow-hidden rounded-lg bg-[#F3EFE6]/[0.04]"
     >
       {isLead && (
         <div
@@ -858,7 +852,7 @@ const StandingRow: React.FC<{
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-[#F3EFE6]/10 bg-[#13131d]"
+            className={`overflow-hidden ${STRIP_BOTTOM}`}
           >
             <div className="grid grid-cols-5 divide-x divide-[#F3EFE6]/10 px-1 py-2">
               {[
@@ -968,10 +962,11 @@ const MobileStageSection: React.FC<{
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.1 }}
       transition={{ duration: 0.5 }}
-      className="overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14]"
+      className={`overflow-hidden ${SURFACE}`}
+      style={{ boxShadow: layers("#fb923c") }}
     >
       {/* Stage header strip */}
-      <div className="flex items-center gap-3 border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-4 py-3">
+      <div className={`flex items-center gap-3 ${STRIP_TOP} px-4 py-3`}>
         <span
           className="font-[var(--f-brutal)] text-2xl leading-none text-[#E8B931]"
           style={{ fontFeatureSettings: '"tnum"' }}
@@ -1105,7 +1100,7 @@ const SegmentedTabs: React.FC<{
   return (
     <div className="relative p-2">
       <div
-        className="relative grid gap-1 rounded-md border border-[#F3EFE6]/15 bg-[#13131d] p-1"
+        className={`relative grid gap-1 ${CHIP} p-1`}
         style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0,1fr))` }}
       >
         {/* Sliding thumb */}
@@ -1194,8 +1189,8 @@ const MobileKOStack: React.FC<{
       {/* Champion crown — if decided */}
       {champion && final?.status === "finished" && (
         <div
-          className="relative overflow-hidden border-2 border-[#E8B931]/80 bg-[#13131d] p-4"
-          style={{ boxShadow: "4px 4px 0 0 #E8B931" }}
+          className="relative overflow-hidden rounded-lg p-4"
+          style={{ backgroundColor: "color-mix(in srgb, #E8B931 16%, transparent)" }}
         >
           <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.3em] text-[#E8B931]">
             <span className="flex items-center gap-1.5">★ Πρωταθλητής</span>
@@ -1436,9 +1431,9 @@ const MobileMatchCard: React.FC<{
 
   return (
     <div
-      className="overflow-hidden border-2 border-[#F3EFE6]/15 bg-[#0a0a14] active:bg-[#13131d] transition-colors"
+      className="overflow-hidden rounded-lg bg-[#F3EFE6]/[0.04] active:bg-[#13131d] transition-colors"
     >
-      <div className="flex items-center justify-between border-b border-[#F3EFE6]/10 bg-[#13131d] px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
+      <div className={`flex items-center justify-between ${STRIP_TOP} px-3 py-1 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60`}>
         <span>{elDayFull(m.match_date)}</span>
         {m.matchday != null && <span>Αγωνιστική {m.matchday}</span>}
         {m.round != null && <span>Γύρος {m.round}</span>}
@@ -1471,7 +1466,7 @@ const MobileMatchCard: React.FC<{
         </div>
         <div className="shrink-0">
           {mode === "result" ? (
-            <div className="flex items-center gap-1.5 border-2 border-[#F3EFE6]/15 bg-[#13131d] px-2 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums">
+            <div className={`flex items-center gap-1.5 ${CHIP} px-2 py-1 font-[var(--f-brutal)] text-lg leading-none tabular-nums`}>
               <span className={aWon ? "text-[#fb923c]" : "text-[#F3EFE6]"}>
                 {m.team_a_score ?? 0}
               </span>
@@ -1481,7 +1476,7 @@ const MobileMatchCard: React.FC<{
               </span>
             </div>
           ) : (
-            <div className="border-2 border-dashed border-[#F3EFE6]/30 px-2 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70">
+            <div className={`${CHIP} px-2 py-1 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-[#F3EFE6]/70`}>
               {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
@@ -1586,11 +1581,10 @@ const MobileTopScorers: React.FC<{
                 {team?.name ?? ""}
               </div>
               <div
-                className="mt-2 flex w-full flex-col items-center justify-end border-2"
+                className="mt-2 flex w-full flex-col items-center justify-end rounded-md"
                 style={{
                   height: heights[i],
-                  borderColor: colour,
-                  background: `${colour}14`,
+                  background: `color-mix(in srgb, ${colour} 16%, transparent)`,
                 }}
               >
                 <div
@@ -1610,7 +1604,7 @@ const MobileTopScorers: React.FC<{
 
       {/* Rest of the list */}
       {rest.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-4">
           <div className="flex items-center gap-2 pt-1 font-mono text-[9px] uppercase tracking-[0.3em] text-[#fb923c]">
             <span className="h-[1px] w-5 bg-[#fb923c]" />
             Λοιποί σκόρερ
@@ -1620,7 +1614,8 @@ const MobileTopScorers: React.FC<{
             return (
               <div
                 key={p.id}
-                className="flex items-center gap-3 border border-[#F3EFE6]/15 bg-[#13131d] px-3 py-2"
+                className={`flex items-center gap-3 ${SURFACE} px-3 py-2`}
+                style={{ boxShadow: layer("#fb923c") }}
               >
                 <span className="w-6 text-center font-[var(--f-brutal)] text-base leading-none text-[#F3EFE6]/80">
                   {pad2(i + 4)}
@@ -1702,7 +1697,7 @@ const MobileAwardsCarousel: React.FC<{
       <div
         ref={scrollerRef}
         onScroll={onScroll}
-        className="-mx-5 flex snap-x snap-mandatory overflow-x-auto scroll-smooth px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-5 flex snap-x snap-mandatory overflow-x-auto scroll-smooth px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {cards.map((c, i) => (
           <div key={c.variant} className="w-full shrink-0 snap-center pr-3">
@@ -1756,16 +1751,12 @@ const AwardCardMobile: React.FC<{
 
   return (
     <div
-      className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14]"
+      className={`relative overflow-hidden ${SURFACE}`}
       style={{
-        boxShadow: `5px 5px 0 0 ${palette.tint}`,
-        backgroundImage: `
-          radial-gradient(circle at 20% 10%, ${palette.tint}22 0%, transparent 55%),
-          radial-gradient(circle at 80% 90%, ${palette.tint}14 0%, transparent 55%)
-        `,
+        boxShadow: layers(palette.tint),
       }}
     >
-      <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.3em]">
+      <div className={`flex items-center justify-between ${STRIP_TOP} px-3 py-2 font-mono text-[10px] uppercase tracking-[0.3em]`}>
         <span style={{ color: palette.tint }}>★ {palette.tag}</span>
         <span className="text-[#F3EFE6]/60">#{pad2(index + 1)}</span>
       </div>
@@ -1826,7 +1817,7 @@ const AwardCardMobile: React.FC<{
 // ───────────────────────────────────────────────────────────────────────
 const MobileTeamsGrid: React.FC<{ teams: Team[] }> = ({ teams }) => {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-x-3 gap-y-4">
       {teams.map((team, i) => {
         const colour =
           safeColour(team.colour) ??
@@ -1835,8 +1826,8 @@ const MobileTeamsGrid: React.FC<{ teams: Team[] }> = ({ teams }) => {
           <Link
             key={team.id}
             href={`/OMADA/${team.id}`}
-            className="group relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] active:scale-[0.98] transition-transform"
-            style={{ boxShadow: `3px 3px 0 0 ${colour}` }}
+            className={`group relative overflow-hidden ${SURFACE} active:scale-[0.98] transition-transform`}
+            style={{ boxShadow: layer(colour) }}
           >
             <div
               aria-hidden
@@ -1906,7 +1897,7 @@ const MobileTeamsGrid: React.FC<{ teams: Team[] }> = ({ teams }) => {
 const MobileColophon: React.FC<{ tournament: Tournament }> = ({
   tournament,
 }) => (
-  <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+  <footer className={`border-t ${LINE} bg-[#13131d] text-[#F3EFE6]`}>
     <div className="flex flex-col items-start gap-3 px-5 py-6">
       <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-[#E8B931]">
         Ενημέρωση · v2.0 · Pocket
@@ -1919,7 +1910,7 @@ const MobileColophon: React.FC<{ tournament: Tournament }> = ({
       </h3>
       <Link
         href="/tournaments"
-        className="mt-2 inline-flex items-center gap-2 border border-[#F3EFE6]/30 px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6] active:bg-[#F3EFE6] active:text-[#0a0a14] transition-colors"
+        className={`mt-2 inline-flex items-center gap-2 ${BUTTON_SHAPE} px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6] active:bg-[#F3EFE6] active:text-[#0a0a14] transition-colors`}
       >
         ← Όλες οι Διοργανώσεις
       </Link>
@@ -1951,7 +1942,8 @@ const ScrollToTopFab: React.FC = () => {
           onClick={() =>
             window.scrollTo({ top: 0, behavior: "smooth" })
           }
-          className="fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center border-2 border-[#fb923c] bg-[#13131d] text-[#fb923c] shadow-[3px_3px_0_0_#fb923c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0_0_#fb923c] transition-transform"
+          className={`fixed bottom-5 right-5 z-50 flex h-11 w-11 items-center justify-center ${SURFACE} text-[#fb923c] active:translate-x-[2px] active:translate-y-[2px] transition-transform`}
+          style={{ boxShadow: layers("#fb923c") }}
           aria-label="Επιστροφή Επάνω"
         >
           <svg
@@ -1977,7 +1969,7 @@ const ScrollToTopFab: React.FC = () => {
 // Empty state
 // ───────────────────────────────────────────────────────────────────────
 const EmptyBlock: React.FC<{ text: string }> = ({ text }) => (
-  <div className="border-2 border-dashed border-[#F3EFE6]/25 bg-[#13131d]/40 p-8 text-center font-mono text-xs uppercase tracking-[0.2em] text-[#F3EFE6]/55">
+  <div className="rounded-lg bg-[#F3EFE6]/[0.04] p-8 text-center font-mono text-xs uppercase tracking-[0.2em] text-[#F3EFE6]/55">
     {text}
   </div>
 );

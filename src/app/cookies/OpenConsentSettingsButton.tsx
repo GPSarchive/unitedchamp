@@ -7,7 +7,7 @@ export default function OpenConsentSettingsButton() {
     <button
       type="button"
       onClick={openConsentBanner}
-      className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-orange-500/20"
+      className="inline-flex items-center rounded-lg bg-[#fb923c] px-4 py-2 text-sm font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform"
     >
       Άνοιγμα ρυθμίσεων cookies
     </button>

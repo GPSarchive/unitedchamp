@@ -138,10 +138,10 @@ export default function TwoLeggedPenaltyPanel({
   return (
     <div
       ref={rootRef}
-      className={`mt-4 rounded-lg border p-4 ${
+      className={`mt-4 rounded-lg p-4 ${
         penaltiesRequired
-          ? "border-amber-400/40 bg-amber-400/10"
-          : "border-cyan-400/25 bg-cyan-400/5"
+          ? "bg-amber-400/[0.16]"
+          : "bg-cyan-400/[0.16]"
       }`}
     >
       <p

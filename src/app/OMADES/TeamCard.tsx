@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Team } from "@/app/lib/types";
+import { SURFACE, layers, STRIP_TOP, STRIP_BOTTOM, LINE } from "@/app/lib/ui/flat";
 
 const pad2 = (n: number | string) => String(n).padStart(2, "0");
 
@@ -26,14 +27,14 @@ export default function TeamCard({
       className="group block focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fb923c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a14]"
     >
       <div
-        className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#F3EFE6]/40"
+        className={`relative overflow-hidden ${SURFACE} transition-all duration-300 group-hover:-translate-y-1`}
         style={{
           transform: `rotate(${rotation})`,
-          boxShadow: `5px 5px 0 0 ${accent}`,
+          boxShadow: layers(accent),
         }}
       >
         {/* header strip */}
-        <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#13131d] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60">
+        <div className={`flex items-center justify-between ${STRIP_TOP} px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.25em] text-[#F3EFE6]/60`}>
           <span
             className="flex items-center gap-1.5 font-bold"
             style={{ color: accent }}
@@ -91,7 +92,7 @@ export default function TeamCard({
         </div>
 
         {/* Name + arrow */}
-        <div className="flex items-center justify-between gap-2 border-t-2 border-[#F3EFE6]/15 px-3 py-2.5">
+        <div className={`flex items-center justify-between gap-2 border-t ${LINE} px-3 py-2.5`}>
           <h3 className="min-w-0 flex-1 truncate font-[var(--f-display)] text-sm font-semibold italic leading-tight text-[#F3EFE6]">
             {team.name ?? "—"}
           </h3>
@@ -101,7 +102,7 @@ export default function TeamCard({
         </div>
 
         {/* Bottom meta */}
-        <div className="flex items-center justify-between border-t border-[#F3EFE6]/10 px-3 py-1 font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/40">
+        <div className={`flex items-center justify-between ${STRIP_BOTTOM} px-3 py-1 font-mono text-[9px] uppercase tracking-[0.28em] text-[#F3EFE6]/40`}>
           <span>UC · {pad2(team.id)}</span>
           {team.am && (
             <span className="text-[#F3EFE6]/55">AM · {team.am}</span>

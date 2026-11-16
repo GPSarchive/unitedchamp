@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LINE, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 interface PaginationProps {
   currentPage: number;
@@ -43,15 +44,15 @@ export default function Pagination({
   const next = Math.min(totalPages, currentPage + 1);
 
   return (
-    <nav className="mt-10 flex items-center justify-between gap-3 border-t-2 border-[#F3EFE6]/15 pt-5">
+    <nav className={`mt-10 flex items-center justify-between gap-3 border-t ${LINE} pt-5`}>
       <Link
         href={href(prev)}
         aria-disabled={currentPage <= 1}
         tabIndex={currentPage <= 1 ? -1 : 0}
-        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           currentPage <= 1
-            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 pointer-events-none"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+            ? "rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25 pointer-events-none"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#fb923c]`
         }`}
       >
         ← Προηγ.
@@ -71,10 +72,10 @@ export default function Pagination({
               <Link
                 href={href(p)}
                 aria-current={p === currentPage ? "page" : undefined}
-                className={`border-2 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tabular-nums transition-colors ${
+                className={`px-3 py-1.5 font-mono text-[11px] font-bold uppercase tabular-nums transition-colors ${
                   p === currentPage
-                    ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                    : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+                    ? "rounded-lg bg-[#fb923c] text-[#0a0a14]"
+                    : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#F3EFE6]`
                 }`}
               >
                 {pad2(p)}
@@ -88,10 +89,10 @@ export default function Pagination({
         href={href(next)}
         aria-disabled={currentPage >= totalPages}
         tabIndex={currentPage >= totalPages ? -1 : 0}
-        className={`border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
+        className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-colors ${
           currentPage >= totalPages
-            ? "border-[#F3EFE6]/10 text-[#F3EFE6]/25 pointer-events-none"
-            : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/75 hover:border-[#fb923c] hover:text-[#fb923c]"
+            ? "rounded-lg bg-[#F3EFE6]/[0.04] text-[#F3EFE6]/25 pointer-events-none"
+            : `${BUTTON_SHAPE} text-[#F3EFE6]/75 hover:text-[#fb923c]`
         }`}
       >
         Επόμ. →

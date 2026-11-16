@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { useConsent } from "@/app/lib/consent/use-consent";
 import { formatMatchDate } from "@/app/lib/datetime";
+import { SURFACE, BUTTON_SHAPE, layers } from "@/app/lib/ui/flat";
 
 type VideoMatch = {
   id: number;
@@ -172,7 +173,8 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
             return (
               <div
                 key={match.id}
-                className="group relative flex flex-col bg-gradient-to-b from-neutral-900 to-black border-2 border-white/10 overflow-hidden transition-all duration-500 hover:border-orange-500/50 hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]"
+                className={`group relative flex flex-col ${SURFACE} overflow-hidden transition-all duration-500`}
+                style={{ boxShadow: layers("#fb923c") }}
               >
                 {/* Video area */}
                 <div className="relative aspect-video overflow-hidden">
@@ -193,7 +195,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                         className="object-cover"
                         sizes="(max-width: 1024px) 100vw, 50vw"
                       />
-                      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center px-4">
+                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center px-4">
                         <p className="text-sm sm:text-base font-semibold text-white max-w-sm">
                           Η αναπαραγωγή απαιτεί συγκατάθεση cookies
                         </p>
@@ -207,7 +209,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                             onClick={() => {
                               setAnalytics(true);
                             }}
-                            className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-xs font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform shadow-lg shadow-orange-500/20"
+                            className="inline-flex items-center rounded-lg bg-[#fb923c] px-4 py-2 text-xs font-bold text-black hover:scale-[1.02] active:scale-[0.98] transition-transform"
                           >
                             Αποδοχή και αναπαραγωγή
                           </button>
@@ -217,7 +219,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                               setPlayingId(null);
                               reopen();
                             }}
-                            className="inline-flex items-center rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 transition-colors"
+                            className={`inline-flex items-center ${BUTTON_SHAPE} px-4 py-2 text-xs font-semibold text-white transition-colors`}
                           >
                             Ρυθμίσεις cookies
                           </button>
@@ -241,13 +243,13 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                         aria-label="Play video"
                         className="absolute inset-0 flex items-center justify-center cursor-pointer"
                       >
-                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-500/90 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg shadow-orange-500/30">
+                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-500/90 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
                           <Play className="w-6 h-6 sm:w-7 sm:h-7 text-white fill-white ml-0.5" />
                         </div>
                       </button>
                       {/* Score overlay */}
                       {match.team_a_score != null && match.team_b_score != null && (
-                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-black/70 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-bold text-white tracking-wider">
+                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-black/70 rounded-md px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-bold text-white tracking-wider">
                           {match.team_a_score} – {match.team_b_score}
                         </div>
                       )}
@@ -311,8 +313,8 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
                 </div>
 
                 {/* Corner bracket accents (hover) */}
-                <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t-2 border-l-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b-2 border-r-2 border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute top-0 left-0 w-6 h-6 sm:w-8 sm:h-8 border-t-2 border-l-2 rounded-tl-xl border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 border-b-2 border-r-2 rounded-br-xl border-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </div>
             );
           })}
@@ -325,7 +327,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
               onClick={prev}
               disabled={page === 0}
               aria-label="Previous page"
-              className="p-3 sm:p-3.5 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
+              className={`p-3 sm:p-3.5 ${BUTTON_SHAPE} text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0`}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -394,7 +396,7 @@ export default function HomeVideos({ videos: initialVideos }: HomeVideosProps) {
               onClick={next}
               disabled={page === totalPages - 1 && !nextCursor}
               aria-label="Next page"
-              className="p-3 sm:p-3.5 border-2 border-white/50 text-white hover:bg-white/10 hover:border-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0"
+              className={`p-3 sm:p-3.5 ${BUTTON_SHAPE} text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300 flex-shrink-0`}
             >
               <ChevronRight className="w-5 h-5" />
             </button>

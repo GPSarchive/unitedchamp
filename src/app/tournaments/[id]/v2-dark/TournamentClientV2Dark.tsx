@@ -30,6 +30,7 @@ import { resolvePlayerPhotoUrl } from "@/app/lib/player-images";
 import { formatMatchDate, formatMatchTime } from "@/app/lib/datetime";
 import KOBracketV2Dark from "./KOBracketV2Dark";
 import MobileShell from "./MobileShell";
+import { SURFACE, layers, STRIP_TOP, LINE, CHIP, BUTTON_SHAPE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography — distinctive editorial pairing.
@@ -170,7 +171,7 @@ const TopStrip: React.FC<{ tournament: Tournament }> = ({ tournament }) => {
       : "ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΟ";
 
   return (
-    <div className="border-b-2 border-[#F3EFE6]/20 bg-[#0a0a14]/80 backdrop-blur-sm">
+    <div className={`border-b ${LINE} bg-[#0a0a14]/80`}>
       <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-6 py-2.5 font-mono text-[11px] tracking-[0.22em] uppercase text-[#F3EFE6]">
         <div className="flex items-center gap-4">
           <span>Ενημέρωση N°{pad2(tournament.id)}</span>
@@ -204,10 +205,9 @@ const ChampionPlate: React.FC<{ winner: Team }> = ({ winner }) => {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
-      className="relative overflow-hidden border-2 rotate-[1.5deg] bg-[#13131d] text-[#F3EFE6]"
+      className={`relative overflow-hidden rotate-[1.5deg] ${SURFACE} text-[#F3EFE6]`}
       style={{
-        borderColor: "rgba(243,239,230,0.2)",
-        boxShadow: `10px 10px 0 0 ${teamColour}`,
+        boxShadow: layers(teamColour),
       }}
     >
       {/* Colour strip — team identity */}
@@ -226,7 +226,7 @@ const ChampionPlate: React.FC<{ winner: Team }> = ({ winner }) => {
       />
 
       {/* Header strip */}
-      <div className="relative flex items-center justify-between border-b-2 border-[#F3EFE6]/15 bg-[#0a0a14]/60 px-4 py-1.5 pl-5 font-mono text-[10px] uppercase tracking-[0.3em]">
+      <div className={`relative flex items-center justify-between ${STRIP_TOP} px-4 py-1.5 pl-5 font-mono text-[10px] uppercase tracking-[0.3em]`}>
         <span className="flex items-center gap-1.5 font-bold text-[#E8B931]">
           ★ Πρωταθλητής
         </span>
@@ -315,7 +315,7 @@ const Masthead: React.FC<{
   return (
     <header
       ref={ref}
-      className="relative overflow-hidden border-b-2 border-[#F3EFE6]/20"
+      className={`relative overflow-hidden border-b ${LINE}`}
     >
       {/* giant rotated watermark name */}
       <motion.div
@@ -355,11 +355,11 @@ const Masthead: React.FC<{
           >
             <div className="mb-6 flex flex-wrap items-center gap-3 font-mono text-xs tracking-[0.2em] uppercase">
               
-              <span className="border border-[#F3EFE6]/20 px-2 py-1 text-[#F3EFE6]">
+              <span className={`${CHIP} px-2 py-1 text-[#F3EFE6]`}>
                 {tournament.format}
               </span>
               {tournament.season && (
-                <span className="border border-[#F3EFE6]/20 px-2 py-1 text-[#F3EFE6]">
+                <span className={`${CHIP} px-2 py-1 text-[#F3EFE6]`}>
                   Σεζόν {tournament.season}
                 </span>
               )}
@@ -401,7 +401,7 @@ const Masthead: React.FC<{
           >
             {/* Emblem panel — always shown */}
             {tournament.logo ? (
-              <div className="rotate-[-1.5deg] border-2 border-[#F3EFE6]/20 bg-[#0a0a14] p-5 shadow-[8px_8px_0_0_#fb923c]">
+              <div className={`rotate-[-1.5deg] ${SURFACE} p-5`} style={{ boxShadow: layers("#fb923c") }}>
                 <img
                   src={tournament.logo}
                   alt={tournament.name}
@@ -414,7 +414,7 @@ const Masthead: React.FC<{
             ) : null}
 
             {/* quick count chips */}
-            <div className="grid grid-cols-3 border-2 border-[#F3EFE6]/20 bg-[#0a0a14]">
+            <div className={`grid grid-cols-3 ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
               {[
                 { label: "Ομάδες", v: totals.teams },
                 { label: "Φάσεις", v: totals.stages },
@@ -423,7 +423,7 @@ const Masthead: React.FC<{
                 <div
                   key={s.label}
                   className={`p-3 text-center ${
-                    i < 2 ? "border-r-2 border-[#F3EFE6]/20" : ""
+                    i < 2 ? `border-r ${LINE}` : ""
                   }`}
                 >
                   <div className="font-[var(--f-brutal)] text-2xl text-[#F3EFE6]">
@@ -457,7 +457,7 @@ const NumberRibbon: React.FC<{
   return (
     <section
       ref={ref}
-      className="border-b-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]"
+      className={`border-b ${LINE} bg-[#13131d] text-[#F3EFE6]`}
     >
       <div className="mx-auto grid max-w-[1400px] grid-cols-2 md:grid-cols-4">
         {stats.map((s, i) => (
@@ -520,7 +520,7 @@ const Rubric: React.FC<{
       <span className="h-[2px] w-8 bg-[#fb923c]" />
       {kicker}
     </div>
-    <div className="mt-3 flex items-end justify-between gap-6 border-b-2 border-[#F3EFE6]/20 pb-3">
+    <div className={`mt-3 flex items-end justify-between gap-6 border-b ${LINE} pb-3`}>
       <h2
         className="font-[var(--f-display)] font-black italic leading-none tracking-[-0.02em] text-[#F3EFE6]"
         style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
@@ -544,10 +544,11 @@ const StandingsBroadsheet: React.FC<{
   teamById: Map<number, Team>;
   groupById: Map<number, Group>;
   title?: string;
-}> = ({ standings, teamById, groupById, title }) => {
+  nested?: boolean;
+}> = ({ standings, teamById, groupById, title, nested }) => {
   if (!standings.length)
     return (
-      <div className="border-2 border-dashed border-[#F3EFE6]/30 bg-[#0a0a14]/50 p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
+      <div className="rounded-lg bg-[#F3EFE6]/[0.04] p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
         Καμία βαθμολογία ακόμα
       </div>
     );
@@ -568,9 +569,9 @@ const StandingsBroadsheet: React.FC<{
           (a, b) => (a.rank ?? 999) - (b.rank ?? 999) || b.points - a.points
         );
         return (
-          <div key={String(gid)} className="overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14]">
+          <div key={String(gid)} className={`overflow-hidden ${nested ? "rounded-lg bg-[#F3EFE6]/[0.04]" : SURFACE}`} style={nested ? undefined : { boxShadow: layers("#fb923c") }}>
             {g && (
-              <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/20 bg-[#13131d] px-5 py-2 text-[#F3EFE6]">
+              <div className={`flex items-center justify-between ${STRIP_TOP} px-5 py-2 text-[#F3EFE6]`}>
                 <span className="font-mono text-[11px] uppercase tracking-[0.3em]">
                   Όμιλος · {g.name}
                 </span>
@@ -581,7 +582,7 @@ const StandingsBroadsheet: React.FC<{
             )}
             <table className="w-full text-[#F3EFE6]">
               <thead>
-                <tr className="border-b-2 border-[#F3EFE6]/20 font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60">
+                <tr className={`border-b ${LINE} font-mono text-[10px] uppercase tracking-[0.2em] text-[#F3EFE6]/60`}>
                   <th className="w-14 px-2 py-3 text-left">#</th>
                   <th className="px-2 py-3 text-left">Ομάδα</th>
                   <th className="px-2 py-3 text-center">Αγώνες</th>
@@ -686,15 +687,15 @@ const MatchRow: React.FC<{
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ delay: index * 0.05 }}
-      className="group grid grid-cols-12 items-center gap-3 border-b-2 border-[#F3EFE6]/20 py-5 last:border-0 hover:border-[#fb923c]"
+      className={`group grid grid-cols-12 items-center gap-3 border-b ${LINE} py-5 last:border-0 hover:border-[#fb923c]`}
     >
       {/* left date block */}
       <div className="col-span-3 md:col-span-2">
         <div
-          className={`inline-flex flex-col items-center border-2 ${
+          className={`inline-flex flex-col items-center ${CHIP} ${
             mode === "result"
-              ? "border-[#F3EFE6]/20 bg-[#0a0a14]"
-              : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]"
+              ? ""
+              : "text-[#F3EFE6]"
           } px-3 py-2`}
         >
           <span className="font-[var(--f-brutal)] text-2xl leading-none">
@@ -732,13 +733,13 @@ const MatchRow: React.FC<{
 
         <div className="shrink-0">
           {mode === "result" ? (
-            <div className="flex items-center gap-2 border-2 border-[#F3EFE6]/20 bg-[#0a0a14] px-3 py-1.5 font-[var(--f-brutal)] text-2xl md:text-3xl leading-none text-[#F3EFE6]">
+            <div className={`flex items-center gap-2 ${CHIP} px-3 py-1.5 font-[var(--f-brutal)] text-2xl md:text-3xl leading-none text-[#F3EFE6]`}>
               <span className={aWon ? "text-[#fb923c]" : ""}>{m.team_a_score ?? 0}</span>
               <span className="text-[#F3EFE6]/30">:</span>
               <span className={bWon ? "text-[#fb923c]" : ""}>{m.team_b_score ?? 0}</span>
             </div>
           ) : (
-            <div className="border-2 border-dashed border-[#F3EFE6]/60 px-3 py-1.5 text-center font-mono text-xs uppercase tracking-[0.25em]">
+            <div className={`${CHIP} px-3 py-1.5 text-center font-mono text-xs uppercase tracking-[0.25em]`}>
               {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
@@ -799,22 +800,19 @@ const AwardCard: React.FC<{
       viewport={{ once: true, amount: 0.3 }}
       whileHover={{ y: -6, rotate: 0 }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
-      className="group relative border-2 border-[#F3EFE6]/20 bg-[#0a0a14] shadow-[8px_8px_0_0_#fb923c]"
+      className={`group relative overflow-hidden ${SURFACE}`}
       style={{
-        backgroundImage: `
-          radial-gradient(circle at 20% 10%, ${palette.tint}22 0%, transparent 50%),
-          radial-gradient(circle at 80% 90%, ${palette.tint}15 0%, transparent 50%)
-        `,
+        boxShadow: layers("#fb923c"),
       }}
     >
       {/* top rubric */}
-      <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/20 bg-[#13131d] px-4 py-2 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]">
+      <div className={`flex items-center justify-between ${STRIP_TOP} px-4 py-2 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F3EFE6]`}>
         <span style={{ color: palette.tint }}>★ {palette.tag}</span>
         <span className="opacity-60">#{pad2(index + 1)}</span>
       </div>
 
       {/* photo panel */}
-      <div className="relative h-64 overflow-hidden border-b-2 border-[#F3EFE6]/20 bg-[#13131d]">
+      <div className="relative h-64 overflow-hidden bg-[#13131d]">
         <img
           src={resolvePlayerPhotoUrl(player.photo)}
           alt={player.name}
@@ -888,8 +886,8 @@ const TopScorers: React.FC<{
   if (!top.length) return null;
 
   return (
-    <div className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14]">
-      <div className="flex items-center justify-between border-b-2 border-[#F3EFE6]/20 bg-[#13131d] px-5 py-3 text-[#F3EFE6]">
+    <div className={`overflow-hidden ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
+      <div className={`flex items-center justify-between ${STRIP_TOP} px-5 py-3 text-[#F3EFE6]`}>
         <span className="font-mono text-[11px] uppercase tracking-[0.3em]">
           Πίνακας Σκόρερ
         </span>
@@ -897,7 +895,7 @@ const TopScorers: React.FC<{
           Γκολ + Ασίστ
         </span>
       </div>
-      <ul className="divide-y-2 divide-[#F3EFE6]/15">
+      <ul className="divide-y divide-[#F3EFE6]/[0.08]">
         {top.map((p, i) => {
           const t = teamById.get(p.teamId);
           const pct = (p.goals / max) * 100;
@@ -939,7 +937,7 @@ const TopScorers: React.FC<{
                 </div>
               </div>
               <div className="col-span-0 md:col-span-4 hidden md:block">
-                <div className="relative h-3 overflow-hidden border border-[#F3EFE6]/20 bg-[#0a0a14]">
+                <div className={`relative h-3 overflow-hidden ${CHIP}`}>
                   <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${pct}%` }}
@@ -993,14 +991,15 @@ const TeamsGrid: React.FC<{
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ delay: i * 0.04 }}
-            className="group relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] transition-shadow hover:shadow-[6px_6px_0_0_#fb923c]"
+            className={`group relative overflow-hidden ${SURFACE} transition-shadow`}
+            style={{ boxShadow: layers(accent) }}
           >
             {/* vertical colour strip */}
             <div
               className="absolute left-0 top-0 h-full w-2"
               style={{ background: accent }}
             />
-            <div className="flex items-center gap-4 border-b-2 border-[#F3EFE6]/15 px-5 pl-6 py-4">
+            <div className={`flex items-center gap-4 border-b ${LINE} px-5 pl-6 py-4`}>
               <img
                 src={team.logo}
                 alt={team.name}
@@ -1027,7 +1026,7 @@ const TeamsGrid: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-4 divide-x-2 divide-[#F3EFE6]/10 border-b-2 border-[#F3EFE6]/15 pl-2">
+            <div className={`grid grid-cols-4 divide-x divide-[#F3EFE6]/[0.08] border-b ${LINE} pl-2`}>
               {[
                 { l: "Υπέρ", v: team.goalsFor },
                 { l: "Κατά", v: team.goalsAgainst },
@@ -1054,7 +1053,7 @@ const TeamsGrid: React.FC<{
                   {roster.slice(0, 12).map((p) => (
                     <span
                       key={p.id}
-                      className="inline-flex items-center gap-1 border border-[#F3EFE6]/25 bg-[#0a0a14] px-1.5 py-0.5 font-mono text-[10px] text-[#F3EFE6]/80"
+                      className={`inline-flex items-center gap-1 ${CHIP} px-1.5 py-0.5 font-mono text-[10px] text-[#F3EFE6]/80`}
                     >
                       {p.isCaptain && <span className="text-[#fb923c]">C</span>}
                       {p.name}
@@ -1130,10 +1129,11 @@ const StageBlock: React.FC<{
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.6 }}
-      className="border-2 border-[#F3EFE6]/20 bg-[#0a0a14]"
+      className={`overflow-hidden ${SURFACE}`}
+      style={{ boxShadow: layers("#fb923c") }}
     >
       {/* stage header */}
-      <div className="relative flex flex-wrap items-center gap-4 border-b-2 border-[#F3EFE6]/20 bg-[#13131d] px-5 py-4 text-[#F3EFE6]">
+      <div className={`relative flex flex-wrap items-center gap-4 ${STRIP_TOP} px-5 py-4 text-[#F3EFE6]`}>
         <span className="font-[var(--f-brutal)] text-4xl md:text-5xl leading-none text-[#E8B931]">
           {pad2(index + 1)}
         </span>
@@ -1150,10 +1150,10 @@ const StageBlock: React.FC<{
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`border-2 border-[#F3EFE6]/20 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors ${
+              className={`rounded-lg px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors ${
                 tab === t
-                  ? "bg-[#0a0a14] text-[#F3EFE6]"
-                  : "bg-transparent text-[#F3EFE6] hover:bg-[#0a0a14]/10"
+                  ? "bg-[#F3EFE6]/[0.14] text-[#F3EFE6]"
+                  : "bg-transparent text-[#F3EFE6] hover:bg-[#F3EFE6]/[0.08]"
               }`}
             >
               {tabLabel(t)}
@@ -1175,6 +1175,7 @@ const StageBlock: React.FC<{
                 standings={stageStandings}
                 teamById={teamById}
                 groupById={groupById}
+                nested
               />
             </motion.div>
           )}
@@ -1216,7 +1217,7 @@ const StageBlock: React.FC<{
                   ))}
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-[#F3EFE6]/30 p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
+                <div className="rounded-lg bg-[#F3EFE6]/[0.04] p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
                   Δεν υπάρχουν αποτελέσματα ακόμα
                 </div>
               )}
@@ -1243,7 +1244,7 @@ const StageBlock: React.FC<{
                   ))}
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-[#F3EFE6]/30 p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
+                <div className="rounded-lg bg-[#F3EFE6]/[0.04] p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
                   Δεν υπάρχουν προγραμματισμένοι αγώνες
                 </div>
               )}
@@ -1275,9 +1276,9 @@ const FixtureTicker: React.FC<{
   const loop = [...upcoming, ...upcoming];
 
   return (
-    <section className="relative overflow-hidden border-y-2 border-[#F3EFE6]/20 bg-[#fb923c] text-[#F3EFE6]">
+    <section className={`relative overflow-hidden border-y ${LINE} bg-[#fb923c] text-[#F3EFE6]`}>
       <div className="flex items-center gap-6 py-3">
-        <span className="shrink-0 border-r-2 border-[#F3EFE6]/20 bg-[#13131d] px-4 py-1 font-mono text-[11px] uppercase tracking-[0.3em] text-[#E8B931]">
+        <span className={`shrink-0 border-r ${LINE} bg-[#13131d] px-4 py-1 font-mono text-[11px] uppercase tracking-[0.3em] text-[#E8B931]`}>
           ▲ Επόμενοι
         </span>
         <div className="relative flex-1 overflow-hidden">
@@ -1314,7 +1315,7 @@ const FixtureTicker: React.FC<{
 // Footer colophon
 // ───────────────────────────────────────────────────────────────────────
 const Colophon: React.FC<{ tournament: Tournament }> = ({ tournament }) => (
-  <footer className="border-t-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]">
+  <footer className={`border-t ${LINE} bg-[#13131d] text-[#F3EFE6]`}>
     <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-6 px-6 py-10 md:flex-row md:items-end">
       <div>
         
@@ -1332,7 +1333,7 @@ const Colophon: React.FC<{ tournament: Tournament }> = ({ tournament }) => (
       <div className="flex flex-col items-start gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/60 md:items-end">
         <span>Εκδ. {pad2(tournament.id)} · Σεζόν {tournament.season ?? "—"}</span>
         <span>Μορφή · {tournament.format}</span>
-        <Link href="/tournaments" className="mt-2 border border-[#F3EFE6]/30 px-3 py-1 text-[#F3EFE6] hover:bg-[#0a0a14] hover:text-[#F3EFE6] transition-colors">
+        <Link href="/tournaments" className={`mt-2 ${BUTTON_SHAPE} px-3 py-1 text-[#F3EFE6] hover:text-[#F3EFE6] transition-colors`}>
           ← Όλες οι Διοργανώσεις
         </Link>
       </div>
@@ -1440,7 +1441,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
 
       {/* Overall leaderboard (first stage) */}
       {primaryStage && topStandings.length > 0 && (
-        <section className="relative border-b-2 border-[#F3EFE6]/20">
+        <section className={`relative border-b ${LINE}`}>
           <div className="mx-auto max-w-[1400px] px-6 py-16 md:py-24">
             <Rubric
               kicker={`Βαθμολογία · ${primaryStage.name}`}
@@ -1458,7 +1459,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
 
       {/* Stages */}
       {sortedStages.length > 0 && (
-        <section className="relative border-b-2 border-[#F3EFE6]/20">
+        <section className={`relative border-b ${LINE}`}>
           <div className="mx-auto max-w-[1400px] px-6 py-16 md:py-24">
             <Rubric
               kicker="Ιστορικό"
@@ -1485,7 +1486,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
 
       {/* Top Scorers */}
       {players.length > 0 && (
-        <section className="relative border-b-2 border-[#F3EFE6]/20">
+        <section className={`relative border-b ${LINE}`}>
           <div className="mx-auto max-w-[1400px] px-6 py-16 md:py-24">
             <Rubric
               kicker="Σκόρερ"
@@ -1500,7 +1501,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
       {/* Awards */}
       {(scorer || mvp || gk) && (
         <section
-          className="relative border-b-2 border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]"
+          className={`relative border-b ${LINE} bg-[#13131d] text-[#F3EFE6]`}
           style={{
             backgroundImage:
               "radial-gradient(circle at 10% 10%, #fb923c33 0%, transparent 40%), radial-gradient(circle at 90% 80%, #E8B93133 0%, transparent 40%)",
@@ -1555,7 +1556,7 @@ const TournamentClientV2Dark: React.FC<Props> = ({ initialData }) => {
 
       {/* Teams */}
       {teams.length > 0 && (
-        <section className="relative border-b-2 border-[#F3EFE6]/20">
+        <section className={`relative border-b ${LINE}`}>
           <div className="mx-auto max-w-[1400px] px-6 py-16 md:py-24">
             <Rubric
               kicker="Ρόστερ"

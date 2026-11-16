@@ -31,6 +31,7 @@ import {
   FaTrophy,
   FaShieldAlt,
 } from "react-icons/fa";
+import { SURFACE, layers, layer, CHIP, CHIP_ORANGE, BUTTON_SHAPE, LINE } from "@/app/lib/ui/flat";
 
 // ───────────────────────────────────────────────────────────────────────
 // Typography
@@ -208,7 +209,7 @@ const Masthead: React.FC<{
               <span className="h-[2px] w-8" style={{ background: accent }} />
               <span style={{ color: accent }}>Προφίλ Ομάδας</span>
               {team.am && (
-                <span className="border border-[#F3EFE6]/20 px-2 py-0.5 text-[#F3EFE6]/70">
+                <span className={`${CHIP} px-2 py-0.5 text-[#F3EFE6]/70`}>
                   AM · {team.am}
                 </span>
               )}
@@ -235,7 +236,7 @@ const Masthead: React.FC<{
             {/* Inline meta chips */}
             <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em]">
               {team.created_at && (
-                <span className="border border-[#F3EFE6]/20 bg-[#13131d] px-2.5 py-1 text-[#F3EFE6]/70">
+                <span className={`${CHIP} px-2.5 py-1 text-[#F3EFE6]/70`}>
                   Μέλος από{" "}
                   {formatInstant(team.created_at, {
                     month: "short",
@@ -244,12 +245,12 @@ const Masthead: React.FC<{
                 </span>
               )}
               {standing && (
-                <span className="border border-[#e8c66b]/40 bg-[#13131d] px-2.5 py-1 text-[#e8c66b]">
+                <span className="rounded-md bg-[#e8c66b]/[0.16] px-2.5 py-1 text-[#e8c66b]">
                   Γενική Κατάταξη · #{pad2(standing.rank)} · {standing.points} π.
                 </span>
               )}
               {archiveSeason && (
-                <span className="border border-[#fb923c]/40 bg-[#13131d] px-2.5 py-1 text-[#fb923c]">
+                <span className={`${CHIP_ORANGE} px-2.5 py-1 text-[#fb923c]`}>
                   Αρχείο · Σεζόν {archiveSeason}
                 </span>
               )}
@@ -264,8 +265,8 @@ const Masthead: React.FC<{
             className="col-span-12 md:col-span-4 flex flex-col gap-4"
           >
             <div
-              className="relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] p-4 shadow-[6px_6px_0_0_var(--s)] md:p-5 md:shadow-[10px_10px_0_0_var(--s)]"
-              style={{ ["--s" as any]: accent } as React.CSSProperties}
+              className={`relative overflow-hidden ${SURFACE} p-4 md:p-5`}
+              style={{ boxShadow: layers(accent) }}
             >
               <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em]">
                 <span style={{ color: accent }}>Έμβλημα</span>
@@ -314,7 +315,10 @@ const Masthead: React.FC<{
             </div>
 
             {/* 3 count chips */}
-            <div className="grid grid-cols-3 border-2 border-[#F3EFE6]/20 bg-[#0a0a14]">
+            <div
+              className={`grid grid-cols-3 ${SURFACE}`}
+              style={{ boxShadow: layers("#fb923c") }}
+            >
               {[
                 { label: "Παίκτες", v: totals.players },
                 { label: "Τουρνουά", v: totals.tournaments },
@@ -323,7 +327,7 @@ const Masthead: React.FC<{
                 <div
                   key={s.label}
                   className={`p-2.5 text-center md:p-3 ${
-                    i < 2 ? "border-r-2 border-[#F3EFE6]/20" : ""
+                    i < 2 ? `border-r ${LINE}` : ""
                   }`}
                 >
                   <div
@@ -401,10 +405,9 @@ const HonoursSection: React.FC<{ wins: TournamentWin[] }> = ({ wins }) => {
               viewport={{ once: true, amount: 0.2 }}
               transition={{ delay: Math.min(i * 0.05, 0.4), duration: 0.45 }}
               whileHover={{ y: -4 }}
-              className="relative overflow-hidden border-2 border-[#E8B931]/60 bg-[#13131d] p-4 shadow-[4px_4px_0_0_#E8B931] sm:p-5 sm:shadow-[6px_6px_0_0_#E8B931]"
+              className={`relative overflow-hidden ${SURFACE} p-4 sm:p-5`}
               style={{
-                backgroundImage:
-                  "radial-gradient(circle at 20% 10%, rgba(232,185,49,0.14) 0%, transparent 55%)",
+                boxShadow: layers("#E8B931"),
               }}
             >
               <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-[#E8B931]">
@@ -470,7 +473,7 @@ const ParticipationsSection: React.FC<{
           title="Συμμετοχές"
           meta={`${pad2(tournaments.length)} τουρνουά`}
         />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {tournaments.map((t, i) => {
             const won = winIds.has(t.id);
             const sc = statusColor(t.status);
@@ -484,7 +487,8 @@ const ParticipationsSection: React.FC<{
               >
                 <Link
                   href={`/tournaments/${t.id}`}
-                  className="group flex items-center gap-3 border-2 border-[#F3EFE6]/15 bg-[#13131d] p-3 transition-all hover:border-[#F3EFE6]/40 hover:-translate-y-0.5"
+                  className={`group flex items-center gap-3 ${SURFACE} p-3 transition-all hover:bg-[#171724] hover:-translate-y-0.5`}
+                  style={{ boxShadow: layer("#fb923c") }}
                 >
                   <span
                     className="font-[var(--f-brutal)] text-lg leading-none"
@@ -600,7 +604,10 @@ const RosterSection: React.FC<{
         )}
 
         {filtered.length === 0 ? (
-          <div className="border-2 border-dashed border-[#F3EFE6]/20 bg-[#13131d]/40 p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50">
+          <div
+            className={`${SURFACE} p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50`}
+            style={{ boxShadow: layers("#fb923c") }}
+          >
             {players.length === 0
               ? "Δεν υπάρχουν παίκτες στο ρόστερ"
               : "Κανένα αποτέλεσμα"}
@@ -633,7 +640,7 @@ const RosterSection: React.FC<{
                     <button
                       type="button"
                       onClick={() => setExpanded((v) => !v)}
-                      className="group flex items-center gap-3 border-2 border-[#F3EFE6]/30 bg-[#13131d] px-5 py-3 font-mono text-[11px] uppercase tracking-[0.3em] text-[#F3EFE6] transition-all hover:border-[#fb923c] hover:text-[#fb923c]"
+                      className={`group flex items-center gap-3 ${BUTTON_SHAPE} px-5 py-3 font-mono text-[11px] uppercase tracking-[0.3em] text-[#F3EFE6] transition-all hover:text-[#fb923c]`}
                       aria-expanded={expanded}
                     >
                       <span
@@ -683,17 +690,17 @@ const PlayerCard: React.FC<{
       whileHover={{ y: -6 }}
     >
       <div
-        className="group relative overflow-hidden border-2 border-[#F3EFE6]/20 bg-[#0a0a14] shadow-[4px_4px_0_0_var(--s)] sm:shadow-[6px_6px_0_0_var(--s)] sm:[transform:rotate(var(--r))]"
+        className={`group relative overflow-hidden ${SURFACE} sm:[transform:rotate(var(--r))]`}
         style={
           {
-            ["--s" as any]: shadowColor,
+            boxShadow: layer(shadowColor),
             ["--r" as any]: rotation,
           } as React.CSSProperties
         }
       >
         {/* Portrait */}
         <div
-          className="relative aspect-[3/4] overflow-hidden border-b-2 border-[#F3EFE6]/15 bg-[#13131d]"
+          className={`relative aspect-[3/4] overflow-hidden border-b ${LINE} bg-[#13131d]`}
           style={{
             backgroundImage: `radial-gradient(circle at 50% 20%, ${accent}26 0%, transparent 60%)`,
           }}
@@ -716,10 +723,9 @@ const PlayerCard: React.FC<{
           {/* Position badge */}
           {player.position && (
             <div
-              className="absolute top-3 left-3 inline-flex items-center gap-1.5 border-2 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em]"
+              className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em]"
               style={{
-                borderColor: accent,
-                background: "#0a0a14",
+                background: `color-mix(in srgb, ${accent} 16%, #0a0a14)`,
                 color: accent,
               }}
             >
@@ -731,10 +737,9 @@ const PlayerCard: React.FC<{
           <div className="absolute top-3 right-3 flex flex-col gap-1">
             {isTopScorer && (
               <span
-                className="border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
+                className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
                 style={{
-                  borderColor: "#E8B931",
-                  background: "rgba(232,185,49,0.18)",
+                  background: "color-mix(in srgb, #E8B931 16%, transparent)",
                   color: "#E8B931",
                 }}
               >
@@ -743,10 +748,9 @@ const PlayerCard: React.FC<{
             )}
             {isMvp && (
               <span
-                className="border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
+                className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
                 style={{
-                  borderColor: "#E8B931",
-                  background: "rgba(232,185,49,0.18)",
+                  background: "color-mix(in srgb, #E8B931 16%, transparent)",
                   color: "#E8B931",
                 }}
               >
@@ -755,10 +759,9 @@ const PlayerCard: React.FC<{
             )}
             {isGk && (
               <span
-                className="border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
+                className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.22em]"
                 style={{
-                  borderColor: "#60a5fa",
-                  background: "rgba(96,165,250,0.18)",
+                  background: "color-mix(in srgb, #60a5fa 16%, transparent)",
                   color: "#60a5fa",
                 }}
               >
@@ -785,7 +788,7 @@ const PlayerCard: React.FC<{
         {/* Info chips: age + height — always present for uniform card height */}
         <div className="flex flex-wrap items-center gap-1.5 border-b border-[#F3EFE6]/10 px-3 py-2">
           <span
-            className="inline-flex items-center border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em]"
+            className={`inline-flex items-center ${CHIP} px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em]`}
             style={{
               color:
                 player.age != null
@@ -796,7 +799,7 @@ const PlayerCard: React.FC<{
             {player.age != null ? `${player.age} ετών` : "—"}
           </span>
           <span
-            className="inline-flex items-center border border-[#F3EFE6]/20 bg-[#13131d] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em]"
+            className={`inline-flex items-center ${CHIP} px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em]`}
             style={{
               color:
                 player.heightCm != null
@@ -809,7 +812,7 @@ const PlayerCard: React.FC<{
         </div>
 
         {/* Primary stats row */}
-        <div className="grid grid-cols-3 divide-x-2 divide-[#F3EFE6]/10">
+        <div className="grid grid-cols-3 divide-x divide-[#F3EFE6]/[0.08]">
           <StatBlock
             label="Αγώνες"
             value={player.stats.matches}
@@ -829,7 +832,7 @@ const PlayerCard: React.FC<{
         </div>
 
         {/* Honours row — always rendered for uniform card height */}
-        <div className="grid grid-cols-2 divide-x-2 divide-[#F3EFE6]/10 border-t-2 border-[#F3EFE6]/10">
+        <div className={`grid grid-cols-2 divide-x divide-[#F3EFE6]/[0.08] border-t ${LINE}`}>
           <HonourBlock
             label="MVP"
             value={player.stats.mvp}
@@ -977,7 +980,10 @@ const MatchesSection: React.FC<{
 
         {/* summary strip */}
         {finished.length > 0 && (
-          <div className="mb-6 grid grid-cols-5 border-2 border-[#F3EFE6]/15 bg-[#13131d]">
+          <div
+            className={`mb-6 grid grid-cols-5 ${SURFACE}`}
+            style={{ boxShadow: layers("#fb923c") }}
+          >
             <SummaryCell label="Νίκες" v={summary.wins} accent="#fb923c" />
             <SummaryCell label="Ισόπαλα" v={summary.draws} />
             <SummaryCell label="Ήττες" v={summary.losses} accent="#ef4444" />
@@ -1001,10 +1007,10 @@ const MatchesSection: React.FC<{
               <button
                 key={t.k}
                 onClick={() => setTab(t.k)}
-                className={`flex items-center gap-2 border-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] transition-all ${
                   active
-                    ? "border-[#fb923c] bg-[#fb923c] text-[#0a0a14]"
-                    : "border-[#F3EFE6]/20 bg-[#13131d] text-[#F3EFE6]/70 hover:border-[#F3EFE6]/50 hover:text-[#F3EFE6]"
+                    ? "rounded-lg bg-[#fb923c] text-[#0a0a14]"
+                    : `${BUTTON_SHAPE} text-[#F3EFE6]/70 hover:text-[#F3EFE6]`
                 }`}
               >
                 <span>{t.label}</span>
@@ -1027,7 +1033,8 @@ const MatchesSection: React.FC<{
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="border-2 border-dashed border-[#F3EFE6]/20 bg-[#13131d]/40 p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50"
+              className={`${SURFACE} p-10 text-center font-mono text-sm uppercase tracking-[0.2em] text-[#F3EFE6]/50`}
+              style={{ boxShadow: layers("#fb923c") }}
             >
               {tab === "upcoming"
                 ? "Δεν υπάρχουν προγραμματισμένοι αγώνες"
@@ -1039,7 +1046,8 @@ const MatchesSection: React.FC<{
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="divide-y-2 divide-[#F3EFE6]/10 border-2 border-[#F3EFE6]/20 bg-[#0a0a14]"
+              className={`divide-y divide-[#F3EFE6]/[0.08] overflow-hidden ${SURFACE}`}
+              style={{ boxShadow: layers("#fb923c") }}
             >
               {list.map((m, i) => (
                 <MatchRow key={m.id} m={m} teamId={teamId} index={i} />
@@ -1060,7 +1068,7 @@ const SummaryCell: React.FC<{
 }> = ({ label, v, accent = "#F3EFE6", last }) => (
   <div
     className={`p-2.5 text-center sm:p-4 ${
-      !last ? "border-r-2 border-[#F3EFE6]/15" : ""
+      !last ? `border-r ${LINE}` : ""
     }`}
   >
     <div
@@ -1111,9 +1119,11 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
 
   const datePill = (
     <div
-      className="inline-flex flex-col items-center border-2 px-3 py-1.5"
+      className="inline-flex flex-col items-center rounded-md px-3 py-1.5"
       style={{
-        borderColor: outcome ? outcomeColor : "rgba(243,239,230,0.3)",
+        backgroundColor: outcome
+          ? `color-mix(in srgb, ${outcomeColor} 16%, transparent)`
+          : "rgba(243,239,230,0.08)",
         color: outcome ? outcomeColor : "#F3EFE6",
       }}
     >
@@ -1128,9 +1138,9 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
 
   const outcomeBadge = outcomeLabel && (
     <span
-      className="border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
+      className="rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.22em]"
       style={{
-        borderColor: outcomeColor,
+        backgroundColor: `color-mix(in srgb, ${outcomeColor} 16%, transparent)`,
         color: outcomeColor,
       }}
     >
@@ -1144,7 +1154,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ delay: Math.min(index * 0.03, 0.3) }}
-      className="group relative p-4 transition-colors hover:bg-[#13131d] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
+      className="group relative p-4 transition-colors hover:bg-[#171724] sm:grid sm:grid-cols-12 sm:items-center sm:gap-3"
     >
       <Link
         href={`/matches/${m.id}`}
@@ -1184,7 +1194,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
 
         <div className="shrink-0">
           {finished ? (
-            <div className="flex items-center gap-1 border-2 border-[#F3EFE6]/20 bg-[#13131d] px-2 py-1 font-[var(--f-brutal)] text-base leading-none tabular-nums sm:text-lg">
+            <div className={`flex items-center gap-1 ${CHIP} px-2 py-1 font-[var(--f-brutal)] text-base leading-none tabular-nums sm:text-lg`}>
               <span
                 style={{
                   color:
@@ -1212,7 +1222,7 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
               </span>
             </div>
           ) : (
-            <div className="border-2 border-dashed border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70">
+            <div className={`${CHIP} px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6]/70`}>
               {m.match_date ? formatMatchTime(m.match_date) : "ΤΒΑ"}
             </div>
           )}
@@ -1243,9 +1253,9 @@ const MatchRow: React.FC<{ m: Match; teamId: number; index: number }> = ({
       <div className="mt-2 flex items-center justify-end gap-2 font-mono text-[10px] uppercase tracking-[0.22em] sm:col-span-3 sm:mt-0">
         {outcomeLabel && (
           <span
-            className="hidden border px-2 py-0.5 font-bold sm:inline"
+            className="hidden rounded-md px-2 py-0.5 font-bold sm:inline"
             style={{
-              borderColor: outcomeColor,
+              backgroundColor: `color-mix(in srgb, ${outcomeColor} 16%, transparent)`,
               color: outcomeColor,
             }}
           >
@@ -1277,7 +1287,7 @@ const Colophon: React.FC<{ team: Team }> = ({ team }) => (
       </p>
       <Link
         href="/OMADES"
-        className="border border-[#F3EFE6]/30 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
+        className="rounded-lg bg-[#F3EFE6]/[0.08] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-[#F3EFE6] hover:bg-[#F3EFE6] hover:text-[#0a0a14] transition-colors"
       >
         ← Όλες οι Ομάδες
       </Link>

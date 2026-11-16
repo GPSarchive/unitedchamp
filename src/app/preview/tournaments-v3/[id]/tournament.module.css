@@ -1,0 +1,141 @@
+/* The two things on the tournament pages that plain utility classes cannot
+   draw: the lines of the knockout tree, and a team's squad unfolding. */
+
+/* ── Knockout tree ───────────────────────────────────────────────────────
+   Built from the final backwards: every node is [its feeders, stacked] then
+   [its own tie], so a tie always sits level with the middle of the two it
+   comes from. The lines are drawn by the feeders' wrappers: a stub out of each
+   feeder, a vertical joining the pair, and a stub into the tie they lead to. */
+
+.tree {
+  --tie: 14.5rem; /* width of a tie */
+  --gap: 2.25rem; /* room between two rounds, where the lines run */
+  --line: rgb(243 239 230 / 0.28);
+}
+
+.rounds {
+  display: flex;
+}
+
+.round {
+  flex: none;
+  width: var(--tie);
+  margin-right: var(--gap);
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  /* Ties of one round end at the same edge, whatever stands before them. */
+  justify-content: flex-end;
+}
+
+.feeders {
+  display: flex;
+  flex-direction: column;
+}
+
+.feeder {
+  position: relative;
+  padding: 0.5rem var(--gap) 0.5rem 0;
+}
+
+/* Stub out of the feeder, to the middle of the gap. */
+.feeder::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(var(--gap) / 2);
+  width: calc(var(--gap) / 2);
+  border-top: 1px solid var(--line);
+}
+
+/* The vertical joining a pair: down from the first, up from the last. */
+.feeder::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--gap) / 2);
+  border-right: 1px solid var(--line);
+}
+
+.feeder:first-child::after {
+  top: 50%;
+  bottom: 0;
+}
+
+.feeder:last-child::after {
+  top: 0;
+  bottom: 50%;
+}
+
+/* A tie with one feeder: a straight line, nothing to join. */
+.feeder:only-child::after {
+  display: none;
+}
+
+.slot {
+  position: relative;
+  flex: none;
+  width: var(--tie);
+}
+
+/* Stub into the tie, from the middle of the gap. */
+.fed::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(var(--gap) / -2);
+  width: calc(var(--gap) / 2);
+  border-top: 1px solid var(--line);
+}
+
+/* A tie whose teams come from nowhere drawn here (a bye, a third-place match)
+   still stands in its own round's column: --skip rounds of empty room first. */
+.spacer {
+  flex: none;
+  width: calc(var(--skip) * (var(--tie) + var(--gap)));
+}
+
+/* ── A team's squad unfolding ────────────────────────────────────────────
+   The row opens to its height instead of jumping (where the browser can
+   animate to `auto`; elsewhere it simply opens), and the cards are dealt in
+   one after the other. */
+
+.team {
+  interpolate-size: allow-keywords;
+}
+
+.team::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition:
+    block-size 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    content-visibility 280ms allow-discrete;
+}
+
+.team[open]::details-content {
+  block-size: auto;
+}
+
+.team[open] .squad > li {
+  animation: deal 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* The delay stops growing after two dozen cards: a big squad must not keep anyone waiting. */
+  animation-delay: calc(min(var(--i), 24) * 18ms);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(0.6rem) scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team::details-content {
+    transition: none;
+  }
+
+  .team[open] .squad > li {
+    animation: none;
+  }
+}
