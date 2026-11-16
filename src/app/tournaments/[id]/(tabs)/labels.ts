@@ -1,6 +1,6 @@
 // What a match's round is called, shared by the tournament's tabs: a knockout
-// match's round comes from its stage's tree, and no note ever names a
-// matchday (owner, 2026-11-16). The «Αγώνες» tab itself is matches/.
+// match's round comes from its stage's tree, a league/group match's is its
+// matchday («3η αγωνιστική», owner, 2026-11-16). The «Αγώνες» tab itself is matches/.
 import type { Base } from "@/app/preview/tournaments-v3/[id]/data";
 import {
   buildBracket,
@@ -23,8 +23,8 @@ export function labelContext(base: Base): LabelContext {
 }
 
 /**
- * The round a match belongs to, for a note under it, without ever naming a
- * matchday: a knockout round («Ημιτελικά»), the stage when there are two of a
- * kind, or nothing.
+ * The round a match belongs to, for a note under it: a knockout round
+ * («Ημιτελικά») or the matchday («3η αγωνιστική»), after the stage when there
+ * are two of a kind.
  */
-export const roundNote = (m: TMatch, ctx: LabelContext) => roundLabel(m.ko ? m : { ...m, matchday: null }, ctx);
+export const roundNote = (m: TMatch, ctx: LabelContext) => roundLabel(m, ctx);

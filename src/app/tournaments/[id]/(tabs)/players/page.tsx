@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { STRIP_TOP, SURFACE, layers } from "@/app/lib/ui/flat";
 import { PlayerHolo, PlayerMini } from "@/app/matches/[id]/cards";
 import { mainName, smallName } from "@/app/matches/[id]/model";
+import { searchKeys } from "@/app/preview/paiktes-v2/model";
 import { loadBase, loadPlayers, loadSquads } from "@/app/preview/tournaments-v3/[id]/data";
 import {
   tournamentLeaders,
@@ -20,6 +21,7 @@ import {
 import { profileHref } from "../extra";
 import { LABEL } from "../tokens";
 import { Chrome, ProfileLink, Rubric, fitName, parseId, plural } from "../ui";
+import { PlayerSearch } from "./PlayerSearch";
 
 export const revalidate = 60;
 
@@ -67,52 +69,51 @@ function PlayerRow({ player, href }: { player: PlayerLine; href: string }) {
   const first = smallName(player);
   const [matches, , goals, assists] = player.numbers;
   const num = (n: number) => (n ? "text-[#F3EFE6]/90" : "text-[#F3EFE6]/40");
+  // The <li> around it is drawn by PlayerSearch.
   return (
-    <li className="border-b border-[#F3EFE6]/[0.14] last:border-b-0">
-      <ProfileLink
-        player={player}
-        href={href}
-        className={`${GRID} group items-center px-3 transition-colors hover:bg-[#F3EFE6]/[0.05] md:px-5`}
-      >
-        {/* On a phone the names share a narrow column: a lower ceiling keeps them close in size. */}
-        <div className="flex min-w-0 items-center gap-2.5 py-2 pr-1.5 [--name-max:1.45rem] md:gap-4 md:pr-2 md:[--name-max:2.1rem]">
-          <div
-            data-profile-card
-            className="w-12 shrink-0 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none md:w-14"
-          >
-            <PlayerMini player={player} logo={player.teams[0]?.logo ?? null} />
-          </div>
-          <div className="@container min-w-0 flex-1">
-            {first ? (
-              <div className="truncate text-[0.8rem] uppercase leading-none tracking-[0.08em] text-[#F3EFE6]/70">
-                {first}
-              </div>
-            ) : null}
-            <Chrome size={fitName(name, "var(--name-max)", "0.95rem")} className="mt-1 truncate pr-1">
-              {name}
-            </Chrome>
-            {player.teams.length > 0 ? (
-              // A long team name takes a second line instead of being cut.
-              <div className="mt-1 text-[13px] leading-tight text-[#F3EFE6]/65 [overflow-wrap:anywhere]">
-                {player.teams.map((t) => t.name).join(", ")}
-              </div>
-            ) : null}
-          </div>
+    <ProfileLink
+      player={player}
+      href={href}
+      className={`${GRID} group items-center px-3 transition-colors hover:bg-[#F3EFE6]/[0.05] md:px-5`}
+    >
+      {/* On a phone the names share a narrow column: a lower ceiling keeps them close in size. */}
+      <div className="flex min-w-0 items-center gap-2.5 py-2 pr-1.5 [--name-max:1.45rem] md:gap-4 md:pr-2 md:[--name-max:2.1rem]">
+        <div
+          data-profile-card
+          className="w-12 shrink-0 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none md:w-14"
+        >
+          <PlayerMini player={player} logo={player.teams[0]?.logo ?? null} />
         </div>
-        <div className={`text-center text-base tabular-nums ${num(matches)}`}>
-          <span className="sr-only">Αγώνες: </span>
-          {matches}
+        <div className="@container min-w-0 flex-1">
+          {first ? (
+            <div className="truncate text-[0.8rem] uppercase leading-none tracking-[0.08em] text-[#F3EFE6]/70">
+              {first}
+            </div>
+          ) : null}
+          <Chrome size={fitName(name, "var(--name-max)", "0.95rem")} className="mt-1 truncate pr-1">
+            {name}
+          </Chrome>
+          {player.teams.length > 0 ? (
+            // A long team name takes a second line instead of being cut.
+            <div className="mt-1 text-[13px] leading-tight text-[#F3EFE6]/65 [overflow-wrap:anywhere]">
+              {player.teams.map((t) => t.name).join(", ")}
+            </div>
+          ) : null}
         </div>
-        <div className={`text-center text-xl font-bold leading-none tabular-nums ${num(goals)}`}>
-          <span className="sr-only">Γκολ: </span>
-          {goals}
-        </div>
-        <div className={`text-center text-base tabular-nums ${num(assists)}`}>
-          <span className="sr-only">Ασίστ: </span>
-          {assists}
-        </div>
-      </ProfileLink>
-    </li>
+      </div>
+      <div className={`text-center text-base tabular-nums ${num(matches)}`}>
+        <span className="sr-only">Αγώνες: </span>
+        {matches}
+      </div>
+      <div className={`text-center text-xl font-bold leading-none tabular-nums ${num(goals)}`}>
+        <span className="sr-only">Γκολ: </span>
+        {goals}
+      </div>
+      <div className={`text-center text-base tabular-nums ${num(assists)}`}>
+        <span className="sr-only">Ασίστ: </span>
+        {assists}
+      </div>
+    </ProfileLink>
   );
 }
 
@@ -169,22 +170,26 @@ export default async function PlayersPage({ params }: { params: Promise<{ id: st
 
       <section aria-labelledby="everyone" className="min-w-0">
         <Rubric id="everyone" title="Όλοι οι παίκτες" meta={plural(all.length, "παίκτης", "παίκτες")} />
-        <div className={`overflow-hidden ${SURFACE}`} style={{ boxShadow: layers("#fb923c") }}>
-          <div
-            aria-hidden
-            className={`${GRID} ${LABEL} items-center ${STRIP_TOP} px-3 py-2.5 text-[#F3EFE6]/65 md:px-5`}
-          >
-            <span>Παίκτης</span>
-            <span className="text-center">Αγ</span>
-            <span className="text-center">Γκολ</span>
-            <span className="text-center">Ασ</span>
-          </div>
-          <ul>
-            {all.map((p) => (
-              <PlayerRow key={p.id} player={p} href={href(p.id)} />
-            ))}
-          </ul>
-        </div>
+        <PlayerSearch
+          frameClassName={`overflow-hidden ${SURFACE}`}
+          frameStyle={{ boxShadow: layers("#fb923c") }}
+          header={
+            <div
+              aria-hidden
+              className={`${GRID} ${LABEL} items-center ${STRIP_TOP} px-3 py-2.5 text-[#F3EFE6]/65 md:px-5`}
+            >
+              <span>Παίκτης</span>
+              <span className="text-center">Αγ</span>
+              <span className="text-center">Γκολ</span>
+              <span className="text-center">Ασ</span>
+            </div>
+          }
+          rows={all.map((p) => ({
+            id: p.id,
+            keys: searchKeys([p.first, p.last, ...p.teams.map((t) => t.name)].join(" ")),
+            node: <PlayerRow player={p} href={href(p.id)} />,
+          }))}
+        />
       </section>
     </div>
   );

@@ -145,7 +145,7 @@ export default async function TournamentLayout({
 
   return (
     <ProfileHost>
-      <div className="relative isolate min-h-screen overflow-x-hidden bg-[#0a0a14] text-[#F3EFE6] selection:bg-[#fb923c] selection:text-[#0a0a14]">
+      <div className="relative isolate min-h-screen overflow-x-clip bg-[#0a0a14] text-[#F3EFE6] selection:bg-[#fb923c] selection:text-[#0a0a14]">
         {/* The strip of next matches closes the header when there is one; otherwise a line does. */}
         <header className={`${styles.masthead} ${upcoming.length === 0 ? `border-b ${LINE}` : ""}`}>
           <div className="mx-auto max-w-[1320px] px-4 pb-8 pt-4 md:px-6 md:pb-12 md:pt-5">
