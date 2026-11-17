@@ -9,10 +9,10 @@
 //     normal card) and the facets keep only to its four corners, like the
 //     corner mounts of a photo in an album — nothing of the finish lies on
 //     the middle of the picture, where the face is;
-//   · it ends in the black lower half: ONE plain black for the name and the
-//     numbers — no band, no stripes, no lighter foot. Its lines are those of
-//     the «Θρύλος» card, made quiet: one thin dim-silver rule above and below
-//     the name, a faint line under each row of numbers;
+//   · it ends in the black lower half: one black for the name and the
+//     numbers, faintly faceted like the normal card — no band, no stripes,
+//     no lighter foot. One thin, quiet line above the name, where the black
+//     begins; nothing between the name and the numbers;
 //   · thin silver-white rim, with a hair of blue inside it beside the upper
 //     zone.
 // Name and numbers are white, the first name and the small labels a lighter
@@ -31,12 +31,12 @@ import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import type { DirectoryTeam, StatTuple } from "@/app/preview/paiktes-v2/model";
 import { CardShadow, CardStatGrid, SHIELD, Silhouette } from "@/app/preview/paiktes-v2/[id]/cardShared";
 import { TILT_STYLE, useCardTilt } from "@/app/preview/paiktes-v2/[id]/useCardTilt";
+import { FACETS as ONYX_FACETS, OnyxFacetStyles } from "@/app/preview/paiktes-v2/[id]/onyxFinish";
 import {
   AZURE,
   FACETS,
   FACETS_MOUNT,
   FACETS_TILTED,
-  HAIRLINE,
   PLATE,
   RULE,
   SILVER,
@@ -82,6 +82,7 @@ export default function TotyShieldCard({
       style={TILT_STYLE}
     >
       <TotyFacetStyles />
+      <OnyxFacetStyles />
       <CardShadow glow="#12579A" />
 
       {/* Silver rim, then a hair of blue (charcoal beside the black), then the face: each the shield, each a little further in. */}
@@ -146,11 +147,17 @@ export default function TotyShieldCard({
           }}
         />
 
-        {/* The lower half: one black, from under the name to the foot. */}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[55%]" style={{ background: PLATE }} />
-        {/* The two rules round the name, as on the «Θρύλος» card — here one thin, quiet line each. */}
+        {/* The lower half: black, cut into facets like the normal card's onyx —
+            the same picture, laid over the whole face and shown from the
+            name down. Made grey here, so its ridges are not gold. It is
+            nearly flat behind the name and the numbers. */}
+        <div
+          aria-hidden
+          className={`absolute inset-0 ${ONYX_FACETS}`}
+          style={{ clipPath: "inset(55% 0 0 0)", filter: "grayscale(1)" }}
+        />
+        {/* One thin, quiet line where the black begins, above the name. */}
         <div aria-hidden className="absolute inset-x-0 top-[55%] h-px" style={{ background: RULE }} />
-        <div aria-hidden className="absolute inset-x-0 top-[68.6%] h-px" style={{ background: RULE }} />
 
         {hasPhoto ? (
           // Team logo, top left, in a black medallion with a silver ring.
@@ -206,19 +213,15 @@ export default function TotyShieldCard({
           </div>
         </div>
 
-        {/* The numbers, a faint line under each row. */}
+        {/* The numbers. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
           {stats ? (
-            <>
-              <div aria-hidden className="absolute inset-x-0 top-[1.5rem] h-px" style={{ background: HAIRLINE }} />
-              <CardStatGrid stats={stats} soft={AZURE} className="relative mx-[11%]" />
-            </>
+            <CardStatGrid stats={stats} soft={AZURE} className="relative mx-[11%]" />
           ) : (
             <p className="relative mx-[10%] text-center text-[15px]" style={{ color: AZURE }}>
               Χωρίς στατιστικά ακόμα
             </p>
           )}
-          <div aria-hidden className="absolute inset-x-0 top-[3.25rem] h-px" style={{ background: HAIRLINE }} />
         </div>
       </div>
     </div>

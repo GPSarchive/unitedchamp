@@ -20,11 +20,8 @@ export const ONYX = "#0A0A0A";
 export const SNOW = "#FFF4F1";
 /** First name, the small labels, the edition mark: the red, lifted until it reads on black. */
 export const EMBER = "#EF4B47";
-/** The two thin rules round the name: the rim's red, a shade deeper, so they stay quiet on the black. */
+/** The one thin line above the name: the rim's red, a shade deeper, so it stays quiet on the black. */
 export const RULE = "#9A0F16";
-/** The faint line under each row of numbers: fades out toward both sides. */
-export const HAIRLINE =
-  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 14%, rgba(255,255,255,0.09) 86%, rgba(255,255,255,0) 100%)";
 /** The ring round the team logo. */
 export const RING_RED = "#D4221F";
 /** Fill of the upper zone before the facets have painted. */

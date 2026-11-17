@@ -22,11 +22,8 @@ export const WHITE = "#FFFFFF";
 export const AZURE = "#4F9BE0";
 /** The rim's silver. */
 export const SILVER = "#D8D8D8";
-/** The two thin rules round the name: the rim's silver, taken well down, so they stay quiet on the black. */
+/** The one thin line above the name: the rim's silver, taken well down, so it stays quiet on the black. */
 export const RULE = "#5F656C";
-/** The faint line under each row of numbers: fades out toward both sides. */
-export const HAIRLINE =
-  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 14%, rgba(255,255,255,0.09) 86%, rgba(255,255,255,0) 100%)";
 /** Fill of the upper zone before the facets have painted. */
 const ROYAL = "#014A88";
 

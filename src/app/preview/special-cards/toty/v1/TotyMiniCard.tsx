@@ -3,25 +3,24 @@
 // on a page) — no tilt, no effects, nothing that moves.
 //
 // It is the big card made small: photo with four small blue faceted corners
-// (or the team logo on blue facets) on top, sinking into the plain black
-// lower half, inside a silver rim. The black is empty here, as MiniCard
-// carries no text. The silver rim, the blue corners and the black half are
-// what tell this card from the normal black one at a glance.
+// (or the team logo on blue facets) on
+// top, one thin line where the black begins, then the black lower half,
+// faintly faceted like the normal mini. The black is empty here, as MiniCard
+// carries no text.
 "use client";
 
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
+import { FACETS_MINI as ONYX_FACETS_MINI, OnyxFacetStyles } from "@/app/preview/paiktes-v2/[id]/onyxFinish";
 import { FACETS_MINI, FACETS_MINI_CORNERS, PLATE, RULE, TOTY_RIM_FLAT, TotyFacetStyles } from "./totyFinish";
 
 // One layer over the lower part of the card (it starts at 57% of the height):
-// the upper zone sinks into the black, then the two rules round the (empty)
-// name band — at 15% and 37% of the layer, as on the «Θρύλος» mini — on
-// plain black.
+// the upper zone sinks into the black, then the one thin line (at 15% of the
+// layer); below it the layer is clear and the faceted black shows.
 const LOWER =
   "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.9) 12%, " +
-  `${PLATE} 15%, ${RULE} 15%, ${RULE} calc(15% + 1px), ${PLATE} calc(15% + 1px), ` +
-  `${PLATE} 37%, ${RULE} 37%, ${RULE} calc(37% + 1px), ${PLATE} calc(37% + 1px), ${PLATE} 100%)`;
+  `${PLATE} 15%, ${RULE} 15%, ${RULE} calc(15% + 1px), transparent calc(15% + 1px), transparent 100%)`;
 
 export default function TotyMiniCard({
   photo,
@@ -39,6 +38,7 @@ export default function TotyMiniCard({
   return (
     <div className="relative aspect-[5/7] w-full">
       <TotyFacetStyles mini />
+      <OnyxFacetStyles mini />
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: TOTY_RIM_FLAT }} />
       <div className="absolute inset-[1.5px] overflow-hidden" style={{ clipPath: SHIELD, background: PLATE }}>
         {hasPhoto ? (
@@ -56,6 +56,12 @@ export default function TotyMiniCard({
         ) : (
           <div aria-hidden className={`absolute inset-x-0 top-0 h-[64%] ${FACETS_MINI}`} />
         )}
+        {/* The black half, faintly faceted: the normal mini's onyx picture, in grey. */}
+        <div
+          aria-hidden
+          className={`absolute inset-0 ${ONYX_FACETS_MINI}`}
+          style={{ clipPath: "inset(63% 0 0 0)", filter: "grayscale(1)" }}
+        />
         <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: LOWER }} />
         {hasPhoto ? null : hasLogo ? (
           <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
