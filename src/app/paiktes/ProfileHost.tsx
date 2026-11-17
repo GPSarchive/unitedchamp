@@ -215,6 +215,7 @@ export function ProfileHost({ children }: { children: React.ReactNode }) {
           key={shown.profile.player.id}
           profile={shown.profile}
           origin={shown.origin}
+          originCard={shown.card}
           returnTarget={returnTarget}
           closing={closing}
           onRequestClose={requestClose}

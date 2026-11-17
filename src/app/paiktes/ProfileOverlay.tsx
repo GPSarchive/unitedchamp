@@ -48,6 +48,18 @@ const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2
 const easeOutBack = (t: number) => 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2);
 
 const THROW_MS = 1050;
+/**
+ * The moment of the flight (0…1) at which the card shows us its back squarely
+ * — half of its one turn (see `turn` in throwPath). What is on its face is
+ * changed then, unseen.
+ */
+const TURNED_AWAY = 0.43;
+
+/** Shown up to `at` of the animation and hidden after it — or the other way round. No fade: a cut. */
+const cut = (at: number, shownFirst: boolean): Keyframe[] => {
+  const [before, after] = shownFirst ? [1, 0] : [0, 1];
+  return [{ opacity: before }, { opacity: before, offset: at }, { opacity: after, offset: at }, { opacity: after }];
+};
 
 /**
  * The card's flight from the row (`from`) to its place (`home`), as if it
@@ -347,6 +359,7 @@ function CardBack() {
 export default function ProfileOverlay({
   profile,
   origin,
+  originCard,
   returnTarget,
   closing,
   onRequestClose,
@@ -356,6 +369,12 @@ export default function ProfileOverlay({
   profile: PlayerProfile;
   /** Where the clicked card was when it was clicked; null when opened by link. */
   origin: DOMRect | null;
+  /**
+   * The clicked card itself. The flight starts as a copy of it — the very card
+   * that was in the row lifts off — and the profile's big card takes its place
+   * while the card is turned away mid-spin.
+   */
+  originCard?: HTMLElement | null;
   /**
    * The card to fly back to on the way out, looked up when closing (the page
    * may have scrolled). None, or one off screen: the card just fades.
@@ -374,6 +393,9 @@ export default function ProfileOverlay({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const veilRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  /** The profile's big card, and the copy of the clicked card that stands in for it at take-off. */
+  const bigFaceRef = useRef<HTMLDivElement | null>(null);
+  const rowFaceRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const spotRef = useRef<HTMLDivElement | null>(null);
@@ -434,6 +456,32 @@ export default function ProfileOverlay({
       // The light it leaves behind. (Read from storage here: this runs before
       // the button's state is set.)
       beginTrail(flight, path, THROW_MS, false);
+
+      // It takes off as the card that was clicked: a copy of that card, laid over
+      // the face at the size it had in the row. Half a turn later, with its back
+      // to us, the copy is taken away and the big card is underneath.
+      const rowFace = rowFaceRef.current;
+      const bigFace = bigFaceRef.current;
+      const width = originCard?.offsetWidth ?? 0;
+      if (rowFace && bigFace && originCard && width > 0) {
+        const copy = originCard.cloneNode(true) as HTMLElement;
+        // The original may already be hidden (it has left its row) or grown under the pointer.
+        copy.style.visibility = "visible";
+        copy.style.transform = "none";
+        copy.style.transition = "none";
+        copy.style.width = "100%";
+        // Nothing may find the copy when it looks for the player's card on the page.
+        for (const el of [copy, ...Array.from(copy.querySelectorAll<HTMLElement>("*"))]) {
+          for (const name of ["data-card-id", "data-profile-card", "data-profile-player", "id"]) {
+            el.removeAttribute(name);
+          }
+        }
+        rowFace.style.width = `${width}px`;
+        rowFace.style.transform = `scale(${home.width / width})`;
+        rowFace.replaceChildren(copy);
+        running.push(rowFace.animate(cut(TURNED_AWAY, true), { duration: THROW_MS }));
+        running.push(bigFace.animate(cut(TURNED_AWAY, false), { duration: THROW_MS }));
+      }
     } else {
       // Opened from a link: no row to come from, so it just turns to face us.
       running.push(
@@ -545,6 +593,14 @@ export default function ProfileOverlay({
           { duration: calm ? 120 : 260, easing: "ease-in", fill: "forwards" },
         );
     if (wayBack) beginTrail(flight, wayBack, duration, true);
+    // On the way back the same change, the other way round: the row's card
+    // returns to the face while the card is turned away, and that is what lands.
+    const rowFace = rowFaceRef.current;
+    const bigFace = bigFaceRef.current;
+    if (wayBack && rowFace && bigFace && rowFace.firstChild) {
+      rowFace.animate(cut(1 - TURNED_AWAY, false), { duration, fill: "forwards" });
+      bigFace.animate(cut(1 - TURNED_AWAY, true), { duration, fill: "forwards" });
+    }
     let done = false;
     const finish = () => {
       if (done) return;
@@ -666,14 +722,25 @@ export default function ProfileOverlay({
                 style={{ transformStyle: "preserve-3d", willChange: "transform" }}
               >
                 <div className="relative" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-                  <SkinnedBigCard
-                    playerId={player.id}
-                    first={player.first}
-                    last={player.last}
-                    photo={player.photo}
-                    team={teams[0] ?? null}
-                    stats={player.season}
-                    intro={false}
+                  <div ref={bigFaceRef}>
+                    <SkinnedBigCard
+                      playerId={player.id}
+                      first={player.first}
+                      last={player.last}
+                      photo={player.photo}
+                      team={teams[0] ?? null}
+                      stats={player.season}
+                      intro={false}
+                    />
+                  </div>
+                  {/* The copy of the clicked card (put in on the way in, see above):
+                      laid out at the width it had in its row and enlarged to cover
+                      the face. Hidden except during the first half-turn. */}
+                  <div
+                    ref={rowFaceRef}
+                    aria-hidden
+                    className="pointer-events-none absolute left-0 top-0 opacity-0"
+                    style={{ transformOrigin: "0 0" }}
                   />
                   {/* One streak of light across the face on landing. */}
                   <div

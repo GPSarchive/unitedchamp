@@ -153,7 +153,12 @@ const PlayerRow = memo(function PlayerRow({
 // Directory
 // ───────────────────────────────────────────────────────────────────────
 
-type Opened = { id: number; origin: DOMRect | null };
+type Opened = {
+  id: number;
+  origin: DOMRect | null;
+  /** The clicked card itself (the flight starts as a copy of it). */
+  card?: HTMLElement | null;
+};
 
 export default function DirectoryClient({
   data,
@@ -261,7 +266,7 @@ export default function DirectoryClient({
       e.preventDefault();
       const card = e.currentTarget.querySelector<HTMLElement>("[data-card-id]");
       setClosing(false);
-      setOpened({ id, origin: card?.getBoundingClientRect() ?? null });
+      setOpened({ id, origin: card?.getBoundingClientRect() ?? null, card });
       window.history.pushState(null, "", urlFor(queryRef.current, id));
       ownEntryRef.current = true;
     },
@@ -688,6 +693,7 @@ export default function DirectoryClient({
           key={opened.id}
           profile={openedProfile}
           origin={opened.origin}
+          originCard={opened.card}
           returnTarget={openedCard}
           closing={closing}
           onRequestClose={requestClose}
