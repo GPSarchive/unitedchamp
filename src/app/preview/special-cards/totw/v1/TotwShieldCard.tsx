@@ -12,7 +12,8 @@
 //   · it ends in the black lower half: one black for the name and the
 //     numbers, faintly faceted like the normal card — no band, no stripes,
 //     no lighter foot. One thin, quiet line above the name, where the black
-//     begins; nothing between the name and the numbers;
+//     begins; nothing between the name and the numbers; the edition's
+//     title, small, in the foot;
 //   · thin deep-red rim with a dark line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
@@ -39,6 +40,7 @@ import {
   RING_RED,
   RULE,
   SNOW,
+  TITLE,
   TOTW_RIM,
   TotwFacetStyles,
 } from "./totwFinish";
@@ -130,19 +132,7 @@ export default function TotwShieldCard({
           }}
         />
 
-        {/* The upper zone ends in black. Over a photo almost all of the fade is
-            in the last few percent, so a face that sits low in the picture
-            keeps its mouth and chin; over the facets it is only a shade. */}
-        <div
-          aria-hidden
-          className={`absolute inset-x-0 ${hasPhoto ? "top-[47.5%] h-[8%]" : "top-[48.5%] h-[7%]"}`}
-          style={{
-            background: hasPhoto
-              ? "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.1) 38%, rgba(10,10,10,0.5) 68%, rgba(10,10,10,0.92) 90%, #0A0A0A 100%)"
-              : "linear-gradient(to bottom, rgba(10,0,1,0) 0%, rgba(10,0,1,0.34) 100%)",
-          }}
-        />
-
+        {/* The photo, or the facets, run clean down to the line: no shade above it. */}
         {/* The lower half: black, cut into facets like the normal card's onyx —
             the same picture, laid over the whole face and shown from the
             name down. Made grey here, so its ridges are not gold. It is
@@ -218,6 +208,13 @@ export default function TotwShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          {/* The edition's title, in the foot of the black. */}
+          <div
+            className="absolute inset-x-0 text-center font-bold uppercase leading-none"
+            style={{ top: "4.4rem", color: EMBER, fontSize: "0.8rem", letterSpacing: "0.32em", paddingLeft: "0.32em" }}
+          >
+            {TITLE}
+          </div>
         </div>
       </div>
     </div>

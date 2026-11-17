@@ -12,7 +12,7 @@
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
-import { DEEP, FACETS_MINI, FOOT_LINE, INK, PLATE, PLATE_SHADE, PRO_RIM_FLAT, ProFacetStyles } from "./proFinish";
+import { DEEP, FACETS_MINI, FOOT_LINE, INK, PLATE, PLATE_SHADE, PRO_RIM_FLAT, ProFacetStyles, TITLE } from "./proFinish";
 
 // One layer over the lower part of the card (it starts at 57% of the height):
 // the fade to deep teal, the first line, the name band, the second line, the
@@ -69,6 +69,13 @@ export default function ProMiniCard({
           className="absolute inset-x-0 bottom-0 top-[57%]"
           style={{ background: `${SHEEN} ${SHEEN_BOX}, ${LOWER}` }}
         />
+        {/* The edition's title, in the name band. Drawn as a picture, so it keeps
+            its place and size whatever the card's width. */}
+        <svg aria-hidden viewBox="0 0 100 140" className="absolute inset-0 h-full w-full" fill="#03211C" fontWeight={700} textAnchor="middle">
+          <text x="51.5" y="99.5" fontSize="12" letterSpacing="3">
+            {TITLE}
+          </text>
+        </svg>
         {hasPhoto ? null : hasLogo ? (
           <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
             <PlayerImage

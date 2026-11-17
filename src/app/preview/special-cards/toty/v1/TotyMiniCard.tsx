@@ -2,7 +2,7 @@
 // Team-of-the-Year finish. Flat and still like MiniCard (there are hundreds
 // on a page) — no tilt, no effects, nothing that moves.
 //
-// It is the big card made small: photo with four small blue faceted corners
+// It is the big card made small: photo with the big card's blue corner mounts
 // (or the team logo on blue facets) on
 // top, one thin line where the black begins, then the black lower half,
 // faintly faceted like the normal mini. The black is empty here, as MiniCard
@@ -13,14 +13,13 @@ import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
 import { FACETS_MINI as ONYX_FACETS_MINI, OnyxFacetStyles } from "@/app/preview/paiktes-v2/[id]/onyxFinish";
-import { FACETS_MINI, FACETS_MINI_CORNERS, PLATE, RULE, TOTY_RIM_FLAT, TotyFacetStyles } from "./totyFinish";
+import { FACETS_MINI, FACETS_MINI_MOUNT, PLATE, RULE, TITLE, TOTY_RIM_FLAT, TotyFacetStyles } from "./totyFinish";
 
-// One layer over the lower part of the card (it starts at 57% of the height):
-// the upper zone sinks into the black, then the one thin line (at 15% of the
-// layer); below it the layer is clear and the faceted black shows.
-const LOWER =
-  "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.9) 12%, " +
-  `${PLATE} 15%, ${RULE} 15%, ${RULE} calc(15% + 1px), transparent calc(15% + 1px), transparent 100%)`;
+// One layer over the lower part of the card (it starts at 47% of the height, so its line sits at 55% — where the big card's black begins):
+// nothing but the one thin line (at 15% of the layer). The photo, or the blue
+// facets, run clean down to it — no shade above the line — and the faceted
+// black starts right under it.
+const LOWER = `linear-gradient(to bottom, transparent 15%, ${RULE} 15%, ${RULE} calc(15% + 1px), transparent calc(15% + 1px))`;
 
 export default function TotyMiniCard({
   photo,
@@ -51,20 +50,28 @@ export default function TotyMiniCard({
               className="absolute inset-0 h-full w-full object-cover object-top"
               animate={false}
             />
-            <div aria-hidden className={`absolute inset-x-0 top-0 h-[63.5%] ${FACETS_MINI_CORNERS}`} />
+            {/* The big card's corner mounts round the photo, made small. */}
+            <div aria-hidden className={`absolute inset-x-0 top-0 ${FACETS_MINI_MOUNT}`} style={{ height: "55.2%" }} />
           </>
         ) : (
-          <div aria-hidden className={`absolute inset-x-0 top-0 h-[64%] ${FACETS_MINI}`} />
+          <div aria-hidden className={`absolute inset-x-0 top-0 ${FACETS_MINI}`} style={{ height: "56%" }} />
         )}
         {/* The black half, faintly faceted: the normal mini's onyx picture, in grey. */}
         <div
           aria-hidden
           className={`absolute inset-0 ${ONYX_FACETS_MINI}`}
-          style={{ clipPath: "inset(63% 0 0 0)", filter: "grayscale(1)" }}
+          style={{ clipPath: "inset(55% 0 0 0)", filter: "grayscale(1)" }}
         />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: LOWER }} />
+        <div aria-hidden className="absolute inset-x-0 bottom-0" style={{ top: "47.06%", background: LOWER }} />
+        {/* The edition's title in the black. Drawn as a picture, so it
+            keeps its place and size whatever the card's width. */}
+        <svg aria-hidden viewBox="0 0 100 140" className="absolute inset-0 h-full w-full" fill="#4F9BE0" fontWeight={700} textAnchor="middle">
+          <text x="51.5" y="108" fontSize="17" letterSpacing="3">
+            {TITLE}
+          </text>
+        </svg>
         {hasPhoto ? null : hasLogo ? (
-          <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
+          <div className="absolute" style={{ left: "22%", right: "22%", top: "8%", height: "41%" }}>
             <PlayerImage
               src={logo}
               alt=""
@@ -77,7 +84,7 @@ export default function TotyMiniCard({
         ) : (
           <div
             aria-hidden
-            className="absolute inset-x-0 top-[16%] text-center text-2xl font-bold"
+            className="absolute inset-x-0 top-[12%] text-center text-2xl font-bold"
             style={{ color: "#CFE6FB", opacity: 0.9 }}
           >
             {initial}

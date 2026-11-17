@@ -46,6 +46,7 @@ import {
   RULE_MINT,
   SHEEN,
   SOFT,
+  TITLE,
 } from "./proFinish";
 
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
@@ -239,6 +240,13 @@ export default function ProShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          {/* The edition's title, in the foot. */}
+          <div
+            className="absolute inset-x-0 text-center font-bold uppercase leading-none"
+            style={{ top: "4.4rem", color: SOFT, fontSize: "0.8rem", letterSpacing: "0.32em", paddingLeft: "0.32em" }}
+          >
+            {TITLE}
+          </div>
         </div>
       </div>
     </div>

@@ -21,6 +21,8 @@ import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 
 /** The plate under the numbers, at its middle tone. Also the face's fill. */
 export const VIOLET = "#4E1F96";
+/** The edition's title, written in the foot of the card (in the name band on the mini card): this card's name on the dashboard. */
+export const TITLE = "CHAMPIONS";
 /**
  * The band the name sits in: a lighter royal purple, lightest at its centre,
  * a little deeper at its two ends. SNOW on its deepest end: 8.8:1; LILAC on

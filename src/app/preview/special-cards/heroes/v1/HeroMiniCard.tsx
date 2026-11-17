@@ -12,7 +12,7 @@
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
-import { DUSK_RGB, FACETS_MINI, HERO_RIM_FLAT, HeroFacetStyles, SNOW, VIOLET } from "./heroFinish";
+import { DUSK_RGB, FACETS_MINI, HERO_RIM_FLAT, HeroFacetStyles, SNOW, TITLE, VIOLET } from "./heroFinish";
 
 // One layer over the lower part of the card (it starts at 57% of the height):
 // the fade to purple, the first line, the name band, the second line, the
@@ -64,6 +64,13 @@ export default function HeroMiniCard({
         )}
         <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: PLATE }} />
         <div aria-hidden className="absolute inset-x-0 bottom-0 top-[73%]" style={{ background: FOLDS }} />
+        {/* The edition's title, in the name band. Drawn as a picture, so it keeps
+            its place and size whatever the card's width. */}
+        <svg aria-hidden viewBox="0 0 100 140" className="absolute inset-0 h-full w-full" fill="#FBF8FF" fontWeight={700} textAnchor="middle">
+          <text x="50.5" y="99.5" fontSize="10" letterSpacing="1">
+            {TITLE}
+          </text>
+        </svg>
         {hasPhoto ? null : hasLogo ? (
           <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
             <PlayerImage

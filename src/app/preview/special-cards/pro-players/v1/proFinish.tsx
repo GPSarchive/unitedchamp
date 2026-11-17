@@ -19,6 +19,8 @@ import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 
 /** The plate under the numbers. */
 export const PLATE = "#1AAB95";
+/** The edition's title, written in the foot of the card (in the name band on the mini card): Team of the Year — this card's name on the dashboard is «Ομάδα της Χρονιάς». */
+export const TITLE = "TOTY";
 /** The slanted darker bands across the plate. */
 export const PLATE_SHADE = "#10A18B";
 /** The name band, in its middle. */

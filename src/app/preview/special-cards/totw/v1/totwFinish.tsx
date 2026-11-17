@@ -22,6 +22,8 @@ export const SNOW = "#FFF4F1";
 export const EMBER = "#EF4B47";
 /** The one thin line above the name: the rim's red, a shade deeper, so it stays quiet on the black. */
 export const RULE = "#9A0F16";
+/** The edition's title, written in the foot of the black: the English abbreviation (Team of the Week). */
+export const TITLE = "TOTW";
 /** The ring round the team logo. */
 export const RING_RED = "#D4221F";
 /** Fill of the upper zone before the facets have painted. */
@@ -232,6 +234,12 @@ export const FACETS_TILTED = "totw1-facets-tilted";
 export const FACETS_MOUNT = "totw1-facets-mount";
 /** Facets of the mini card. */
 export const FACETS_MINI = "totw1-facets-mini";
+/**
+ * The frame the mini card lays over a photo: the big card's corner mounts
+ * (../../photoMount), made small. Its etched lines are too fine to show at
+ * this size; the whole facets stay.
+ */
+export const FACETS_MINI_MOUNT = "totw1-facets-mini-mount";
 
 const FILL = `background-color:${CRIMSON};background-size:100% 100%;background-repeat:no-repeat`;
 // The frame's facets lean as they do on the «Θρύλος» card, where the ones in
@@ -247,7 +255,11 @@ const BIG_CSS =
   `-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}` +
   `.${FACETS}.${FACETS_MOUNT}{background-image:${facetPicture(MOUNT, false, MOUNT_EDGE, MOUNT_LIFT, true)}}` +
   `.${FACETS_TILTED}.${FACETS_MOUNT}{background-image:${facetPicture(MOUNT, true, MOUNT_EDGE, MOUNT_LIFT, true)}}`;
-const MINI_CSS = `.${FACETS_MINI}{${FILL};background-image:${facetPicture(MINI, false, 1.1, 0.04)}}`;
+const MINI_CSS =
+  `.${FACETS_MINI}{${FILL};background-image:${facetPicture(MINI, false, 1.1, 0.04)}}` +
+  `.${FACETS_MINI_MOUNT}{background-size:100% 100%;background-repeat:no-repeat;` +
+  `background-image:${facetPicture(MOUNT, false, 1, MOUNT_LIFT, true)};` +
+  `-webkit-mask-image:${MOUNT_MASK};mask-image:${MOUNT_MASK};-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}`;
 
 /**
  * Puts the facet pictures in the page. React keeps one copy per `href` in

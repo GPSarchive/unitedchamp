@@ -24,6 +24,8 @@ export const AZURE = "#4F9BE0";
 export const SILVER = "#D8D8D8";
 /** The one thin line above the name: the rim's silver, taken well down, so it stays quiet on the black. */
 export const RULE = "#5F656C";
+/** The edition's title, written in the foot of the black: the English abbreviation (Team of the Month — this card's name on the dashboard is «Ομάδα του Μήνα»). */
+export const TITLE = "TOTM";
 /** Fill of the upper zone before the facets have painted. */
 const ROYAL = "#014A88";
 
@@ -95,26 +97,6 @@ const MINI: Mesh = {
   ],
 };
 
-// The mini card with a photo: nothing but four small faceted corners, three
-// facets each, like the corner mounts of the big card. The rest of the
-// picture is empty, so the photo shows.
-const MINI_CORNERS: Mesh = {
-  w: 100,
-  h: 84,
-  points: [
-    [0, 0], [25, 0], [0, 23], [9, 8],
-    [100, 0], [75, 0], [100, 23], [91, 8],
-    [0, 84], [0, 63], [22, 84], [8, 77],
-    [100, 84], [100, 63], [78, 84], [92, 77],
-  ],
-  facets: [
-    [0, 1, 3, -0.2, -0.75], [0, 3, 2, -0.8, -0.1], [1, 2, 3, 0.55, 0.5],
-    [4, 7, 5, 0.3, -0.8], [4, 6, 7, 0.7, -0.35], [5, 7, 6, -0.6, 0.45],
-    [8, 9, 11, -0.75, 0.2], [8, 11, 10, -0.2, 0.7], [9, 10, 11, 0.5, -0.6],
-    [12, 15, 13, 0.6, 0.3], [12, 14, 15, 0.15, 0.8], [13, 15, 14, -0.65, -0.55],
-  ],
-};
-
 // Dark → light: from the deepest navy to a full royal blue. It stops there:
 // no pale, glowing blue on the lit facets.
 const TONES: readonly (readonly [number, number, number, number])[] = [
@@ -155,9 +137,6 @@ function ambient(x: number, y: number): number {
   const shade = 1 / (1 + Math.exp(-(x - 0.56) / 0.17));
   return 0.8 - 0.48 * shade - 0.1 * y + 0.1 * bump(x, y, 0.1, 0.95, 0.2);
 }
-
-/** The mini card's photo corners: all four clearly blue, the left pair a little brighter. */
-const cornerAmbient = (x: number) => 0.62 - 0.16 * x;
 
 /**
  * The mesh as a CSS `url("data:…")` picture. `fromRight` paints the same
@@ -246,8 +225,12 @@ export const FACETS_TILTED = "toty1-facets-tilted";
 export const FACETS_MOUNT = "toty1-facets-mount";
 /** Facets of the mini card without a photo. */
 export const FACETS_MINI = "toty1-facets-mini";
-/** The four faceted corners the mini card lays over a photo. */
-export const FACETS_MINI_CORNERS = "toty1-facets-mini-corners";
+/**
+ * The frame the mini card lays over a photo: the big card's corner mounts
+ * (../../photoMount), made small. Its etched lines are too fine to show at
+ * this size; the whole facets stay.
+ */
+export const FACETS_MINI_MOUNT = "toty1-facets-mini-mount";
 
 const STRETCH = "background-size:100% 100%;background-repeat:no-repeat";
 const BIG_CSS =
@@ -260,7 +243,8 @@ const BIG_CSS =
   `.${FACETS_TILTED}.${FACETS_MOUNT}{background-image:${facetPicture(MOUNT, true, MOUNT_EDGE, ambient, true)}}`;
 const MINI_CSS =
   `.${FACETS_MINI}{background-color:${ROYAL};${STRETCH};background-image:${facetPicture(MINI, false, 1.1)}}` +
-  `.${FACETS_MINI_CORNERS}{${STRETCH};background-image:${facetPicture(MINI_CORNERS, false, 1.1, cornerAmbient)}}`;
+  `.${FACETS_MINI_MOUNT}{${STRETCH};background-image:${facetPicture(MOUNT, false, 1, ambient, true)};` +
+  `-webkit-mask-image:${MOUNT_MASK};mask-image:${MOUNT_MASK};-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}`;
 
 /**
  * Puts the facet pictures in the page. React keeps one copy per `href` in

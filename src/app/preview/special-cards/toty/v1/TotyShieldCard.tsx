@@ -12,7 +12,8 @@
 //   · it ends in the black lower half: one black for the name and the
 //     numbers, faintly faceted like the normal card — no band, no stripes,
 //     no lighter foot. One thin, quiet line above the name, where the black
-//     begins; nothing between the name and the numbers;
+//     begins; nothing between the name and the numbers; the edition's
+//     title, small, in the foot;
 //   · thin silver-white rim, with a hair of blue inside it beside the upper
 //     zone.
 // Name and numbers are white, the first name and the small labels a lighter
@@ -40,6 +41,7 @@ import {
   PLATE,
   RULE,
   SILVER,
+  TITLE,
   TOTY_INNER_LINE,
   TOTY_RIM,
   TotyFacetStyles,
@@ -133,20 +135,7 @@ export default function TotyShieldCard({
           }}
         />
 
-        {/* Where the upper zone meets the black. A photo sinks into it
-            there, almost all of it in the last few percent, so a face that
-            sits low in the picture keeps its mouth and chin. The facets end
-            on a clean edge, with only the shade of a fold above it. */}
-        <div
-          aria-hidden
-          className={`absolute inset-x-0 ${hasPhoto ? "top-[47.5%] h-[8%]" : "top-[52.5%] h-[3%]"}`}
-          style={{
-            background: hasPhoto
-              ? "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.1) 38%, rgba(10,10,10,0.5) 68%, rgba(10,10,10,0.92) 90%, #0A0A0A 100%)"
-              : "linear-gradient(to bottom, rgba(1,12,24,0) 0%, rgba(1,12,24,0.16) 62%, rgba(1,12,24,0.42) 100%)",
-          }}
-        />
-
+        {/* The photo, or the facets, run clean down to the line: no shade above it. */}
         {/* The lower half: black, cut into facets like the normal card's onyx —
             the same picture, laid over the whole face and shown from the
             name down. Made grey here, so its ridges are not gold. It is
@@ -222,6 +211,13 @@ export default function TotyShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          {/* The edition's title, in the foot of the black. */}
+          <div
+            className="absolute inset-x-0 text-center font-bold uppercase leading-none"
+            style={{ top: "4.4rem", color: AZURE, fontSize: "0.8rem", letterSpacing: "0.32em", paddingLeft: "0.32em" }}
+          >
+            {TITLE}
+          </div>
         </div>
       </div>
     </div>

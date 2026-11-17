@@ -42,6 +42,7 @@ import {
   LILAC,
   SATIN,
   SNOW,
+  TITLE,
   VIOLET,
 } from "./heroFinish";
 
@@ -225,6 +226,13 @@ export default function HeroShieldCard({
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          {/* The edition's title, in the foot. */}
+          <div
+            className="absolute inset-x-0 text-center font-bold uppercase leading-none"
+            style={{ top: "4.4rem", color: LILAC, fontSize: "0.8rem", letterSpacing: "0.32em", paddingLeft: "0.32em" }}
+          >
+            {TITLE}
+          </div>
         </div>
       </div>
     </div>
