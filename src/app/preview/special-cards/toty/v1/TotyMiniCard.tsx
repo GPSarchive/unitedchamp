@@ -2,41 +2,26 @@
 // Team-of-the-Year finish. Flat and still like MiniCard (there are hundreds
 // on a page) — no tilt, no effects, nothing that moves.
 //
-// It is the big card made small: photo with four blue faceted corners (or the
-// team logo on blue facets) on top, then the black satin band and the striped
-// plate, inside a silver rim. The black half is empty here, as MiniCard
-// carries no text. The silver rim, the blue corners and the band are what
-// tell this card from the normal black one at a glance.
+// It is the big card made small: photo with four small blue faceted corners
+// (or the team logo on blue facets) on top, sinking into the plain black
+// lower half, inside a silver rim. The black is empty here, as MiniCard
+// carries no text. The silver rim, the blue corners and the black half are
+// what tell this card from the normal black one at a glance.
 "use client";
 
 import { PlayerImage } from "@/app/lib/OptimizedImage";
 import { isPlaceholderPhoto } from "@/app/lib/image-config";
 import { SHIELD } from "@/app/preview/paiktes-v2/[id]/cardShared";
-import {
-  BAND,
-  FACETS_MINI,
-  FACETS_MINI_CORNERS,
-  FOOT_VEIL,
-  PLATE,
-  STRIPES,
-  TOTY_RIM_FLAT,
-  TotyFacetStyles,
-} from "./totyFinish";
+import { FACETS_MINI, FACETS_MINI_CORNERS, PLATE, RULE, TOTY_RIM_FLAT, TotyFacetStyles } from "./totyFinish";
 
-// One layer over the lower part of the card (it starts at 57% of the height).
-// Three pictures, top one first:
-//   · down the layer: the upper zone sinking into black, nothing over the
-//     band except the shade at its lower edge, nothing over the plate, the
-//     lighter foot;
-//   · the band (from 15% to 37% of the layer);
-//   · the striped plate (from 37% down).
+// One layer over the lower part of the card (it starts at 57% of the height):
+// the upper zone sinks into the black, then the two rules round the (empty)
+// name band — at 15% and 37% of the layer, as on the «Θρύλος» mini — on
+// plain black.
 const LOWER =
-  "linear-gradient(to bottom, " +
-  "rgba(2,4,7,0) 0%, rgba(2,4,7,0.85) 12%, #020407 15%, " +
-  "rgba(0,0,0,0) 15%, rgba(0,0,0,0) 31%, rgba(0,0,0,0.7) 37%, " +
-  `rgba(0,0,0,0) 37%, rgba(0,0,0,0) 66%, ${FOOT_VEIL} 66%, ${FOOT_VEIL} 100%), ` +
-  `${BAND} 0 19.23% / 100% 22% no-repeat, ` +
-  `${STRIPES} 0 100% / 100% 63% no-repeat`;
+  "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.9) 12%, " +
+  `${PLATE} 15%, ${RULE} 15%, ${RULE} calc(15% + 1px), ${PLATE} calc(15% + 1px), ` +
+  `${PLATE} 37%, ${RULE} 37%, ${RULE} calc(37% + 1px), ${PLATE} calc(37% + 1px), ${PLATE} 100%)`;
 
 export default function TotyMiniCard({
   photo,

@@ -9,11 +9,10 @@
 //     normal card) and the facets keep only to its four corners, like the
 //     corner mounts of a photo in an album — nothing of the finish lies on
 //     the middle of the picture, where the face is;
-//   · it ends on a band of black satin that catches the light in the middle:
-//     the name sits there;
-//   · below it the plate: near black with wide, soft, darker diagonal
-//     stripes, the six numbers, and a slightly lighter foot left empty
-//     for the edition title (to be decided);
+//   · it ends in the black lower half: ONE plain black for the name and the
+//     numbers — no band, no stripes, no lighter foot. Its lines are those of
+//     the «Θρύλος» card, made quiet: one thin dim-silver rule above and below
+//     the name, a faint line under each row of numbers;
 //   · thin silver-white rim, with a hair of blue inside it beside the upper
 //     zone.
 // Name and numbers are white, the first name and the small labels a lighter
@@ -34,14 +33,13 @@ import { CardShadow, CardStatGrid, SHIELD, Silhouette } from "@/app/preview/paik
 import { TILT_STYLE, useCardTilt } from "@/app/preview/paiktes-v2/[id]/useCardTilt";
 import {
   AZURE,
-  BAND,
   FACETS,
   FACETS_MOUNT,
   FACETS_TILTED,
-  FOOT_VEIL,
+  HAIRLINE,
   PLATE,
+  RULE,
   SILVER,
-  STRIPES,
   TOTY_INNER_LINE,
   TOTY_RIM,
   TotyFacetStyles,
@@ -84,7 +82,7 @@ export default function TotyShieldCard({
       style={TILT_STYLE}
     >
       <TotyFacetStyles />
-      <CardShadow glow="#1C73BE" />
+      <CardShadow glow="#12579A" />
 
       {/* Silver rim, then a hair of blue (charcoal beside the black), then the face: each the shield, each a little further in. */}
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: TOTY_RIM }} />
@@ -126,7 +124,7 @@ export default function TotyShieldCard({
           style={{
             margin: "-65% 0 0 -65%",
             background:
-              "radial-gradient(circle, rgba(214,236,255,0.22) 0%, rgba(120,184,244,0.08) 32%, rgba(120,184,244,0) 58%)",
+              "radial-gradient(circle, rgba(214,236,255,0.15) 0%, rgba(96,160,224,0.06) 32%, rgba(96,160,224,0) 58%)",
             opacity: "var(--lit, 0)",
             transform: "translate3d(calc(var(--px, 0) * 38.5%), calc(var(--py, 0) * 53.8%), 0)",
             transition: `transform ${FOLLOW}, opacity 400ms ease`,
@@ -134,7 +132,7 @@ export default function TotyShieldCard({
           }}
         />
 
-        {/* Where the upper zone meets the band. A photo sinks into black
+        {/* Where the upper zone meets the black. A photo sinks into it
             there, almost all of it in the last few percent, so a face that
             sits low in the picture keeps its mouth and chin. The facets end
             on a clean edge, with only the shade of a fold above it. */}
@@ -143,22 +141,16 @@ export default function TotyShieldCard({
           className={`absolute inset-x-0 ${hasPhoto ? "top-[47.5%] h-[8%]" : "top-[52.5%] h-[3%]"}`}
           style={{
             background: hasPhoto
-              ? "linear-gradient(to bottom, rgba(2,4,7,0) 0%, rgba(2,4,7,0.12) 38%, rgba(2,4,7,0.5) 68%, rgba(2,4,7,0.9) 90%, #020407 100%)"
+              ? "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.1) 38%, rgba(10,10,10,0.5) 68%, rgba(10,10,10,0.92) 90%, #0A0A0A 100%)"
               : "linear-gradient(to bottom, rgba(1,12,24,0) 0%, rgba(1,12,24,0.16) 62%, rgba(1,12,24,0.42) 100%)",
           }}
         />
 
-        {/* The black half: the satin band of the name, then the striped plate. */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 top-[55%] h-[13.6%]"
-          style={{
-            background:
-              "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 6%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0.72) 100%), " +
-              BAND,
-          }}
-        />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[68.6%]" style={{ background: STRIPES }} />
+        {/* The lower half: one black, from under the name to the foot. */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[55%]" style={{ background: PLATE }} />
+        {/* The two rules round the name, as on the «Θρύλος» card — here one thin, quiet line each. */}
+        <div aria-hidden className="absolute inset-x-0 top-[55%] h-px" style={{ background: RULE }} />
+        <div aria-hidden className="absolute inset-x-0 top-[68.6%] h-px" style={{ background: RULE }} />
 
         {hasPhoto ? (
           // Team logo, top left, in a black medallion with a silver ring.
@@ -214,16 +206,19 @@ export default function TotyShieldCard({
           </div>
         </div>
 
-        {/* The numbers. */}
+        {/* The numbers, a faint line under each row. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
-          <div aria-hidden className="absolute inset-x-0 bottom-0 top-[3.25rem]" style={{ background: FOOT_VEIL }} />
           {stats ? (
-            <CardStatGrid stats={stats} soft={AZURE} className="relative mx-[11%]" />
+            <>
+              <div aria-hidden className="absolute inset-x-0 top-[1.5rem] h-px" style={{ background: HAIRLINE }} />
+              <CardStatGrid stats={stats} soft={AZURE} className="relative mx-[11%]" />
+            </>
           ) : (
             <p className="relative mx-[10%] text-center text-[15px]" style={{ color: AZURE }}>
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          <div aria-hidden className="absolute inset-x-0 top-[3.25rem] h-px" style={{ background: HAIRLINE }} />
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
-// The «Ομάδα της Χρονιάς» (Team of the Year) finish: its colours, the faceted
-// blue surface of the card's upper zone, and the two pictures of its black
-// lower half (the satin band and the striped plate). Shared by the big card
-// and the mini card.
+// The «Ομάδα της Χρονιάς» (Team of the Year) finish: its colours and the
+// faceted blue surface of the card's upper zone. Shared by the big card and
+// the mini card.
 //
 // The facets are a small triangle mesh that is turned into an SVG picture
 // once, when this module loads, and given to the browser as a CSS background.
@@ -15,14 +14,19 @@ import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 // Colours
 // ───────────────────────────────────────────────────────────────────────
 
-/** The plate under the numbers: near black. */
-export const PLATE = "#0D0D0D";
+/** The whole lower half — name and numbers — and the card behind a photo: one black. */
+export const PLATE = "#0A0A0A";
 /** Last name and the six numbers. */
 export const WHITE = "#FFFFFF";
 /** First name, the small labels, the edition mark: the facets' blue, lifted until it reads on black. */
 export const AZURE = "#4F9BE0";
 /** The rim's silver. */
 export const SILVER = "#D8D8D8";
+/** The two thin rules round the name: the rim's silver, taken well down, so they stay quiet on the black. */
+export const RULE = "#5F656C";
+/** The faint line under each row of numbers: fades out toward both sides. */
+export const HAIRLINE =
+  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 14%, rgba(255,255,255,0.09) 86%, rgba(255,255,255,0) 100%)";
 /** Fill of the upper zone before the facets have painted. */
 const ROYAL = "#014A88";
 
@@ -32,25 +36,7 @@ export const TOTY_RIM =
 /** Flat version of the rim for the mini card. */
 export const TOTY_RIM_FLAT = "linear-gradient(150deg, #C3C8CE 0%, #FFFFFF 38%, #B4C0C9 66%, #ECEFF2 100%)";
 /** The hair of lighter colour just inside the rim: blue beside the upper zone, charcoal beside the black. */
-export const TOTY_INNER_LINE = "linear-gradient(to bottom, #175D99 0%, #1D3D59 54.5%, #1A1A1A 55.5%, #1A1A1A 100%)";
-
-/**
- * The band the name sits on: black satin that catches the light in the
- * middle (charcoal there, black at both ends).
- */
-export const BAND =
-  "linear-gradient(90deg, #020202 0%, #0D0D0D 13%, #1E1E1E 26%, #2E2E2E 39%, #343434 50%, #2E2E2E 61%, #1E1E1E 74%, #0D0D0D 87%, #020202 100%)";
-
-/**
- * The plate: near black with three wide, soft, pure-black diagonal stripes in
- * its left part; the right part is plain.
- */
-export const STRIPES =
-  "linear-gradient(57deg, #000 0%, #000 9%, #0D0D0D 12%, #0D0D0D 20%, #000 23%, #000 32.5%, " +
-  "#0D0D0D 35.5%, #0D0D0D 43.5%, #000 46.5%, #000 55.5%, #0D0D0D 58.5%, #0D0D0D 100%)";
-
-/** Laid over the plate at the foot of the card: lifts black to #0C0C0C and the plate to #181818. */
-export const FOOT_VEIL = "rgba(255,255,255,0.047)";
+export const TOTY_INNER_LINE = "linear-gradient(to bottom, #134F84 0%, #18344C 54.5%, #1A1A1A 55.5%, #1A1A1A 100%)";
 
 // ───────────────────────────────────────────────────────────────────────
 // Facets
@@ -119,10 +105,10 @@ const MINI_CORNERS: Mesh = {
   w: 100,
   h: 84,
   points: [
-    [0, 0], [33, 0], [0, 30], [12, 10],
-    [100, 0], [67, 0], [100, 30], [88, 10],
-    [0, 84], [0, 56], [29, 84], [11, 75],
-    [100, 84], [100, 56], [71, 84], [89, 75],
+    [0, 0], [25, 0], [0, 23], [9, 8],
+    [100, 0], [75, 0], [100, 23], [91, 8],
+    [0, 84], [0, 63], [22, 84], [8, 77],
+    [100, 84], [100, 63], [78, 84], [92, 77],
   ],
   facets: [
     [0, 1, 3, -0.2, -0.75], [0, 3, 2, -0.8, -0.1], [1, 2, 3, 0.55, 0.5],
@@ -132,17 +118,18 @@ const MINI_CORNERS: Mesh = {
   ],
 };
 
-// Dark → light: from the deepest navy to the brightest blue of the surface.
+// Dark → light: from the deepest navy to a full royal blue. It stops there:
+// no pale, glowing blue on the lit facets.
 const TONES: readonly (readonly [number, number, number, number])[] = [
-  [0, 0x01, 0x1b, 0x32],
-  [0.14, 0x01, 0x25, 0x45],
-  [0.3, 0x01, 0x38, 0x68],
-  [0.42, 0x01, 0x43, 0x7c],
-  [0.52, 0x01, 0x4a, 0x88],
-  [0.64, 0x03, 0x56, 0x9d],
-  [0.78, 0x10, 0x67, 0xb2],
-  [0.9, 0x1c, 0x73, 0xbe],
-  [1, 0x25, 0x7c, 0xc6],
+  [0, 0x01, 0x16, 0x2a],
+  [0.14, 0x01, 0x1f, 0x3b],
+  [0.3, 0x01, 0x30, 0x5a],
+  [0.42, 0x01, 0x3b, 0x6e],
+  [0.52, 0x01, 0x43, 0x7b],
+  [0.64, 0x02, 0x4d, 0x8d],
+  [0.78, 0x0a, 0x5a, 0x9f],
+  [0.9, 0x12, 0x64, 0xab],
+  [1, 0x18, 0x6b, 0xb2],
 ];
 
 /** Hex colour (no "#") for a brightness 0…1. */
@@ -173,7 +160,7 @@ function ambient(x: number, y: number): number {
 }
 
 /** The mini card's photo corners: all four clearly blue, the left pair a little brighter. */
-const cornerAmbient = (x: number) => 0.74 - 0.2 * x;
+const cornerAmbient = (x: number) => 0.62 - 0.16 * x;
 
 /**
  * The mesh as a CSS `url("data:…")` picture. `fromRight` paints the same
@@ -219,7 +206,7 @@ function facetPicture(
       `<stop stop-color='#${tone(value - 0.11)}'/><stop offset='1' stop-color='#${tone(value + 0.11)}'/></linearGradient>`;
     // The edges catch a little light, and only around the facets that are
     // lit: there is no bright outline anywhere on this surface.
-    const glint = Math.min(0.5, Math.max(0.06, 0.06 + (value - 0.35) * 0.8));
+    const glint = Math.min(0.3, Math.max(0.05, 0.05 + (value - 0.35) * 0.5));
     shapes.push({
       value,
       path: `<path d='${outline(corners)}' fill='url(#f${i})' stroke-opacity='${n2(glint)}'/>`,
@@ -232,7 +219,7 @@ function facetPicture(
   return picture(
     mesh,
     `<defs>${gradients}</defs>` +
-      `<g stroke='#4A93DB' stroke-width='${edgeWidth}' stroke-linejoin='round'>` +
+      `<g stroke='#3D85CC' stroke-width='${edgeWidth}' stroke-linejoin='round'>` +
       `${paths}${mirror ? mirrored(paths) : ""}</g>`,
   );
 }

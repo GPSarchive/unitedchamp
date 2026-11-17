@@ -1,5 +1,5 @@
 // The «Ομάδα της Εβδομάδας» (Team of the Week) finish: its colours and the
-// faceted red-metal surface of the card's upper zone. Shared by the big card
+// faceted deep-red surface of the card's upper zone. Shared by the big card
 // and the mini card.
 //
 // The facets are a small triangle mesh that is turned into an SVG picture
@@ -14,44 +14,27 @@ import { MOUNT, MOUNT_EDGE, MOUNT_MASK, mirrored } from "../../photoMount";
 // Colours
 // ───────────────────────────────────────────────────────────────────────
 
-/** The plate under the numbers. */
-export const ONYX = "#0D0D0D";
-/** The darker diagonal stripes across the plate, and the name band's base. */
-export const JET = "#000000";
+/** The whole lower half — name and numbers — and the card behind a photo: one black. */
+export const ONYX = "#0A0A0A";
 /** Last name and the six numbers. */
 export const SNOW = "#FFF4F1";
-/** First name, the small labels, the edition mark: the metal's light red. */
-export const EMBER = "#FF5A50";
+/** First name, the small labels, the edition mark: the red, lifted until it reads on black. */
+export const EMBER = "#EF4B47";
+/** The two thin rules round the name: the rim's red, a shade deeper, so they stay quiet on the black. */
+export const RULE = "#9A0F16";
+/** The faint line under each row of numbers: fades out toward both sides. */
+export const HAIRLINE =
+  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.09) 14%, rgba(255,255,255,0.09) 86%, rgba(255,255,255,0) 100%)";
 /** The ring round the team logo. */
 export const RING_RED = "#D4221F";
 /** Fill of the upper zone before the facets have painted. */
 const CRIMSON = "#8A0A11";
 
-/** Thin rim: one red, a little lighter where the light catches it. */
+/** Thin rim: one deep red, barely lighter where the light catches it. */
 export const TOTW_RIM =
-  "conic-gradient(from 124deg at 50% 50%, #B20F17 0%, #C8161D 18%, #EE4A40 30%, #C2151C 46%, #A80D15 62%, #DE322C 78%, #C8161D 90%, #B20F17 100%)";
+  "conic-gradient(from 124deg at 50% 50%, #9C0D14 0%, #B01219 18%, #CC2422 30%, #AC1118 46%, #960C13 62%, #C21C1E 78%, #B01219 90%, #9C0D14 100%)";
 /** Flat version of the rim for the mini card. */
-export const TOTW_RIM_FLAT = "linear-gradient(150deg, #C2151C 0%, #F2554A 38%, #C8161D 66%, #E63A33 100%)";
-
-/**
- * The band the name sits on: black satin that catches the light in the
- * middle (charcoal there, black at both ends). No lines round it — as on the
- * reference, the band is told from the plate by its light alone.
- */
-export const BAND =
-  "linear-gradient(90deg, #020202 0%, #0D0D0D 13%, #1E1E1E 26%, #2E2E2E 39%, #343434 50%, #2E2E2E 61%, #1E1E1E 74%, #0D0D0D 87%, #020202 100%)";
-
-/**
- * The plate's texture: broad darker stripes leaning down to the right, on the
- * left part of the plate only. The percentages are for a box as wide and as
- * tall as the big card's plate (about 9:4).
- */
-export const STRIPES =
-  `linear-gradient(56.6deg, ${JET} 0%, ${JET} 8.1%, ${ONYX} 8.5%, ${ONYX} 19.2%, ${JET} 19.6%, ${JET} 32.2%, ` +
-  `${ONYX} 32.6%, ${ONYX} 43.6%, ${JET} 44%, ${JET} 57.9%, ${ONYX} 58.3%, ${ONYX} 100%)`;
-
-/** What makes the foot of the plate a shade lighter than the plate, stripes included. */
-export const FOOT_VEIL = "rgba(255,255,255,0.045)";
+export const TOTW_RIM_FLAT = "linear-gradient(150deg, #A81017 0%, #CC2422 38%, #AE1218 66%, #C21C1E 100%)";
 
 // ───────────────────────────────────────────────────────────────────────
 // Facets
@@ -110,18 +93,18 @@ const MINI: Mesh = {
   ],
 };
 
-// Dark → light. From the red-black of the facets in shade to the light red of
-// the ones that catch the light. One hue all the way: no orange, no pink, and
-// never so pale that the red is lost.
+// Dark → light. From the red-black of the facets in shade to a full red on
+// the ones that catch the light. One hue all the way, and it stops at red:
+// no orange, no pink, no pale highlight.
 const TONES: readonly (readonly [number, number, number, number])[] = [
-  [0, 0x1a, 0x02, 0x04],
-  [0.18, 0x3a, 0x04, 0x07],
-  [0.35, 0x68, 0x07, 0x0d],
-  [0.5, 0x93, 0x0b, 0x12],
-  [0.65, 0xba, 0x11, 0x18],
-  [0.8, 0xd9, 0x27, 0x24],
-  [0.92, 0xe8, 0x44, 0x3e],
-  [1, 0xf4, 0x62, 0x5a],
+  [0, 0x18, 0x02, 0x04],
+  [0.18, 0x32, 0x04, 0x07],
+  [0.35, 0x56, 0x07, 0x0c],
+  [0.5, 0x78, 0x0a, 0x10],
+  [0.65, 0x98, 0x0e, 0x14],
+  [0.8, 0xb2, 0x14, 0x19],
+  [0.92, 0xc2, 0x1c, 0x1e],
+  [1, 0xcc, 0x24, 0x22],
 ];
 
 /** Hex colour (no "#") for a brightness 0…1. */
@@ -186,11 +169,11 @@ function facetPicture(mesh: Mesh, fromRight: boolean, edgeWidth: number, lift = 
       `<linearGradient id='f${i}' gradientUnits='userSpaceOnUse' ` +
       `x1='${n(cx + ux * far)}' y1='${n(cy + uy * far)}' x2='${n(cx + ux * near)}' y2='${n(cy + uy * near)}'>` +
       `<stop stop-color='#${tone(value - 0.13)}'/><stop offset='1' stop-color='#${tone(value + 0.13)}'/></linearGradient>`;
-    // The edges: a lit facet's edges catch the light (a pale red line), a
-    // facet in shade has a dark crease around it instead.
+    // The edges: a lit facet's edges catch a little light (a faint red line),
+    // a facet in shade has a dark crease around it instead.
     const lit = value > 0.5;
     const strength = lit
-      ? Math.min(0.6, 0.1 + (value - 0.5) * 1.5)
+      ? Math.min(0.3, 0.06 + (value - 0.5) * 0.7)
       : Math.min(0.55, 0.16 + (0.5 - value) * 1.1);
     shapes.push({
       value,
@@ -210,7 +193,7 @@ function facetPicture(mesh: Mesh, fromRight: boolean, edgeWidth: number, lift = 
   const shadeX = fromRight ? 0 : 1;
   const box = `width='${mesh.w}' height='${mesh.h}'`;
   const metal =
-    `<g stroke='#FF948A' stroke-width='${edgeWidth}' stroke-linejoin='round'>${shapes.map((s) => s.path).join("")}</g>` +
+    `<g stroke='#E2463F' stroke-width='${edgeWidth}' stroke-linejoin='round'>${shapes.map((s) => s.path).join("")}</g>` +
     `<rect ${box} fill='url(#shade)'/><rect ${box} fill='url(#spot)'/>`;
   // Mirrored: the spot and the shade cover the whole picture, so each copy is
   // cut to its own half — otherwise the two would lie over each other.
@@ -218,8 +201,8 @@ function facetPicture(mesh: Mesh, fromRight: boolean, edgeWidth: number, lift = 
   return picture(
     mesh,
     `<defs>${gradients}` +
-      `<radialGradient id='spot' cx='${spotX}' cy='.23' r='.4'><stop stop-color='#FFB4AA' stop-opacity='.3'/>` +
-      `<stop offset='.42' stop-color='#FF8880' stop-opacity='.15'/><stop offset='1' stop-color='#FF8880' stop-opacity='0'/></radialGradient>` +
+      `<radialGradient id='spot' cx='${spotX}' cy='.23' r='.4'><stop stop-color='#F0605A' stop-opacity='.16'/>` +
+      `<stop offset='.42' stop-color='#E04842' stop-opacity='.08'/><stop offset='1' stop-color='#E04842' stop-opacity='0'/></radialGradient>` +
       `<radialGradient id='shade' cx='${shadeX}' cy='.6' r='.72'><stop stop-color='#0A0001' stop-opacity='.42'/>` +
       `<stop offset='1' stop-color='#0A0001' stop-opacity='0'/></radialGradient>` +
       `${mirror ? `<clipPath id='half'><rect width='${mesh.w / 2}' height='${mesh.h}'/></clipPath>` : ""}</defs>` +
@@ -258,7 +241,7 @@ const FILL = `background-color:${CRIMSON};background-size:100% 100%;background-r
 // shade are still a clear dark gold. In this red they would be red-black and
 // drop out of the frame on a dark photo, so the frame is lit a little more
 // than the rest of the metal.
-const MOUNT_LIFT = 0.16;
+const MOUNT_LIFT = 0.12;
 const BIG_CSS =
   `.${FACETS},.${FACETS_TILTED}{${FILL}}` +
   `.${FACETS}{background-image:${facetPicture(BIG, false, 0.3)}}` +

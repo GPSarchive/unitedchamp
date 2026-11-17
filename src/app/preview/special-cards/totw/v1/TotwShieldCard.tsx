@@ -3,18 +3,17 @@
 // Same card as HoloShieldCard and the «Θρύλος» card — our shield, 5:7, photo
 // filling the card, team logo top left, name and six numbers where they
 // always are, team logo in the middle when there is no photo — in a different
-// finish: RED METAL ON BLACK.
-//   · upper zone: faceted red metal, a lamp on its upper left and deep shade
+// finish: DEEP RED ON BLACK.
+//   · upper zone: faceted deep red, a lamp on its upper left and deep shade
 //     on its right. With a photo the photo takes the zone (framed exactly as
 //     on the normal card) and the facets keep only to its four corners, like
 //     the corner mounts of a photo in an album — nothing of the finish lies
 //     on the middle of the picture, where the face is;
-//   · it ends in black, on
-//   · a band of black satin for the name, lighter in its middle and shaded
-//     along its edges (no lines round it); then
-//   · the black plate for the numbers, with broad darker stripes leaning
-//     across it, and a foot one shade lighter left empty for the edition title (to be decided);
-//   · thin red rim with a dark line inside it.
+//   · it ends in the black lower half: ONE plain black for the name and the
+//     numbers — no band, no stripes, no lighter foot. Its lines are those of
+//     the «Θρύλος» card, made quiet: one thin deep-red rule above and below
+//     the name, a faint line under each row of numbers;
+//   · thin deep-red rim with a dark line inside it.
 // Name and numbers sit on the band and the plate, never on the photo, so they
 // read the same whatever the photo is.
 //
@@ -31,28 +30,20 @@ import type { DirectoryTeam, StatTuple } from "@/app/preview/paiktes-v2/model";
 import { CardShadow, CardStatGrid, SHIELD, Silhouette } from "@/app/preview/paiktes-v2/[id]/cardShared";
 import { TILT_STYLE, useCardTilt } from "@/app/preview/paiktes-v2/[id]/useCardTilt";
 import {
-  BAND,
   EMBER,
   FACETS,
   FACETS_MOUNT,
   FACETS_TILTED,
-  FOOT_VEIL,
+  HAIRLINE,
   ONYX,
   RING_RED,
+  RULE,
   SNOW,
-  STRIPES,
   TOTW_RIM,
   TotwFacetStyles,
 } from "./totwFinish";
 
-/** The edition's name, written at the foot of the card. */
 const FOLLOW = "var(--tilt-ms, 600ms) cubic-bezier(0.2, 0.8, 0.2, 1)";
-
-// The name band: its satin, with a little shade along the top and more along
-// the bottom, where it meets the plate. That shade is the band's only edge.
-const BAND_SHADED =
-  "linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 6%, rgba(0,0,0,0) 82%, rgba(0,0,0,0.3) 92%, rgba(0,0,0,0.72) 100%), " +
-  BAND;
 
 export default function TotwShieldCard({
   first,
@@ -88,7 +79,7 @@ export default function TotwShieldCard({
       style={TILT_STYLE}
     >
       <TotwFacetStyles />
-      <CardShadow glow="#C8161D" />
+      <CardShadow glow="#A81017" />
 
       {/* Rim, then a dark line, then the face: each the shield, each a little further in. */}
       <div aria-hidden className="absolute inset-0" style={{ clipPath: SHIELD, background: TOTW_RIM }} />
@@ -123,14 +114,14 @@ export default function TotwShieldCard({
           }}
         />
 
-        {/* Soft light that follows the mouse. The band and the plate below cover it. */}
+        {/* Soft light that follows the mouse. The black below covers it. */}
         <div
           aria-hidden
           className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[130%]"
           style={{
             margin: "-65% 0 0 -65%",
             background:
-              "radial-gradient(circle, rgba(255,222,214,0.26) 0%, rgba(255,128,112,0.1) 32%, rgba(255,128,112,0) 58%)",
+              "radial-gradient(circle, rgba(255,214,206,0.16) 0%, rgba(232,84,74,0.07) 32%, rgba(232,84,74,0) 58%)",
             opacity: "var(--lit, 0)",
             transform: "translate3d(calc(var(--px, 0) * 38.5%), calc(var(--py, 0) * 53.8%), 0)",
             transition: `transform ${FOLLOW}, opacity 400ms ease`,
@@ -146,14 +137,16 @@ export default function TotwShieldCard({
           className={`absolute inset-x-0 ${hasPhoto ? "top-[47.5%] h-[8%]" : "top-[48.5%] h-[7%]"}`}
           style={{
             background: hasPhoto
-              ? "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 38%, rgba(0,0,0,0.5) 68%, rgba(0,0,0,0.92) 90%, #000 100%)"
+              ? "linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.1) 38%, rgba(10,10,10,0.5) 68%, rgba(10,10,10,0.92) 90%, #0A0A0A 100%)"
               : "linear-gradient(to bottom, rgba(10,0,1,0) 0%, rgba(10,0,1,0.34) 100%)",
           }}
         />
 
-        {/* The name band, then the plate with its stripes. */}
-        <div aria-hidden className="absolute inset-x-0 top-[55%] h-[13.6%]" style={{ background: BAND_SHADED }} />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[68.6%]" style={{ background: STRIPES }} />
+        {/* The lower half: one black, from under the name to the foot. */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[55%]" style={{ background: ONYX }} />
+        {/* The two rules round the name, as on the «Θρύλος» card — here one thin, quiet line each. */}
+        <div aria-hidden className="absolute inset-x-0 top-[55%] h-px" style={{ background: RULE }} />
+        <div aria-hidden className="absolute inset-x-0 top-[68.6%] h-px" style={{ background: RULE }} />
 
         {hasPhoto ? (
           // Team logo, top left, in a black medallion with a red ring.
@@ -199,7 +192,7 @@ export default function TotwShieldCard({
           </div>
         )}
 
-        {/* Name, centred in its band. */}
+        {/* Name, where it always is. */}
         <div className="absolute inset-x-[8%] top-[55%] flex h-[13.6%] flex-col items-center justify-center text-center uppercase">
           <div className="w-full truncate text-[0.8rem] font-bold leading-none tracking-wide" style={{ color: EMBER }}>
             {first}
@@ -209,16 +202,19 @@ export default function TotwShieldCard({
           </div>
         </div>
 
-        {/* The numbers, and the foot. */}
+        {/* The numbers, a faint line under each row. */}
         <div className="absolute inset-x-0 bottom-0 top-[71.2%]">
-          <div aria-hidden className="absolute inset-x-0 bottom-0 top-[3.25rem]" style={{ background: FOOT_VEIL }} />
           {stats ? (
-            <CardStatGrid stats={stats} soft={EMBER} className="relative mx-[11%]" />
+            <>
+              <div aria-hidden className="absolute inset-x-0 top-[1.5rem] h-px" style={{ background: HAIRLINE }} />
+              <CardStatGrid stats={stats} soft={EMBER} className="relative mx-[11%]" />
+            </>
           ) : (
             <p className="relative mx-[10%] text-center text-[15px]" style={{ color: EMBER }}>
               Χωρίς στατιστικά ακόμα
             </p>
           )}
+          <div aria-hidden className="absolute inset-x-0 top-[3.25rem] h-px" style={{ background: HAIRLINE }} />
         </div>
       </div>
     </div>
