@@ -29,23 +29,6 @@ const PLATE =
   `${BAND} 0 19.23% / 100% 22% no-repeat, ` +
   `${STRIPES} bottom / 100% 63% no-repeat`;
 
-// Photo cards only: the same lower layer with the black turned to deep red —
-// the fade, the band and the striped plate all keep their shapes.
-const RED_DEEP = "#3A0507";
-const RED_STRIPE = "#5A0B0E";
-const RED_BAND =
-  "linear-gradient(90deg, #2A0304 0%, #43070A 13%, #5E0D11 26%, #761318 39%, #84171C 50%, #761318 61%, #5E0D11 74%, #43070A 87%, #2A0304 100%)";
-const RED_STRIPES =
-  `linear-gradient(56.6deg, ${RED_DEEP} 0%, ${RED_DEEP} 8.1%, ${RED_STRIPE} 8.5%, ${RED_STRIPE} 19.2%, ${RED_DEEP} 19.6%, ${RED_DEEP} 32.2%, ` +
-  `${RED_STRIPE} 32.6%, ${RED_STRIPE} 43.6%, ${RED_DEEP} 44%, ${RED_DEEP} 57.9%, ${RED_STRIPE} 58.3%, ${RED_STRIPE} 100%)`;
-const PLATE_RED =
-  "linear-gradient(to bottom, " +
-  `rgba(58,5,7,0) 0%, rgba(58,5,7,0.9) 12%, ${RED_DEEP} 15%, ` +
-  "rgba(0,0,0,0) 15%, rgba(0,0,0,0) 31%, rgba(20,0,0,0.55) 37%, " +
-  `rgba(0,0,0,0) 37%, rgba(0,0,0,0) 68%, ${FOOT_VEIL} 68%, ${FOOT_VEIL} 100%), ` +
-  `${RED_BAND} 0 19.23% / 100% 22% no-repeat, ` +
-  `${RED_STRIPES} bottom / 100% 63% no-repeat`;
-
 export default function TotwMiniCard({
   photo,
   logo,
@@ -76,7 +59,7 @@ export default function TotwMiniCard({
         ) : (
           <div aria-hidden className={`absolute inset-x-0 top-0 h-[66%] ${FACETS_MINI}`} />
         )}
-        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: hasPhoto ? PLATE_RED : PLATE }} />
+        <div aria-hidden className="absolute inset-x-0 bottom-0 top-[57%]" style={{ background: PLATE }} />
         {hasPhoto ? null : hasLogo ? (
           <div className="absolute inset-x-[19%] top-[10%] h-[48%]">
             <PlayerImage
