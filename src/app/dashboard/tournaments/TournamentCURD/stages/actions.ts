@@ -125,7 +125,7 @@ export async function applyPointAdjustmentAction(input: PointAdjustmentInput) {
       .eq('group_id', groupId ?? 0)
       .single();
 
-    const newPoints = updatedStanding?.points || currentPoints;
+    const newPoints = updatedStanding?.points ?? currentPoints;
 
     return {
       success: true,
