@@ -785,11 +785,12 @@ async function recomputeStandingsIfNeeded(stageId: Id) {
         adjustmentsByTeam.set(action.team_id, current + action.points_adjustment);
       }
 
-      // Apply total adjustments
+      // Apply total adjustments. No floor at 0: a penalty larger than the
+      // points earned must show as a negative total in the table.
       for (const [team_id, totalAdjustment] of adjustmentsByTeam.entries()) {
         const teamStats = stats.get(team_id);
         if (teamStats) {
-          teamStats.points = Math.max(0, teamStats.points + totalAdjustment);
+          teamStats.points = teamStats.points + totalAdjustment;
         }
       }
     }

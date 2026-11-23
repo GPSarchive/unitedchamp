@@ -146,7 +146,7 @@ function PointAdjustmentModal({
             {adjustment && (
               <div className="mt-2 text-sm">
                 Νέοι Βαθμοί: <span className={`font-semibold ${newPoints < currentPoints ? 'text-red-400' : 'text-green-400'}`}>
-                  {Math.max(0, newPoints)}
+                  {newPoints}
                 </span>
               </div>
             )}
