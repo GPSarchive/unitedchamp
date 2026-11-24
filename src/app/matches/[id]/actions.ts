@@ -19,6 +19,7 @@ import {
   refreshStatsForPlayersInTournament,
 } from '@/app/lib/refreshPlayerStats';
 import { decideTwoLeggedTie, decideSingleLegKO } from '@/app/dashboard/tournaments/TournamentCURD/util/functions/twoLeggedTie';
+import { awardForfeitWin } from '@/app/lib/awardForfeitWin';
 
 /** =========================
  *  Content-editor guard (server-side)
@@ -650,6 +651,29 @@ export async function saveAllStatsAction(formData: FormData) {
     team_b_id: teamBId,
   });
   redirect(`/matches/${match_id}?saved=1`);
+}
+
+/** --------------------------------
+ *  3-0 forfeit win from the match page's admin bar. Admins and editors
+ *  (the dashboard's own awardForfeitWinAction stays admin-only).
+ *  -------------------------------- */
+export async function awardForfeitWinMatchPageAction(matchId: number, winningTeam: 'A' | 'B') {
+  try {
+    if (!Number.isFinite(matchId) || matchId <= 0) {
+      return { success: false as const, error: 'Bad match id' };
+    }
+    if (winningTeam !== 'A' && winningTeam !== 'B') {
+      return { success: false as const, error: 'Bad team' };
+    }
+    const { supabase } = await requireContentEditor();
+    return await awardForfeitWin(supabase, matchId, winningTeam, 'awardForfeitWinMatchPageAction');
+  } catch (error) {
+    console.error('awardForfeitWinMatchPageAction error:', error);
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
 
 /** --------------------------------

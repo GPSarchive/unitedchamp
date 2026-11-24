@@ -12,6 +12,7 @@ import {
 } from '../util/functions/twoLeggedTie';
 import { revalidateMatchSurfaces } from '@/app/lib/revalidatePublicPages';
 import { refreshActiveSeasonStandings } from '@/app/lib/refreshStandings';
+import { awardForfeitWin } from '@/app/lib/awardForfeitWin';
 
 type PlayerStatInput = {
   player_id: number;
@@ -176,68 +177,11 @@ export async function revertMatchToScheduledAction(matchId: number) {
 export async function awardForfeitWinAction(matchId: number, winningTeam: 'A' | 'B') {
   try {
     const supabase = await assertAdmin();
-
-    // 1. Get match info
-    const { data: match, error: matchErr } = await supabase
-      .from('matches')
-      .select('id, team_a_id, team_b_id, status, tournament_id')
-      .eq('id', matchId)
-      .single();
-
-    if (matchErr || !match) {
-      return { success: false, error: 'Match not found' };
-    }
-
-    if (!match.team_a_id || !match.team_b_id) {
-      return { success: false, error: 'Both teams must be assigned' };
-    }
-
-    // 2. Set 3-0 scores based on winning team
-    const team_a_score = winningTeam === 'A' ? 3 : 0;
-    const team_b_score = winningTeam === 'B' ? 3 : 0;
-    const winner_team_id = winningTeam === 'A' ? match.team_a_id : match.team_b_id;
-
-    // 3. Update match to finished with 3-0 score
-    const { error: updateErr } = await supabase
-      .from('matches')
-      .update({
-        team_a_score,
-        team_b_score,
-        winner_team_id,
-        penalty_a: null,
-        penalty_b: null,
-        status: 'finished',
-      })
-      .eq('id', matchId);
-
-    if (updateErr) {
-      console.error('Failed to update match:', updateErr);
-      return { success: false, error: 'Failed to update match' };
-    }
-
-    // 4. Trigger progression
-    try {
-      await progressAfterMatch(matchId);
-    } catch (progError) {
-      console.error('Progression error (non-fatal):', progError);
-      // Don't fail the save if progression fails
-    }
-
-    // 5. Public pages must show the forfeit result immediately.
-    await refreshActiveSeasonStandings('forfeitMatchAction');
-    revalidateMatchSurfaces({
-      id: matchId,
-      tournament_id: match.tournament_id ?? null,
-      team_a_id: match.team_a_id ?? null,
-      team_b_id: match.team_b_id ?? null,
-    });
-
-    return { success: true, team_a_score, team_b_score };
-
+    return await awardForfeitWin(supabase, matchId, winningTeam, 'forfeitMatchAction');
   } catch (error) {
     console.error('awardForfeitWinAction error:', error);
     return {
-      success: false,
+      success: false as const,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
