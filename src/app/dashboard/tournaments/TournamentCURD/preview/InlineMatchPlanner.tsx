@@ -7,6 +7,8 @@ import { useTournamentStore } from "@/app/dashboard/tournaments/TournamentCURD/s
 import type { TournamentState } from "@/app/dashboard/tournaments/TournamentCURD/submit/tournamentStore";
 import { generateDraftMatches } from "../util/Generators";
 import { inferRepeats, planLateTeamFixtures } from "../util/functions/lateTeamFixtures";
+import { planRemainingFixtures } from "../util/functions/remainingFixtures";
+import { formatMatchDateTime } from "@/app/lib/datetime";
 import MatchControlPanel from "./MatchControlPanel";
 import { useEditorLayout, useIsPhone } from "../editorLayout";
 
@@ -416,19 +418,30 @@ export default function InlineMatchPlanner({
     skipped: number[];
     repeats: number;
   } | null>(null);
+  // «Νέα κλήρωση υπολοίπων»: rebuild + shuffle the unfinished part of the
+  // schedule; finished matches stay. Regenerate refuses once anything is played.
+  const [remain, setRemain] = useState<{
+    groupIdx: number | null;
+    /** Teams the schedule is between (archived teams off by default). */
+    teamIds: number[];
+    repeats: number;
+    /** Each «Ανακάτεμα ξανά» bumps it for a different shuffle. */
+    seed: number;
+  } | null>(null);
 
-  // Dismiss the group picker / late-team dialog on Escape (proper dialog behaviour).
+  // Dismiss the group picker / late-team / remaining dialogs on Escape (proper dialog behaviour).
   useEffect(() => {
-    if (!pendingAddGroup && !lateAdd) return;
+    if (!pendingAddGroup && !lateAdd && !remain) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPendingAddGroup(false);
         setLateAdd(null);
+        setRemain(null);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pendingAddGroup, lateAdd]);
+  }, [pendingAddGroup, lateAdd, remain]);
 
   const filteredVisible = useMemo(() => {
     const q1 = teamQuery1.trim().toLowerCase();
@@ -783,6 +796,99 @@ export default function InlineMatchPlanner({
   const toggleIn = (list: number[], id: number) =>
     list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 
+  /* ---- «Νέα κλήρωση υπολοίπων» (league / groups) ---- */
+  const openRemain = (g: number | null) => {
+    const sid = (stageIdByIndex as Record<number, number | undefined>)?.[effectiveStageIdx];
+    const cfg = (sid ? (stagesById as any)[sid]?.config : null) ?? {};
+    // The stage's own setting first: hand-made duplicates would inflate inferRepeats.
+    const cfgRepeats = Number(cfg.rounds_per_opponent) || (cfg.double_round ? 2 : 0);
+    setRemain({
+      groupIdx: g,
+      teamIds: lateTeamPool(g).filter((id) => !isArchived(id)),
+      repeats: cfgRepeats || inferRepeats(lateRowsFor(g)) || 1,
+      seed: 1,
+    });
+  };
+
+  const startRemain = () => {
+    if (isGroups) openRemain(useAllGroups ? storeGroups[0]?.idx ?? 0 : groupIdx);
+    else openRemain(null);
+  };
+
+  const remainPlan = useMemo(() => {
+    if (!remain) return null;
+    const g = remain.groupIdx;
+    const rows = allRowsForStage.filter((r) => (g == null ? r.groupIdx == null : r.groupIdx === g));
+    const plan = planRemainingFixtures({
+      rows: rows.map((r) => ({
+        matchday: r.matchday,
+        team_a_id: r.team_a_id,
+        team_b_id: r.team_b_id,
+        status: (r as any).status ?? null,
+        match_date: r.match_date ?? null,
+        db_id: (r as any).db_id ?? null,
+      })),
+      teamIds: remain.teamIds,
+      repeats: remain.repeats,
+      seed: remain.seed,
+    });
+    // The new remaining schedule, by matchday, for the preview.
+    const byMd = new Map<
+      number,
+      { a: number; b: number; date: string | null; from: number | null; isNew: boolean }[]
+    >();
+    const put = (md: number, e: { a: number; b: number; date: string | null; from: number | null; isNew: boolean }) =>
+      (byMd.get(md) ?? byMd.set(md, []).get(md)!).push(e);
+    plan.moves.forEach((m) =>
+      put(m.matchday, {
+        a: m.team_a_id,
+        b: m.team_b_id,
+        date: m.match_date,
+        from: rows[m.rowIndex].matchday ?? null,
+        isNew: false,
+      })
+    );
+    plan.created.forEach((c) =>
+      put(c.matchday, { a: c.team_a_id, b: c.team_b_id, date: c.match_date, from: null, isNew: true })
+    );
+    for (const list of byMd.values())
+      list.sort((x, y) => (x.date ?? "￿").localeCompare(y.date ?? "￿"));
+    const schedule = [...byMd.entries()].sort((x, y) => x[0] - y[0]);
+    return { rows, plan, schedule };
+  }, [remain, allRowsForStage]);
+
+  const commitRemain = () => {
+    if (!remain || !remainPlan) return;
+    const { rows, plan } = remainPlan;
+    const g = remain.groupIdx;
+    // Removed rows are queued for deletion on save (removeMatch tracks db_id).
+    plan.removed.forEach((i) => removeMatch(rows[i]));
+    // Kept rows keep their identity; only matchday + slot date change.
+    const moveByUid = new Map(plan.moves.map((m) => [rows[m.rowIndex].uid, m]));
+    updateMatches(effectiveStageIdx, (stageRows) => [
+      ...stageRows.map((r) => {
+        const m = r.uid ? moveByUid.get(r.uid) : undefined;
+        return m ? { ...r, matchday: m.matchday, match_date: m.match_date } : r;
+      }),
+      ...plan.created.map((c) => ({
+        stageIdx: effectiveStageIdx,
+        groupIdx: g,
+        matchday: c.matchday,
+        round: null,
+        bracket_pos: null,
+        team_a_id: c.team_a_id,
+        team_b_id: c.team_b_id,
+        match_date: c.match_date,
+        is_ko: false,
+      })),
+    ]);
+    if (g != null) setGroupIdx(g);
+    setRemain(null);
+  };
+
+  const shortDate = (iso: string | null) =>
+    iso ? formatMatchDateTime(iso, undefined, " ") : null;
+
   // `shuffle` = «Νέα κλήρωση»: the generator is deterministic for a given team
   // order, so a plain regenerate always rebuilds the same schedule. Shuffling
   // the teams first is the only way a second press can give a different one.
@@ -1072,6 +1178,15 @@ export default function InlineMatchPlanner({
               title="Ανακατεύει τις ομάδες και ξαναδημιουργεί το πρόγραμμα· κάθε πάτημα δίνει διαφορετικές αγωνιστικές"
             >
               Νέα κλήρωση
+            </button>
+          )}
+          {!isKO && (!isGroups || storeGroups.length > 0) && (
+            <button
+              className="px-2 py-1.5 rounded border border-amber-400/30 text-amber-200 hover:bg-amber-500/10 text-xs"
+              onClick={startRemain}
+              title="Οι ολοκληρωμένοι αγώνες μένουν ως έχουν· οι υπόλοιποι ξαναμοιράζονται τυχαία στις αγωνιστικές και οι χειροκίνητοι αγώνες εκτός προγράμματος διαγράφονται"
+            >
+              Νέα κλήρωση υπολοίπων
             </button>
           )}
           {!isKO && (!isGroups || storeGroups.length > 0) && (
@@ -1430,6 +1545,186 @@ export default function InlineMatchPlanner({
                   : latePlan.length === 1
                   ? "Προσθήκη 1 αγώνα"
                   : `Προσθήκη ${latePlan.length} αγώνων`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* «Νέα κλήρωση υπολοίπων» — preview first; nothing changes until
+          «Εφαρμογή», and nothing reaches the DB until Save all. */}
+      {remain && remainPlan && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Νέα κλήρωση υπολοίπων"
+        >
+          <button
+            type="button"
+            aria-label="Ακύρωση"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setRemain(null)}
+          />
+          <div className="relative w-full max-h-[90vh] overflow-y-auto rounded-t-2xl border border-white/15 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl sm:mb-0 sm:w-[32rem] sm:rounded-2xl sm:p-5 space-y-4">
+            <div>
+              <div className="text-sm font-medium text-white/90">Νέα κλήρωση υπολοίπων</div>
+              <p className="mt-1 text-xs text-white/50">
+                {remainPlan.plan.finishedCount === 1
+                  ? "Ο 1 ολοκληρωμένος αγώνας μένει ως έχει."
+                  : `Οι ${remainPlan.plan.finishedCount} ολοκληρωμένοι αγώνες μένουν ως έχουν.`}{" "}
+                Οι υπόλοιποι αγώνες του προγράμματος ξαναμοιράζονται τυχαία στις αγωνιστικές· κάθε
+                αγωνιστική κρατά τις ώρες της.
+              </p>
+            </div>
+
+            {isGroups && (
+              <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+                Όμιλος
+                <select
+                  className="w-40 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                  value={remain.groupIdx ?? 0}
+                  onChange={(e) => openRemain(Number(e.target.value))}
+                >
+                  {storeGroups.map((g) => (
+                    <option key={g.idx} value={g.idx}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <fieldset className="space-y-1">
+              <legend className="mb-1 text-xs font-medium uppercase tracking-wide text-white/50">
+                Ομάδες
+              </legend>
+              <div className="max-h-40 overflow-y-auto rounded border border-white/10">
+                {lateTeamPool(remain.groupIdx).map((id) => (
+                  <label
+                    key={id}
+                    className="flex min-h-[40px] items-center gap-2 px-3 text-sm text-white/85 hover:bg-white/5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={remain.teamIds.includes(id)}
+                      onChange={() =>
+                        setRemain((s) => s && { ...s, teamIds: toggleIn(s.teamIds, id) })
+                      }
+                    />
+                    {nameOf(id).name}
+                    {isArchived(id) && (
+                      <span className="text-xs text-amber-300/80">(αρχειοθετημένη)</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="flex min-h-[44px] items-center justify-between gap-2 text-sm text-white/80">
+              Αγώνες με κάθε αντίπαλο
+              <input
+                type="number"
+                min={1}
+                max={4}
+                className="w-20 bg-slate-950 border border-white/15 rounded px-2 py-1.5 text-white"
+                value={remain.repeats}
+                onChange={(e) => {
+                  if (e.target.value === "") return;
+                  const repeats = Math.min(4, Math.max(1, Number(e.target.value) || 1));
+                  setRemain((s) => s && { ...s, repeats });
+                }}
+              />
+            </label>
+
+            {remainPlan.plan.removed.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium uppercase tracking-wide text-rose-300/80">
+                  {remainPlan.plan.removed.length === 1
+                    ? "1 αγώνας εκτός προγράμματος διαγράφεται"
+                    : `${remainPlan.plan.removed.length} αγώνες εκτός προγράμματος διαγράφονται`}
+                </div>
+                <ul className="max-h-40 overflow-y-auto rounded border border-rose-400/20 text-sm">
+                  {remainPlan.plan.removed.map((i) => {
+                    const r = remainPlan.rows[i];
+                    return (
+                      <li
+                        key={r.uid ?? i}
+                        className="flex items-center gap-2 border-b border-white/5 px-3 py-1.5 last:border-b-0"
+                      >
+                        <span className="w-14 shrink-0 text-xs text-white/50">
+                          Αγ. {r.matchday ?? "—"}
+                        </span>
+                        <span className="text-white/60 line-through">
+                          {nameOf(r.team_a_id ?? null).name} – {nameOf(r.team_b_id ?? null).name}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <div className="text-xs font-medium uppercase tracking-wide text-white/50">
+                {remainPlan.schedule.length === 0
+                  ? "Δεν μένουν αγώνες για κλήρωση"
+                  : remainPlan.plan.firstMatchday === remainPlan.plan.lastMatchday
+                  ? `Νέο πρόγραμμα · Αγ. ${remainPlan.plan.firstMatchday}`
+                  : `Νέο πρόγραμμα · Αγ. ${remainPlan.plan.firstMatchday}–${remainPlan.plan.lastMatchday}`}
+              </div>
+              {remainPlan.schedule.length > 0 && (
+                <div className="max-h-72 overflow-y-auto rounded border border-white/10 text-sm">
+                  {remainPlan.schedule.map(([md, list]) => (
+                    <div key={md} className="border-b border-white/5 last:border-b-0">
+                      <div className="bg-white/5 px-3 py-1 text-xs font-semibold text-white/70">
+                        Αγωνιστική {md}
+                      </div>
+                      <ul>
+                        {list.map((e, i) => (
+                          <li key={i} className="flex items-center gap-2 px-3 py-1.5">
+                            <span className="min-w-0 truncate text-white/85">
+                              {nameOf(e.a).name} – {nameOf(e.b).name}
+                            </span>
+                            <span className="ml-auto shrink-0 text-xs text-white/40">
+                              {shortDate(e.date)}
+                            </span>
+                            {e.isNew ? (
+                              <span className="shrink-0 text-xs text-sky-300/80">νέος</span>
+                            ) : e.from !== md ? (
+                              <span className="shrink-0 text-xs text-white/40">
+                                από Αγ. {e.from ?? "—"}
+                              </span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <button
+                className="min-h-[44px] rounded px-3 text-sm text-white/60 hover:bg-white/5"
+                onClick={() => setRemain(null)}
+              >
+                Ακύρωση
+              </button>
+              <button
+                className="min-h-[44px] rounded border border-white/15 px-3 text-sm text-white hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={remainPlan.schedule.length < 1}
+                onClick={() => setRemain((s) => s && { ...s, seed: s.seed + 1 })}
+              >
+                Ανακάτεμα ξανά
+              </button>
+              <button
+                className="min-h-[44px] rounded border border-amber-400/40 px-3 text-sm text-amber-200 hover:bg-amber-500/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={remainPlan.schedule.length === 0 && remainPlan.plan.removed.length === 0}
+                onClick={commitRemain}
+              >
+                Εφαρμογή
               </button>
             </div>
           </div>
