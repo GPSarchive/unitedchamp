@@ -670,23 +670,10 @@ function Collapsible<T>({
   );
 }
 
-function FixtureGroup({ title, note, matches }: { title: string; note?: string; matches: TeamMatch[] }) {
-  if (matches.length === 0) return null;
-  return (
-    <div className="mt-8">
-      <h4 className="text-[13px] font-bold uppercase tracking-[0.14em] text-[#F3EFE6]/65">{title}</h4>
-      {note ? <p className="mt-1 text-[13px] text-[#F3EFE6]/65">{note}</p> : null}
-      <ul className="mt-1">
-        {matches.map((m) => (
-          <FixtureRow key={m.id} match={m} withDate={false} />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 function Matches({ view }: { view: TeamView }) {
-  const { upcoming, awaiting, postponed, undated, results } = view.schedule;
+  const { upcoming, awaiting, postponed, undated } = view.schedule;
+  // A match with no date is not listed (the season record still counts it).
+  const results = view.schedule.results.filter((m) => m.date != null);
   const pending = upcoming.length + awaiting.length + postponed.length + undated.length;
   if (pending + results.length === 0) return null;
   // A finished season has nothing left to play: the results take the whole width.
@@ -720,8 +707,7 @@ function Matches({ view }: { view: TeamView }) {
               </ul>
             </div>
           ) : null}
-          <FixtureGroup title="Αναβλήθηκαν" note="Η νέα ημερομηνία θα ανακοινωθεί." matches={postponed} />
-          <FixtureGroup title="Χωρίς ημερομηνία ακόμα" matches={undated} />
+          {/* Postponed and undated matches have no date, and a match with no date is not listed. */}
         </div>
         )}
 

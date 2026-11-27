@@ -1095,10 +1095,10 @@ const StageBlock: React.FC<{
     (m) => m.stageIdx === index || (m as any).stage_id === stage.id
   );
   const fixtures = stageMatches
-    .filter((m) => m.status === "scheduled")
+    .filter((m) => m.status === "scheduled" && !!m.match_date)
     .sort((a, b) => (a.match_date ?? "").localeCompare(b.match_date ?? ""));
   const results = stageMatches
-    .filter((m) => m.status === "finished")
+    .filter((m) => m.status === "finished" && !!m.match_date)
     .sort((a, b) => (b.match_date ?? "").localeCompare(a.match_date ?? ""));
 
   const stageStandings = standings.filter((s) => s.stage_id === stage.id);
@@ -1266,7 +1266,7 @@ const FixtureTicker: React.FC<{
   const upcoming = useMemo(
     () =>
       matches
-        .filter((m) => m.status === "scheduled")
+        .filter((m) => m.status === "scheduled" && !!m.match_date)
         .sort((a, b) => (a.match_date ?? "").localeCompare(b.match_date ?? ""))
         .slice(0, 10),
     [matches]

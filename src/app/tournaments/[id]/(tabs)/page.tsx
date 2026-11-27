@@ -215,7 +215,7 @@ export default async function StagesPage({ params }: { params: Promise<{ id: str
         <Beside
           id="latest"
           title="Τελευταία αποτελέσματα"
-          matches={lists.results.slice(0, BESIDE)}
+          matches={lists.results.filter((m) => m.date).slice(0, BESIDE)}
           empty="Δεν έχει παιχτεί ακόμα αγώνας."
           ctx={ctx}
         />

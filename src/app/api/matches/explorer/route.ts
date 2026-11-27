@@ -52,7 +52,9 @@ export async function GET(req: NextRequest) {
        tournament:tournament_id (id, name, logo)`,
       { count: "exact" }
     )
-    .in("tournament_id", ids);
+    .in("tournament_id", ids)
+    // A match with no date yet is not shown on public pages.
+    .not("match_date", "is", null);
 
   // The two tabs must PARTITION all dated matches — nothing may vanish from
   // both. upcoming = future-dated and not finished; past = finished OR

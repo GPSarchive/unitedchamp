@@ -914,7 +914,7 @@ const MobileStageSection: React.FC<{
   const fixtures = useMemo(
     () =>
       stageMatches
-        .filter((m) => m.status === "scheduled")
+        .filter((m) => m.status === "scheduled" && !!m.match_date)
         .sort((a, b) =>
           (a.match_date ?? "").localeCompare(b.match_date ?? "")
         ),
@@ -923,7 +923,7 @@ const MobileStageSection: React.FC<{
   const results = useMemo(
     () =>
       stageMatches
-        .filter((m) => m.status === "finished")
+        .filter((m) => m.status === "finished" && !!m.match_date)
         .sort((a, b) =>
           (b.match_date ?? "").localeCompare(a.match_date ?? "")
         ),
