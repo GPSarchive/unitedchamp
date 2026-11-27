@@ -127,6 +127,8 @@ export async function loadTeamPageData(teamId: number): Promise<TeamPageResult> 
       `,
       )
       .or(`team_a_id.eq.${teamId},team_b_id.eq.${teamId}`)
+      // A match with no date is not listed on public pages.
+      .not("match_date", "is", null)
       .order("match_date", { ascending: false }),
   ]);
 

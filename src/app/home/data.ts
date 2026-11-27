@@ -123,6 +123,8 @@ export const fetchVideoMatches = cache(async () => {
     .in("tournament_id", tournamentIds)
     .not("video_url", "is", null)
     .neq("video_url", "")
+    // A match with no date is not shown on public pages.
+    .not("match_date", "is", null)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .limit(20);
